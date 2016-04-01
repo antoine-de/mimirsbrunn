@@ -1,0 +1,136 @@
+{
+    "settings": {
+        "number_of_shards": "16",
+        "analysis": {
+            "filter": {
+                "prefix_filter": { 
+                    "type":     "edge_ngram",
+                    "min_gram": 1,
+                    "max_gram": 20
+                },
+                "ngram_filter": {
+                    "type": "nGram",
+                    "min_gram": "3",
+                    "max_gram": "3"
+                }
+            },
+            "analyzer": {
+                "word": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding" ],
+                    "char_filter" : [ ]
+                },
+                "prefix": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding", "prefix_filter" ],
+                    "char_filter" : [ ]
+                },
+                "ngram": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding", "ngram_filter" ],
+                    "char_filter" : [ ]
+                }
+            }
+        }
+    },
+    "mappings": {
+        "addr": {
+            "properties": {
+                "id": { "type": "string", "index": "no" },
+                "house_number": { "type": "string", "analyzer": "word"},
+                "name": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "index_analyzer": "prefix",
+                            "search_analyzer": "word"
+                        },
+                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                    }
+                },
+                "street": {
+                    "properties": {
+                        "id": { "type": "string", "index": "no" },
+                        "street_name": { "type": "string" },
+                        "name": { "type": "string" },
+                        "administrative_region": {
+                            "properties": {
+                                "id": { "type": "string", "index": "no" },
+                                "level": { "type": "long", "index": "no" },
+                                "name": { "type": "string" },
+                                "zip_code": { "type": "string", "index": "not_analyzed" },
+                                "weight": { "type": "long" }
+                            }
+                        },
+                        "weight": { "type": "long" }
+                    }
+                },
+                "coord": {
+                    "type": "geo_point",
+                    "lat_lon": true,
+                    "geohash_prefix": true,
+                    "geohash_precision": "1m"
+                }
+            }
+        },
+        "street": {
+            "properties": {
+                "id": { "type": "string", "index": "no" },
+                "street_name": { "type": "string" },
+                "name": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "index_analyzer": "prefix",
+                            "search_analyzer": "word"
+                        },
+                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                    }
+                },
+                "administrative_region": {
+                    "properties": {
+                        "id": { "type": "string", "index": "no" },
+                        "level": { "type": "long", "index": "no" },
+                        "name": { "type": "string" },
+                        "zip_code": { "type": "string", "index": "not_analyzed" },
+                        "weight": { "type": "long" }
+                    }
+                },
+                "weight": { "type": "long" }
+            }
+        },
+        "admin": {
+            "properties": {
+                "id": { "type": "string", "index": "no" },
+                "level": { "type": "long", "index": "no" },
+                "name": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "index_analyzer": "prefix",
+                            "search_analyzer": "word"
+                        },
+                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                    }
+                },
+                "zip_code": { "type": "string", "index": "not_analyzed" },
+                "weight": { "type": "long" }
+            }
+        }
+    }        
+}
