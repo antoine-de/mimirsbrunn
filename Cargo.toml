@@ -1,7 +1,7 @@
 [package]
 name = "mimirsbrunn"
 version = "0.0.1"
-authors = ["Guillaume Pinot <texitoi@texitoi.eu>"]
+authors = ["Canal TP <dt.ro@canaltp.fr>"]
 
 [dependencies]
 docopt = "*"

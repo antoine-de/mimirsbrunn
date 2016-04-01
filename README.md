@@ -1,4 +1,4 @@
-# mimirsbrunn
+# Mimirsbrunn
 
 mimir data import
 
@@ -8,17 +8,17 @@ To build, you must first install rust:
 ```shell
 curl -s https://static.rust-lang.org/rustup.sh | sudo sh
 ```
-and then build munin:
+and then build Mimirsbrunn:
 ```shell
 cargo build --release
 ```
 
-To use the mimirsbrunn components you will need an elasticsearch database.
+To use the Mimirsbrunn components you will need an elasticsearch database.
 
 The elasticsearch version need to be > 1.4
 
 ## components
-There are several components in mimirbrunn:
+There are several components in Mimirsbrunn:
 
 ### bano2mimir
 
