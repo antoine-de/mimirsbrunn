@@ -1,4 +1,4 @@
-# Mimirsbrunn
+# Mímirsbrunn
 
 mimir data import
 
