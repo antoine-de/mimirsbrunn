@@ -99,7 +99,7 @@ Usage:
 ";
 
 fn main() {
-    println!("c'est tipar");
+    println!("importing bano into Mimir");
 
     let args: Args = docopt::Docopt::new(USAGE)
         .and_then(|d| d.decode())
