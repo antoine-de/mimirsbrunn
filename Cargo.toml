@@ -8,3 +8,5 @@ docopt = "*"
 rustc-serialize = "*"
 csv = "*"
 curl = "*"
+[dependencies.osmpbfreader]
+git = "https://github.com/TeXitoi/osmpbfreader-rs"
