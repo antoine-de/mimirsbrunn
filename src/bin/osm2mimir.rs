@@ -57,6 +57,10 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> Vec<mimir
                 name: relation.tags.get("name").unwrap_or(&"NC".to_string()).to_string(),
                 zip_code: zip_code.to_string(),
                 weight: 1,
+                coord: mimirsbrunn::Coord {
+                    lat: 0.0,
+                    lon: 0.0,
+                },
             };
             administrative_regions.push(admin);
         }

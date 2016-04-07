@@ -54,6 +54,7 @@ pub struct Admin {
     pub name: String,
     pub zip_code: String,
     pub weight: u32,
+    pub coord: Coord,
 }
 impl Incr for Admin {
     fn id(&self) -> &str {
