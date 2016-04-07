@@ -1,14 +1,12 @@
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-
 extern crate osmpbfreader;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate mimirsbrunn;
 
 use std::collections::HashSet;
-
 use std::collections::BTreeMap;
 use osmpbfreader::{OsmObj, OsmId};
 
@@ -19,8 +17,6 @@ struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
 }
-
-
 
 static USAGE: &'static str = "
 Usage:
@@ -94,12 +90,7 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
                           relation.tags.get("admin_level"));
                     continue;
                 }
-                Some(ref l) if !levels.contains(&l) => {
-                    info!("admin_level ignored for relation {}:  admin_level {:?}.",
-                          relation.id,
-                          level);
-                    continue;
-                }
+                Some(ref l) if !levels.contains(&l) => continue,
                 Some(l) => l,
             };
             // administrative region with name ?
