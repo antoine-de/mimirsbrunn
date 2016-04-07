@@ -95,7 +95,7 @@ impl Bano {
 }
 
 fn index_bano(files: &[String]) {
-    let rubber = Rubber {index_name: "munin".to_string()};
+    let mut rubber = Rubber::new("localhost".to_string(), 9200, "munin".to_string());
 
     println!("purge and create Munin...");
     rubber.create_index().unwrap();
