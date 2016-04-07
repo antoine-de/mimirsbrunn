@@ -98,7 +98,7 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
                 Some(val) => val,
                 None => {
                     info!("adminstrative region without name for relation {}:  admin_level {} \
-                           ignore .",
+                           ignore.",
                           relation.id,
                           level);
                     continue;
