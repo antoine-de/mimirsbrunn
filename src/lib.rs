@@ -41,13 +41,13 @@ trait Incr: Clone {
     fn incr(&mut self);
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, RustcEncodable, Debug, Clone)]
 pub struct Coord {
     pub lat: f64,
     pub lon: f64,
 }
 
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(RustcDecodable, RustcEncodable, Debug, Clone)]
 pub struct Admin {
     pub id: String,
     pub level: u32,
@@ -65,7 +65,7 @@ impl Incr for Admin {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(RustcDecodable, RustcEncodable, Debug, Clone)]
 pub struct Street {
     pub id: String,
     pub street_name: String,
@@ -82,7 +82,7 @@ impl Incr for Street {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(RustcDecodable, RustcEncodable, Debug)]
 pub struct Addr {
     pub id: String,
     pub house_number: String,
