@@ -1,3 +1,6 @@
+#[macro_use] extern crate log;
+extern crate env_logger;
+
 extern crate osmpbfreader;
 extern crate rustc_serialize;
 extern crate docopt;
@@ -74,21 +77,34 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
             // admininstrative region without coordinates
             let admin_centre = match relation.refs.iter().find(|rf| rf.role == "admin_centre") {
                 Some(val) => val.member,
-                None => continue,
-
+                None => {
+                	info!("adminstrative regione without coordinates for relation {}.", relation.id);
+                	continue;
+                }
             };
             let level = relation.tags
                                 .get("admin_level")
-                                .and_then(|s| s.parse().ok())
-                                .unwrap_or(0);
+                                .and_then(|s| s.parse().ok());
+			let level = match level {
+			    None => {
+			        info!("invalid admin_level for relation {}: admin_level {:?}", relation.id, relation.tags.get("admin_level"));
+			        continue;
+			    }
+			    Some(l) => l,
+			};
             // administrative region without levelval
+            //println!("level: {:?}", level);
             if !levels.contains(&level) {
+            	info!("admin_level ignored for relation {}:  admin_level {:?} .", relation.id, level);
                 continue;
             }
             // administrative region with name ?
             let name = match relation.tags.get("name") {
                 Some(val) => val,
-                None => continue,
+                None => {
+                	info!("adminstrative regione without name for relation {}:  admin_level {:?} ignored .", relation.id, level);
+                	continue;
+                }
             };
             let admin_id = match relation.tags.get("ref:INSEE") {
                 Some(val) => format!("admin:fr:{}", val),
@@ -117,11 +133,14 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
 }
 
 fn main() {
-    println!("importing adminstrative region into Mimir");
+	env_logger::init().unwrap();
+	
+	debug!("importing adminstrative region into Mimir");
+    //println!("importing adminstrative region into Mimir");
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
-    let map = args.flag_level.iter().cloned().collect();
-    let mut res = administartive_regions(&args.flag_input, &map);
+    let levels = args.flag_level.iter().cloned().collect();
+    let mut res = administartive_regions(&args.flag_input, &levels);
     update_coordinates(&args.flag_input, &mut res);
 }
