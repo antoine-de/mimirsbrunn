@@ -13,12 +13,12 @@ struct Args {
 
 static USAGE: &'static str = "
 Usage:
-    osm2mimir --input=<pbf-file> --admin=<admin-level>...
+    osm2mimir --input=<pbf-file> --level=<admin-level>...
 
 Options:
     -h, --help                               Show this message.
     -i <pbf-file>, --input=<pbf-file>        OSM PBF file.
-    -a <admin-level>, --admin=<admin-level>  Admin levels to keep.
+    -l <admin-level>, --level=<admin-level>  Admin levels to keep.
 ";
 
 fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> Vec<mimirsbrunn::Admin> {
@@ -73,9 +73,9 @@ fn main() {
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
-    let map = args.flag_admin.iter().cloned().collect();
     let res = administartive_regions(&args.flag_input, &map);
     for ad in res {
         println!("admins {:?}", ad.id);
     }
+    let map = args.flag_level.iter().cloned().collect();
 }
