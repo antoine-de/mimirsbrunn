@@ -97,8 +97,8 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
             let name = match relation.tags.get("name") {
                 Some(val) => val,
                 None => {
-                    info!("adminstrative regione without name for relation {}:  admin_level {} \
-                           ignored .",
+                    info!("adminstrative region without name for relation {}:  admin_level {} \
+                           ignore .",
                           relation.id,
                           level);
                     continue;
