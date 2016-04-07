@@ -138,9 +138,7 @@ fn bulk_index<'a, T, I>(url: &str, mut iter: I) -> Result<u32, curl::ErrCode>
 
 fn upsert<T: Incr>(elt: &T, map: &mut HashMap<String, T>) {
     match map.entry(elt.id().to_string()) {
-        Vacant(e) => {
-            e.insert(elt.clone());
-        }
+        Vacant(e) => { e.insert(elt.clone()); }
         Occupied(mut e) => e.get_mut().incr(),
     }
 }
