@@ -4,7 +4,11 @@ version = "0.0.1"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 
 [dependencies]
+log = "0.3"
+env_logger = "0.3"
 docopt = "*"
 rustc-serialize = "*"
 csv = "*"
 curl = "*"
+[dependencies.osmpbfreader]
+git = "https://github.com/TeXitoi/osmpbfreader-rs"

@@ -68,6 +68,10 @@ impl Bano {
             name: self.city,
             zip_code: self.zip,
             weight: 1,
+            coord: mimirsbrunn::Coord {
+                lat: 0.0,
+                lon: 0.0,
+            },
         };
         let street = mimirsbrunn::Street {
             id: street_id,
@@ -81,7 +85,10 @@ impl Bano {
             house_number: self.nb,
             street: street,
             name: addr_name,
-            coord: mimirsbrunn::Coord { lat: self.lat, lon: self.lon },
+            coord: mimirsbrunn::Coord {
+                lat: self.lat,
+                lon: self.lon,
+            },
             weight: 1,
         }
     }
@@ -96,7 +103,10 @@ fn index_bano(files: &[String]) {
         println!("importing {}...", f);
         let mut rdr = csv::Reader::from_file(&Path::new(&f)).unwrap().has_headers(false);
 
-        let iter = rdr.decode().map(|r| { let b: Bano = r.unwrap(); b.into_addr() });
+        let iter = rdr.decode().map(|r| {
+            let b: Bano = r.unwrap();
+            b.into_addr()
+        });
         let nb = mimirsbrunn::index(iter).unwrap();
         println!("importing {}: {} addresses added.", f, nb);
     }
@@ -104,7 +114,7 @@ fn index_bano(files: &[String]) {
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
-    arg_bano_files: Vec<String>
+    arg_bano_files: Vec<String>,
 }
 
 static USAGE: &'static str = "
@@ -116,8 +126,8 @@ fn main() {
     println!("importing bano into Mimir");
 
     let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+                         .and_then(|d| d.decode())
+                         .unwrap_or_else(|e| e.exit());
 
     index_bano(&args.arg_bano_files);
 }
