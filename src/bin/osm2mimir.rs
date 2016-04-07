@@ -1,4 +1,5 @@
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate env_logger;
 
 extern crate osmpbfreader;
@@ -40,9 +41,9 @@ fn get_osm_id(obj: &OsmObj) -> OsmId {
 }
 
 fn update_coordinates(filename: &String, admins: &mut AdminsMap) {
-	if admins.is_empty() {
-		return;
-	}
+    if admins.is_empty() {
+        return;
+    }
     // load coord for administratives regions
     let path = std::path::Path::new(&filename);
     let r = std::fs::File::open(&path).unwrap();
@@ -78,32 +79,38 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
             let admin_centre = match relation.refs.iter().find(|rf| rf.role == "admin_centre") {
                 Some(val) => val.member,
                 None => {
-                	info!("adminstrative regione without coordinates for relation {}.", relation.id);
-                	continue;
+                    info!("adminstrative regione without coordinates for relation {}.",
+                          relation.id);
+                    continue;
                 }
             };
             let level = relation.tags
                                 .get("admin_level")
                                 .and_then(|s| s.parse().ok());
-			let level = match level {
-			    None => {
-			        info!("invalid admin_level for relation {}: admin_level {:?}", relation.id, relation.tags.get("admin_level"));
-			        continue;
-			    }
-			    Some(l) => l,
-			};
-            // administrative region without levelval
-            //println!("level: {:?}", level);
-            if !levels.contains(&level) {
-            	info!("admin_level ignored for relation {}:  admin_level {:?} .", relation.id, level);
-                continue;
-            }
+            let level = match level {
+                None => {
+                    info!("invalid admin_level for relation {}: admin_level {:?}",
+                          relation.id,
+                          relation.tags.get("admin_level"));
+                    continue;
+                }
+                Some(ref l) if !levels.contains(&l) => {
+                    info!("admin_level ignored for relation {}:  admin_level {:?}.",
+                          relation.id,
+                          level);
+                    continue;
+                }
+                Some(l) => l,
+            };
             // administrative region with name ?
             let name = match relation.tags.get("name") {
                 Some(val) => val,
                 None => {
-                	info!("adminstrative regione without name for relation {}:  admin_level {:?} ignored .", relation.id, level);
-                	continue;
+                    info!("adminstrative regione without name for relation {}:  admin_level {} \
+                           ignored .",
+                          relation.id,
+                          level);
+                    continue;
                 }
             };
             let admin_id = match relation.tags.get("ref:INSEE") {
@@ -133,10 +140,8 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
 }
 
 fn main() {
-	env_logger::init().unwrap();
-	
-	debug!("importing adminstrative region into Mimir");
-    //println!("importing adminstrative region into Mimir");
+    env_logger::init().unwrap();
+    debug!("importing adminstrative region into Mimir");
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
