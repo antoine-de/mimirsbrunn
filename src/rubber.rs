@@ -54,7 +54,10 @@ impl Rubber {
 
     pub fn create_index(&mut self) -> Result<(), curl::ErrCode> {
         debug!("creating index");
-        self.client.delete_index(&self.index_name).unwrap();  // TODO handle error
+        match self.client.delete_index(&self.index_name) {
+            Err(e) => info!("unable to remove index, {}", e),
+            _ => ()
+        }
         // first, we must delete with its own handle the old munin
 
         // Note: for the moment I don't see an easy way to do this with rs_es
@@ -66,7 +69,7 @@ impl Rubber {
         Ok(())
     }
 
-    fn bulk_index<'a, T, I>(&mut self, mut iter: I) -> Result<u32, curl::ErrCode>
+    fn bulk_index<T, I>(&mut self, mut iter: I) -> Result<u32, rs_es::error::EsError>
         where T: serde::Serialize + DocType, I: Iterator<Item = T>
     {
         use self::rs_es::operations::bulk::Action;
@@ -83,13 +86,13 @@ impl Rubber {
                 chunk.push(Action::index(addr));
                 nb += 1;
             }
-            self.client.bulk(&chunk).with_index(&self.index_name).with_doc_type(T::doc_type()).send().unwrap(); //TODO handle error
+            try!(self.client.bulk(&chunk).with_index(&self.index_name).with_doc_type(T::doc_type()).send());
         }
 
         Ok(nb)
     }
 
-    pub fn index<I: Iterator<Item = Addr>>(&mut self, iter: I) -> Result<u32, curl::ErrCode> {
+    pub fn index<I: Iterator<Item = Addr>>(&mut self, iter: I) -> Result<u32, rs_es::error::EsError> {
         let mut admins = HashMap::new();
         let mut streets = HashMap::new();
 

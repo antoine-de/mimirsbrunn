@@ -100,20 +100,21 @@ impl Bano {
 fn index_bano(files: &[String]) {
     let mut rubber = Rubber::new("localhost".to_string(), 9200, "munin".to_string());
 
-    println!("purge and create Munin...");
+    info!("purge and create Munin...");
     rubber.create_index().unwrap();
-    println!("Munin purged and created.");
 
     for f in files.iter() {
-        println!("importing {}...", f);
+        info!("importing {}...", f);
         let mut rdr = csv::Reader::from_file(&Path::new(&f)).unwrap().has_headers(false);
 
         let iter = rdr.decode().map(|r| {
             let b: Bano = r.unwrap();
             b.into_addr()
         });
-        let nb = rubber.index(iter).unwrap();
-        println!("importing {}: {} addresses added.", f, nb);
+        match rubber.index(iter) {
+            Err(e) => panic!("failed to bulk insert file {} because: {}", f, e),
+            Ok(nb) => info!("importing {}: {} addresses added.", f, nb)
+        }
     }
 }
 
