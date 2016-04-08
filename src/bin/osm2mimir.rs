@@ -164,6 +164,13 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
     return administrative_regions;
 }
 
+fn index_osm(url: &str, admins: &AdminsMap) {
+	info!("purge and create Munin...");
+    mimirsbrunn::purge_and_create_munin().unwrap();
+    info!("Munin purged and created.");
+    mimirsbrunn::bulk_index(&format!("{}/admin", url), admins.values()).unwrap();
+}
+
 fn main() {
     env_logger::init().unwrap();
     debug!("importing adminstrative region into Mimir");
@@ -173,4 +180,6 @@ fn main() {
     let levels = args.flag_level.iter().cloned().collect();
     let mut res = administartive_regions(&args.flag_input, &levels);
     update_coordinates(&args.flag_input, &mut res);
+    index_osm(&args.flag_connection_string, &res);
+    
 }
