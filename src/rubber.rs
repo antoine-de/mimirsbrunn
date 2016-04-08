@@ -36,7 +36,7 @@ extern crate serde_json;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use super::{Addr, Incr};
+use super::{Addr, Incr, DocType};
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
@@ -66,8 +66,8 @@ impl Rubber {
         Ok(())
     }
 
-    fn bulk_index<'a, T, I>(&mut self, type_name: &str, mut iter: I) -> Result<u32, curl::ErrCode>
-        where T: serde::Serialize, I: Iterator<Item = T>
+    fn bulk_index<'a, T, I>(&mut self, mut iter: I) -> Result<u32, curl::ErrCode>
+        where T: serde::Serialize + DocType, I: Iterator<Item = T>
     {
         use self::rs_es::operations::bulk::Action;
         let mut chunk = Vec::new();
@@ -83,7 +83,7 @@ impl Rubber {
                 chunk.push(Action::index(addr));
                 nb += 1;
             }
-            self.client.bulk(&chunk).with_index(&self.index_name).with_doc_type(type_name).send().unwrap(); //TODO handle error
+            self.client.bulk(&chunk).with_index(&self.index_name).with_doc_type(T::doc_type()).send().unwrap(); //TODO handle error
         }
 
         Ok(nb)
@@ -93,12 +93,12 @@ impl Rubber {
         let mut admins = HashMap::new();
         let mut streets = HashMap::new();
 
-        try!(self.bulk_index("addr", iter.inspect(|addr| {
+        try!(self.bulk_index(iter.inspect(|addr| {
             upsert(&addr.street.administrative_region, &mut admins);
             upsert(&addr.street, &mut streets);
         })));
-        try!(self.bulk_index("admin", admins.into_iter().map(|e| e.1)));
-        self.bulk_index("street", streets.into_iter().map(|e| e.1))
+        try!(self.bulk_index(admins.into_iter().map(|e| e.1)));
+        self.bulk_index(streets.into_iter().map(|e| e.1))
     }
 }
 

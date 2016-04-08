@@ -43,6 +43,10 @@ trait Incr: Clone {
     fn incr(&mut self);
 }
 
+trait DocType {
+  fn doc_type() -> &'static str; // provides the elasticsearch type name
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coord {
     pub lat: f64,
@@ -66,6 +70,9 @@ impl Incr for Admin {
         self.weight += 1;
     }
 }
+impl DocType for Admin {
+  fn doc_type() -> &'static str { "admin" }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Street {
@@ -83,6 +90,9 @@ impl Incr for Street {
         self.weight += 1;
     }
 }
+impl DocType for Street {
+  fn doc_type() -> &'static str { "street" }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Addr {
@@ -92,4 +102,7 @@ pub struct Addr {
     pub name: String,
     pub coord: Coord,
     pub weight: u32,
+}
+impl DocType for Addr {
+  fn doc_type() -> &'static str { "addr" }
 }
