@@ -16,16 +16,20 @@ pub type AdminsMap = BTreeMap<OsmId, mimirsbrunn::Admin>;
 struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
+    flag_connection_string: String,
 }
 
 static USAGE: &'static str = "
 Usage:
-    osm2mimir --input=<pbf-file> --level=<admin-level>...
+    osm2mimir --help
+    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level>...
 
 Options:
-    -h, --help                               Show this message.
-    -i <pbf-file>, --input=<pbf-file>        OSM PBF file.
-    -l <admin-level>, --level=<admin-level>  Admin levels to keep.
+    -h, --help            Show this message.
+    -i, --input=<file>    OSM PBF file.
+    -l, --level=<level>   Admin levels to keep.
+    -c, --connection-string=<connection-string>
+                          Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
 
 fn get_osm_id(obj: &OsmObj) -> OsmId {
