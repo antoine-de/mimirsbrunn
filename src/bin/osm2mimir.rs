@@ -35,6 +35,7 @@ extern crate osmpbfreader;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate mimirsbrunn;
+extern crate curl;
 
 use std::collections::HashSet;
 use std::collections::BTreeMap;
@@ -105,15 +106,6 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
                         .unwrap_or(false) {
                 continue;
             }
-            // admininstrative region without coordinates
-            let admin_centre = match relation.refs.iter().find(|rf| rf.role == "admin_centre") {
-                Some(val) => val.member,
-                None => {
-                    info!("adminstrative regione without coordinates for relation {}.",
-                          relation.id);
-                    continue;
-                }
-            };
             let level = relation.tags
                                 .get("admin_level")
                                 .and_then(|s| s.parse().ok());
@@ -138,6 +130,17 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
                     continue;
                 }
             };
+            // admininstrative region without coordinates
+            let admin_centre = match relation.refs.iter().find(|rf| rf.role == "admin_centre") {
+                Some(val) => val.member,
+                None => {
+                    info!("adminstrative region [{}] without coordinates for relation {}.",
+                          name,
+                          relation.id);
+                    continue;
+                }
+            };
+
             let admin_id = match relation.tags.get("ref:INSEE") {
                 Some(val) => format!("admin:fr:{}", val),
                 None => format!("admin:osm:{}", relation.id),
@@ -164,6 +167,13 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
     return administrative_regions;
 }
 
+fn index_osm(url: &str, admins: &AdminsMap) -> Result<u32, curl::ErrCode> {
+    info!("purge and create Munin...");
+    try!(mimirsbrunn::purge_and_create_munin());
+    info!("Munin purged and created.");
+    mimirsbrunn::bulk_index(&format!("{}/admin", url), admins.values())
+}
+
 fn main() {
     env_logger::init().unwrap();
     debug!("importing adminstrative region into Mimir");
@@ -173,4 +183,7 @@ fn main() {
     let levels = args.flag_level.iter().cloned().collect();
     let mut res = administartive_regions(&args.flag_input, &levels);
     update_coordinates(&args.flag_input, &mut res);
+    let nb = index_osm(&args.flag_connection_string, &res).unwrap();
+    info!("Adminstrative regions : {}", nb);
+
 }

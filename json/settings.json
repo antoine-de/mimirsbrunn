@@ -129,8 +129,14 @@
                     }
                 },
                 "zip_code": { "type": "string", "index": "not_analyzed" },
-                "weight": { "type": "long" }
+                "weight": { "type": "long" },
+                "coord": {
+                    "type": "geo_point",
+                    "lat_lon": true,
+                    "geohash_prefix": true,
+                    "geohash_precision": "1m"
+                }
             }
         }
-    }        
+    }
 }
