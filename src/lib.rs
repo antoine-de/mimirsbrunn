@@ -109,7 +109,7 @@ fn push_bulk<'a, T: Encodable>(s: &mut String, elt: &T) {
     s.push_str(&json::encode(elt).unwrap());
     s.push('\n');
 }
-fn bulk_index<'a, T, I>(url: &str, mut iter: I) -> Result<u32, curl::ErrCode>
+pub fn bulk_index<'a, T, I>(url: &str, mut iter: I) -> Result<u32, curl::ErrCode>
     where T: Encodable,
           I: Iterator<Item = T>
 {
