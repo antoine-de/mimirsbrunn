@@ -46,6 +46,11 @@ trait Incr: Clone {
 trait DocType {
   fn doc_type() -> &'static str; // provides the elasticsearch type name
 }
+impl <'a, T: DocType> DocType for &'a T {
+    fn doc_type() -> &'static str {
+        T::doc_type()
+  }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coord {

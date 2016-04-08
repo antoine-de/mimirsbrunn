@@ -95,13 +95,15 @@ impl Rubber {
     pub fn index<I: Iterator<Item = Addr>>(&mut self, iter: I) -> Result<u32, rs_es::error::EsError> {
         let mut admins = HashMap::new();
         let mut streets = HashMap::new();
+        let mut nb = 0;
 
-        try!(self.bulk_index(iter.inspect(|addr| {
+        nb += try!(self.bulk_index(iter.inspect(|addr| {
             upsert(&addr.street.administrative_region, &mut admins);
             upsert(&addr.street, &mut streets);
         })));
-        try!(self.bulk_index(admins.into_iter().map(|e| e.1)));
-        self.bulk_index(streets.into_iter().map(|e| e.1))
+        nb += try!(self.bulk_index(admins.values()));
+        nb += try!(self.bulk_index(streets.values()));
+        Ok(nb)
     }
 }
 
