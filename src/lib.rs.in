@@ -29,6 +29,9 @@
 // www.navitia.io
 
 
+// Note: this file is needed to use serde in rust stable
+// cf mimirsbrunn/build.rs for explanations
+
 extern crate serde;
 extern crate serde_json;
 

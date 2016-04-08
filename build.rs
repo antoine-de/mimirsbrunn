@@ -1,3 +1,6 @@
+// this file is used to be able to use serde (https://github.com/serde-rs/serde) in rust stable
+// cf serde readme for explanations
+
 #[cfg(not(feature = "serde_macros"))]
 mod inner {
     extern crate syntex;

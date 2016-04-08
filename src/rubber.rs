@@ -38,8 +38,9 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use super::{Addr, Incr};
 
+// Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
-    pub index_name: String,
+    index_name: String,
     client: rs_es::Client
 }
 
@@ -91,7 +92,6 @@ impl Rubber {
     pub fn index<I: Iterator<Item = Addr>>(&mut self, iter: I) -> Result<u32, curl::ErrCode> {
         let mut admins = HashMap::new();
         let mut streets = HashMap::new();
-
 
         try!(self.bulk_index("addr", iter.inspect(|addr| {
             upsert(&addr.street.administrative_region, &mut admins);
