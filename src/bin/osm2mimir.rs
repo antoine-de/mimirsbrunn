@@ -109,7 +109,7 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
             let admin_centre = match relation.refs.iter().find(|rf| rf.role == "admin_centre") {
                 Some(val) => val.member,
                 None => {
-                    info!("adminstrative regione without coordinates for relation {}.",
+                    info!("adminstrative region without coordinates for relation {}.",
                           relation.id);
                     continue;
                 }
