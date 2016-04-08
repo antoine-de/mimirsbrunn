@@ -166,9 +166,9 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
 
 fn index_osm(url: &str, admins: &AdminsMap) {
 	info!("purge and create Munin...");
-    mimirsbrunn::purge_and_create_munin().unwrap();
-    info!("Munin purged and created.");
-    mimirsbrunn::bulk_index(&format!("{}/admin", url), admins.values()).unwrap();
+	mimirsbrunn::purge_and_create_munin().unwrap();
+	info!("Munin purged and created.");
+	mimirsbrunn::bulk_index(&format!("{}/admin", url), admins.values()).unwrap();
 }
 
 fn main() {
