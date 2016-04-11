@@ -32,13 +32,7 @@
 // Note: this file is needed to use serde in rust stable
 // cf mimirsbrunn/build.rs for explanations
 
-extern crate serde;
-extern crate serde_json;
-
-pub mod rubber;
-
-
-trait Incr: Clone {
+pub trait Incr: Clone {
     fn id(&self) -> &str;
     fn incr(&mut self);
 }

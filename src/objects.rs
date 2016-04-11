@@ -28,13 +28,4 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate log;
-
-extern crate serde;
-extern crate serde_json;
-
-pub mod objects;
-pub mod rubber;
-
-pub use objects::{Addr, Street, Admin, Coord};
+include!(concat!(env!("OUT_DIR"), "/objects.rs"));

@@ -37,7 +37,7 @@ extern crate regex;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use super::{Addr, Incr, DocType};
+use super::objects::{Addr, Incr, DocType};
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
