@@ -52,7 +52,7 @@ impl Rubber {
         }
     }
 
-    pub fn create_index(&mut self) -> Result<(), curl::ErrCode> {
+    pub fn create_index(&mut self) -> Result<(), rs_es::error::EsError> {
         debug!("creating index");
         match self.client.delete_index(&self.index_name) {
             Err(e) => info!("unable to remove index, {}", e),
@@ -63,13 +63,14 @@ impl Rubber {
         // Note: for the moment I don't see an easy way to do this with rs_es
         let analysis = include_str!("../json/settings.json");
         //assert!(analysis.parse::<json::Json>().is_ok());
-        let res = try!(curl::http::handle().put("http://localhost:9200/munin", analysis).exec());
+        let res = curl::http::handle().put("http://localhost:9200/munin", analysis).exec().unwrap();
+
         assert!(res.get_code() == 200, "Error adding analysis: {}", res);
 
         Ok(())
     }
 
-    fn bulk_index<T, I>(&mut self, mut iter: I) -> Result<u32, rs_es::error::EsError>
+    pub fn bulk_index<T, I>(&mut self, mut iter: I) -> Result<u32, rs_es::error::EsError>
         where T: serde::Serialize + DocType, I: Iterator<Item = T>
     {
         use self::rs_es::operations::bulk::Action;

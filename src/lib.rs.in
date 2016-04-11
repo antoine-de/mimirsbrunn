@@ -43,7 +43,7 @@ trait Incr: Clone {
     fn incr(&mut self);
 }
 
-trait DocType {
+pub trait DocType {
   fn doc_type() -> &'static str; // provides the elasticsearch type name
 }
 impl <'a, T: DocType> DocType for &'a T {

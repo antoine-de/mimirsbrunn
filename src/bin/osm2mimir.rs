@@ -35,11 +35,12 @@ extern crate osmpbfreader;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate mimirsbrunn;
-extern crate curl;
+extern crate rs_es;
 
 use std::collections::HashSet;
 use std::collections::BTreeMap;
 use osmpbfreader::{OsmObj, OsmId};
+use mimirsbrunn::rubber::Rubber;
 
 pub type AdminsMap = BTreeMap<OsmId, mimirsbrunn::Admin>;
 
@@ -167,11 +168,12 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
     return administrative_regions;
 }
 
-fn index_osm(url: &str, admins: &AdminsMap) -> Result<u32, curl::ErrCode> {
+fn index_osm(url: &str, admins: &AdminsMap) -> Result<u32, rs_es::error::EsError> {
+    let mut rubber = Rubber::new("localhost".to_string(), 9200, "munin".to_string());
     info!("purge and create Munin...");
-    try!(mimirsbrunn::purge_and_create_munin());
+    try!(rubber.create_index());
     info!("Munin purged and created.");
-    mimirsbrunn::bulk_index(&format!("{}/admin", url), admins.values())
+    rubber.bulk_index(admins.values())
 }
 
 fn main() {
@@ -183,7 +185,8 @@ fn main() {
     let levels = args.flag_level.iter().cloned().collect();
     let mut res = administartive_regions(&args.flag_input, &levels);
     update_coordinates(&args.flag_input, &mut res);
-    let nb = index_osm(&args.flag_connection_string, &res).unwrap();
-    info!("Adminstrative regions : {}", nb);
-
+    match index_osm(&args.flag_connection_string, &res) {
+        Err(e) => panic!("failed to index osm because: {}", e),
+        Ok(nb) => info!("Adminstrative regions : {}", nb)
+    }
 }
