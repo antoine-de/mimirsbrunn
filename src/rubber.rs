@@ -48,12 +48,12 @@ pub struct Rubber {
 impl Rubber {
     // build a rubber with a connection string (http://host:port/index)
     pub fn new(cnx: &str) -> Rubber {
-        let re = regex::Regex::new(r"(?P<host>http.+?):(?P<port>\d{4})/(?P<index>\w+)").unwrap();
+        let re = regex::Regex::new(r"(?P<host>.+?):(?P<port>\d{4})/(?P<index>\w+)").unwrap();
         let cap = re.captures(cnx).unwrap();
         let host = cap.name("host").unwrap();
         let port = cap.name("port").unwrap().parse::<u32>().unwrap();
         let index = cap.name("index").unwrap();
-        info!("host {:?} port {:?} index {:?}", host, port, index);
+        info!("elastic search host {:?} port {:?} index {:?}", host, port, index);
 
         Rubber {
             index_name: index.to_string(),

@@ -39,6 +39,7 @@ extern crate env_logger;
 
 use std::path::Path;
 use mimirsbrunn::rubber::Rubber;
+use std::fs;
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct Bano {
@@ -97,40 +98,40 @@ impl Bano {
     }
 }
 
-fn index_bano(cnx_string: &str, files: &[String]) {
+fn index_bano<I>(cnx_string: &str, files: I)
+    where I: Iterator<Item = std::path::PathBuf>
+{
     let mut rubber = Rubber::new(cnx_string);
 
     info!("purge and create Munin...");
     rubber.create_index().unwrap();
 
-    for f in files.iter() {
-        info!("importing {}...", f);
-        let mut rdr = csv::Reader::from_file(&Path::new(&f)).unwrap().has_headers(false);
+    for f in files {
+        info!("importing {:?}...", &f);
+        let mut rdr = csv::Reader::from_file(&f).unwrap().has_headers(false);
 
         let iter = rdr.decode().map(|r| {
             let b: Bano = r.unwrap();
             b.into_addr()
         });
         match rubber.index(iter) {
-            Err(e) => panic!("failed to bulk insert file {} because: {}", f, e),
-            Ok(nb) => info!("importing {}: {} addresses added.", f, nb),
+            Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
+            Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
         }
     }
 }
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
-    arg_bano_files: Vec<String>,
+    flag_input: String,
     flag_connection_string: String,
 }
 
 static USAGE: &'static str = "
 Usage:
-    bano2mimir --input=<bano-files>... [--connection-string=<connection-string>]
+    bano2mimir --input=<input> [--connection-string=<connection-string>]
 
-Options:
-    -h, --help            Show this message.
-    -i, --input=<bano-files>    list of bano files
+    -i, --input=<input>                         Bano files. Can be either a directory or a file.
     -c, --connection-string=<connection-string>
                           Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
@@ -143,5 +144,17 @@ fn main() {
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
 
-    index_bano(&args.flag_connection_string, &args.arg_bano_files);
+    let files_path = Path::new(&args.flag_input);
+    if files_path.is_dir() {
+        let paths: std::fs::ReadDir = fs::read_dir(&args.flag_input).unwrap();
+        index_bano(&args.flag_connection_string, paths.map(|p| {
+            p.unwrap().path()
+        }));
+    } else {
+        index_bano(&args.flag_connection_string, [&args.flag_input].iter().map(|f| {
+            std::path::PathBuf::from(&f)
+        }));
+    }
+
+
 }
