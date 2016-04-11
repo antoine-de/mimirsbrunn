@@ -131,9 +131,9 @@ static USAGE: &'static str = "
 Usage:
     bano2mimir --input=<input> [--connection-string=<connection-string>]
 
-    -i, --input=<input>                         Bano files. Can be either a directory or a file.
+    -i, --input=<input>           Bano files. Can be either a directory or a file.
     -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, [default: http://localhost:9200/munin]
+                                  Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
 
 fn main() {
@@ -147,13 +147,11 @@ fn main() {
     let files_path = Path::new(&args.flag_input);
     if files_path.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.flag_input).unwrap();
-        index_bano(&args.flag_connection_string, paths.map(|p| {
-            p.unwrap().path()
-        }));
+        index_bano(&args.flag_connection_string,
+                   paths.map(|p| p.unwrap().path()));
     } else {
-        index_bano(&args.flag_connection_string, [&args.flag_input].iter().map(|f| {
-            std::path::PathBuf::from(&f)
-        }));
+        index_bano(&args.flag_connection_string,
+                   [&args.flag_input].iter().map(|f| std::path::PathBuf::from(&f)));
     }
 
 
