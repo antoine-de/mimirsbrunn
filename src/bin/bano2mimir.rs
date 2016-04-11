@@ -113,7 +113,7 @@ fn index_bano(files: &[String]) {
         });
         match rubber.index(iter) {
             Err(e) => panic!("failed to bulk insert file {} because: {}", f, e),
-            Ok(nb) => info!("importing {}: {} addresses added.", f, nb)
+            Ok(nb) => info!("importing {}: {} addresses added.", f, nb),
         }
     }
 }

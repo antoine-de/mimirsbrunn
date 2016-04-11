@@ -187,6 +187,6 @@ fn main() {
     update_coordinates(&args.flag_input, &mut res);
     match index_osm(&args.flag_connection_string, &res) {
         Err(e) => panic!("failed to index osm because: {}", e),
-        Ok(nb) => info!("Adminstrative regions : {}", nb)
+        Ok(nb) => info!("Adminstrative regions : {}", nb),
     }
 }
