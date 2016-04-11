@@ -33,9 +33,12 @@ extern crate csv;
 extern crate rustc_serialize;
 extern crate curl;
 extern crate mimirsbrunn;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 use std::path::Path;
-
+use mimirsbrunn::rubber::Rubber;
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct Bano {
@@ -95,20 +98,23 @@ impl Bano {
 }
 
 fn index_bano(files: &[String]) {
-    println!("purge and create Munin...");
-    mimirsbrunn::purge_and_create_munin().unwrap();
-    println!("Munin purged and created.");
+    let mut rubber = Rubber::new("localhost".to_string(), 9200, "munin".to_string());
+
+    info!("purge and create Munin...");
+    rubber.create_index().unwrap();
 
     for f in files.iter() {
-        println!("importing {}...", f);
+        info!("importing {}...", f);
         let mut rdr = csv::Reader::from_file(&Path::new(&f)).unwrap().has_headers(false);
 
         let iter = rdr.decode().map(|r| {
             let b: Bano = r.unwrap();
             b.into_addr()
         });
-        let nb = mimirsbrunn::index(iter).unwrap();
-        println!("importing {}: {} addresses added.", f, nb);
+        match rubber.index(iter) {
+            Err(e) => panic!("failed to bulk insert file {} because: {}", f, e),
+            Ok(nb) => info!("importing {}: {} addresses added.", f, nb),
+        }
     }
 }
 
@@ -123,7 +129,8 @@ Usage:
 ";
 
 fn main() {
-    println!("importing bano into Mimir");
+    env_logger::init().unwrap();
+    info!("importing bano into Mimir");
 
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
