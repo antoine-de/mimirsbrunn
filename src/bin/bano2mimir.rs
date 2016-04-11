@@ -97,8 +97,8 @@ impl Bano {
     }
 }
 
-fn index_bano(files: &[String]) {
-    let mut rubber = Rubber::new("localhost".to_string(), 9200, "munin".to_string());
+fn index_bano(cnx_string: &str, files: &[String]) {
+    let mut rubber = Rubber::new(cnx_string);
 
     info!("purge and create Munin...");
     rubber.create_index().unwrap();
@@ -121,11 +121,18 @@ fn index_bano(files: &[String]) {
 #[derive(RustcDecodable, Debug)]
 struct Args {
     arg_bano_files: Vec<String>,
+    flag_connection_string: String,
 }
 
 static USAGE: &'static str = "
 Usage:
-    bano2mimir <bano-files>...
+    bano2mimir --input=<bano-files>... [--connection-string=<connection-string>]
+
+Options:
+    -h, --help            Show this message.
+    -i, --input=<bano-files>    list of bano files
+    -c, --connection-string=<connection-string>
+                          Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
 
 fn main() {
@@ -136,5 +143,5 @@ fn main() {
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
 
-    index_bano(&args.arg_bano_files);
+    index_bano(&args.flag_connection_string, &args.arg_bano_files);
 }

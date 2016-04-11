@@ -32,6 +32,7 @@ extern crate curl;
 extern crate rs_es;
 extern crate serde;
 extern crate serde_json;
+extern crate regex;
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -45,9 +46,17 @@ pub struct Rubber {
 }
 
 impl Rubber {
-    pub fn new(host: String, port: u32, index: String) -> Rubber {
+    // build a rubber with a connection string (http://host:port/index)
+    pub fn new(cnx: &str) -> Rubber {
+        let re = regex::Regex::new(r"(?P<host>http.+?):(?P<port>\d{4})/(?P<index>\w+)").unwrap();
+        let cap = re.captures(cnx).unwrap();
+        let host = cap.name("host").unwrap();
+        let port = cap.name("port").unwrap().parse::<u32>().unwrap();
+        let index = cap.name("index").unwrap();
+        info!("host {:?} port {:?} index {:?}", host, port, index);
+
         Rubber {
-            index_name: index,
+            index_name: index.to_string(),
             client: rs_es::Client::new(&host, port)
         }
     }

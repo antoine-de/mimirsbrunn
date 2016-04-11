@@ -168,8 +168,8 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
     return administrative_regions;
 }
 
-fn index_osm(url: &str, admins: &AdminsMap) -> Result<u32, rs_es::error::EsError> {
-    let mut rubber = Rubber::new("localhost".to_string(), 9200, "munin".to_string());
+fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::error::EsError> {
+    let mut rubber = Rubber::new(es_cnx_string);
     info!("purge and create Munin...");
     try!(rubber.create_index());
     info!("Munin purged and created.");
@@ -182,6 +182,7 @@ fn main() {
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
+
     let levels = args.flag_level.iter().cloned().collect();
     let mut res = administartive_regions(&args.flag_input, &levels);
     update_coordinates(&args.flag_input, &mut res);
