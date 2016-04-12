@@ -39,7 +39,7 @@ extern crate rs_es;
 
 use std::collections::HashSet;
 use std::collections::BTreeMap;
-use osmpbfreader::{OsmObj, OsmId};
+use osmpbfreader::OsmId;
 use mimirsbrunn::rubber::Rubber;
 
 pub type AdminsMap = BTreeMap<OsmId, mimirsbrunn::Admin>;
@@ -64,14 +64,6 @@ Options:
                           Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
 
-fn get_osm_id(obj: &OsmObj) -> OsmId {
-    match *obj {
-        OsmObj::Node(ref node) => OsmId::Node(node.id),
-        OsmObj::Way(ref way) => OsmId::Way(way.id),
-        OsmObj::Relation(ref rel) => OsmId::Relation(rel.id),
-    }
-}
-
 fn update_coordinates(filename: &String, admins: &mut AdminsMap) {
     if admins.is_empty() {
         return;
@@ -82,7 +74,7 @@ fn update_coordinates(filename: &String, admins: &mut AdminsMap) {
     let mut pbf = osmpbfreader::OsmPbfReader::new(r);
     for obj in pbf.iter() {
         if let osmpbfreader::OsmObj::Node(ref node) = obj {
-            let mut adm = match admins.get_mut(&get_osm_id(&obj)) {
+            let mut adm = match admins.get_mut(&obj.id()) {
                 Some(val) => val,
                 None => continue,
             };
