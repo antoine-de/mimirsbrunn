@@ -144,14 +144,14 @@ fn main() {
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
 
-    let files_path = Path::new(&args.flag_input);
-    if files_path.is_dir() {
+    let file_path = Path::new(&args.flag_input);
+    if file_path.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.flag_input).unwrap();
         index_bano(&args.flag_connection_string,
                    paths.map(|p| p.unwrap().path()));
     } else {
         index_bano(&args.flag_connection_string,
-                   [&args.flag_input].iter().map(|f| std::path::PathBuf::from(&f)));
+                    std::iter::once(std::path::PathBuf::from(&args.flag_input)));
     }
 
 
