@@ -56,7 +56,7 @@ pub struct Bano {
 impl Bano {
     pub fn insee(&self) -> &str {
         assert!(self.id.len() >= 5);
-        &self.id[..5]
+        self.id[..5].trim_left_matches('0')
     }
     pub fn fantoir(&self) -> &str {
         assert!(self.id.len() >= 10);
@@ -67,7 +67,7 @@ impl Bano {
         let addr_name = format!("{} {}", self.nb, street_name);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let admin = mimirsbrunn::Admin {
-            id: format!("admin:{}", self.insee()),
+            id: format!("admin:fr:{}", self.insee()),
             level: 8,
             name: self.city,
             zip_code: self.zip,

@@ -135,7 +135,7 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
             };
 
             let admin_id = match relation.tags.get("ref:INSEE") {
-                Some(val) => format!("admin:fr:{}", val),
+                Some(val) => format!("admin:fr:{}", val.trim_left_matches('0')),
                 None => format!("admin:osm:{}", relation.id),
             };
             let zip_code = match relation.tags.get("addr:postcode") {
