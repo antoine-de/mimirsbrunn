@@ -30,7 +30,6 @@
 
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 extern crate osmpbfreader;
 extern crate rustc_serialize;
 extern crate docopt;
@@ -169,7 +168,7 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::erro
 }
 
 fn main() {
-    env_logger::init().unwrap();
+    mimirsbrunn::logger_init().unwrap();
     debug!("importing adminstrative region into Mimir");
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
@@ -180,6 +179,6 @@ fn main() {
     update_coordinates(&args.flag_input, &mut res);
     match index_osm(&args.flag_connection_string, &res) {
         Err(e) => panic!("failed to index osm because: {}", e),
-        Ok(nb) => info!("Adminstrative regions : {}", nb),
+        Ok(nb) => info!("Adminstrative regions: {}", nb),
     }
 }

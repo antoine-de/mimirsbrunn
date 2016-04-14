@@ -35,7 +35,6 @@ extern crate curl;
 extern crate mimirsbrunn;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 
 use std::path::Path;
 use mimirsbrunn::rubber::Rubber;
@@ -137,7 +136,7 @@ Usage:
 ";
 
 fn main() {
-    env_logger::init().unwrap();
+    mimirsbrunn::logger_init().unwrap();
     info!("importing bano into Mimir");
 
     let args: Args = docopt::Docopt::new(USAGE)
