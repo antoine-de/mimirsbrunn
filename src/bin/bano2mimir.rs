@@ -147,7 +147,7 @@ fn main() {
                    paths.map(|p| p.unwrap().path()));
     } else {
         index_bano(&args.flag_connection_string,
-                    std::iter::once(std::path::PathBuf::from(&args.flag_input)));
+                   std::iter::once(std::path::PathBuf::from(&args.flag_input)));
     }
 
 

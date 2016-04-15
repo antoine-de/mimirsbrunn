@@ -163,6 +163,10 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::erro
     let mut rubber = Rubber::new(es_cnx_string);
     rubber.create_index();
     info!("purge and create Munin...");
+    match rubber.clean_db_by_doc_type(&["admin"]) {
+        Err(e) => panic!("failed to clean data by document type: {}", e),
+        Ok(nb) => info!("clean data by document type : {}", nb),
+    }
     info!("Munin purged and created.");
     rubber.bulk_index(admins.values())
 }
