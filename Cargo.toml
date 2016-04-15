@@ -17,6 +17,9 @@ serde_json = "*"
 regex = "*"
 osmpbfreader = "*"
 
+[dependencies.skojig]
+path = "libs/skojig"
+
 [build-dependencies]
 serde_codegen = "*"
 syntex = "*"

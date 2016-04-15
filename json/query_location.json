@@ -1,0 +1,77 @@
+{{
+    "query": {{
+        "filtered": {{
+            "query": {{
+                "bool": {{
+                    "should": [
+                        {{
+                            "term": {{
+                                "_type": {{
+                                    "value": "addr",
+                                    "boost": 1000
+                                }}
+                            }}
+                        }},
+                        {{
+                            "match": {{
+                                "name.prefix": {{
+                                    "query": {query},
+                                    "boost": 100
+                                }}
+                            }}
+                        }},
+                        {{
+                            "match": {{
+                                "name.ngram": {{
+                                    "query": {query},
+                                    "boost": 1
+                                }}
+                            }}
+                        }},
+                        {{
+                            "function_score": {{
+                                "functions": [
+                                    {{
+                                        "gauss": {{
+                                            "coord": {{ 
+                                                "origin": {{ "lat": {lat}, "lon": {lon} }},
+                                                "offset": "2km",
+                                                "scale":  "3km"
+                                            }}
+                                        }}
+                                    }}
+                                ],
+                                "boost_mode": "multiply",
+                                "boost": 300
+                            }}
+                        }}
+                    ]
+                }}
+            }},
+            "filter": {{
+                "bool": {{
+                    "should": [
+                        {{ "missing": {{ "field": "house_number" }} }},
+                        {{
+                            "query": {{
+                                "match": {{ "house_number": {query} }}
+                            }}
+                        }}
+                    ],
+                    "must": [
+                        {{
+                            "query": {{
+                                "match": {{
+                                    "name.ngram": {{
+                                        "query": {query},
+                                        "minimum_should_match": "50%"
+                                    }}
+                                }}
+                            }}
+                        }}
+                    ]
+                }}
+            }}
+        }}
+    }}
+}}
