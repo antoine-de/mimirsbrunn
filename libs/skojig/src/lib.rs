@@ -21,15 +21,22 @@ extern crate docopt;
 extern crate iron;
 extern crate urlencoded;
 
-mod index;
-
 use iron::headers::ContentType;
 use iron::prelude::*;
 use iron::status;
 use urlencoded::UrlEncodedQuery;
 use rustc_serialize::json::Json;
-use index::Coord;
+use rustc_serialize::Encodable;
+
 #[macro_use] extern crate mdo;
+
+#[derive(RustcDecodable, RustcEncodable)]
+pub struct Coord {
+    pub lat: f64,
+    pub lon: f64,
+}
+
+pub type CurlResult = Result<curl::http::Response, curl::ErrCode>;
 
 fn query(q: &str) -> Result<curl::http::Response, curl::ErrCode> {
     use rustc_serialize::json::Json::String;
