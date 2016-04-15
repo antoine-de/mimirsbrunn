@@ -68,7 +68,7 @@ impl Rubber {
     pub fn clean_db_by_doc_type(&mut self,
                                 doc_type: &[&str])
                                 -> Result<usize, rs_es::error::EsError> {
-
+        info!("Clean elasticsearch db...");
         let scroll = rs_es::units::Duration::minutes(1);
         let mut scan: rs_es::operations::search::ScanResult<serde_json::Value> =
             match self.client
@@ -127,7 +127,7 @@ impl Rubber {
         let analysis = include_str!("../json/settings.json");
         // assert!(analysis.parse::<json::Json>().is_ok());
         let res = curl::http::handle()
-                      .put("http://localhost:9200/munin", analysis)
+                      .put(self.client.full_url(&self.index_name), analysis)
                       .exec()
                       .map(|res| res.get_code() == 200)
                       .unwrap_or(false);
@@ -143,7 +143,6 @@ impl Rubber {
         use self::rs_es::operations::bulk::Action;
         let mut chunk = Vec::new();
         let mut nb = 0;
-
         loop {
             chunk.clear();
             let addr = match iter.next() {

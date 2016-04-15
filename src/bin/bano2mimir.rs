@@ -102,6 +102,7 @@ fn index_bano<I>(cnx_string: &str, files: I)
 {
     let mut rubber = Rubber::new(cnx_string);
     rubber.create_index();
+    info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::Reader::from_file(&f).unwrap().has_headers(false);
