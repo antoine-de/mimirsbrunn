@@ -77,11 +77,14 @@ impl Rubber {
         // Note: for the moment I don't see an easy way to do this with rs_es
         let analysis = include_str!("../json/settings.json");
         // assert!(analysis.parse::<json::Json>().is_ok());
-        let res = curl::http::handle().put(self.cnx_string.as_str(), analysis).exec().unwrap();
-
-        assert!(res.get_code() == 200, "Error adding analysis: {}", res);
-
-        Ok(())
+        let res = curl::http::handle()
+                      .put("http://localhost:9200/munin", analysis)
+                      .exec()
+                      .map(|res| res.get_code() == 200)
+                      .unwrap_or(false);
+        if !res {
+            info!("Error adding analysis");
+        }
     }
 
     pub fn bulk_index<T, I>(&mut self, mut iter: I) -> Result<u32, rs_es::error::EsError>

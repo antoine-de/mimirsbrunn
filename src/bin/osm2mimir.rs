@@ -161,8 +161,8 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
 
 fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::error::EsError> {
     let mut rubber = Rubber::new(es_cnx_string);
+    rubber.create_index();
     info!("purge and create Munin...");
-    try!(rubber.create_index());
     info!("Munin purged and created.");
     rubber.bulk_index(admins.values())
 }

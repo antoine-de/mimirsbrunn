@@ -101,10 +101,7 @@ fn index_bano<I>(cnx_string: &str, files: I)
     where I: Iterator<Item = std::path::PathBuf>
 {
     let mut rubber = Rubber::new(cnx_string);
-
-    info!("purge and create Munin...");
-    rubber.create_index().unwrap();
-
+    rubber.create_index();
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::Reader::from_file(&f).unwrap().has_headers(false);
