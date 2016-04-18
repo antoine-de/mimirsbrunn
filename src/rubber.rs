@@ -113,7 +113,6 @@ impl Rubber {
         try!(scan.close(&mut self.client));
         Ok((count))
     }
-    pub fn create_index(&mut self) -> Result<(), rs_es::error::EsError> {
 
     pub fn create_index(&mut self) {
         debug!("creating index");
