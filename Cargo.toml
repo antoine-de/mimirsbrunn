@@ -5,8 +5,8 @@ authors = ["Canal TP <dt.ro@canaltp.fr>"]
 build = "build.rs"
 
 [dependencies]
-log = "0.3"
-env_logger = "0.3"
+log = "*"
+env_logger = "*"
 docopt = "*"
 rustc-serialize = "*"
 csv = "*"
@@ -15,9 +15,7 @@ rs-es = "*"
 serde = "*"
 serde_json = "*"
 regex = "*"
-
-[dependencies.osmpbfreader]
-git = "https://github.com/TeXitoi/osmpbfreader-rs"
+osmpbfreader = "*"
 
 [build-dependencies]
 serde_codegen = "*"
