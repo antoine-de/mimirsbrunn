@@ -65,23 +65,67 @@ impl Rubber {
             cnx_string: cnx.to_string()
         }
     }
-
-    pub fn create_index(&mut self) -> Result<(), rs_es::error::EsError> {
-        debug!("creating index");
-        match self.client.delete_index(&self.index_name) {
-            Err(e) => info!("unable to remove index, {}", e),
-            _ => (),
+    pub fn clean_db_by_doc_type(&mut self,
+                                doc_type: &[&str])
+                                -> Result<usize, rs_es::error::EsError> {
+        info!("Clean elasticsearch db...");
+        let scroll = rs_es::units::Duration::minutes(1);
+        let mut scan: rs_es::operations::search::ScanResult<serde_json::Value> =
+            match self.client
+                      .search_query()
+                      .with_indexes(&[&self.index_name])
+                      .with_size(10000)
+                      .with_source(rs_es::operations::search::Source::include(&["_id"]))
+                      .with_types(&doc_type)
+                      .scan(&scroll) {
+                Ok(scan) => scan,
+                Err(e) => {
+                    info!("Scan error: {:?}", e);
+                    return Err(e);
+                }
+            };
+        let mut count: usize = 0;
+        loop {
+            let page = match scan.scroll(&mut self.client, &scroll) {
+                Ok(page) => page,
+                Err(e) => {
+                    info!("scroll error: {:?}", e);
+                    try!(scan.close(&mut self.client));
+                    return Err(e);
+                }
+            };
+            let mut hits = page.hits.hits;
+            if hits.len() == 0 {
+                break;
+            }
+            count = count + hits.len();
+            info!("Delete : Count {}", hits.len());
+            let actions: Vec<rs_es::operations::bulk::Action<()>> =
+                hits.drain(..)
+                    .map(|hit| {
+                        rs_es::operations::bulk::Action::delete(hit.id)
+                            .with_index(hit.index)
+                            .with_doc_type(hit.doc_type)
+                    })
+                    .collect();
+            try!(self.client.bulk(&actions).send());
         }
-        // first, we must delete with its own handle the old munin
+        try!(scan.close(&mut self.client));
+        Ok((count))
+    }
 
+    pub fn create_index(&mut self) {
+        debug!("creating index");
         // Note: for the moment I don't see an easy way to do this with rs_es
         let analysis = include_str!("../json/settings.json");
-        // assert!(analysis.parse::<json::Json>().is_ok());
-        let res = curl::http::handle().put(self.cnx_string.as_str(), analysis).exec().unwrap();
-
-        assert!(res.get_code() == 200, "Error adding analysis: {}", res);
-
-        Ok(())
+        let res = curl::http::handle()
+                      .put(self.client.full_url(&self.index_name), analysis)
+                      .exec()
+                      .map(|res| res.get_code() == 200)
+                      .unwrap_or(false);
+        if !res {
+            info!("Error adding analysis");
+        }
     }
 
     pub fn bulk_index<T, I>(&mut self, mut iter: I) -> Result<u32, rs_es::error::EsError>
@@ -91,7 +135,6 @@ impl Rubber {
         use self::rs_es::operations::bulk::Action;
         let mut chunk = Vec::new();
         let mut nb = 0;
-
         loop {
             chunk.clear();
             let addr = match iter.next() {

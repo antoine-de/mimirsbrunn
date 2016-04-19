@@ -161,9 +161,12 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
 
 fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::error::EsError> {
     let mut rubber = Rubber::new(es_cnx_string);
-    info!("purge and create Munin...");
-    try!(rubber.create_index());
-    info!("Munin purged and created.");
+    rubber.create_index();
+    match rubber.clean_db_by_doc_type(&["admin"]) {
+        Err(e) => panic!("failed to clean data by document type: {}", e),
+        Ok(nb) => info!("clean data by document type : {}", nb),
+    }
+    info!("Add data in elasticsearch db.");
     rubber.bulk_index(admins.values())
 }
 

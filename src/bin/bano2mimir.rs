@@ -101,10 +101,8 @@ fn index_bano<I>(cnx_string: &str, files: I)
     where I: Iterator<Item = std::path::PathBuf>
 {
     let mut rubber = Rubber::new(cnx_string);
-
-    info!("purge and create Munin...");
-    rubber.create_index().unwrap();
-
+    rubber.create_index();
+    info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::Reader::from_file(&f).unwrap().has_headers(false);
@@ -150,7 +148,7 @@ fn main() {
                    paths.map(|p| p.unwrap().path()));
     } else {
         index_bano(&args.flag_connection_string,
-                    std::iter::once(std::path::PathBuf::from(&args.flag_input)));
+                   std::iter::once(std::path::PathBuf::from(&args.flag_input)));
     }
 
 
