@@ -1,0 +1,12 @@
+[package]
+name = "skojig"
+version = "0.1.0"
+authors = ["dt.ro <dt.ro@canaltp.fr>"]
+
+[dependencies]
+docopt = "*"
+rustc-serialize = "*"
+curl = "*"
+iron = "*"
+urlencoded = "*"
+mdo = "*"
