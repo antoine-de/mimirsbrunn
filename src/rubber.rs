@@ -116,12 +116,6 @@ impl Rubber {
 
     pub fn create_index(&mut self) {
         debug!("creating index");
-        // match self.client.delete_index(&self.index_name) {
-        // Err(e) => info!("unable to remove index, {}", e),
-        // _ => (),
-        // }
-        // first, we must delete with its own handle the old munin
-        //
         // Note: for the moment I don't see an easy way to do this with rs_es
         let analysis = include_str!("../json/settings.json");
         // assert!(analysis.parse::<json::Json>().is_ok());
