@@ -20,6 +20,9 @@ osmpbfreader = "*"
 [dependencies.skojig]
 path = "libs/skojig"
 
+[dev-dependencies.integration_tests]
+path = "libs/integration_tests"
+
 [build-dependencies]
 serde_codegen = "*"
 syntex = "*"
