@@ -14,7 +14,6 @@
 // License along with this program. If not, see
 // <http://www.gnu.org/licenses/>.
 
-extern crate csv;
 extern crate rustc_serialize;
 extern crate curl;
 extern crate docopt;
@@ -40,7 +39,7 @@ pub type CurlResult = Result<curl::http::Response, curl::ErrCode>;
 
 fn query(q: &str) -> Result<curl::http::Response, curl::ErrCode> {
     use rustc_serialize::json::Json::String;
-    let query = format!(include_str!("../../..//json/query_exact.json"), query=String(q.to_string()));
+    let query = format!(include_str!("../../../json/query_exact.json"), query=String(q.to_string()));
     let resp = try!(curl::http::handle()
                     .post("http://localhost:9200/munin/_search?pretty", &query)
                     .exec());
@@ -151,7 +150,7 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
         lat =<< lats.get(0);
         lat =<< std::str::FromStr::from_str(lat).ok();
         ret ret(Coord { lon: lon, lat: lat })
-    };
+    }; 
     let es = if let Some(ref coord) = coord {
         query_location(q, coord)
     } else {
@@ -174,7 +173,7 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
     ]);
 
     let mut resp = Response::with((status::Ok, format!("{}", json.pretty())));
-    resp.headers.set(ContentType("application/json".parse().unwrap()));
+    resp.headers.set(ContentType("application/json; charset=utf-8".parse().unwrap()));
     Ok(resp)
 }
 

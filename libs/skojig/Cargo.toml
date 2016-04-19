@@ -6,7 +6,6 @@ authors = ["dt.ro <dt.ro@canaltp.fr>"]
 [dependencies]
 docopt = "*"
 rustc-serialize = "*"
-csv = "*"
 curl = "*"
 iron = "*"
 urlencoded = "*"
