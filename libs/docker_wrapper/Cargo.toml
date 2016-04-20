@@ -1,5 +1,5 @@
 [package]
-name = "integration_tests"
+name = "docker_wrapper"
 version = "0.1.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 

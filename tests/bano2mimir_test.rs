@@ -29,13 +29,13 @@
 // www.navitia.io
 
 extern crate mimirsbrunn;
-extern crate integration_tests;
+extern crate docker_wrapper;
 extern crate curl;
 extern crate serde_json;
 #[macro_use]
 extern crate log;
 
-use integration_tests::*;
+use docker_wrapper::*;
 use std::process::Command;
 
 #[test]

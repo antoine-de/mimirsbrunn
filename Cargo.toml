@@ -20,8 +20,8 @@ osmpbfreader = "*"
 [dependencies.skojig]
 path = "libs/skojig"
 
-[dev-dependencies.integration_tests]
-path = "libs/integration_tests"
+[dev-dependencies.docker_wrapper]
+path = "libs/docker_wrapper"
 
 [build-dependencies]
 serde_codegen = "*"
