@@ -26,3 +26,6 @@ path = "libs/docker_wrapper"
 [build-dependencies]
 serde_codegen = "*"
 syntex = "*"
+
+[[test]]
+name = "tests"

@@ -28,33 +28,21 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimirsbrunn;
-extern crate docker_wrapper;
-extern crate curl;
-extern crate serde_json;
-#[macro_use]
-extern crate log;
-
-use docker_wrapper::*;
 use std::process::Command;
 
-#[test]
-fn bano2mimir_sample_test() {
-    mimirsbrunn::logger_init().unwrap();
-    let wrapper = ElasticSearchDockerWrapper::new().unwrap();
-
+pub fn bano2mimir_sample_test(host: &'static str) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
     let status = Command::new(bano2mimir)
                      .args(&["--input=./tests/sample-bano.csv".into(),
-                             format!("--connection-string={}/munin", wrapper.host())])
+                             format!("--connection-string={}/munin", host)])
                      .status()
                      .unwrap();
     assert!(status.success(), "`bano2mimir` failed {}", &status);
 
     info!("Refreshing ES indexes");
-    let res = curl::http::handle()
-                  .get(format!("{}/_refresh", wrapper.host()))
+    let res = ::curl::http::handle()
+                  .get(format!("{}/_refresh", host))
                   .exec()
                   .unwrap();
     assert!(res.get_code() == 200, "Error ES refresh: {}", res);
@@ -63,20 +51,14 @@ fn bano2mimir_sample_test() {
     //    then _all/total/segments/index_writer_memory_in_bytes( or version_map_memory_in_bytes)
     // 	  should be == 0 if indexes are ok (no refresh needed)
 
-    let res = curl::http::handle()
-                  .get(format!("{}/munin/_search?q=20", wrapper.host()))
+    let res = ::curl::http::handle()
+                  .get(format!("{}/munin/_search?q=20", host))
                   .exec()
                   .unwrap();
     assert!(res.get_code() == 200, "Error ES search: {}", res);
-    let body = std::str::from_utf8(res.get_body()).unwrap();
+    let body = ::std::str::from_utf8(res.get_body()).unwrap();
     debug!("_search?q=20 :\n{}", body);
-    let value: serde_json::value::Value = serde_json::from_str(body).unwrap();
+    let value: ::serde_json::value::Value = ::serde_json::from_str(body).unwrap();
     let nb_hits = value.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
     assert_eq!(nb_hits, 1);
-}
-
-#[test]
-#[should_panic]
-fn ko_test() {
-    assert!(false);
 }
