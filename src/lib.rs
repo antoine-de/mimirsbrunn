@@ -27,6 +27,8 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+#![cfg_attr(feature = "serde_macros", feature(custom_derive, plugin))]
+#![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
 
 #[macro_use]
 extern crate log;

@@ -7,6 +7,15 @@ authors = ["dt.ro <dt.ro@canaltp.fr>"]
 docopt = "*"
 rustc-serialize = "*"
 curl = "*"
+hyper = "*"
+jsonway = "*"
 iron = "*"
+rustless = "*"
 urlencoded = "*"
 mdo = "*"
+valico = "*"
+
+# test serde niglthy, clean up after
+serde = "*"
+serde_json = "*"
+serde_macros = "*"

@@ -1,4 +1,12 @@
-// Copyright © 2014, Canal TP and/or its affiliates. All rights reserved.
+// Copyright © 2016, Canal TP and/or its affiliates. All rights reserved.
+//
+// This file is part of Navitia,
+//     the software to build cool stuff with public transport.
+//
+// Hope you'll enjoy and contribute to this project,
+//     powered by Canal TP (www.canaltp.fr).
+// Help us simplify mobility and open public transport:
+//     a non ending quest to the responsive locomotion way of traveling!
 //
 // LICENCE: This program is free software; you can redistribute it
 // and/or modify it under the terms of the GNU Affero General Public
@@ -13,6 +21,20 @@
 // You should have received a copy of the GNU Affero General Public
 // License along with this program. If not, see
 // <http://www.gnu.org/licenses/>.
+//
+// Stay tuned using
+// twitter @navitia
+// IRC #navitia on freenode
+// https://groups.google.com/d/forum/navitia
+// www.navitia.io
+
+// test serde nightly
+#![feature(custom_derive, plugin)]
+#![plugin(serde_macros)]
+
+extern crate serde;
+extern crate serde_json;
+// \ test
 
 extern crate rustc_serialize;
 extern crate curl;
@@ -20,8 +42,18 @@ extern crate docopt;
 extern crate iron;
 extern crate urlencoded;
 
+extern crate rustless;
+extern crate hyper;
+extern crate jsonway;
+
+use hyper::status::StatusCode;
+use iron::Iron;
+use rustless::{
+    Application, Api, Nesting, Versioning
+};
+
 use iron::headers::ContentType;
-use iron::prelude::*;
+//use iron::prelude::*;
 use iron::status;
 use urlencoded::UrlEncodedQuery;
 use rustc_serialize::json::Json;
@@ -35,6 +67,9 @@ pub struct Coord {
     pub lon: f64,
 }
 
+mod api;
+
+/*
 pub type CurlResult = Result<curl::http::Response, curl::ErrCode>;
 
 fn query(q: &str) -> Result<curl::http::Response, curl::ErrCode> {
@@ -150,7 +185,7 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
         lat =<< lats.get(0);
         lat =<< std::str::FromStr::from_str(lat).ok();
         ret ret(Coord { lon: lon, lat: lat })
-    }; 
+    };
     let es = if let Some(ref coord) = coord {
         query_location(q, coord)
     } else {
@@ -175,8 +210,18 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
     let mut resp = Response::with((status::Ok, format!("{}", json.pretty())));
     resp.headers.set(ContentType("application/json; charset=utf-8".parse().unwrap()));
     Ok(resp)
-}
+}*/
 
 pub fn runserver() {
-    Iron::new(handle_query).http("0.0.0.0:3000").unwrap();
+    println!("c'est tipaaaaaaaaaaaaaaaaar");
+    let api = api::root();
+
+    let app = Application::new(api);
+
+    Iron::new(app).http("localhost:4000").unwrap();
+
+    println!("On 4000");
+
+    println!("Rustless server started!");
+    //Iron::new(handle_query).http("0.0.0.0:3000").unwrap();
 }
