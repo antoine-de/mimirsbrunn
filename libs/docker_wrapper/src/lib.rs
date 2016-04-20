@@ -36,20 +36,20 @@ extern crate log;
 use std::process::Command;
 use std::error::Error;
 
-pub struct ElasticSearchDockerWrapper {
-    host: &'static str,
+pub struct DockerWrapper {
+    port: &'static str,
 }
 
-impl ElasticSearchDockerWrapper {
-    pub fn host(&self) -> &'static str {
-        self.host
+impl DockerWrapper {
+    pub fn host(&self) -> String {
+        format!("localhost:{}", self.port)
     }
 
-    fn setup(host: &'static str) -> Result<(), Box<Error>> {
+    fn setup(&self) -> Result<(), Box<Error>> {
         info!("Launching ES docker");
         let status = try!(Command::new("docker")
                               .args(&["run",
-                                      "--publish=9242:9200",
+                                      &format!("--publish={}:9200", self.port),
                                       "-d",
                                       "--name=mimirsbrunn_tests",
                                       "elasticsearch"])
@@ -61,7 +61,7 @@ impl ElasticSearchDockerWrapper {
         info!("Waiting for ES in docker to be up and running...");
         match retry::retry(200,
                            100,
-                           || curl::http::handle().get(host).exec(),
+                           || curl::http::handle().get(self.host()).exec(),
                            |response| {
                                response.as_ref()
                                        .map(|res| res.get_code() == 200)
@@ -72,9 +72,9 @@ impl ElasticSearchDockerWrapper {
         }
     }
 
-    pub fn new() -> Result<ElasticSearchDockerWrapper, Box<Error>> {
-        let wrapper = ElasticSearchDockerWrapper { host: "localhost:9242" };
-        try!(ElasticSearchDockerWrapper::setup(wrapper.host));
+    pub fn new() -> Result<DockerWrapper, Box<Error>> {
+        let wrapper = DockerWrapper { port: "9242" };
+        try!(wrapper.setup());
         Ok(wrapper)
     }
 }
@@ -92,7 +92,7 @@ fn docker_command(args: &[&'static str]) {
     }
 }
 
-impl Drop for ElasticSearchDockerWrapper {
+impl Drop for DockerWrapper {
     fn drop(&mut self) {
         docker_command(&["stop", "mimirsbrunn_tests"]);
         docker_command(&["rm", "mimirsbrunn_tests"]);

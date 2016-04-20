@@ -30,29 +30,20 @@
 
 use std::process::Command;
 
-pub fn bano2mimir_sample_test(host: &'static str) {
+pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
     let status = Command::new(bano2mimir)
                      .args(&["--input=./tests/sample-bano.csv".into(),
-                             format!("--connection-string={}/munin", host)])
+                             format!("--connection-string={}/munin", es_wrapper.host())])
                      .status()
                      .unwrap();
     assert!(status.success(), "`bano2mimir` failed {}", &status);
 
-    info!("Refreshing ES indexes");
-    let res = ::curl::http::handle()
-                  .get(format!("{}/_refresh", host))
-                  .exec()
-                  .unwrap();
-    assert!(res.get_code() == 200, "Error ES refresh: {}", res);
-
-    //    A way to watch if indexes are built might be curl http://localhost:9200/_stats
-    //    then _all/total/segments/index_writer_memory_in_bytes( or version_map_memory_in_bytes)
-    // 	  should be == 0 if indexes are ok (no refresh needed)
+    es_wrapper.refresh();
 
     let res = ::curl::http::handle()
-                  .get(format!("{}/munin/_search?q=20", host))
+                  .get(format!("{}/munin/_search?q=20", es_wrapper.host()))
                   .exec()
                   .unwrap();
     assert!(res.get_code() == 200, "Error ES search: {}", res);

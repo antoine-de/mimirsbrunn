@@ -39,17 +39,44 @@ use docker_wrapper::*;
 
 mod bano2mimir_test;
 
-// TODO: should probably be a struct (maybe implementing Drop)
-fn init_es(wrapper: &ElasticSearchDockerWrapper) -> &'static str {
-    let mut rubber = mimirsbrunn::rubber::Rubber::new(&format!("{}/_all", wrapper.host()));
-    rubber.delete_index().unwrap();
-    wrapper.host()
+pub struct ElasticSearchWrapper<'es_w> {
+    docker_wrapper: &'es_w DockerWrapper,
+}
+
+impl<'es_w> ElasticSearchWrapper<'es_w> {
+    pub fn host(&self) -> String {
+        self.docker_wrapper.host()
+    }
+
+    pub fn init(&self) {
+        let mut rubber = mimirsbrunn::rubber::Rubber::new(&format!("{}/_all",
+                                                                   self.docker_wrapper.host()));
+        rubber.delete_index().unwrap();
+    }
+
+    //    A way to watch if indexes are built might be curl http://localhost:9200/_stats
+    //    then _all/total/segments/index_writer_memory_in_bytes( or version_map_memory_in_bytes)
+    // 	  should be == 0 if indexes are ok (no refresh needed)
+    pub fn refresh(&self) {
+        info!("Refreshing ES indexes");
+        let res = ::curl::http::handle()
+                      .get(format!("{}/_refresh", self.host()))
+                      .exec()
+                      .unwrap();
+        assert!(res.get_code() == 200, "Error ES refresh: {}", res);
+    }
+
+    pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper {
+        let es_wrapper = ElasticSearchWrapper { docker_wrapper: docker_wrapper };
+        es_wrapper.init();
+        es_wrapper
+    }
 }
 
 #[test]
 fn all_tests() {
     mimirsbrunn::logger_init().unwrap();
-    let wrapper = ElasticSearchDockerWrapper::new().unwrap();
+    let docker_wrapper = DockerWrapper::new().unwrap();
 
-    bano2mimir_test::bano2mimir_sample_test(init_es(&wrapper));
+    bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
 }
