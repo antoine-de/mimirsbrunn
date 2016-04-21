@@ -39,7 +39,7 @@ use std::error::Error;
 /// This struct wraps a docker (for the moment explicitly ElasticSearch)
 /// Allowing to setup a docker, tear it down and to provide its address and port
 pub struct DockerWrapper {
-    port: &'static str,
+    port: u16,
 }
 
 impl DockerWrapper {
@@ -75,7 +75,7 @@ impl DockerWrapper {
     }
 
     pub fn new() -> Result<DockerWrapper, Box<Error>> {
-        let wrapper = DockerWrapper { port: "9242" };
+        let wrapper = DockerWrapper { port: 9242 };
         try!(wrapper.setup());
         Ok(wrapper)
     }

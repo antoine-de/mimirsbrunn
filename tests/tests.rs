@@ -39,11 +39,11 @@ use docker_wrapper::*;
 
 mod bano2mimir_test;
 
-pub struct ElasticSearchWrapper<'es_w> {
-    docker_wrapper: &'es_w DockerWrapper,
+pub struct ElasticSearchWrapper<'a> {
+    docker_wrapper: &'a DockerWrapper,
 }
 
-impl<'es_w> ElasticSearchWrapper<'es_w> {
+impl<'a> ElasticSearchWrapper<'a> {
     pub fn host(&self) -> String {
         self.docker_wrapper.host()
     }
