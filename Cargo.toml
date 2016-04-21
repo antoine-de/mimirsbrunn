@@ -20,6 +20,13 @@ osmpbfreader = "*"
 [dependencies.skojig]
 path = "libs/skojig"
 
+[dev-dependencies.docker_wrapper]
+path = "libs/docker_wrapper"
+
 [build-dependencies]
 serde_codegen = "*"
 syntex = "*"
+
+# we just call one test method: cf. tests::all_tests()
+[[test]]
+name = "tests"

@@ -1,0 +1,9 @@
+[package]
+name = "docker_wrapper"
+version = "0.1.0"
+authors = ["dt.ro <dt.ro@canaltp.fr>"]
+
+[dependencies]
+curl = "*"
+log = "0.3"
+retry = "*"
