@@ -150,6 +150,4 @@ fn main() {
         index_bano(&args.flag_connection_string,
                    std::iter::once(std::path::PathBuf::from(&args.flag_input)));
     }
-
-
 }

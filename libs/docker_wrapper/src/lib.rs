@@ -36,6 +36,8 @@ extern crate log;
 use std::process::Command;
 use std::error::Error;
 
+/// This struct wraps a docker (for the moment explicitly ElasticSearch)
+/// Allowing to setup a docker, tear it down and to provide its address and port
 pub struct DockerWrapper {
     port: &'static str,
 }

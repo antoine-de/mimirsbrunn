@@ -17,6 +17,22 @@ To use the Mimirsbrunn components you will need an elasticsearch database.
 
 The elasticsearch version need to be >= 2.0
 
+## test
+
+To test simply launch:
+```shell
+cargo test
+```
+Integration tests are spawning one ElasticSearch docker, so you'll need a recent docker version.
+Only one docker is spawn, so ES base has to be cleaned before each test.
+
+To write a new test:
+* write your test in a separate file in tests/
+* add a call to your test in tests/tests.rs::test_all()
+* pass a new ElasticSearchWrapper to your test method to get the right connection string for ES base
+* the creation of this ElasticSearchWrapper automatically cleans ES base
+  (you can also refresh ES base, clean up during tests, etc.)
+
 ## components
 There are several components in Mimirsbrunn:
 

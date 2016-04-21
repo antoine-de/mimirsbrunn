@@ -27,5 +27,6 @@ path = "libs/docker_wrapper"
 serde_codegen = "*"
 syntex = "*"
 
+# we just call one test method: cf. tests::all_tests()
 [[test]]
 name = "tests"

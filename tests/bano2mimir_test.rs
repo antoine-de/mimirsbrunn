@@ -30,6 +30,8 @@
 
 use std::process::Command;
 
+/// Simple call to a BANO load into ES base
+/// Checks that we are able to find one object (a specific address)
 pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
