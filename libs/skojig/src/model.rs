@@ -112,3 +112,39 @@ impl Autocomplete {
         }
     }
 }
+
+pub mod v1 {
+    // Note: I think this should be in api.rs but with the serde stuff it's easier for all
+    // serde struct to be in the same file
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct EndPoint {
+        pub description: String,
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct CustomError {
+        pub short: String,
+        pub long: String,
+    }
+
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum V1Reponse {
+        Error(CustomError),
+        Response {
+            description: String,
+        },
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum AutocompleteResponse {
+        Error(CustomError),
+    }
+
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct Status {
+        pub version: String,
+        pub status: String,
+    }
+}

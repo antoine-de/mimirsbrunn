@@ -38,6 +38,7 @@ use rustless::{Api, Nesting, Versioning};
 use valico::json_dsl;
 use valico::common::error as valico_error;
 use super::query;
+use model::v1::*;
 
 fn render<T>(mut client: rustless::Client,
              obj: T)
@@ -72,37 +73,6 @@ pub fn root() -> rustless::Api {
         });
         api.mount(v1());
     })
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct EndPoint {
-    description: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct CustomError {
-    short: String,
-    long: String,
-}
-
-
-#[derive(Serialize, Deserialize, Debug)]
-enum V1Reponse {
-    Error(CustomError),
-    Response {
-        description: String,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-enum AutocompleteResponse {
-    Error(CustomError),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Status {
-    version: String,
-    status: String,
 }
 
 pub fn v1() -> rustless::Api {
