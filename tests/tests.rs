@@ -76,7 +76,7 @@ impl<'es_w> ElasticSearchWrapper<'es_w> {
 /// Main test method (regroups all tests)
 /// All tests are done sequentially,
 /// and use the same docker in order to avoid multiple inits
-/// (ES cleanup is delt by es_wrapper)
+/// (ES cleanup is handled by es_wrapper)
 #[test]
 fn all_tests() {
     mimirsbrunn::logger_init().unwrap();
