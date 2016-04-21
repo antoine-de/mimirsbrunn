@@ -1,0 +1,114 @@
+// Copyright © 2016, Canal TP and/or its affiliates. All rights reserved.
+//
+// This file is part of Navitia,
+//     the software to build cool stuff with public transport.
+//
+// Hope you'll enjoy and contribute to this project,
+//     powered by Canal TP (www.canaltp.fr).
+// Help us simplify mobility and open public transport:
+//     a non ending quest to the responsive locomotion way of traveling!
+//
+// LICENCE: This program is free software; you can redistribute it
+// and/or modify it under the terms of the GNU Affero General Public
+// License as published by the Free Software Foundation, either
+// version 3 of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with this program. If not, see
+// <http://www.gnu.org/licenses/>.
+//
+// Stay tuned using
+// twitter @navitia
+// IRC #navitia on freenode
+// https://groups.google.com/d/forum/navitia
+// www.navitia.io
+
+
+use serde;
+use std::vec;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Autocomplete {
+    #[serde(rename="type")]
+    format_type: String,
+    geocoding: Geocoding,
+    features: Vec<Feature>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Geocoding {
+    version: String,
+    query: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Feature {
+    #[serde(rename="type")]
+    pub feature_type: String,
+    pub geometry: Vec<Geometry>,
+    pub properties: Vec<Property>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Property {
+    pub label: String,
+    pub place_type: String, //TODO enum cf https://github.com/geocoders/geocodejson-spec/blob/master/draft/README.md#feature-object
+    /*
+            ("label", json.find("name")
+                          .map(|j| j.clone())
+                          .unwrap_or(Null)),
+            ("name", name),
+            ("housenumber", house_number),
+            ("street", street),
+            ("postcode", json.find("street")
+                             .and_then(|s| s.find("administrative_region"))
+                             .and_then(|s| s.find("zip_code"))
+                             .map(|j| j.clone())
+                             .unwrap_or(Null)),
+            ("city", json.find("street")
+                         .and_then(|s| s.find("administrative_region"))
+                         .and_then(|s| s.find("name"))
+                         .map(|j| j.clone())
+                         .unwrap_or(Null)),
+            ("country", String("France".to_string()))*/
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Geometry {
+    #[serde(rename="type")]
+    pub geometry_type: String,
+
+    /*
+("type", String("Point".to_string())),
+            ("coordinates", Array(vec![
+                json.find("coord")
+                    .and_then(|j| j.find("lon"))
+                    .map(|j| j.clone())
+                    .unwrap_or(Null),
+                json.find("coord")
+                    .and_then(|j| j.find("lat"))
+                    .map(|j| j.clone())
+                    .unwrap_or(Null)
+                ]))
+            ])),
+    */
+}
+
+impl Autocomplete {
+    pub fn new(q: String, features: Vec<Feature>) -> Autocomplete {
+        // TODO couldn't we mode this function ? in Autocomplete ?
+        Autocomplete {
+            format_type: "FeatureCollection".to_string(),
+            geocoding: Geocoding {
+                version: "0.1.0".to_string(),
+                query: q
+            },
+            features: features
+        }
+    }
+}

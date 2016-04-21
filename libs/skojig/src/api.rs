@@ -27,113 +27,153 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+
 use rustless;
-use jsonway;
-use rustc_serialize::json::ToJson;
+use serde;
+use serde_json;
+use rustc_serialize::json;
 use rustless::server::status;
 use std::error::Error;
-use rustless::{
-    Api, Nesting, Versioning
-};
+use rustless::{Api, Nesting, Versioning};
+use valico::json_dsl;
+use valico::common::error as valico_error;
+use super::query;
+
+fn render<T>(mut client: rustless::Client,
+             obj: T)
+             -> Result<rustless::Client, rustless::ErrorResponse>
+    where T: serde::Serialize
+{
+    client.set_json_content_type();
+    client.text(serde_json::to_string(&obj).unwrap())
+}
 
 pub fn root() -> rustless::Api {
     Api::build(|api| {
         api.get("", |endpoint| {
-            endpoint.handle(|client, params| {
-                    println!("endpoint");
-                    client.text("/".to_string())
+            endpoint.handle(|client, _params| {
+                let desc = EndPoint { description: "autocomplete service".to_string() };
+                render(client, desc)
             })
         });
 
         api.error_formatter(|error, _media| {
-            println!("rooooh on a une erreur sur le endpoint principal: {:?}", error);
 
-            Some(rustless::Response::from(status::StatusCode::BadRequest, Box::new("elle est pas cool ton erreur".to_string())))
+            let err = if error.is::<rustless::errors::Validation>() {
+                let val_err = error.downcast::<rustless::errors::Validation>().unwrap();
+                //TODO better message, we shouldn't use {:?} but access the `path` and `detail` of all errrors in val_err.reason
+                CustomError {short: "validation error".to_string(), long: format!("invalid arguments {:?}", val_err.reason)}
+            } else {
+                CustomError {short: "bad_request".to_string(), long: format!("bad request, error: {}", error)}
+            };
+            let mut resp = rustless::Response::from(status::StatusCode::BadRequest, Box::new(serde_json::to_string(&err).unwrap()));
+            resp.set_json_content_type();
+            Some(resp)
         });
         api.mount(v1());
     })
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct CustomError {
-    short: String,
-    long: String
+struct EndPoint {
+    description: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Autocomplete {
-    todo_change_name_type: String,
-    version: String,
-    query: String,
-    // features: Array(sources)
+struct CustomError {
+    short: String,
+    long: String,
 }
+
 
 #[derive(Serialize, Deserialize, Debug)]
 enum V1Reponse {
     Error(CustomError),
     Response {
-        description: String
-    }
+        description: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 enum AutocompleteResponse {
-    Error(CustomError)
+    Error(CustomError),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Status {
     version: String,
-    status: String
+    status: String,
 }
 
 pub fn v1() -> rustless::Api {
     Api::build(|api| {
         api.version("v1", Versioning::Path);
 
-        // Add error formatter to send validation errors back to the client
-        api.error_formatter(|error, _media| {
-            println!("rooooh on a une erreur: {:?}", error);
-
-            match error.downcast::<rustless::errors::Validation>() {
-                Some(val_err) => {
-                    return Some(rustless::Response::from_json(status::StatusCode::BadRequest, &jsonway::object(|json| {
-                        json.set_json("errors", val_err.reason.to_json())
-                    }).unwrap()))
-                },
-                None => ()
-            }
-            println!("c'est une error not match");
-            Some(rustless::Response::from(status::StatusCode::Unauthorized, Box::new("elle est pas cool ton erreur".to_string())))
-        /*Some(rustless::Response::from_json(status::StatusCode::Ok, &jsonway::object(|json| {
-                json.set_json("errors", error.description().to_json())
-            }).unwrap()))*/
-        });
-
         api.get("", |endpoint| {
-            endpoint.handle(|client, params| {
-                    println!("heho v1");
-                    client.text("v1/".to_string())
+            endpoint.desc("api interface version v1");
+            endpoint.handle(|client, _params| {
+                render(client,
+                       V1Reponse::Response { description: "api version 1".to_string() })
             })
         });
-        api.before(|_, _| {
+        api.mount(status());
+        api.mount(autocomplete());
+    })
+}
 
-            println!("on a recu une requete");
-            Ok(())
+pub fn status() -> rustless::Api {
+    Api::build(|api| {
+        api.get("status", |endpoint| {
+            endpoint.handle(|client, _params| {
+                let status = Status {
+                    version: "14".to_string(),
+                    status: "good".to_string(),
+                };
+                render(client, status)
+            })
         });
-        api.mount(Api::build(|toto_api| {
-            toto_api.get("toto/:toto", |endpoint| {
-                endpoint.handle(|client, params| {
+    })
+}
 
-                        println!("v1/toto");
-                        client.text("youhouuuuuuuuuuuu toto".to_string())
-                })
-            });
+pub fn autocomplete() -> rustless::Namespace {
+    rustless::Namespace::build("autocomplete", |ns| {
+        ns.get("", |endpoint| {
+            endpoint.params(|params| {
+                params.req_typed("q", json_dsl::string());
 
-            toto_api.after(|client, _params| {
-                println!("after toto");
-                Ok(())
+                params.opt("lon", |lon| {
+                    lon.coerce(json_dsl::f64());
+                    fn valid_lon(val: &json::Json,
+                                 path: &str)
+                                 -> Result<(), valico_error::ValicoErrors> {
+
+                        println!("val = {:?}, path = {}", val, path);
+                        match *val {
+                            json::Json::F64(lon) => {
+                                if lon > -180f64 && lon < 180f64 {
+                                    return Ok(());
+                                }
+                                return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                                    path: path.to_string(),
+                                                    detail: Some("lon is not a valid coordinate"
+                                                                     .to_string()),
+                                                })]);
+                            }
+                            _ => {
+                                panic!("should never happen, already checked");
+                            }
+                        }
+                    }
+
+                    lon.validate_with(valid_lon);
+                });
+                // TODO lat + check if lon then lat
             });
-        }));
+            endpoint.handle(|client, params| {
+                let q = params.find("q").unwrap().as_string().unwrap().to_string();
+                let autocomplete = query::autocomplete(q, None);
+                render(client, autocomplete)
+            })
+        });
     })
 }
