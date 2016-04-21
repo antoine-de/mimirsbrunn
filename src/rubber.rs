@@ -34,9 +34,6 @@ extern crate serde;
 extern crate serde_json;
 extern crate regex;
 
-use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-
 use super::objects::{Addr, Incr, DocType};
 
 // Rubber is an wrapper around elasticsearch API
@@ -173,26 +170,8 @@ impl Rubber {
     pub fn index<I: Iterator<Item = Addr>>(&mut self,
                                            iter: I)
                                            -> Result<u32, rs_es::error::EsError> {
-        let mut admins = HashMap::new();
-        let mut streets = HashMap::new();
         let mut nb = 0;
-
-        nb += try!(self.bulk_index(iter.inspect(|addr| {
-            upsert(&addr.street.administrative_region, &mut admins);
-            upsert(&addr.street, &mut streets);
-        })));
-        nb += try!(self.bulk_index(admins.values()));
-        nb += try!(self.bulk_index(streets.values()));
+        nb += try!(self.bulk_index(iter));
         Ok(nb)
-    }
-}
-
-
-fn upsert<T: Incr>(elt: &T, map: &mut HashMap<String, T>) {
-    match map.entry(elt.id().to_string()) {
-        Vacant(e) => {
-            e.insert(elt.clone());
-        }
-        Occupied(mut e) => e.get_mut().incr(),
     }
 }
