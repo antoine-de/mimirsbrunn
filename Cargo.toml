@@ -11,7 +11,7 @@ docopt = "*"
 rustc-serialize = "*"
 csv = "*"
 curl = "*"
-rs-es = { version = "*", features = ["nightly"], default-features = false }
+rs-es = { version = "*", default-features = false }
 serde = "*"
 serde_json = "*"
 regex = "*"
@@ -19,11 +19,12 @@ osmpbfreader = "*"
 serde_macros = { version = "*", optional = true }
 
 [features]
-default = ["serde_codegen"]
-nightly = ["serde_macros"]
+default = ["serde_codegen", "rs-es/default", "skojig/default"]
+nightly = ["serde_macros", "rs-es/nightly", "skojig/nightly"]
 
 [dependencies.skojig]
 path = "libs/skojig"
+default-features = false
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"

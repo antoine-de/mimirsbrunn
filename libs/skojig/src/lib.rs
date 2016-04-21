@@ -28,13 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-// test serde nightly
-#![feature(custom_derive, plugin)]
-#![plugin(serde_macros)]
+#![cfg_attr(feature = "serde_macros", feature(custom_derive, plugin))]
+#![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
 
 extern crate serde;
 extern crate serde_json;
-// \ test
 
 extern crate rustc_serialize;
 extern crate curl;
@@ -52,11 +50,6 @@ use rustless::Application;
 
 #[macro_use] extern crate mdo;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Coord {
-    pub lat: f64,
-    pub lon: f64,
-}
 
 mod api;
 mod query;

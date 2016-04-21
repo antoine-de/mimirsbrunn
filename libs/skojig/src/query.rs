@@ -30,7 +30,6 @@
 use std::str;
 use std::vec;
 use curl;
-use super::Coord;
 use super::model;
 use rustc_serialize::json::Json;
 
@@ -51,7 +50,7 @@ fn query(q: &String) -> Result<curl::http::Response, curl::ErrCode> {
     resp
 }
 
-fn query_location(q: &String, coord: &Coord) -> Result<curl::http::Response, curl::ErrCode> {
+fn query_location(q: &String, coord: &model::Coord) -> Result<curl::http::Response, curl::ErrCode> {
     panic!("todo!");
     /*
     use rustc_serialize::json::Json::String;
@@ -163,7 +162,7 @@ pub fn make_autocomplete(q: String, json: &Json) -> Result<model::Autocomplete, 
     Ok(model::Autocomplete::new(q, sources))
 }
 
-pub fn autocomplete(q: String, coord: Option<Coord>) -> Result<model::Autocomplete, ()> {
+pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<model::Autocomplete, ()> {
     let raw_es = if let Some(ref coord) = coord {
         query_location(&q, coord)
     } else {
