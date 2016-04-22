@@ -33,7 +33,6 @@ use serde;
 use serde_json;
 use rustc_serialize::json;
 use rustless::server::status;
-use std::error::Error;
 use rustless::{Api, Nesting, Versioning};
 use valico::json_dsl;
 use valico::common::error as valico_error;
@@ -116,27 +115,26 @@ pub fn autocomplete() -> rustless::Namespace {
                     fn valid_lon(val: &json::Json,
                                  path: &str)
                                  -> Result<(), valico_error::ValicoErrors> {
-
-                        println!("val = {:?}, path = {}", val, path);
                         match *val {
                             json::Json::F64(lon) => {
-                                if lon > -180f64 && lon < 180f64 {
-                                    return Ok(());
+                                if -180f64 <= lon && lon <= 180f64 {
+                                    Ok(())
                                 }
-                                return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                else {
+                                    Err(vec![Box::new(json_dsl::errors::WrongValue {
                                                     path: path.to_string(),
-                                                    detail: Some("lon is not a valid coordinate"
-                                                                     .to_string()),
-                                                })]);
+                                                    detail: Some("lon is not a valid longitude"
+                                                                     .to_string())
+                                                })])
+                                }
                             }
-                            _ => {
-                                panic!("should never happen, already checked");
-                            }
+                            _ => panic!("should never happen, already checked")
                         }
                     }
 
                     lon.validate_with(valid_lon);
                 });
+                // TODO lat
                 // TODO lat + check if lon then lat
             });
             endpoint.handle(|client, params| {

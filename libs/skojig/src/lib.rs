@@ -48,7 +48,8 @@ extern crate valico;
 use iron::Iron;
 use rustless::Application;
 
-#[macro_use] extern crate mdo;
+#[macro_use]
+extern crate mdo;
 
 
 mod api;
@@ -58,5 +59,5 @@ mod model;
 pub fn runserver() {
     let api = api::root();
     let app = Application::new(api);
-    Iron::new(app).http("localhost:4000").unwrap();
+    Iron::new(app).http("0.0.0.0:4000").unwrap();
 }

@@ -28,8 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
-use serde;
 use std::vec;
 
 #[derive(Serialize, Deserialize, Debug)]
