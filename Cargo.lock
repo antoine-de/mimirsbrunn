@@ -8,7 +8,7 @@ dependencies = [
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "osmpbfreader 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "osmpbfreader 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.66 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "osmpbfreader"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
