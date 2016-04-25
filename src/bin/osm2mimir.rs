@@ -37,10 +37,9 @@ extern crate mimirsbrunn;
 extern crate rs_es;
 
 use std::collections::HashSet;
-use std::collections::BTreeMap;
 use mimirsbrunn::rubber::Rubber;
 
-pub type AdminsMap = BTreeMap<String, mimirsbrunn::Admin>;
+pub type AdminsVec = Vec<mimirsbrunn::Admin>;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -66,18 +65,17 @@ Options:
 struct AdminMatcher {
     admin_levels: HashSet<u32>,
 }
-impl AdminMatcher{
-    pub fn new(levels: HashSet<u32>) -> AdminMatcher{
-        AdminMatcher{admin_levels: levels}
+impl AdminMatcher {
+    pub fn new(levels: HashSet<u32>) -> AdminMatcher {
+        AdminMatcher { admin_levels: levels }
     }
 
-    pub fn is_admin(&self, obj: &osmpbfreader::OsmObj) -> bool{
+    pub fn is_admin(&self, obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Relation(ref rel) => {
-                rel.tags.get("boundary").map_or(false, |v| {
-                    v == "administrative" && rel.tags.get("admin_level").map_or(false, |lvl| {
-                        self.admin_levels.contains(&lvl.parse::<u32>().unwrap())
-                    })
+                rel.tags.get("boundary").map_or(false, |v| v == "administrative") &&
+                rel.tags.get("admin_level").map_or(false, |lvl| {
+                    self.admin_levels.contains(&lvl.parse::<u32>().unwrap_or(0))
                 })
             }
             _ => false,
@@ -85,18 +83,17 @@ impl AdminMatcher{
     }
 }
 
-fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsMap {
-    let mut administrative_regions = AdminsMap::new();
+fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec {
+    let mut administrative_regions = AdminsVec::new();
     let path = std::path::Path::new(&filename);
     let r = std::fs::File::open(&path).unwrap();
     let mut pbf = osmpbfreader::OsmPbfReader::new(r);
     let matcher = AdminMatcher::new(levels);
     let objects = osmpbfreader::get_objs_and_deps(&mut pbf, |o| matcher.is_admin(o)).unwrap();
     // load administratives regions
-    let default_coord = mimirsbrunn::Coord{lat: 0.0, lon: 0.0};
     for (_, obj) in &objects {
         if !matcher.is_admin(&obj) {
-            continue
+            continue;
         }
         if let &osmpbfreader::OsmObj::Relation(ref relation) = obj {
             let level = relation.tags
@@ -109,7 +106,6 @@ fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsMap 
                           relation.tags.get("admin_level"));
                     continue;
                 }
-                //Some(ref l) if !levels.contains(&l) => continue,
                 Some(l) => l,
             };
             // administrative region with name ?
@@ -124,17 +120,22 @@ fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsMap 
                 }
             };
             // admininstrative region without coordinates
-            let coord_centre = relation.refs.iter().find(|rf| rf.role == "admin_centre").map_or(default_coord.clone(), |r| {
-                match objects.get(&r.member){
-                    Some(value) => {
-                        match value {
-                            &osmpbfreader::OsmObj::Node(ref node) => mimirsbrunn::Coord{lat: node.lat, lon: node.lon},
-                            _ => default_coord.clone(),
-                        }
-                    }
-                    None => default_coord.clone()
-                }
-            });
+            let coord_centre = relation.refs
+                                       .iter()
+                                       .find(|rf| rf.role == "admin_centre")
+                                       .and_then(|r| {
+                                           objects.get(&r.member).and_then(|value| {
+                                               match value {
+                                                   &osmpbfreader::OsmObj::Node(ref node) => {
+                                                       Some(mimirsbrunn::Coord {
+                                                           lat: node.lat,
+                                                           lon: node.lon,
+                                                       })
+                                                   }
+                                                   _ => None,
+                                               }
+                                           })
+                                       });
 
             let admin_id = match relation.tags.get("ref:INSEE") {
                 Some(val) => format!("admin:fr:{}", val.trim_left_matches('0')),
@@ -153,13 +154,13 @@ fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsMap 
                 weight: 1,
                 coord: coord_centre,
             };
-            administrative_regions.insert(admin.id.clone(), admin);
+            administrative_regions.push(admin);
         }
     }
     return administrative_regions;
 }
 
-fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::error::EsError> {
+fn index_osm(es_cnx_string: &str, admins: &AdminsVec) -> Result<u32, rs_es::error::EsError> {
     let mut rubber = Rubber::new(es_cnx_string);
     rubber.create_index();
     match rubber.clean_db_by_doc_type(&["admin"]) {
@@ -167,7 +168,7 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::erro
         Ok(nb) => info!("clean data by document type : {}", nb),
     }
     info!("Add data in elasticsearch db.");
-    rubber.bulk_index(admins.values())
+    rubber.bulk_index(admins.iter())
 }
 
 fn main() {

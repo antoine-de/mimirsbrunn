@@ -71,10 +71,10 @@ impl Bano {
             name: self.city,
             zip_code: self.zip,
             weight: 1,
-            coord: mimirsbrunn::Coord {
+            coord: Some(mimirsbrunn::Coord {
                 lat: 0.0,
                 lon: 0.0,
-            },
+            }),
         };
         let street = mimirsbrunn::Street {
             id: street_id,
