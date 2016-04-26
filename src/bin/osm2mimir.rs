@@ -39,7 +39,7 @@ extern crate rs_es;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use mimirsbrunn::rubber::Rubber;
-use mimirsbrunn::objects::Polygon;
+use mimirsbrunn::objects::{Polygon, MultiPolygon};
 
 pub type AdminsVec = Vec<mimirsbrunn::Admin>;
 
@@ -87,42 +87,50 @@ impl AdminMatcher {
 
 struct BoundaryPart {
     nodes: Vec<osmpbfreader::Node>,
-    first: osmpbfreader::Node,
-    last: osmpbfreader::Node
 }
 
 impl BoundaryPart {
     pub fn new(nodes: Vec<osmpbfreader::Node>) -> BoundaryPart {
-        BoundaryPart{first: nodes.first().unwrap().clone(), last: nodes.last().unwrap().clone(), nodes: nodes}
-        //todo use lifetime
+        BoundaryPart { nodes: nodes }
+    }
+    pub fn first(&self) -> i64 {
+        self.nodes.first().unwrap().id
+    }
+    pub fn last(&self) -> i64 {
+        self.nodes.last().unwrap().id
     }
 }
 
-fn get_nodes(way: &osmpbfreader::Way, objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>) -> Vec<osmpbfreader::Node>{
+fn get_nodes(way: &osmpbfreader::Way,
+             objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
+             -> Vec<osmpbfreader::Node> {
     let mut nodes = Vec::new();
     for node in &way.nodes {
         match objects.get(&osmpbfreader::OsmId::Node(*node)) {
             Some(n) => {
-                match n{
+                match n {
                     &osmpbfreader::OsmObj::Node(ref node) => nodes.push(node.clone()),
                     _ => {}
                 }
-            },
-            None => warn!("node not found ({}) for way {}", node, way.id)
+            }
+            None => warn!("node not found ({}) for way {}", node, way.id),
         }
     }
     nodes
 }
 
-fn build_boundary(relation: &osmpbfreader::Relation, objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>) -> Option<Polygon> {
-    let mut outer: Vec<osmpbfreader::Node> = Vec::new();
+fn build_boundary(relation: &osmpbfreader::Relation,
+                  objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
+                  -> Option<MultiPolygon> {
     let mut boundary_parts = Vec::new();
-    for refe in relation.refs.iter().filter(|rf| rf.role == "outer") {
+    for refe in relation.refs
+                        .iter()
+                        .filter(|rf| rf.role == "outer" || rf.role == "" || rf.role == "enclave") {
         match objects.get(&refe.member) {
             Some(m) => {
-                match m{
+                match m {
                     &osmpbfreader::OsmObj::Way(ref way) => {
-                        let mut nodes = get_nodes(&way, objects);
+                        let nodes = get_nodes(&way, objects);
                         if nodes.len() < 2 {
                             continue;
                         }
@@ -131,39 +139,63 @@ fn build_boundary(relation: &osmpbfreader::Relation, objects: &HashMap<osmpbfrea
                     _ => {}
                 }
             }
-            None => warn!("not found member {:?} from rel {}", refe.member, relation.id)
+            None => {
+                warn!("not found member {:?} from rel {}: skipping the boundary",
+                      refe.member,
+                      relation.id);
+                return None;//no hope to build the boundary here...
+            }
         }
     }
-    let mut tmp = match boundary_parts.pop() {
-        Some(p) => p,
-        None => return None
-    };
-    outer.append(&mut tmp.nodes);
-    let mut current = tmp.last.id;
-    let mut first = tmp.first.id;
-    let mut nb_try = 0;
-    while current != first && nb_try < boundary_parts.len(){
-        for mut next_part in &mut boundary_parts {
-            if next_part.nodes.is_empty(){
-                continue;
-            }
-            if current == next_part.first.id {
-                outer.append(&mut next_part.nodes);
-                current = next_part.last.id;
-            }else if current == next_part.last.id {
-                next_part.nodes.reverse();
-                outer.append(&mut next_part.nodes);
-                current = next_part.first.id;
-            }
+    let mut multipoly = MultiPolygon { polygons: Vec::new() };
+    while !boundary_parts.is_empty() {
+        let mut current = -1;
+        let mut first = 0;
+        let mut nb_try = 0;
 
+        let mut outer: Vec<osmpbfreader::Node> = Vec::new();
+        let max_try = boundary_parts.len();
+        while current != first && nb_try < max_try {
+            let mut i = 0;
+            while i < boundary_parts.len() {
+                if outer.is_empty() {
+                    first = boundary_parts[i].first();
+                    current = boundary_parts[i].last();
+                    outer.append(&mut boundary_parts[i].nodes);
+                    boundary_parts.remove(i);
+                    continue;
+
+                }
+                if current == boundary_parts[i].first() {
+                    current = boundary_parts[i].last();
+                    outer.append(&mut boundary_parts[i].nodes);
+                    boundary_parts.remove(i);
+                } else if current == boundary_parts[i].last() {
+                    current = boundary_parts[i].first();
+                    boundary_parts[i].nodes.reverse();
+                    outer.append(&mut boundary_parts[i].nodes);
+                    boundary_parts.remove(i);
+                } else {
+                    i += 1;
+                }
+                if current == first {
+                    let polygon = Polygon::new(outer.iter()
+                                                    .map(|n| {
+                                                        mimirsbrunn::Coord {
+                                                            lat: n.lat,
+                                                            lon: n.lon,
+                                                        }
+                                                    })
+                                                    .collect());
+                    multipoly.polygons.push(polygon);
+                    break;
+                }
+            }
+            nb_try += 1;
         }
-        nb_try = nb_try + 1;
     }
-    let polygon = Polygon::new(outer.iter().map(|n| mimirsbrunn::Coord{lat: n.lat, lon: n.lon}).collect());
-    if relation.id == 105404 {
-        info!("outer for {}: {:?}", relation.id, polygon.to_wkt());
-    }
-    Some(polygon)
+    info!("{};{:?}", relation.id, multipoly.to_wkt());
+    Some(multipoly)
 }
 
 fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec {

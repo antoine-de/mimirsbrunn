@@ -75,7 +75,7 @@ impl Bano {
                 lat: 0.0,
                 lon: 0.0,
             }),
-            boundary: None
+            boundary: None,
         };
         let street = mimirsbrunn::Street {
             id: street_id,
