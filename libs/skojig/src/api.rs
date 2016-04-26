@@ -27,7 +27,6 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
 use rustless;
 use serde;
 use serde_json;

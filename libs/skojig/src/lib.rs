@@ -31,33 +31,54 @@
 #![cfg_attr(feature = "serde_macros", feature(custom_derive, plugin))]
 #![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
 
+#[macro_use]
+extern crate log;
+
 extern crate serde;
 extern crate serde_json;
 
 extern crate rustc_serialize;
 extern crate curl;
 extern crate docopt;
+#[macro_use]
 extern crate iron;
 extern crate urlencoded;
+extern crate router;
 
 extern crate rustless;
 extern crate hyper;
 extern crate jsonway;
 extern crate valico;
 
+
 use iron::Iron;
-use rustless::Application;
 
 #[macro_use]
 extern crate mdo;
 
 
+#[cfg(feature = "use_rustless")]
 mod api;
+
+#[cfg(not(feature = "use_rustless"))]
+mod iron_api;
+
 mod query;
 mod model;
 
-pub fn runserver() {
+#[cfg(feature = "use_rustless")]
+pub fn build_iron() -> Iron<rustless::Application> {
     let api = api::root();
-    let app = Application::new(api);
-    Iron::new(app).http("0.0.0.0:4000").unwrap();
+    let app = rustless::Application::new(api);
+    Iron::new(app)
+}
+
+#[cfg(not(feature = "use_rustless"))]
+pub fn build_iron() -> Iron<iron::Chain> {
+    let app = iron_api::root();
+    Iron::new(app)
+}
+
+pub fn runserver() {
+    build_iron().http("0.0.0.0:4000").unwrap();
 }

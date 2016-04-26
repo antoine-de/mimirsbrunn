@@ -21,6 +21,7 @@ serde_macros = { version = "*", optional = true }
 [features]
 default = ["serde_codegen", "rs-es/default", "skojig/default"]
 nightly = ["serde_macros", "rs-es/nightly", "skojig/nightly"]
+use_rustless = ["skojig/use_rustless"]
 
 [dependencies.skojig]
 path = "libs/skojig"
