@@ -81,7 +81,7 @@ impl Bano {
             id: street_id,
             street_name: self.street,
             name: street_name,
-            administrative_region: admin,
+            administrative_region: Some(admin),
             weight: 1,
         };
         mimir::Addr {

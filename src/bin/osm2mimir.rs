@@ -42,6 +42,8 @@ use mimir::rubber::Rubber;
 use mimir::objects::{Polygon, MultiPolygon};
 
 pub type AdminsVec = Vec<mimir::Admin>;
+pub type StreetsVec = Vec< mimir::Street>;
+pub type ParsedPbf = osmpbfreader::OsmPbfReader<std::fs::File>;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -203,13 +205,18 @@ fn build_boundary(relation: &osmpbfreader::Relation,
     }
 }
 
-fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec {
+fn parse_osm_pbf(path: &String) -> ParsedPbf {
+    let path = std::path::Path::new(&path);
+    match std::fs::File::open(&path) {
+        Err(e) => panic!("failed to parse file {:?} because: {}", &path, e),
+        Ok(r) => osmpbfreader::OsmPbfReader::new(r)
+    }
+}
+
+fn administrative_regions(pbf: &mut ParsedPbf, levels: HashSet<u32>) -> AdminsVec {
     let mut administrative_regions = AdminsVec::new();
-    let path = std::path::Path::new(&filename);
-    let r = std::fs::File::open(&path).unwrap();
-    let mut pbf = osmpbfreader::OsmPbfReader::new(r);
     let matcher = AdminMatcher::new(levels);
-    let objects = osmpbfreader::get_objs_and_deps(&mut pbf, |o| matcher.is_admin(o)).unwrap();
+    let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_admin(o)).unwrap();
     // load administratives regions
     for (_, obj) in &objects {
         if !matcher.is_admin(&obj) {
@@ -282,15 +289,59 @@ fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec 
     return administrative_regions;
 }
 
-fn index_osm(es_cnx_string: &str, admins: &AdminsVec) -> Result<u32, rs_es::error::EsError> {
+fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
+
+    let is_valid_street = |obj: &osmpbfreader::OsmObj| -> bool {
+        match *obj {
+            osmpbfreader::OsmObj::Way(ref way) => {
+                way.tags.get("highway").map_or(false, |x: &String| !x.is_empty()) &&
+                way.tags.get("name").map_or(false, |x: &String| !x.is_empty())
+            }
+            _ => false,
+        }
+    };
+
+    let mut streets = StreetsVec::new();
+
+    if let Result::Ok(ref objects) = osmpbfreader::get_objs_and_deps(pbf, is_valid_street) {            
+        for (osm_id, obj) in objects {
+            if let &osmpbfreader::OsmObj::Way(ref way) = obj {
+                if let &osmpbfreader::OsmId::Way(ref way_id) = osm_id {
+                    if let Some(ref way_name) = way.tags.get("name") {
+                        let street = mimirsbrunn::Street {
+                            id: way_id.to_string(),
+                            street_name: way_name.to_string(),
+                            name: way_name.to_string(),
+                            weight: 1,
+                            administrative_region: None,
+                        };
+                        streets.push(street);
+                    };
+                };
+            };
+        };
+    };
+
+    streets
+}
+
+fn index_osm(es_cnx_string: &str, admins: &AdminsVec, streets: &StreetsVec) {
     let mut rubber = Rubber::new(es_cnx_string);
     rubber.create_index();
-    match rubber.clean_db_by_doc_type(&["admin"]) {
+    match rubber.clean_db_by_doc_type(&["admin", "street"]) {
         Err(e) => panic!("failed to clean data by document type: {}", e),
         Ok(nb) => info!("clean data by document type : {}", nb),
     }
     info!("Add data in elasticsearch db.");
-    rubber.bulk_index(admins.iter())
+    match rubber.bulk_index(admins.iter()) {
+       Err(e) => panic!("failed to index admins of osm because: {}", e),
+       Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
+    }
+    
+    match rubber.bulk_index(streets.iter()) {
+       Err(e) => panic!("failed to index streets of osm because: {}", e),
+       Ok(nb) => info!("Nb of indexed streets: {}", nb),
+    }
 }
 
 fn main() {
@@ -301,10 +352,8 @@ fn main() {
                          .unwrap_or_else(|e| e.exit());
 
     let levels = args.flag_level.iter().cloned().collect();
-    let res = administrative_regions(&args.flag_input, levels);
-    match index_osm(&args.flag_connection_string, &res) {
-        Err(e) => panic!("failed to index osm because: {}", e),
-        Ok(nb) => info!("Adminstrative regions: {}", nb),
-    }
-
+    let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
+    let admins = administrative_regions(&mut parsed_pbf, levels);
+    let streets = streets(&mut parsed_pbf);
+    index_osm(&args.flag_connection_string, &admins, &streets);
 }

@@ -31,6 +31,7 @@
 
 // Note: this file is needed to use serde in rust stable
 // cf mimirsbrunn/build.rs for explanations
+use std::option::Option;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -80,7 +81,7 @@ pub struct Street {
     pub id: String,
     pub street_name: String,
     pub name: String,
-    pub administrative_region: Admin,
+    pub administrative_region: Option<Admin>,
     pub weight: u32,
 }
 impl Incr for Street {
