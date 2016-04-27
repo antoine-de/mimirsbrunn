@@ -38,11 +38,11 @@ extern crate rs_es;
 
 use std::collections::HashSet;
 use std::collections::HashMap;
-use mimir::rubber::Rubber;
-use mimir::objects::{Polygon, MultiPolygon};
+use mimirsbrunn::rubber::Rubber;
+use mimirsbrunn::objects::{Polygon, MultiPolygon};
 
 pub type AdminsVec = Vec<mimir::Admin>;
-pub type StreetsVec = Vec< mimir::Street>;
+pub type StreetsVec = Vec<mimir::Street>;
 pub type ParsedPbf = osmpbfreader::OsmPbfReader<std::fs::File>;
 
 #[derive(RustcDecodable, Debug)]
@@ -303,7 +303,7 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
 
     let mut streets = StreetsVec::new();
 
-    if let Result::Ok(ref objects) = osmpbfreader::get_objs_and_deps(pbf, is_valid_street) {            
+    if let Result::Ok(ref objects) = osmpbfreader::get_objs_and_deps(pbf, is_valid_street) {
         for (osm_id, obj) in objects {
             if let &osmpbfreader::OsmObj::Way(ref way) = obj {
                 if let &osmpbfreader::OsmId::Way(ref way_id) = osm_id {
@@ -319,7 +319,7 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
                     };
                 };
             };
-        };
+        }
     };
 
     streets
@@ -337,7 +337,7 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsVec, streets: &StreetsVec) {
        Err(e) => panic!("failed to index admins of osm because: {}", e),
        Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
     }
-    
+
     match rubber.bulk_index(streets.iter()) {
        Err(e) => panic!("failed to index streets of osm because: {}", e),
        Ok(nb) => info!("Nb of indexed streets: {}", nb),
