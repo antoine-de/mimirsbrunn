@@ -32,12 +32,12 @@ extern crate docopt;
 extern crate csv;
 extern crate rustc_serialize;
 extern crate curl;
-extern crate mimirsbrunn;
+extern crate mimir;
 #[macro_use]
 extern crate log;
 
 use std::path::Path;
-use mimirsbrunn::rubber::Rubber;
+use mimir::rubber::Rubber;
 use std::fs;
 
 #[derive(RustcDecodable, RustcEncodable)]
@@ -61,34 +61,34 @@ impl Bano {
         assert!(self.id.len() >= 10);
         &self.id[..10]
     }
-    pub fn into_addr(self) -> mimirsbrunn::Addr {
+    pub fn into_addr(self) -> mimir::Addr {
         let street_name = format!("{}, {} {}", self.street, self.zip, self.city);
         let addr_name = format!("{} {}", self.nb, street_name);
         let street_id = format!("street:{}", self.fantoir().to_string());
-        let admin = mimirsbrunn::Admin {
+        let admin = mimir::Admin {
             id: format!("admin:fr:{}", self.insee()),
             level: 8,
             name: self.city,
             zip_code: self.zip,
             weight: 1,
-            coord: mimirsbrunn::Coord {
+            coord: mimir::Coord {
                 lat: 0.0,
                 lon: 0.0,
             },
         };
-        let street = mimirsbrunn::Street {
+        let street = mimir::Street {
             id: street_id,
             street_name: self.street,
             name: street_name,
             administrative_region: admin,
             weight: 1,
         };
-        mimirsbrunn::Addr {
+        mimir::Addr {
             id: format!("addr:{};{}", self.lat, self.lon),
             house_number: self.nb,
             street: street,
             name: addr_name,
-            coord: mimirsbrunn::Coord {
+            coord: mimir::Coord {
                 lat: self.lat,
                 lon: self.lon,
             },
@@ -134,7 +134,7 @@ Usage:
 ";
 
 fn main() {
-    mimirsbrunn::logger_init().unwrap();
+    mimir::logger_init().unwrap();
     info!("importing bano into Mimir");
 
     let args: Args = docopt::Docopt::new(USAGE)

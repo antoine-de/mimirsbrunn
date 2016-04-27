@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate mimir;
 extern crate mimirsbrunn;
 extern crate docker_wrapper;
 extern crate curl;
@@ -49,7 +50,7 @@ impl<'a> ElasticSearchWrapper<'a> {
     }
 
     pub fn init(&self) {
-        let mut rubber = mimirsbrunn::rubber::Rubber::new(&format!("{}/_all",
+        let mut rubber = mimir::rubber::Rubber::new(&format!("{}/_all",
                                                                    self.docker_wrapper.host()));
         rubber.delete_index().unwrap();
     }
@@ -79,7 +80,7 @@ impl<'a> ElasticSearchWrapper<'a> {
 /// (ES cleanup is handled by es_wrapper)
 #[test]
 fn all_tests() {
-    mimirsbrunn::logger_init().unwrap();
+    mimir::logger_init().unwrap();
     let docker_wrapper = DockerWrapper::new().unwrap();
 
     // we call all tests here

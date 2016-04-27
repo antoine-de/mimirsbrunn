@@ -19,11 +19,19 @@ osmpbfreader = "*"
 serde_macros = { version = "*", optional = true }
 
 [features]
-default = ["serde_codegen", "rs-es/default", "skojig/default"]
-nightly = ["serde_macros", "rs-es/nightly", "skojig/nightly"]
+default = ["serde_codegen", "rs-es/default", "skojig/default", "mimir/default"]
+nightly = ["serde_macros", "rs-es/nightly", "skojig/nightly", "mimir/nightly"]
+
+# [features]
+# default = ["serde_codegen", "rs-es/default", "mimir/default"]
+# nightly = ["serde_macros", "rs-es/nightly", "mimir/nightly"]
 
 [dependencies.skojig]
 path = "libs/skojig"
+default-features = false
+
+[dependencies.mimir]
+path = "libs/mimir"
 default-features = false
 
 [dev-dependencies.docker_wrapper]
