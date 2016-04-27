@@ -33,15 +33,15 @@ extern crate log;
 extern crate osmpbfreader;
 extern crate rustc_serialize;
 extern crate docopt;
-extern crate mimirsbrunn;
+extern crate mimir;
 extern crate rs_es;
 
 use std::collections::HashSet;
 use std::collections::BTreeMap;
 use osmpbfreader::OsmId;
-use mimirsbrunn::rubber::Rubber;
+use mimir::rubber::Rubber;
 
-pub type AdminsMap = BTreeMap<OsmId, mimirsbrunn::Admin>;
+pub type AdminsMap = BTreeMap<OsmId, mimir::Admin>;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -141,14 +141,14 @@ fn administartive_regions(filename: &String, levels: &HashSet<u32>) -> AdminsMap
                 Some(val) => &val[..],
                 None => "",
             };
-            let admin = mimirsbrunn::Admin {
+            let admin = mimir::Admin {
                 id: admin_id,
                 level: level,
                 name: name.to_string(),
                 zip_code: zip_code.to_string(),
                 // TODO weight value ?
                 weight: 1,
-                coord: mimirsbrunn::Coord {
+                coord: mimir::Coord {
                     lat: 0.0,
                     lon: 0.0,
                 },
@@ -171,7 +171,7 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsMap) -> Result<u32, rs_es::erro
 }
 
 fn main() {
-    mimirsbrunn::logger_init().unwrap();
+    mimir::logger_init().unwrap();
     debug!("importing adminstrative region into Mimir");
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())

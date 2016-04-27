@@ -36,3 +36,17 @@ extern crate env_logger;
 
 extern crate serde;
 extern crate serde_json;
+
+pub mod objects;
+pub mod rubber;
+
+pub use objects::{Addr, Street, Admin, Coord};
+
+pub fn logger_init() -> Result<(), log::SetLoggerError> {
+    let mut builder = env_logger::LogBuilder::new();
+    builder.filter(None, log::LogLevelFilter::Info);
+    if let Ok(s) = std::env::var("RUST_LOG") {
+        builder.parse(&s);
+    }
+    builder.init()
+}
