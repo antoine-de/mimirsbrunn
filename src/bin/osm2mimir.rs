@@ -207,10 +207,7 @@ fn build_boundary(relation: &osmpbfreader::Relation,
 
 fn parse_osm_pbf(path: &String) -> ParsedPbf {
     let path = std::path::Path::new(&path);
-    match std::fs::File::open(&path) {
-        Err(e) => panic!("failed to parse file {:?} because: {}", &path, e),
-        Ok(r) => osmpbfreader::OsmPbfReader::new(r)
-    }
+    osmpbfreader::OsmPbfReader::new(std::fs::File::open(&path).unwrap())
 }
 
 fn administrative_regions(pbf: &mut ParsedPbf, levels: HashSet<u32>) -> AdminsVec {
@@ -301,28 +298,29 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
         }
     };
 
-    let mut streets = StreetsVec::new();
-
-    if let Result::Ok(ref objects) = osmpbfreader::get_objs_and_deps(pbf, is_valid_street) {
-        for (osm_id, obj) in objects {
-            if let &osmpbfreader::OsmObj::Way(ref way) = obj {
-                if let &osmpbfreader::OsmId::Way(ref way_id) = osm_id {
-                    if let Some(ref way_name) = way.tags.get("name") {
-                        let street = mimirsbrunn::Street {
+    osmpbfreader::get_objs_and_deps(pbf, is_valid_street)
+        .unwrap()
+        .iter()
+        .filter_map(|(ref osm_id, ref obj)| {
+            if let &&osmpbfreader::OsmObj::Way(ref way) = obj {
+                if let &&osmpbfreader::OsmId::Way(ref way_id) = osm_id {
+                    way.tags.get("name").and_then(|way_name| {
+                        Some(mimirsbrunn::Street {
                             id: way_id.to_string(),
                             street_name: way_name.to_string(),
                             name: way_name.to_string(),
                             weight: 1,
                             administrative_region: None,
-                        };
-                        streets.push(street);
-                    };
-                };
-            };
-        }
-    };
-
-    streets
+                        })
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 fn index_osm(es_cnx_string: &str, admins: &AdminsVec, streets: &StreetsVec) {
@@ -334,13 +332,13 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsVec, streets: &StreetsVec) {
     }
     info!("Add data in elasticsearch db.");
     match rubber.bulk_index(admins.iter()) {
-       Err(e) => panic!("failed to index admins of osm because: {}", e),
-       Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
+        Err(e) => panic!("failed to index admins of osm because: {}", e),
+        Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
     }
 
     match rubber.bulk_index(streets.iter()) {
-       Err(e) => panic!("failed to index streets of osm because: {}", e),
-       Ok(nb) => info!("Nb of indexed streets: {}", nb),
+        Err(e) => panic!("failed to index streets of osm because: {}", e),
+        Ok(nb) => info!("Nb of indexed streets: {}", nb),
     }
 }
 
