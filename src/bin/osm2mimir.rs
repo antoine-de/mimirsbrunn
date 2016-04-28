@@ -104,81 +104,82 @@ impl BoundaryPart {
 fn get_nodes(way: &osmpbfreader::Way,
              objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
              -> Vec<osmpbfreader::Node> {
-    let mut nodes = Vec::new();
-    for node in &way.nodes {
-        match objects.get(&osmpbfreader::OsmId::Node(*node)) {
-            Some(n) => {
-                match n {
-                    &osmpbfreader::OsmObj::Node(ref node) => nodes.push(node.clone()),
-                    _ => {}
-                }
-            }
-            None => warn!("node not found ({}) for way {}", node, way.id),
-        }
-    }
-    nodes
+    way.nodes
+       .iter()
+       .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
+       .filter_map(|node_obj| if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+           Some(node.clone())
+       } else {
+           None
+       })
+       .collect()
 }
 
 fn build_boundary(relation: &osmpbfreader::Relation,
                   objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
                   -> Option<MultiPolygon> {
-    let mut boundary_parts = Vec::new();
-    for refe in relation.refs
-                        .iter()
-                        .filter(|rf| rf.role == "outer" || rf.role == "" || rf.role == "enclave") {
-        match objects.get(&refe.member) {
-            Some(m) => {
-                match m {
-                    &osmpbfreader::OsmObj::Way(ref way) => {
-                        let nodes = get_nodes(&way, objects);
-                        if nodes.len() < 2 {
-                            continue;
-                        }
-                        boundary_parts.push(BoundaryPart::new(nodes));
-                    }
-                    _ => {}
-                }
-            }
-            None => {
-                warn!("not found member {:?} from rel {}: skipping the boundary",
-                      refe.member,
-                      relation.id);
-                return None;//no hope to build the boundary here...
-            }
-        }
-    }
+    let mut boundary_parts: Vec<BoundaryPart> =
+        relation.refs
+                .iter()
+                .filter(|rf| rf.role == "outer" || rf.role == "" || rf.role == "enclave")
+                .filter_map(|refe| {
+                    objects.get(&refe.member).or_else(|| {
+                        warn!("missing element for relation {}", relation.id);
+                        None
+                    })
+                })
+                .filter_map(|way_obj| if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
+                    Some(way)
+                } else {
+                    None
+                })
+                .map(|way| get_nodes(&way, objects))
+                .filter(|nodes| nodes.len() > 1)
+                .map(|nodes| BoundaryPart::new(nodes))
+                .collect();
     let mut multipoly = MultiPolygon { polygons: Vec::new() };
+    // we want to try build a polygon for a least each way
     while !boundary_parts.is_empty() {
         let mut current = -1;
         let mut first = 0;
         let mut nb_try = 0;
 
         let mut outer: Vec<osmpbfreader::Node> = Vec::new();
+        // we try to close the polygon, if we can't we want to at least have tried one time per
+        // way. We could improve that latter by trying to attach the way to both side of the
+        // polygon
         let max_try = boundary_parts.len();
         while current != first && nb_try < max_try {
             let mut i = 0;
             while i < boundary_parts.len() {
                 if outer.is_empty() {
+                    // our polygon is empty, we initialise it with the current way
                     first = boundary_parts[i].first();
                     current = boundary_parts[i].last();
                     outer.append(&mut boundary_parts[i].nodes);
+                    // this way has been used, we remove it from the pool
                     boundary_parts.remove(i);
                     continue;
-
                 }
                 if current == boundary_parts[i].first() {
+                    // the start of current way touch the polygon, we add it and remove it from the
+                    // pool
                     current = boundary_parts[i].last();
                     outer.append(&mut boundary_parts[i].nodes);
                     boundary_parts.remove(i);
                 } else if current == boundary_parts[i].last() {
+                    // the end of the current way touch the polygon, we reverse the way and add it
                     current = boundary_parts[i].first();
                     boundary_parts[i].nodes.reverse();
                     outer.append(&mut boundary_parts[i].nodes);
                     boundary_parts.remove(i);
                 } else {
                     i += 1;
+                    // didnt do anything, we want to explore the next way, if we had do something we
+                    // will have removed the current way and there will be no need to increment
                 }
                 if current == first {
+                    // our polygon is closed, we create it and add it to the multipolygon
                     let polygon = Polygon::new(outer.iter()
                                                     .map(|n| {
                                                         mimirsbrunn::Coord {
@@ -194,8 +195,12 @@ fn build_boundary(relation: &osmpbfreader::Relation,
             nb_try += 1;
         }
     }
-    info!("{};{:?}", relation.id, multipoly.to_wkt());
-    Some(multipoly)
+    debug!("polygon for relation {};{}", relation.id, multipoly.to_wkt());
+    if multipoly.polygons.is_empty() {
+        None
+    } else {
+        Some(multipoly)
+    }
 }
 
 fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec {
