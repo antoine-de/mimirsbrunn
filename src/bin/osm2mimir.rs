@@ -298,29 +298,55 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
         }
     };
 
-    osmpbfreader::get_objs_and_deps(pbf, is_valid_street)
-        .unwrap()
-        .iter()
-        .filter_map(|(ref osm_id, ref obj)| {
-            if let &&osmpbfreader::OsmObj::Way(ref way) = obj {
-                if let &&osmpbfreader::OsmId::Way(ref way_id) = osm_id {
-                    way.tags.get("name").and_then(|way_name| {
-                        Some(mimirsbrunn::Street {
-                            id: way_id.to_string(),
-                            street_name: way_name.to_string(),
-                            name: way_name.to_string(),
-                            weight: 1,
-                            administrative_region: None,
-                        })
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
+    let is_associated_street_relation = |obj: &osmpbfreader::OsmObj| -> bool {
+        match *obj {
+            osmpbfreader::OsmObj::Relation(ref rel) => {
+                rel.tags.get("type").map_or(false, |v| v == "associatedStreet")
             }
-        })
-        .collect()
+            _ => false,
+        }
+    };
+
+    let mut street_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_street).unwrap();
+    let relation_map = osmpbfreader::get_objs_and_deps(pbf, is_associated_street_relation).unwrap();
+
+    for (_, rel_obj) in &relation_map {
+        if let &osmpbfreader::OsmObj::Relation(ref rel) = rel_obj {
+            let mut found = false;
+            for ref_obj in &rel.refs {
+                if let &osmpbfreader::OsmId::Way(_) = &ref_obj.member {
+                    if !found {
+                        found = true;
+                        continue;
+                    };
+                    street_map.remove(&ref_obj.member);
+                };
+            }
+        };
+    }
+
+    street_map.iter()
+              .filter_map(|(osm_id, obj)| {
+                  if let &osmpbfreader::OsmObj::Way(ref way) = obj {
+                      if let &osmpbfreader::OsmId::Way(ref way_id) = osm_id {
+                          way.tags.get("name").and_then(|way_name| {
+                              Some(mimirsbrunn::Street {
+                                  id: way_id.to_string(),
+                                  street_name: way_name.to_string(),
+                                  name: way_name.to_string(),
+                                  weight: 1,
+                                  administrative_region: None,
+                              })
+                          })
+                      } else {
+                          None
+                      }
+                  } else {
+                      None
+                  }
+              })
+              .collect()
+
 }
 
 fn index_osm(es_cnx_string: &str, admins: &AdminsVec, streets: &StreetsVec) {
