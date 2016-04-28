@@ -33,15 +33,15 @@ extern crate log;
 extern crate osmpbfreader;
 extern crate rustc_serialize;
 extern crate docopt;
-extern crate mimirsbrunn;
+extern crate mimir;
 extern crate rs_es;
 
 use std::collections::HashSet;
 use std::collections::HashMap;
-use mimirsbrunn::rubber::Rubber;
-use mimirsbrunn::objects::{Polygon, MultiPolygon};
+use mimir::rubber::Rubber;
+use mimir::objects::{Polygon, MultiPolygon};
 
-pub type AdminsVec = Vec<mimirsbrunn::Admin>;
+pub type AdminsVec = Vec<mimir::Admin>;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -182,7 +182,7 @@ fn build_boundary(relation: &osmpbfreader::Relation,
                     // our polygon is closed, we create it and add it to the multipolygon
                     let polygon = Polygon::new(outer.iter()
                                                     .map(|n| {
-                                                        mimirsbrunn::Coord {
+                                                        mimir::Coord {
                                                             lat: n.lat,
                                                             lon: n.lon,
                                                         }
@@ -247,7 +247,7 @@ fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec 
                                            objects.get(&r.member).and_then(|value| {
                                                match value {
                                                    &osmpbfreader::OsmObj::Node(ref node) => {
-                                                       Some(mimirsbrunn::Coord {
+                                                       Some(mimir::Coord {
                                                            lat: node.lat,
                                                            lon: node.lon,
                                                        })
@@ -266,7 +266,7 @@ fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec 
                 None => "",
             };
             let boundary = build_boundary(&relation, &objects);
-            let admin = mimirsbrunn::Admin {
+            let admin = mimir::Admin {
                 id: admin_id,
                 level: level,
                 name: name.to_string(),
@@ -294,7 +294,7 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsVec) -> Result<u32, rs_es::erro
 }
 
 fn main() {
-    mimirsbrunn::logger_init().unwrap();
+    mimir::logger_init().unwrap();
     debug!("importing adminstrative region into Mimir");
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
