@@ -6,21 +6,20 @@ build = "build.rs"
 
 [dependencies]
 log = "*"
-env_logger = "*"
 docopt = "*"
 rustc-serialize = "*"
 csv = "*"
 curl = "*"
 rs-es = { version = "*", default-features = false }
-serde = "*"
-serde_json = "*"
 regex = "*"
 osmpbfreader = "*"
-serde_macros = { version = "*", optional = true }
+
+[dev-dependencies]
+serde_json = "*"
 
 [features]
-default = ["serde_codegen", "rs-es/default", "skojig/default", "mimir/default"]
-nightly = ["serde_macros", "rs-es/nightly", "skojig/nightly", "mimir/nightly"]
+default = ["rs-es/default", "skojig/default", "mimir/default"]
+nightly = ["rs-es/nightly", "skojig/nightly", "mimir/nightly"]
 
 [dependencies.skojig]
 path = "libs/skojig"
@@ -32,10 +31,6 @@ default-features = false
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"
-
-[build-dependencies]
-serde_codegen = { version = "*", optional = true }
-syntex = "*"
 
 # we just call one test method: cf. tests::all_tests()
 [[test]]

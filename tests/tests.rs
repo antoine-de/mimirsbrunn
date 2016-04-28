@@ -29,7 +29,6 @@
 // www.navitia.io
 
 extern crate mimir;
-extern crate mimirsbrunn;
 extern crate docker_wrapper;
 extern crate curl;
 extern crate serde_json;
