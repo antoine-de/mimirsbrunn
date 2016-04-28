@@ -28,13 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate log;
-extern crate mimirsbrunn;
-extern crate skojig;
+#[cfg(feature = "serde_macros")]
+include!("model.rs.in");
 
-fn main() {
-    mimirsbrunn::logger_init().unwrap();
-    debug!("running skojig webserver");
-    skojig::runserver();
-}
+#[cfg(not(feature = "serde_macros"))]
+include!(concat!(env!("OUT_DIR"), "/model.rs"));

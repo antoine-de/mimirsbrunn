@@ -28,4 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+#[cfg(feature = "serde_macros")]
+include!("objects.rs.in");
+
+#[cfg(not(feature = "serde_macros"))]
 include!(concat!(env!("OUT_DIR"), "/objects.rs"));

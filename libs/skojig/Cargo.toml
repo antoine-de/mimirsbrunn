@@ -2,11 +2,28 @@
 name = "skojig"
 version = "0.1.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
+build = "build.rs"
 
 [dependencies]
 docopt = "*"
 rustc-serialize = "*"
 curl = "*"
+hyper = "*"
+jsonway = "*"
 iron = "*"
+rustless = "*"
 urlencoded = "*"
 mdo = "*"
+valico = "*"
+rs-es = { version = "*", default-features = false }
+serde = "*"
+serde_json = "*"
+serde_macros = { version = "*", optional = true }
+
+[features]
+default = ["serde_codegen", "rs-es/default"]
+nightly = ["serde_macros", "rs-es/nightly"]
+
+[build-dependencies]
+serde_codegen = { version = "*", optional = true }
+syntex = "*"

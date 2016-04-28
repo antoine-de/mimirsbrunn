@@ -11,20 +11,26 @@ docopt = "*"
 rustc-serialize = "*"
 csv = "*"
 curl = "*"
-rs-es = "*"
+rs-es = { version = "*", default-features = false }
 serde = "*"
 serde_json = "*"
 regex = "*"
 osmpbfreader = "*"
+serde_macros = { version = "*", optional = true }
+
+[features]
+default = ["serde_codegen", "rs-es/default", "skojig/default"]
+nightly = ["serde_macros", "rs-es/nightly", "skojig/nightly"]
 
 [dependencies.skojig]
 path = "libs/skojig"
+default-features = false
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"
 
 [build-dependencies]
-serde_codegen = "*"
+serde_codegen = { version = "*", optional = true }
 syntex = "*"
 
 # we just call one test method: cf. tests::all_tests()
