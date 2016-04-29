@@ -310,6 +310,11 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
     let mut street_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_street).unwrap();
     let relation_map = osmpbfreader::get_objs_and_deps(pbf, is_associated_street_relation).unwrap();
 
+    // Sometimes, streets can be devided into several "way"s that still have the same street name.
+    // The reason why a street is devided may be that a part of the street become a bridge/tunne/etc.
+    // In this case, a "relation" tagged with (type = associatedStreet) is used to group all these "way"s.
+    // In order not to have doublons in autocompleion, we should keep only one "way" in the relation 
+    // and remove all the rest way whose street name is the same.  
     for (_, rel_obj) in &relation_map {
         if let &osmpbfreader::OsmObj::Relation(ref rel) = rel_obj {
             let mut found = false;
