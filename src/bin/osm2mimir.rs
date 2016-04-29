@@ -293,8 +293,8 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
     let is_valid_street = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
-                way.tags.get("highway").map_or(false, |x: &String| !x.is_empty()) &&
-                way.tags.get("name").map_or(false, |x: &String| !x.is_empty())
+                way.tags.get("highway").map_or(false, |x| !x.is_empty()) &&
+                way.tags.get("name").map_or(false, |x| !x.is_empty())
             }
             _ => false,
         }
