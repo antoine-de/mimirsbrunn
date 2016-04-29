@@ -61,6 +61,7 @@ pub struct Admin {
     pub zip_code: String,
     pub weight: u32,
     pub coord: Option<Coord>,
+    pub boundary: Option<MultiPolygon>,
 }
 impl Incr for Admin {
     fn id(&self) -> &str {
@@ -105,4 +106,50 @@ pub struct Addr {
 }
 impl DocType for Addr {
     fn doc_type() -> &'static str { "addr" }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Polygon {
+    pub outer: Vec<Coord>,
+    pub inner: Vec<Coord>,
+}
+
+impl Polygon {
+    pub fn to_wkt(&self) -> String {
+        if self.outer.is_empty() {
+            return "".to_string();
+        }
+        let mut coords = Vec::new();
+        for c in &self.outer {
+            coords.push(format!("{lon} {lat}", lon=c.lon, lat=c.lat))
+        }
+        format!("POLYGON (({}))", coords.join(", "))
+    }
+
+    pub fn new(outer: Vec<Coord>) -> Polygon {
+        Polygon{outer: outer, inner: Vec::new()}
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MultiPolygon {
+    pub polygons: Vec<Polygon>,
+}
+
+impl MultiPolygon {
+    pub fn to_wkt(&self) -> String {
+        if self.polygons.is_empty() {
+            return "".to_string();
+        }
+        let mut polys = Vec::new();
+        for p in &self.polygons{
+            let mut coords = Vec::new();
+            for c in &p.outer {
+                coords.push(format!("{lon} {lat}", lon=c.lon, lat=c.lat))
+            }
+            polys.push(format!("(({}))", coords.join(", ")))
+        }
+        format!("MULTIPOLYGON({})", polys.join(", "))
+    }
+
 }
