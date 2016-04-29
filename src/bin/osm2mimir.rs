@@ -367,9 +367,12 @@ fn index_osm(es_cnx_string: &str, admins: &AdminsVec, streets: &StreetsVec) {
         Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
     }
 
-    match rubber.bulk_index(streets.iter()) {
-        Err(e) => panic!("failed to index streets of osm because: {}", e),
-        Ok(nb) => info!("Nb of indexed streets: {}", nb),
+    // TODO: make it (de)activable from command line
+    if false {
+        match rubber.bulk_index(streets.iter()) {
+            Err(e) => panic!("failed to index streets of osm because: {}", e),
+            Ok(nb) => info!("Nb of indexed streets: {}", nb),
+        }
     }
 }
 
