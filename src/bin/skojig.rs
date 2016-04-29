@@ -30,11 +30,11 @@
 
 #[macro_use]
 extern crate log;
-extern crate mimirsbrunn;
+extern crate mimir;
 extern crate skojig;
 
 fn main() {
-    mimirsbrunn::logger_init().unwrap();
+    mimir::logger_init().unwrap();
     debug!("running skojig webserver");
     skojig::runserver();
 }

@@ -113,7 +113,7 @@ impl Rubber {
     pub fn create_index(&mut self) {
         debug!("creating index");
         // Note: for the moment I don't see an easy way to do this with rs_es
-        let analysis = include_str!("../json/settings.json");
+        let analysis = include_str!("../../../json/settings.json");
         let res = curl::http::handle()
                       .put(self.client.full_url(&self.index_name), analysis)
                       .exec()
