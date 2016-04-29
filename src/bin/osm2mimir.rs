@@ -207,7 +207,7 @@ fn build_boundary(relation: &osmpbfreader::Relation,
     }
 }
 
-fn parse_osm_pbf(path: &String) -> ParsedPbf {
+fn parse_osm_pbf(path: &str) -> ParsedPbf {
     let path = std::path::Path::new(&path);
     osmpbfreader::OsmPbfReader::new(std::fs::File::open(&path).unwrap())
 }
