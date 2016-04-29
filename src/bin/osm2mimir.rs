@@ -50,17 +50,19 @@ struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
     flag_connection_string: String,
+    flag_import_way: bool
 }
 
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level>...
+    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level> [--import-way]...
 
 Options:
     -h, --help            Show this message.
     -i, --input=<file>    OSM PBF file.
     -l, --level=<level>   Admin levels to keep.
+    -w, --import-way      By default, streets are not imported     
     -c, --connection-string=<connection-string>
                           Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
@@ -353,27 +355,26 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
               .collect()
 
 }
-
-fn index_osm(es_cnx_string: &str, admins: &AdminsVec, streets: &StreetsVec) {
+// TODO: template these two functions
+fn index_admin(es_cnx_string: &str, admins: AdminsVec) {
     let mut rubber = Rubber::new(es_cnx_string);
-    rubber.create_index();
-    match rubber.clean_db_by_doc_type(&["admin", "street"]) {
-        Err(e) => panic!("failed to clean data by document type: {}", e),
-        Ok(nb) => info!("clean data by document type : {}", nb),
-    }
-    info!("Add data in elasticsearch db.");
     match rubber.bulk_index(admins.iter()) {
         Err(e) => panic!("failed to index admins of osm because: {}", e),
         Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
     }
+}
 
-    // TODO: make it (de)activable from command line
-    if false {
-        match rubber.bulk_index(streets.iter()) {
-            Err(e) => panic!("failed to index streets of osm because: {}", e),
-            Ok(nb) => info!("Nb of indexed streets: {}", nb),
-        }
+fn index_ways(es_cnx_string: &str, streets: StreetsVec) {
+    let mut rubber = Rubber::new(es_cnx_string);
+    match rubber.bulk_index(streets.iter()) {
+        Err(e) => panic!("failed to index streets of osm because: {}", e),
+        Ok(nb) => info!("Nb of indexed street: {}", nb),
     }
+}
+
+fn index_settings(es_cnx_string: &str) {
+    let mut rubber = Rubber::new(es_cnx_string);
+    rubber.create_index();    
 }
 
 fn main() {
@@ -385,7 +386,18 @@ fn main() {
 
     let levels = args.flag_level.iter().cloned().collect();
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
+    
     let admins = administrative_regions(&mut parsed_pbf, levels);
-    let streets = streets(&mut parsed_pbf);
-    index_osm(&args.flag_connection_string, &admins, &streets);
+    
+    index_settings(&args.flag_connection_string);
+    index_admin(&args.flag_connection_string, admins); 	
+    
+    let mut optinoal_streets: Option<StreetsVec> = None;
+    if args.flag_import_way  {
+        optinoal_streets = Some(streets(&mut parsed_pbf));    
+    }
+    
+    if let Some(streets) = optinoal_streets {
+	index_ways(&args.flag_connection_string, streets);
+    }
 }
