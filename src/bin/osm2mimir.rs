@@ -50,13 +50,13 @@ struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
     flag_connection_string: String,
-    flag_import_way: bool
+    flag_import_way: bool,
 }
 
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level> [--import-way]...
+    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level> ... [--import-way]
 
 Options:
     -h, --help            Show this message.
@@ -309,15 +309,15 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
         }
     };
 
-    let mut street_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_street).unwrap();
-    let relation_map = osmpbfreader::get_objs_and_deps(pbf, is_associated_street_relation).unwrap();
-
+    let mut objs_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_street).unwrap();
     // Sometimes, streets can be devided into several "way"s that still have the same street name.
     // The reason why a street is devided may be that a part of the street become a bridge/tunne/etc.
     // In this case, a "relation" tagged with (type = associatedStreet) is used to group all these "way"s.
     // In order not to have doublons in autocompleion, we should keep only one "way" in the relation
     // and remove all the rest way whose street name is the same.
-    for (_, rel_obj) in &relation_map {
+    let mut objs_to_remove = Vec::<osmpbfreader::OsmId>::new();
+
+    for (_, rel_obj) in &objs_map {
         if let &osmpbfreader::OsmObj::Relation(ref rel) = rel_obj {
             let mut found = false;
             for ref_obj in &rel.refs {
@@ -326,38 +326,44 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
                         found = true;
                         continue;
                     };
-                    street_map.remove(&ref_obj.member);
+                    objs_to_remove.push(ref_obj.member.clone());
                 };
             }
         };
     }
 
-    street_map.iter()
-              .filter_map(|(osm_id, obj)| {
-                  if let &osmpbfreader::OsmObj::Way(ref way) = obj {
-                      if let &osmpbfreader::OsmId::Way(ref way_id) = osm_id {
-                          way.tags.get("name").and_then(|way_name| {
-                              Some(mimirsbrunn::Street {
-                                  id: way_id.to_string(),
-                                  street_name: way_name.to_string(),
-                                  name: way_name.to_string(),
-                                  weight: 1,
-                                  administrative_region: None,
-                              })
-                          })
-                      } else {
-                          None
-                      }
-                  } else {
-                      None
-                  }
-              })
-              .collect()
+    for osm_id in objs_to_remove {
+        objs_map.remove(&osm_id);
+    }
+
+    objs_map.iter()
+            .filter_map(|(_, obj)| {
+                if let &osmpbfreader::OsmObj::Way(ref way) = obj {
+                    way.tags.get("name").and_then(|way_name| {
+                        Some(mimirsbrunn::Street {
+                            id: way.id.to_string(),
+                            street_name: way_name.to_string(),
+                            name: way_name.to_string(),
+                            weight: 1,
+                            administrative_region: None,
+                        })
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
 
 }
 // TODO: template these two functions
 fn index_admin(es_cnx_string: &str, admins: AdminsVec) {
     let mut rubber = Rubber::new(es_cnx_string);
+
+    match rubber.clean_db_by_doc_type(&["admin"]) {
+        Err(e) => panic!("failed to clean data by document type: {}", e),
+        Ok(nb) => info!("Nb of cleaned indexed obj: {}", nb),
+    }
+
     match rubber.bulk_index(admins.iter()) {
         Err(e) => panic!("failed to index admins of osm because: {}", e),
         Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
@@ -366,6 +372,12 @@ fn index_admin(es_cnx_string: &str, admins: AdminsVec) {
 
 fn index_ways(es_cnx_string: &str, streets: StreetsVec) {
     let mut rubber = Rubber::new(es_cnx_string);
+    
+    match rubber.clean_db_by_doc_type(&["street"]) {
+        Err(e) => panic!("failed to clean data by document type: {}", e),
+        Ok(nb) => info!("Nb of cleaned indexed obj: {}", nb),
+    }
+
     match rubber.bulk_index(streets.iter()) {
         Err(e) => panic!("failed to index streets of osm because: {}", e),
         Ok(nb) => info!("Nb of indexed street: {}", nb),
@@ -374,7 +386,7 @@ fn index_ways(es_cnx_string: &str, streets: StreetsVec) {
 
 fn index_settings(es_cnx_string: &str) {
     let mut rubber = Rubber::new(es_cnx_string);
-    rubber.create_index();    
+    rubber.create_index();
 }
 
 fn main() {
@@ -386,18 +398,18 @@ fn main() {
 
     let levels = args.flag_level.iter().cloned().collect();
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
-    
+
     let admins = administrative_regions(&mut parsed_pbf, levels);
-    
+
     index_settings(&args.flag_connection_string);
-    index_admin(&args.flag_connection_string, admins); 	
-    
+    index_admin(&args.flag_connection_string, admins);
+
     let mut optinoal_streets: Option<StreetsVec> = None;
-    if args.flag_import_way  {
-        optinoal_streets = Some(streets(&mut parsed_pbf));    
+    if args.flag_import_way {
+        optinoal_streets = Some(streets(&mut parsed_pbf));
     }
-    
+
     if let Some(streets) = optinoal_streets {
-	index_ways(&args.flag_connection_string, streets);
+        index_ways(&args.flag_connection_string, streets);
     }
 }
