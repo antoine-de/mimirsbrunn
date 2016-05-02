@@ -43,7 +43,7 @@ use mimirsbrunn::objects::{Polygon, MultiPolygon};
 
 pub type AdminsVec = Vec<mimir::Admin>;
 pub type StreetsVec = Vec<mimir::Street>;
-pub type ParsedPbf = osmpbfreader::OsmPbfReader<std::fs::File>;
+pub type OsmPbfReader = osmpbfreader::OsmPbfReader<std::fs::File>;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -207,12 +207,12 @@ fn build_boundary(relation: &osmpbfreader::Relation,
     }
 }
 
-fn parse_osm_pbf(path: &str) -> ParsedPbf {
+fn parse_osm_pbf(path: &str) -> OsmPbfReader {
     let path = std::path::Path::new(&path);
     osmpbfreader::OsmPbfReader::new(std::fs::File::open(&path).unwrap())
 }
 
-fn administrative_regions(pbf: &mut ParsedPbf, levels: HashSet<u32>) -> AdminsVec {
+fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> AdminsVec {
     let mut administrative_regions = AdminsVec::new();
     let matcher = AdminMatcher::new(levels);
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_admin(o)).unwrap();
@@ -288,7 +288,7 @@ fn administrative_regions(pbf: &mut ParsedPbf, levels: HashSet<u32>) -> AdminsVe
     return administrative_regions;
 }
 
-fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
+fn streets(pbf: &mut OsmPbfReader) -> StreetsVec {
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
