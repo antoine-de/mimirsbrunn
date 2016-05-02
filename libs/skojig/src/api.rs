@@ -139,7 +139,7 @@ pub fn autocomplete() -> rustless::Namespace {
                 params.opt("lat", |lat| {
                     lat.coerce(json_dsl::f64());
                     lat.validate_with(|val, path| {
-                        check_bound(val, path, -90f64, 900f64, "lat is not a valid latitude")
+                        check_bound(val, path, -90f64, 90f64, "lat is not a valid latitude")
                     });
                 });
                 params.validate_with(|val, path| {
