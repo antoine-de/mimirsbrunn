@@ -31,7 +31,6 @@
 
 // Note: this file is needed to use serde in rust stable
 // cf mimirsbrunn/build.rs for explanations
-use std::option::Option;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;

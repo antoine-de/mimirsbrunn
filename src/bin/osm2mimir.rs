@@ -290,18 +290,12 @@ fn administrative_regions(pbf: &mut ParsedPbf, levels: HashSet<u32>) -> AdminsVe
 
 fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
 
-    let is_valid_street = |obj: &osmpbfreader::OsmObj| -> bool {
+    let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
                 way.tags.get("highway").map_or(false, |x| !x.is_empty()) &&
                 way.tags.get("name").map_or(false, |x| !x.is_empty())
             }
-            _ => false,
-        }
-    };
-
-    let is_associated_street_relation = |obj: &osmpbfreader::OsmObj| -> bool {
-        match *obj {
             osmpbfreader::OsmObj::Relation(ref rel) => {
                 rel.tags.get("type").map_or(false, |v| v == "associatedStreet")
             }
@@ -309,7 +303,7 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
         }
     };
 
-    let mut objs_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_street).unwrap();
+    let mut objs_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_obj).unwrap();
     // Sometimes, streets can be devided into several "way"s that still have the same street name.
     // The reason why a street is devided may be that a part of the street become a bridge/tunne/etc.
     // In this case, a "relation" tagged with (type = associatedStreet) is used to group all these "way"s.
@@ -325,7 +319,7 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
                     if !found {
                         found = true;
                         continue;
-                    };
+                    }
                     objs_to_remove.push(ref_obj.member.clone());
                 };
             }
