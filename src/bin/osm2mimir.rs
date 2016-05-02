@@ -352,12 +352,10 @@ fn streets(pbf: &mut ParsedPbf) -> StreetsVec {
 // TODO: template these two functions
 fn index_admin(es_cnx_string: &str, admins: AdminsVec) {
     let mut rubber = Rubber::new(es_cnx_string);
-
     match rubber.clean_db_by_doc_type(&["admin"]) {
-        Err(e) => panic!("failed to clean data by document type: {}", e),
-        Ok(nb) => info!("Nb of cleaned indexed obj: {}", nb),
+        Err(e) => panic!("failed to clean data for admin: {}", e),
+        Ok(nb) => info!("Nb of cleaned indexed admins: {}", nb),
     }
-
     match rubber.bulk_index(admins.iter()) {
         Err(e) => panic!("failed to index admins of osm because: {}", e),
         Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
@@ -366,12 +364,10 @@ fn index_admin(es_cnx_string: &str, admins: AdminsVec) {
 
 fn index_ways(es_cnx_string: &str, streets: StreetsVec) {
     let mut rubber = Rubber::new(es_cnx_string);
-    
     match rubber.clean_db_by_doc_type(&["street"]) {
-        Err(e) => panic!("failed to clean data by document type: {}", e),
-        Ok(nb) => info!("Nb of cleaned indexed obj: {}", nb),
+        Err(e) => panic!("failed to clean data for street: {}", e),
+        Ok(nb) => info!("Nb of cleaned indexed streets: {}", nb),
     }
-
     match rubber.bulk_index(streets.iter()) {
         Err(e) => panic!("failed to index streets of osm because: {}", e),
         Ok(nb) => info!("Nb of indexed street: {}", nb),
