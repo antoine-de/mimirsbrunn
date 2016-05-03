@@ -80,7 +80,7 @@ pub struct Street {
     pub id: String,
     pub street_name: String,
     pub name: String,
-    pub administrative_region: Admin,
+    pub administrative_region: Option<Admin>,
     pub weight: u32,
 }
 impl Incr for Street {

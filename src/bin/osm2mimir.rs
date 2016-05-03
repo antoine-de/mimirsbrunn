@@ -42,23 +42,27 @@ use mimir::rubber::Rubber;
 use mimir::objects::{Polygon, MultiPolygon};
 
 pub type AdminsVec = Vec<mimir::Admin>;
+pub type StreetsVec = Vec<mimir::Street>;
+pub type OsmPbfReader = osmpbfreader::OsmPbfReader<std::fs::File>;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
     flag_connection_string: String,
+    flag_way: bool,
 }
 
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level>...
+    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level> ... [--way]
 
 Options:
     -h, --help            Show this message.
     -i, --input=<file>    OSM PBF file.
     -l, --level=<level>   Admin levels to keep.
+    -w, --way             Import ways     
     -c, --connection-string=<connection-string>
                           Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
@@ -107,10 +111,12 @@ fn get_nodes(way: &osmpbfreader::Way,
     way.nodes
        .iter()
        .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
-       .filter_map(|node_obj| if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
-           Some(node.clone())
-       } else {
-           None
+       .filter_map(|node_obj| {
+           if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+               Some(node.clone())
+           } else {
+               None
+           }
        })
        .collect()
 }
@@ -128,10 +134,12 @@ fn build_boundary(relation: &osmpbfreader::Relation,
                         None
                     })
                 })
-                .filter_map(|way_obj| if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
-                    Some(way)
-                } else {
-                    None
+                .filter_map(|way_obj| {
+                    if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
+                        Some(way)
+                    } else {
+                        None
+                    }
                 })
                 .map(|way| get_nodes(&way, objects))
                 .filter(|nodes| nodes.len() > 1)
@@ -195,7 +203,9 @@ fn build_boundary(relation: &osmpbfreader::Relation,
             nb_try += 1;
         }
     }
-    debug!("polygon for relation {};{}", relation.id, multipoly.to_wkt());
+    debug!("polygon for relation {};{}",
+           relation.id,
+           multipoly.to_wkt());
     if multipoly.polygons.is_empty() {
         None
     } else {
@@ -203,13 +213,15 @@ fn build_boundary(relation: &osmpbfreader::Relation,
     }
 }
 
-fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec {
+fn parse_osm_pbf(path: &str) -> OsmPbfReader {
+    let path = std::path::Path::new(&path);
+    osmpbfreader::OsmPbfReader::new(std::fs::File::open(&path).unwrap())
+}
+
+fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> AdminsVec {
     let mut administrative_regions = AdminsVec::new();
-    let path = std::path::Path::new(&filename);
-    let r = std::fs::File::open(&path).unwrap();
-    let mut pbf = osmpbfreader::OsmPbfReader::new(r);
     let matcher = AdminMatcher::new(levels);
-    let objects = osmpbfreader::get_objs_and_deps(&mut pbf, |o| matcher.is_admin(o)).unwrap();
+    let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_admin(o)).unwrap();
     // load administratives regions
     for (_, obj) in &objects {
         if !matcher.is_admin(&obj) {
@@ -282,15 +294,95 @@ fn administrative_regions(filename: &String, levels: HashSet<u32>) -> AdminsVec 
     return administrative_regions;
 }
 
-fn index_osm(es_cnx_string: &str, admins: &AdminsVec) -> Result<u32, rs_es::error::EsError> {
+fn streets(pbf: &mut OsmPbfReader) -> StreetsVec {
+
+    let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
+        match *obj {
+            osmpbfreader::OsmObj::Way(ref way) => {
+                way.tags.get("highway").map_or(false, |x| !x.is_empty()) &&
+                way.tags.get("name").map_or(false, |x| !x.is_empty())
+            }
+            osmpbfreader::OsmObj::Relation(ref rel) => {
+                rel.tags.get("type").map_or(false, |v| v == "associatedStreet")
+            }
+            _ => false,
+        }
+    };
+
+    let mut objs_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_obj).unwrap();
+    // Sometimes, streets can be devided into several "way"s that still have the same street name.
+    // The reason why a street is devided may be that a part of the street become a bridge/tunne/etc.
+    // In this case, a "relation" tagged with (type = associatedStreet) is used to group all these "way"s.
+    // In order not to have doublons in autocompleion, we should keep only one "way" in the relation
+    // and remove all the rest way whose street name is the same.
+    let mut objs_to_remove = Vec::<osmpbfreader::OsmId>::new();
+
+    for (_, rel_obj) in &objs_map {
+        if let &osmpbfreader::OsmObj::Relation(ref rel) = rel_obj {
+            let mut found = false;
+            for ref_obj in &rel.refs {
+                if let &osmpbfreader::OsmId::Way(_) = &ref_obj.member {
+                    if !found {
+                        found = true;
+                        continue;
+                    }
+                    objs_to_remove.push(ref_obj.member.clone());
+                };
+            }
+        };
+    }
+
+    for osm_id in objs_to_remove {
+        objs_map.remove(&osm_id);
+    }
+
+    objs_map.iter()
+            .filter_map(|(_, obj)| {
+                if let &osmpbfreader::OsmObj::Way(ref way) = obj {
+                    way.tags.get("name").and_then(|way_name| {
+                        Some(mimir::Street {
+                            id: way.id.to_string(),
+                            street_name: way_name.to_string(),
+                            name: way_name.to_string(),
+                            weight: 1,
+                            administrative_region: None,
+                        })
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+
+}
+// TODO: template these two functions
+fn index_admin(es_cnx_string: &str, admins: AdminsVec) {
+    let mut rubber = Rubber::new(es_cnx_string);
+    match rubber.clean_db_by_doc_type(&["admin"]) {
+        Err(e) => panic!("failed to clean data for admin: {}", e),
+        Ok(nb) => info!("Nb of cleaned indexed admins: {}", nb),
+    }
+    match rubber.bulk_index(admins.iter()) {
+        Err(e) => panic!("failed to index admins of osm because: {}", e),
+        Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
+    }
+}
+
+fn index_ways(es_cnx_string: &str, streets: StreetsVec) {
+    let mut rubber = Rubber::new(es_cnx_string);
+    match rubber.clean_db_by_doc_type(&["street"]) {
+        Err(e) => panic!("failed to clean data for street: {}", e),
+        Ok(nb) => info!("Nb of cleaned indexed streets: {}", nb),
+    }
+    match rubber.bulk_index(streets.iter()) {
+        Err(e) => panic!("failed to index streets of osm because: {}", e),
+        Ok(nb) => info!("Nb of indexed street: {}", nb),
+    }
+}
+
+fn index_settings(es_cnx_string: &str) {
     let mut rubber = Rubber::new(es_cnx_string);
     rubber.create_index();
-    match rubber.clean_db_by_doc_type(&["admin"]) {
-        Err(e) => panic!("failed to clean data by document type: {}", e),
-        Ok(nb) => info!("clean data by document type : {}", nb),
-    }
-    info!("Add data in elasticsearch db.");
-    rubber.bulk_index(admins.iter())
 }
 
 fn main() {
@@ -301,10 +393,14 @@ fn main() {
                          .unwrap_or_else(|e| e.exit());
 
     let levels = args.flag_level.iter().cloned().collect();
-    let res = administrative_regions(&args.flag_input, levels);
-    match index_osm(&args.flag_connection_string, &res) {
-        Err(e) => panic!("failed to index osm because: {}", e),
-        Ok(nb) => info!("Adminstrative regions: {}", nb),
-    }
+    let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
 
+    let admins = administrative_regions(&mut parsed_pbf, levels);
+
+    index_settings(&args.flag_connection_string);
+    index_admin(&args.flag_connection_string, admins);
+
+    if args.flag_way {
+        index_ways(&args.flag_connection_string, streets(&mut parsed_pbf));
+    }
 }
