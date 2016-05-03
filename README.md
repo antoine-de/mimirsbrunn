@@ -57,7 +57,7 @@ To import all those data into Mimir, you only have to do:
 
 ### osm2mimir
 
-This component import opensteetmap data into Mimir.
+This component import openstreetmap data into Mimir.
 
 You can get openstreetmap data from http://download.geofabrik.de/
 
