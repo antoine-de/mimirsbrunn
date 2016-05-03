@@ -50,19 +50,19 @@ struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
     flag_connection_string: String,
-    flag_import_way: bool,
+    flag_way: bool,
 }
 
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level> ... [--import-way]
+    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level> ... [--way]
 
 Options:
     -h, --help            Show this message.
     -i, --input=<file>    OSM PBF file.
     -l, --level=<level>   Admin levels to keep.
-    -w, --import-way      By default, streets are not imported     
+    -w, --way             Import ways     
     -c, --connection-string=<connection-string>
                           Elasticsearch parameters, [default: http://localhost:9200/munin]
 ";
@@ -111,10 +111,12 @@ fn get_nodes(way: &osmpbfreader::Way,
     way.nodes
        .iter()
        .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
-       .filter_map(|node_obj| if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
-           Some(node.clone())
-       } else {
-           None
+       .filter_map(|node_obj| {
+           if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+               Some(node.clone())
+           } else {
+               None
+           }
        })
        .collect()
 }
@@ -132,10 +134,12 @@ fn build_boundary(relation: &osmpbfreader::Relation,
                         None
                     })
                 })
-                .filter_map(|way_obj| if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
-                    Some(way)
-                } else {
-                    None
+                .filter_map(|way_obj| {
+                    if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
+                        Some(way)
+                    } else {
+                        None
+                    }
                 })
                 .map(|way| get_nodes(&way, objects))
                 .filter(|nodes| nodes.len() > 1)
@@ -199,7 +203,9 @@ fn build_boundary(relation: &osmpbfreader::Relation,
             nb_try += 1;
         }
     }
-    debug!("polygon for relation {};{}", relation.id, multipoly.to_wkt());
+    debug!("polygon for relation {};{}",
+           relation.id,
+           multipoly.to_wkt());
     if multipoly.polygons.is_empty() {
         None
     } else {
@@ -394,12 +400,7 @@ fn main() {
     index_settings(&args.flag_connection_string);
     index_admin(&args.flag_connection_string, admins);
 
-    let mut optinoal_streets: Option<StreetsVec> = None;
-    if args.flag_import_way {
-        optinoal_streets = Some(streets(&mut parsed_pbf));
-    }
-
-    if let Some(streets) = optinoal_streets {
-        index_ways(&args.flag_connection_string, streets);
+    if args.flag_way {
+        index_ways(&args.flag_connection_string, streets(&mut parsed_pbf));
     }
 }
