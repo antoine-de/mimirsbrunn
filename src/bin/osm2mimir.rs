@@ -38,8 +38,8 @@ extern crate rs_es;
 
 use std::collections::HashSet;
 use std::collections::HashMap;
-use mimirsbrunn::rubber::Rubber;
-use mimirsbrunn::objects::{Polygon, MultiPolygon};
+use mimir::rubber::Rubber;
+use mimir::objects::{Polygon, MultiPolygon};
 
 pub type AdminsVec = Vec<mimir::Admin>;
 pub type StreetsVec = Vec<mimir::Street>;
@@ -334,7 +334,7 @@ fn streets(pbf: &mut OsmPbfReader) -> StreetsVec {
             .filter_map(|(_, obj)| {
                 if let &osmpbfreader::OsmObj::Way(ref way) = obj {
                     way.tags.get("name").and_then(|way_name| {
-                        Some(mimirsbrunn::Street {
+                        Some(mimir::Street {
                             id: way.id.to_string(),
                             street_name: way_name.to_string(),
                             name: way_name.to_string(),
