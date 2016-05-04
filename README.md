@@ -54,3 +54,29 @@ To import all those data into Mimir, you only have to do:
 ```shell
 ./target/release/bano2mimir -i bano-data*/
 ```
+
+### osm2mimir
+
+This component import openstreetmap data into Mimir.
+
+You can get openstreetmap data from http://download.geofabrik.de/
+
+eg:
+
+```shell
+curl -O http://download.geofabrik.de/europe/france-latest.osm.pbf
+```
+
+To import all those data into Mimir, you only have to do:
+
+```shell
+./target/release/osm2mimir --input=france-latest.osm.pbf --level=8 --level=7 --connection-string=http://localhost:9200/munin
+```
+
+level: administrative levels in openstreetmap
+
+For more information:
+
+```
+./target/release/osm2mimir -h
+```
