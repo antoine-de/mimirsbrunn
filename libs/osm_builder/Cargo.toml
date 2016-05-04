@@ -1,0 +1,15 @@
+[package]
+name = "osm_builder"
+version = "0.1.0"
+authors = ["dt.ro <dt.ro@canaltp.fr>"]
+
+[features]
+default = ["mimir/default"]
+nightly = ["mimir/nightly"]
+
+[dependencies]
+osmpbfreader = "*"
+
+[dependencies.mimir]
+path = "../mimir"
+default-features = false

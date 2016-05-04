@@ -29,6 +29,10 @@ default-features = false
 path = "libs/mimir"
 default-features = false
 
+[dependencies.osm_builder]
+path = "libs/osm_builder"
+default-features = false
+
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"
 
