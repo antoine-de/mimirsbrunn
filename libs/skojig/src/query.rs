@@ -32,12 +32,64 @@ use std::vec;
 use curl;
 use super::model;
 use rustc_serialize::json::Json;
-
+use rs_es;
+use rs_es::query::Query as rs_q;
+use serde_json;
+//use mimir;
 pub type CurlResult = Result<curl::http::Response, curl::ErrCode>;
+
+// TODO: this enum should be moved to rubbser so that we don't create cycled dependencies
+// pub enum ResType {
+//     Admin(mimir::Admin),
+// }
+
 
 fn query(q: &String) -> Result<curl::http::Response, curl::ErrCode> {
     use rustc_serialize::json::Json::String;
-    let query = format!(include_str!("../../../json/query_exact.json"), query=String(q.to_string()));
+
+    let subQuery = rs_q::build_bool()
+                      .with_should(vec![rs_q::build_term("_type","addr").with_boost(1000)
+                                  .build(),
+                              rs_q::build_match("name.prefix", q.to_string())
+                                  .with_boost(100)
+                                  .build(),
+                              rs_q::build_function_score()
+                                  .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+                                  .with_boost(30)
+                                  .with_query(rs_q::build_match_all().build())
+				  .with_function(rs_es::query::functions::Function::build_field_value_factor("")
+				      .with_factor(1)
+				      .with_modifier(rs_es::query::functions::Modifier::Log1p)
+				      .build())
+                                  .build()])
+                      .build();
+    let filter = rs_q::build_bool()
+                     .with_should(vec![rs_q::build_bool()
+                                           .with_must_not(rs_q::build_exists("house_number")
+                                                              .build())
+                                           .build(),
+                                       rs_q::build_match("house_number", q.to_string()).build()])
+                     .with_must(vec![rs_q::build_match("name.prefix", q.to_string()).with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()])
+                     .build();
+
+    let final_query = rs_q::build_bool()
+                          .with_must(vec![subQuery])
+                          .with_filter(filter)
+                          .build();
+
+    let mut client = rs_es::Client::new("localhost", 9200);
+    
+    /* TODO: Query is constructed, only have to send the query and the typed response
+    let result = client.search_query()
+                       .with_indexes(&["munin"])
+                       .with_query(&final_query)
+                       .send()
+                       .unwrap();
+
+    */ 
+    
+    let query = format!(include_str!("../../../json/query_exact.json"),
+                        query = String(q.to_string()));
     let resp = try!(curl::http::handle()
                     .post("http://localhost:9200/munin/_search?pretty", &query)
                     .exec());
