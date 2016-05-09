@@ -45,6 +45,7 @@ extern crate hyper;
 extern crate jsonway;
 extern crate valico;
 
+extern crate rs_es;
 use iron::Iron;
 use rustless::Application;
 
