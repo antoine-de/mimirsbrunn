@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Autocomplete {
     #[serde(rename="type")]
@@ -117,6 +116,10 @@ pub struct Coord {
 }
 
 pub mod v1 {
+  use mimir;
+  use model;
+  use rs_es;
+
     // Note: I think this should be in api.rs but with the serde stuff it's easier for all
     // serde struct to be in the same file
 
@@ -139,15 +142,27 @@ pub mod v1 {
             description: String,
         },
     }
-
     #[derive(Serialize, Deserialize, Debug)]
     pub enum AutocompleteResponse {
         Error(CustomError),
+        Autocomplete(super::Autocomplete)
     }
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct Status {
         pub version: String,
         pub status: String,
+    }
+
+    impl From<Result<Vec<mimir::Place>, rs_es::error::EsError>> for AutocompleteResponse {
+      fn from(r: Result<Vec<mimir::Place>, rs_es::error::EsError>) -> AutocompleteResponse {
+        match r {
+        Ok(places) => panic!("todo conversion"), //AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
+        Err(e) => AutocompleteResponse::Error(CustomError {
+                    short: "query error".to_string(),
+                    long: format!("invalid query {:?}", e),
+                })
+        }
+      }
     }
 }
