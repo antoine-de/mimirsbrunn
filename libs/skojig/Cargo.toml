@@ -28,3 +28,7 @@ nightly = ["serde_macros", "rs-es/nightly"]
 [build-dependencies]
 serde_codegen = { version = "*", optional = true }
 syntex = "*"
+
+[dependencies.mimir]
+path = "../mimir"
+default-features = false

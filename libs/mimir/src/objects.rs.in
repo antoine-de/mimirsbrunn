@@ -37,6 +37,14 @@ pub trait Incr: Clone {
     fn incr(&mut self);
 }
 
+/// Object stored in elastic search
+pub enum Place {
+    Admin(Admin),
+    Street(Street),
+    Addr(Addr)
+}
+
+
 pub trait DocType {
     fn doc_type() -> &'static str; // provides the elasticsearch type name
 }

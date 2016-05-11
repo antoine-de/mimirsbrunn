@@ -35,16 +35,12 @@ use rustc_serialize::json::Json;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use serde_json;
-//use mimir;
+use mimir;
 pub type CurlResult = Result<curl::http::Response, curl::ErrCode>;
 
-// TODO: this enum should be moved to rubbser so that we don't create cycled dependencies
-// pub enum ResType {
-//     Admin(mimir::Admin),
-// }
-
-
-fn query(q: &String) -> Result<curl::http::Response, curl::ErrCode> {
+fn query(q: &String) -> Result<Vec<mimir::Place>, ()> {
+    panic!("tod");
+    /*
     use rustc_serialize::json::Json::String;
 
     let subQuery = rs_q::build_bool()
@@ -78,7 +74,7 @@ fn query(q: &String) -> Result<curl::http::Response, curl::ErrCode> {
                           .build();
 
     let mut client = rs_es::Client::new("localhost", 9200);
-    
+
     /* TODO: Query is constructed, only have to send the query and the typed response
     let result = client.search_query()
                        .with_indexes(&["munin"])
@@ -86,8 +82,8 @@ fn query(q: &String) -> Result<curl::http::Response, curl::ErrCode> {
                        .send()
                        .unwrap();
 
-    */ 
-    
+    */
+
     let query = format!(include_str!("../../../json/query_exact.json"),
                         query = String(q.to_string()));
     let resp = try!(curl::http::handle()
@@ -99,10 +95,10 @@ fn query(q: &String) -> Result<curl::http::Response, curl::ErrCode> {
     let resp = curl::http::handle()
         .post("http://localhost:9200/munin/_search?pretty", &query)
         .exec();
-    resp
+    resp*/
 }
 
-fn query_location(q: &String, coord: &model::Coord) -> Result<curl::http::Response, curl::ErrCode> {
+fn query_location(q: &String, coord: &model::Coord) -> Result<Vec<mimir::Place>, ()> {
     panic!("todo!");
     /*
     use rustc_serialize::json::Json::String;
@@ -200,7 +196,8 @@ fn make_feature(json: &Json) -> model::Feature {
 */
 
 
-pub fn make_autocomplete(q: String, json: &Json) -> Result<model::Autocomplete, ()> {
+pub fn make_autocomplete(q: Vec<mimir::Place>) -> Result<model::Autocomplete, ()> {
+    panic!("todo");
     /*let sources: Vec<_> = json.find("hits")
         .and_then(|hs| hs.find("hits"))
         .and_then(|hs| hs.as_array())
@@ -210,8 +207,8 @@ pub fn make_autocomplete(q: String, json: &Json) -> Result<model::Autocomplete, 
         .unwrap()
         .collect();*/
 
-    let sources = Vec::<model::Feature>::new();
-    Ok(model::Autocomplete::new(q, sources))
+    //let sources = Vec::<model::Feature>::new();
+    //Ok(model::Autocomplete::new(q, sources))
 }
 
 pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<model::Autocomplete, ()> {
@@ -220,7 +217,6 @@ pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<model::Aut
     } else {
         query(&q)
     }.unwrap();
-    let es = Json::from_str(str::from_utf8(raw_es.get_body()).unwrap()).unwrap();
 
-    make_autocomplete(q, &es)
+    make_autocomplete(raw_es)
 }
