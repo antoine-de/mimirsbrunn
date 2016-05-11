@@ -38,6 +38,7 @@ pub trait Incr: Clone {
 }
 
 /// Object stored in elastic search
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Place {
     Admin(Admin),
     Street(Street),
