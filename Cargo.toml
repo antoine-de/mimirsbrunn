@@ -10,7 +10,7 @@ docopt = "*"
 rustc-serialize = "*"
 csv = "*"
 curl = "*"
-#rs-es = { version = "*", default-features = false }
+rs-es = { version = "0.3.4", default-features = false }
 regex = "*"
 osmpbfreader = "*"
 
@@ -35,12 +35,6 @@ default-features = false
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"
-
-[dependencies.rs-es]
-# for the moment we use a custom rs_es version, waiting for a PR to be merged
-git = "https://github.com/CanalTP/rs-es.git"
-rev = "fix_exists"
-default-features = false
 
 # we just call one test method: cf. tests::all_tests()
 [[test]]

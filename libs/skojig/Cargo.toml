@@ -14,9 +14,10 @@ iron = "*"
 log = "*"
 rustless = "*"
 urlencoded = "*"
+regex = "*"
 mdo = "*"
 valico = "0.8.2"
-#rs-es = { version = "*", default-features = false}
+rs-es = { version = "0.3.4", default-features = false}
 serde = "*"
 serde_json = "*"
 serde_macros = { version = "*", optional = true }
@@ -26,15 +27,10 @@ default = ["serde_codegen", "rs-es/default"]
 nightly = ["serde_macros"]
 
 [build-dependencies]
-serde_codegen = { version = "*", optional = true }
-syntex = "0.31.0"
+serde_codegen = { version = "0.7.5", optional = true }
+syntex = "0.32.0"
 
 [dependencies.mimir]
 path = "../mimir"
 default-features = false
 
-[dependencies.rs-es]
-# for the moment we use a custom rs_es version, waiting for a PR to be merged
-git = "https://github.com/CanalTP/rs-es.git"
-rev = "fix_exists"
-default-features = false

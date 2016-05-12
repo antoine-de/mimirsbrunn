@@ -27,13 +27,24 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use super::model;
+use super::{Args, model};
+use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
 use mimir;
 
-fn query(q: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn build_rs_client(args: &Args) -> rs_es::Client {
+    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)/(?P<index>\w+)")
+                 .unwrap();
+    let cap = re.captures(&args.flag_connection_string).unwrap();
+    let host = cap.name("host").unwrap();
+    let port = cap.name("port").unwrap().parse::<u32>().unwrap();
+
+    rs_es::Client::new(&host, port)
+}
+
+fn query(q: &String, args: &Args) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
                    .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
@@ -66,7 +77,7 @@ fn query(q: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
                           .with_filter(filter)
                           .build();
 
-    let mut client = rs_es::Client::new("localhost", 9200);
+    let mut client = build_rs_client(args);
 
     let result: SearchResult<mimir::Addr> = try!(client.search_query()
                                                    .with_indexes(&["munin"])
@@ -107,6 +118,11 @@ pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<Vec<mimir:
     if let Some(ref coord) = coord {
          query_location(&q, coord)
     } else {
-         query(&q)
+        let args = Args {
+
+    flag_bind: "".to_string(),
+    flag_connection_string: "".to_string(),
+};
+         query(&q, &args)
      }
 }

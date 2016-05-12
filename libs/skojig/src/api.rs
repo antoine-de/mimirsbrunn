@@ -94,11 +94,11 @@ pub fn v1(args: &Args) -> rustless::Api {
             })
         });
         api.mount(status(&args));
-        api.mount(autocomplete(&args));
+        api.mount(autocomplete(&args.clone()));
     })
 }
 
-pub fn status(args: &Args) -> rustless::Api {
+pub fn status(_args: &Args) -> rustless::Api {
     Api::build(|api| {
         api.get("status", |endpoint| {
             endpoint.handle(|client, _params| {
@@ -133,6 +133,7 @@ fn check_bound(val: &json::Json,
 }
 
 pub fn autocomplete(args: &Args) -> rustless::Namespace {
+info!("toto {:?}", args);
     rustless::Namespace::build("autocomplete", |ns| {
         ns.get("", |endpoint| {
             endpoint.params(|params| {

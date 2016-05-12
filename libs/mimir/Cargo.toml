@@ -10,7 +10,7 @@ env_logger = "*"
 docopt = "*"
 rustc-serialize = "*"
 curl = "*"
-#rs-es = { version = "*", default-features = false }
+rs-es = { version = "0.3.4", default-features = false }
 serde = "*"
 serde_json = "*"
 regex = "*"
@@ -21,11 +21,6 @@ default = ["serde_codegen", "rs-es/default"]
 nightly = ["serde_macros"]
 
 [build-dependencies]
-serde_codegen = { version = "*", optional = true }
-syntex = "0.31.0"
+serde_codegen = { version = "0.7.5", optional = true }
+syntex = "0.32.0"
 
-[dependencies.rs-es]
-# for the moment we use a custom rs_es version, waiting for a PR to be merged
-git = "https://github.com/CanalTP/rs-es.git"
-rev = "fix_exists"
-default-features = false
