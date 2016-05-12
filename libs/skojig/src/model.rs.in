@@ -200,7 +200,6 @@ pub struct Coord {
 
 pub mod v1 {
     use mimir;
-    use model;
     use rs_es;
 
     // Note: I think this should be in api.rs but with the serde stuff it's easier for all

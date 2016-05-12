@@ -27,21 +27,14 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use std::str;
-use std::vec;
-use curl;
 use super::model;
-use rustc_serialize::json::Json;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
-use serde_json;
 use mimir;
 
 fn query(q: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    use rustc_serialize::json::Json::String;
-
-    let subQuery = rs_q::build_bool()
+    let sub_query = rs_q::build_bool()
                    .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
                        rs_q::build_match("name.prefix", q.to_string())
@@ -52,7 +45,7 @@ fn query(q: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
                               .with_boost(30)
                               .with_query(rs_q::build_match_all().build())
 			                  .with_function(
-                          rs_es::query::functions::Function::build_field_value_factor("")
+                          rs_es::query::functions::Function::build_field_value_factor("weight")
 			                                  .with_factor(1)
                                       .with_modifier(rs_es::query::functions::Modifier::Log1p)
 			                                                          .build())
@@ -69,35 +62,26 @@ fn query(q: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
                      .build();
 
     let final_query = rs_q::build_bool()
-                          .with_must(vec![subQuery])
+                          .with_must(vec![sub_query])
                           .with_filter(filter)
                           .build();
 
     let mut client = rs_es::Client::new("localhost", 9200);
 
-    // TODO: Query is constructed, only have to send the query and the typed response
-    let result: SearchResult<mimir::Place> = try!(client.search_query()
+    let result: SearchResult<mimir::Addr> = try!(client.search_query()
                                                    .with_indexes(&["munin"])
                                                    .with_query(&final_query)
                                                    .send());
 
     debug!("{} documents found", result.hits.total);
-    panic!("todo");
 
-    // let query = format!(include_str!("../../../json/query_exact.json"),
-    // query = String(q.to_string()));
-    // let resp = try!(curl::http::handle()
-    // .post("http://localhost:9200/munin/_search?pretty", &query)
-    // .exec());
-    // let body = Json::from_str(str::from_utf8(resp.get_body()).unwrap()).unwrap();
-    // if body["hits"]["total"].as_u64().unwrap() > 0 { return Ok(resp); }
-    // let query = format!(include_str!("../../../json/query.json"), query=String(q.to_string()));
-    // let resp = curl::http::handle()
-    // .post("http://localhost:9200/munin/_search?pretty", &query)
-    // .exec();
+    // for the moment we can only get Addr, so they are transformed into Places
+    // TODO: reads Place, not Addr
+    Ok(result.hits.hits.into_iter()
+    .map(|hit| mimir::Place::Addr(*hit.source.unwrap())).collect())
 }
 
-fn query_location(q: &String, coord: &model::Coord) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn query_location(_q: &String, _coord: &model::Coord) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     panic!("todo!");
     // use rustc_serialize::json::Json::String;
     // let query = format!(include_str!("../../../json/query_exact_location.json"),
@@ -117,95 +101,6 @@ fn query_location(q: &String, coord: &model::Coord) -> Result<Vec<mimir::Place>,
     // .post("http://localhost:9200/munin/_search?pretty", &query)
     // .exec();
     // resp
-}
-// fn get_val<T>(json: &Json, path: &[&str]) -> T {
-// json.find_path(path).map(|j| j.clone()).unwrap_or("")
-// }
-// fn make_feature(json: &Json) -> model::Feature {
-// use rustc_serialize::json::Json::*;
-// use mdo::option::{bind, ret};
-//
-// let street = mdo! {
-// s =<< json.find("street");
-// s =<< s.find("street_name");
-// ret ret(s.clone())
-// }.unwrap_or(Null);
-// let house_number = mdo! {
-// nb =<< json.find("house_number");
-// ret ret(nb.clone())
-// }.unwrap_or(Null);
-// let name = mdo! {
-// let house_number = &house_number;
-// let street = &street;
-// nb =<< house_number.as_string();
-// s =<< street.as_string();
-// ret ret(String(format!("{} {}", nb, s)))
-// }.unwrap_or(Null);
-//
-// model::Feature {
-// feature_type: "Feature".to_string(),
-// properties: vec![
-// model::Property {
-// label: get_val(json, &["name"])
-// }
-// ],
-// geometry: vec![
-// model::Geometry {
-//
-// }
-// ]
-// }
-//
-// make_obj(vec![
-// ("properties", make_obj(vec![
-// ("label", json.find("name")
-// .map(|j| j.clone())
-// .unwrap_or(Null)),
-// ("name", name),
-// ("housenumber", house_number),
-// ("street", street),
-// ("postcode", json.find(&["street", "administrative_region", "zip_code")
-// .map(|j| j.clone())
-// .unwrap_or(Null)),
-// ("city", json.find("street")
-// .and_then(|s| s.find("administrative_region"))
-// .and_then(|s| s.find("name"))
-// .map(|j| j.clone())
-// .unwrap_or(Null)),
-// ("country", String("France".to_string()))
-// ])),
-// ("type", String("Feature".to_string())),
-// ("geometry", make_obj(vec![
-// ("type", String("Point".to_string())),
-// ("coordinates", Array(vec![
-// json.find("coord")
-// .and_then(|j| j.find("lon"))
-// .map(|j| j.clone())
-// .unwrap_or(Null),
-// json.find("coord")
-// .and_then(|j| j.find("lat"))
-// .map(|j| j.clone())
-// .unwrap_or(Null)
-// ]))
-// ])),
-// ])
-// }
-//
-
-
-pub fn make_autocomplete(q: Vec<mimir::Place>) -> Result<model::Autocomplete, ()> {
-    panic!("todo");
-    // let sources: Vec<_> = json.find("hits")
-    // .and_then(|hs| hs.find("hits"))
-    // .and_then(|hs| hs.as_array())
-    // .map(|hs| hs.iter()
-    // .filter_map(|h| h.find("_source"))
-    // .map(|s| make_feature(s)))
-    // .unwrap()
-    // .collect();
-
-    // let sources = Vec::<model::Feature>::new();
-    // Ok(model::Autocomplete::new(q, sources))
 }
 
 pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
