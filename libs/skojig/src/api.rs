@@ -36,6 +36,7 @@ use rustless::{Api, Nesting, Versioning};
 use valico::json_dsl;
 use valico::common::error as valico_error;
 use super::query;
+use super::Args;
 use model::v1::*;
 use model;
 
@@ -48,7 +49,7 @@ fn render<T>(mut client: rustless::Client,
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
-pub fn root() -> rustless::Api {
+pub fn root(args: &Args) -> rustless::Api {
     Api::build(|api| {
         api.get("", |endpoint| {
             endpoint.handle(|client, _params| {
@@ -77,11 +78,11 @@ pub fn root() -> rustless::Api {
             resp.set_json_content_type();
             Some(resp)
         });
-        api.mount(v1());
+        api.mount(v1(&args));
     })
 }
 
-pub fn v1() -> rustless::Api {
+pub fn v1(args: &Args) -> rustless::Api {
     Api::build(|api| {
         api.version("v1", Versioning::Path);
 
@@ -92,12 +93,12 @@ pub fn v1() -> rustless::Api {
                        V1Reponse::Response { description: "api version 1".to_string() })
             })
         });
-        api.mount(status());
-        api.mount(autocomplete());
+        api.mount(status(&args));
+        api.mount(autocomplete(&args));
     })
 }
 
-pub fn status() -> rustless::Api {
+pub fn status(args: &Args) -> rustless::Api {
     Api::build(|api| {
         api.get("status", |endpoint| {
             endpoint.handle(|client, _params| {
@@ -131,7 +132,7 @@ fn check_bound(val: &json::Json,
     }
 }
 
-pub fn autocomplete() -> rustless::Namespace {
+pub fn autocomplete(args: &Args) -> rustless::Namespace {
     rustless::Namespace::build("autocomplete", |ns| {
         ns.get("", |endpoint| {
             endpoint.params(|params| {
