@@ -33,4 +33,3 @@ syntex = "0.32.0"
 [dependencies.mimir]
 path = "../mimir"
 default-features = false
-
