@@ -36,6 +36,7 @@ use rustless::{Api, Nesting, Versioning};
 use valico::json_dsl;
 use valico::common::error as valico_error;
 use super::query;
+use super::Args;
 use model::v1::*;
 use model;
 
@@ -48,7 +49,7 @@ fn render<T>(mut client: rustless::Client,
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
-pub fn root() -> rustless::Api {
+pub fn root(args: &Args) -> rustless::Api {
     Api::build(|api| {
         api.get("", |endpoint| {
             endpoint.handle(|client, _params| {
@@ -60,20 +61,28 @@ pub fn root() -> rustless::Api {
         api.error_formatter(|error, _media| {
             let err = if error.is::<rustless::errors::Validation>() {
                 let val_err = error.downcast::<rustless::errors::Validation>().unwrap();
-                //TODO better message, we shouldn't use {:?} but access the `path` and `detail` of all errrors in val_err.reason
-                CustomError {short: "validation error".to_string(), long: format!("invalid arguments {:?}", val_err.reason)}
+                // TODO better message, we shouldn't use {:?} but access the `path`
+                // and `detail` of all errrors in val_err.reason
+                CustomError {
+                    short: "validation error".to_string(),
+                    long: format!("invalid arguments {:?}", val_err.reason),
+                }
             } else {
-                CustomError {short: "bad_request".to_string(), long: format!("bad request, error: {}", error)}
+                CustomError {
+                    short: "bad_request".to_string(),
+                    long: format!("bad request, error: {}", error),
+                }
             };
-            let mut resp = rustless::Response::from(status::StatusCode::BadRequest, Box::new(serde_json::to_string(&err).unwrap()));
+            let mut resp = rustless::Response::from(status::StatusCode::BadRequest,
+                                                    Box::new(serde_json::to_string(&err).unwrap()));
             resp.set_json_content_type();
             Some(resp)
         });
-        api.mount(v1());
+        api.mount(v1(&args));
     })
 }
 
-pub fn v1() -> rustless::Api {
+pub fn v1(args: &Args) -> rustless::Api {
     Api::build(|api| {
         api.version("v1", Versioning::Path);
 
@@ -84,12 +93,12 @@ pub fn v1() -> rustless::Api {
                        V1Reponse::Response { description: "api version 1".to_string() })
             })
         });
-        api.mount(status());
-        api.mount(autocomplete());
+        api.mount(status(&args));
+        api.mount(autocomplete(&args.clone()));
     })
 }
 
-pub fn status() -> rustless::Api {
+pub fn status(_args: &Args) -> rustless::Api {
     Api::build(|api| {
         api.get("status", |endpoint| {
             endpoint.handle(|client, _params| {
@@ -123,7 +132,7 @@ fn check_bound(val: &json::Json,
     }
 }
 
-pub fn autocomplete() -> rustless::Namespace {
+pub fn autocomplete(args: &Args) -> rustless::Namespace {
     rustless::Namespace::build("autocomplete", |ns| {
         ns.get("", |endpoint| {
             endpoint.params(|params| {
@@ -166,10 +175,17 @@ pub fn autocomplete() -> rustless::Namespace {
                 let q = params.find("q").unwrap().as_string().unwrap().to_string();
                 let lon = params.find("lon").and_then(|p| p.as_f64());
                 let lat = params.find("lat").and_then(|p| p.as_f64());
-                // we have already checked that if there is a lon, lat is not None, so we can unwrap
-                let coord = lon.and_then(|lon| Some(model::Coord{lon: lon, lat: lat.unwrap()}));
-                let autocomplete = query::autocomplete(q, coord);
-                render(client, autocomplete)
+                // we have already checked that if there is a lon, lat is not None so we can unwrap
+                let coord = lon.and_then(|lon| {
+                    Some(model::Coord {
+                        lon: lon,
+                        lat: lat.unwrap(),
+                    })
+                });
+                let model_autocomplete = query::autocomplete(q, coord);
+
+                let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                render(client, response)
             })
         });
     })

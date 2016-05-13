@@ -35,16 +35,18 @@ extern crate serde;
 extern crate serde_json;
 
 extern crate rustc_serialize;
-extern crate curl;
 extern crate docopt;
 extern crate iron;
 extern crate urlencoded;
+extern crate regex;
 
 extern crate rustless;
 extern crate hyper;
 extern crate jsonway;
 extern crate valico;
+extern crate mimir;
 
+extern crate rs_es;
 use iron::Iron;
 use rustless::Application;
 
@@ -58,8 +60,30 @@ mod api;
 mod query;
 mod model;
 
+#[derive(RustcDecodable, Debug)]
+pub struct Args {
+    flag_bind: String,
+    flag_connection_string: String,
+}
+
+static USAGE: &'static str = "
+Usage:
+    skojig --help
+    skojig [--bind=<addres>] [--connection-string=<connection-string>]
+
+Options:
+    -h, --help            Show this message.
+    -b, --bind=<addres>   adresse to bind, [default: 127.0.0.1:4000]
+    -c, --connection-string=<connection-string>
+                          Elasticsearch parameters, [default: http://localhost:9200/munin]
+";
+
 pub fn runserver() {
-    let api = api::root();
+    let args: Args = docopt::Docopt::new(USAGE)
+                         .and_then(|d| d.decode())
+                         .unwrap_or_else(|e| e.exit());
+    let api = api::root(&args);
     let app = Application::new(api);
-    Iron::new(app).http("0.0.0.0:4000").unwrap();
+    Iron::new(app).http(args.flag_bind.as_str()).unwrap();
+
 }

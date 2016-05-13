@@ -28,72 +28,147 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use mimir;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Autocomplete {
-    #[serde(rename="type")]
-    format_type: String,
-    geocoding: Geocoding,
-    features: Vec<Feature>
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Geocoding {
     version: String,
-    query: String,
+    query: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Feature {
     #[serde(rename="type")]
     pub feature_type: String,
-    pub geometry: Vec<Geometry>,
-    pub properties: Vec<Property>
+    pub geometry: Option<Geometry>, // should be required but geojson sucks
+    pub properties: Properties,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Property {
-    pub label: String,
-    pub place_type: String, //TODO enum cf https://github.com/geocoders/geocodejson-spec/blob/master/draft/README.md#feature-object
-    /*
-            ("label", json.find("name")
-                          .map(|j| j.clone())
-                          .unwrap_or(Null)),
-            ("name", name),
-            ("housenumber", house_number),
-            ("street", street),
-            ("postcode", json.find("street")
-                             .and_then(|s| s.find("administrative_region"))
-                             .and_then(|s| s.find("zip_code"))
-                             .map(|j| j.clone())
-                             .unwrap_or(Null)),
-            ("city", json.find("street")
-                         .and_then(|s| s.find("administrative_region"))
-                         .and_then(|s| s.find("name"))
-                         .map(|j| j.clone())
-                         .unwrap_or(Null)),
-            ("country", String("France".to_string()))*/
+pub struct Properties {
+    pub geocoding: GeocodingResponse,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GeocodingResponse {
+    pub place_type: String, /* TODO enum cf https://github.com/geocoders/geocodejson-spec/blob/master/draft/README.md#feature-object */
+    pub label: Option<String>,
+    pub name: Option<String>,
+    pub housenumber: Option<String>,
+    pub street: Option<String>,
+    pub postcode: Option<String>,
+    pub city: Option<String>,
+    //pub accuracy: Option<i32>,
+    //pub district: Option<String>,
+    //pub county: Option<String>,
+    //pub state: Option<String>,
+    //pub country: Option<String>,
+    //pub admin: Option<HashMap<String, String>>,
+    //pub geohash: Option<String>
+}
+
+impl From<mimir::Place> for Feature {
+    fn from(other: mimir::Place) -> Feature {
+        let geocoding = match other {
+            mimir::Place::Admin(admin) => GeocodingResponse::from(admin),
+            mimir::Place::Street(street) => GeocodingResponse::from(street),
+            mimir::Place::Addr(addr) => GeocodingResponse::from(addr),
+        };
+        Feature {
+            feature_type: "Feature".to_string(),
+            geometry: None, // TODO :)
+            properties: Properties { geocoding: geocoding },
+        }
+    }
+}
+
+impl From<mimir::Admin> for GeocodingResponse {
+    fn from(other: mimir::Admin) -> GeocodingResponse {
+        let type_ = "city".to_string(); //to be improved: it can be something else
+        let name = Some(other.name);
+        let postcode = Some(other.zip_code);
+        let label = name.clone();
+        GeocodingResponse {
+            place_type: type_,
+            name: name,
+            postcode: postcode,
+            label: label,
+            housenumber: None,
+            street: None,
+            city: None,
+        }
+    }
+}
+
+impl From<mimir::Street> for GeocodingResponse {
+    fn from(other: mimir::Street) -> GeocodingResponse {
+        let type_ = "street".to_string();
+        let name = Some(other.street_name);
+        let label = Some(other.name);
+        let (postcode, city) = other.administrative_region.map_or((None, None), |admin| {
+            (Some(admin.zip_code), Some(admin.name))
+        });
+
+        GeocodingResponse {
+            place_type: type_,
+            name: name,
+            postcode: postcode,
+            label: label,
+            housenumber: None,
+            street: None,
+            city: city,
+        }
+    }
+}
+
+impl From<mimir::Addr> for GeocodingResponse {
+    fn from(other: mimir::Addr) -> GeocodingResponse {
+        let type_ = "house".to_string();
+        let name = Some(other.name.clone());
+        let label = Some(other.name);
+        let housenumber = Some(other.house_number);
+        let street_name = Some(other.street.name);
+        let (postcode, city) = other.street.administrative_region.map_or((None, None), |admin| {
+            (Some(admin.zip_code), Some(admin.name))
+        });
+
+        GeocodingResponse {
+            place_type: type_,
+            name: name,
+            postcode: postcode,
+            label: label,
+            housenumber: housenumber,
+            street: street_name,
+            city: city,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Geometry {
     #[serde(rename="type")]
-    pub geometry_type: String,
+    pub geometry_type: String, /* ("type", String("Point".to_string())),
+                                * ("coordinates", Array(vec![
+                                * json.find("coord")
+                                * .and_then(|j| j.find("lon"))
+                                * .map(|j| j.clone())
+                                * .unwrap_or(Null),
+                                * json.find("coord")
+                                * .and_then(|j| j.find("lat"))
+                                * .map(|j| j.clone())
+                                * .unwrap_or(Null)
+                                * ]))
+                                * ])),
+                                * */
+}
 
-    /*
-("type", String("Point".to_string())),
-            ("coordinates", Array(vec![
-                json.find("coord")
-                    .and_then(|j| j.find("lon"))
-                    .map(|j| j.clone())
-                    .unwrap_or(Null),
-                json.find("coord")
-                    .and_then(|j| j.find("lat"))
-                    .map(|j| j.clone())
-                    .unwrap_or(Null)
-                ]))
-            ])),
-    */
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Autocomplete {
+    #[serde(rename="type")]
+    format_type: String,
+    geocoding: Geocoding,
+    features: Vec<Feature>,
 }
 
 impl Autocomplete {
@@ -103,10 +178,17 @@ impl Autocomplete {
             format_type: "FeatureCollection".to_string(),
             geocoding: Geocoding {
                 version: "0.1.0".to_string(),
-                query: q
+                query: Some(q),
             },
-            features: features
+            features: features,
         }
+    }
+}
+
+impl From<Vec<mimir::Place>> for Autocomplete {
+    fn from(places: Vec<mimir::Place>) -> Autocomplete {
+        Autocomplete::new("".to_string(),
+                          places.into_iter().map(|p| Feature::from(p)).collect())
     }
 }
 
@@ -117,6 +199,9 @@ pub struct Coord {
 }
 
 pub mod v1 {
+    use mimir;
+    use rs_es;
+
     // Note: I think this should be in api.rs but with the serde stuff it's easier for all
     // serde struct to be in the same file
 
@@ -139,15 +224,29 @@ pub mod v1 {
             description: String,
         },
     }
-
     #[derive(Serialize, Deserialize, Debug)]
     pub enum AutocompleteResponse {
         Error(CustomError),
+        Autocomplete(super::Autocomplete),
     }
 
     #[derive(Serialize, Deserialize, Debug)]
     pub struct Status {
         pub version: String,
         pub status: String,
+    }
+
+    impl From<Result<Vec<mimir::Place>, rs_es::error::EsError>> for AutocompleteResponse {
+        fn from(r: Result<Vec<mimir::Place>, rs_es::error::EsError>) -> AutocompleteResponse {
+            match r {
+                Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
+                Err(e) => {
+                    AutocompleteResponse::Error(CustomError {
+                        short: "query error".to_string(),
+                        long: format!("invalid query {:?}", e),
+                    })
+                }
+            }
+        }
     }
 }

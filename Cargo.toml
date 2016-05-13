@@ -10,7 +10,7 @@ docopt = "*"
 rustc-serialize = "*"
 csv = "*"
 curl = "*"
-rs-es = { version = "*", default-features = false }
+rs-es = { version = "0.3.4", default-features = false }
 regex = "*"
 osmpbfreader = "*"
 
@@ -19,7 +19,7 @@ serde_json = "*"
 
 [features]
 default = ["rs-es/default", "skojig/default", "mimir/default"]
-nightly = ["rs-es/nightly", "skojig/nightly", "mimir/nightly"]
+#nightly = ["skojig/nightly", "mimir/nightly"]
 
 [dependencies.skojig]
 path = "libs/skojig"

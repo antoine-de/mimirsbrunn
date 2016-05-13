@@ -36,7 +36,6 @@ use std::collections::HashMap;
 use mimir::objects::{Polygon, MultiPolygon};
 use osm_builder::named_node;
 
-
 struct BoundaryPart {
     nodes: Vec<osmpbfreader::Node>,
 }
