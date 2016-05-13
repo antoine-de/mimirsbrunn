@@ -33,6 +33,7 @@ use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
 use mimir;
+use serde_json;
 
 fn build_rs_client(args: &Args) -> rs_es::Client {
     let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)/(?P<index>\w+)")
@@ -42,6 +43,22 @@ fn build_rs_client(args: &Args) -> rs_es::Client {
     let port = cap.name("port").unwrap().parse::<u32>().unwrap();
 
     rs_es::Client::new(&host, port)
+}
+
+/// takes a ES json blob and build a Place from it
+/// it uses the _type field of ES to know which type of the Place enum to fill
+fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<mimir::Place> {
+    value.and_then(|v| {
+        match doc_type.as_ref() {
+            "addr" => serde_json::from_value::<mimir::Addr>(*v).ok().and_then(|o| Some(mimir::Place::Addr(o))),
+            "street" => serde_json::from_value::<mimir::Street>(*v).ok().and_then(|o| Some(mimir::Place::Street(o))),
+            "admin" => serde_json::from_value::<mimir::Admin>(*v).ok().and_then(|o| Some(mimir::Place::Admin(o))),
+            _    => {
+                warn!("unknown ES return value, _type field = {}", doc_type);
+                None
+            }
+        }
+    })
 }
 
 fn query(q: &String, args: &Args) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
@@ -79,19 +96,19 @@ fn query(q: &String, args: &Args) -> Result<Vec<mimir::Place>, rs_es::error::EsE
 
     let mut client = build_rs_client(args);
 
-    let result: SearchResult<mimir::Addr> = try!(client.search_query()
+    let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                        .with_indexes(&["munin"])
                                                        .with_query(&final_query)
                                                        .send());
 
     debug!("{} documents found", result.hits.total);
 
-    // for the moment we can only get Addr, so they are transformed into Places
-    // TODO: reads Place, not Addr
+    // for the moment rs-es does not handle enum Document,
+    // so we need to convert the ES glob to a Place
     Ok(result.hits
              .hits
              .into_iter()
-             .map(|hit| mimir::Place::Addr(*hit.source.unwrap()))
+             .filter_map(|hit| make_place(hit.doc_type, hit.source))
              .collect())
 }
 
