@@ -133,7 +133,6 @@ fn check_bound(val: &json::Json,
 }
 
 pub fn autocomplete(args: &Args) -> rustless::Namespace {
-info!("toto {:?}", args);
     rustless::Namespace::build("autocomplete", |ns| {
         ns.get("", |endpoint| {
             endpoint.params(|params| {
