@@ -69,21 +69,25 @@ pub struct Args {
 static USAGE: &'static str = "
 Usage:
     skojig --help
-    skojig [--bind=<addres>] [--connection-string=<connection-string>]
+    skojig [--bind=<address>] [--connection-string=<connection-string>]
 
 Options:
     -h, --help            Show this message.
     -b, --bind=<addres>   adresse to bind, [default: 127.0.0.1:4000]
     -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, [default: http://localhost:9200/munin]
+                          Elasticsearch parameters, override SKOKIG_ES and default to http://localhost:9200/munin
 ";
 
 pub fn runserver() {
-    let args: Args = docopt::Docopt::new(USAGE)
+    let mut args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
+    if args.flag_connection_string.is_empty() {
+        args.flag_connection_string = std::env::var("SKOJIG_ES").ok().unwrap_or("http://localhost:9200/munin".to_string());
+    }
     let api = api::ApiEndPoint{es_cnx_string: args.flag_connection_string.clone()}.root();
     let app = Application::new(api);
+    println!("listening on {}", args.flag_bind);
     Iron::new(app).http(args.flag_bind.as_str()).unwrap();
 
 }
