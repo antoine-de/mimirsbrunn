@@ -717,7 +717,6 @@ dependencies = [
 name = "skojig"
 version = "0.1.0"
 dependencies = [
- "curl 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",

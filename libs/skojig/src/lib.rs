@@ -35,7 +35,6 @@ extern crate serde;
 extern crate serde_json;
 
 extern crate rustc_serialize;
-extern crate curl;
 extern crate docopt;
 extern crate iron;
 extern crate urlencoded;

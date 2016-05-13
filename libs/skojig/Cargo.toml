@@ -7,7 +7,6 @@ build = "build.rs"
 [dependencies]
 docopt = "*"
 rustc-serialize = "*"
-curl = "*"
 hyper = "*"
 jsonway = "*"
 iron = "*"
