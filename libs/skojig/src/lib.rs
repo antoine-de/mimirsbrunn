@@ -82,7 +82,7 @@ pub fn runserver() {
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
-    let api = api::root(&args);
+    let api = api::ApiEndPoint{es_cnx_string: args.flag_connection_string.clone()}.root();
     let app = Application::new(api);
     Iron::new(app).http(args.flag_bind.as_str()).unwrap();
 

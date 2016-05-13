@@ -49,7 +49,13 @@ fn render<T>(mut client: rustless::Client,
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
-pub fn root(args: &Args) -> rustless::Api {
+pub struct ApiEndPoint {
+    pub es_cnx_string: String
+}
+
+impl ApiEndPoint {
+
+pub fn root(&self) -> rustless::Api {
     Api::build(|api| {
         api.get("", |endpoint| {
             endpoint.handle(|client, _params| {
@@ -78,11 +84,11 @@ pub fn root(args: &Args) -> rustless::Api {
             resp.set_json_content_type();
             Some(resp)
         });
-        api.mount(v1(&args));
+        api.mount(self.v1());
     })
 }
 
-pub fn v1(args: &Args) -> rustless::Api {
+fn v1(&self) -> rustless::Api {
     Api::build(|api| {
         api.version("v1", Versioning::Path);
 
@@ -93,12 +99,12 @@ pub fn v1(args: &Args) -> rustless::Api {
                        V1Reponse::Response { description: "api version 1".to_string() })
             })
         });
-        api.mount(status(&args));
-        api.mount(autocomplete(&args.clone()));
+        api.mount(self.status());
+        api.mount(self.autocomplete());
     })
 }
 
-pub fn status(_args: &Args) -> rustless::Api {
+fn status(&self) -> rustless::Api {
     Api::build(|api| {
         api.get("status", |endpoint| {
             endpoint.handle(|client, _params| {
@@ -112,27 +118,7 @@ pub fn status(_args: &Args) -> rustless::Api {
     })
 }
 
-fn check_bound(val: &json::Json,
-               path: &str,
-               min: f64,
-               max: f64,
-               error_msg: &str)
-               -> Result<(), valico_error::ValicoErrors> {
-    if let json::Json::F64(lon) = *val {
-        if min <= lon && lon <= max {
-            Ok(())
-        } else {
-            Err(vec![Box::new(json_dsl::errors::WrongValue {
-                         path: path.to_string(),
-                         detail: Some(error_msg.to_string()),
-                     })])
-        }
-    } else {
-        panic!("should never happen, already checked");
-    }
-}
-
-pub fn autocomplete(args: &Args) -> rustless::Namespace {
+fn autocomplete(&self) -> rustless::Namespace {
     rustless::Namespace::build("autocomplete", |ns| {
         ns.get("", |endpoint| {
             endpoint.params(|params| {
@@ -171,7 +157,8 @@ pub fn autocomplete(args: &Args) -> rustless::Namespace {
                     }
                 });
             });
-            endpoint.handle(|client, params| {
+            let cnx = self.es_cnx_string.clone();
+            endpoint.handle(move |client, params| {
                 let q = params.find("q").unwrap().as_string().unwrap().to_string();
                 let lon = params.find("lon").and_then(|p| p.as_f64());
                 let lat = params.find("lat").and_then(|p| p.as_f64());
@@ -182,7 +169,7 @@ pub fn autocomplete(args: &Args) -> rustless::Namespace {
                         lat: lat.unwrap(),
                     })
                 });
-                let model_autocomplete = query::autocomplete(q, coord);
+                let model_autocomplete = query::autocomplete(q, coord, cnx.clone());
 
                 let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                 render(client, response)
@@ -190,3 +177,25 @@ pub fn autocomplete(args: &Args) -> rustless::Namespace {
         });
     })
 }
+}
+
+fn check_bound(val: &json::Json,
+               path: &str,
+               min: f64,
+               max: f64,
+               error_msg: &str)
+               -> Result<(), valico_error::ValicoErrors> {
+    if let json::Json::F64(lon) = *val {
+        if min <= lon && lon <= max {
+            Ok(())
+        } else {
+            Err(vec![Box::new(json_dsl::errors::WrongValue {
+                         path: path.to_string(),
+                         detail: Some(error_msg.to_string()),
+                     })])
+        }
+    } else {
+        panic!("should never happen, already checked");
+    }
+}
+
