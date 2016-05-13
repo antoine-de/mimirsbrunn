@@ -75,7 +75,7 @@ Options:
     -h, --help            Show this message.
     -b, --bind=<addres>   adresse to bind, [default: 127.0.0.1:4000]
     -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, override SKOKIG_ES and default to http://localhost:9200/munin
+                          Elasticsearch parameters, override SKOJIG_ES and default to http://localhost:9200/munin
 ";
 
 pub fn runserver() {
