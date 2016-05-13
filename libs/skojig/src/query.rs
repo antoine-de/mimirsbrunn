@@ -46,7 +46,7 @@ fn build_rs_client(args: &Args) -> rs_es::Client {
 
 fn query(q: &String, args: &Args) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
-                   .with_should(vec![
+                        .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
                        rs_q::build_match("name.prefix", q.to_string())
                               .with_boost(100)
@@ -61,7 +61,7 @@ fn query(q: &String, args: &Args) -> Result<Vec<mimir::Place>, rs_es::error::EsE
                                       .with_modifier(rs_es::query::functions::Modifier::Log1p)
 			                                                          .build())
                               .build()])
-                       .build();
+                        .build();
     let filter = rs_q::build_bool()
                      .with_should(vec![rs_q::build_bool()
                                            .with_must_not(rs_q::build_exists("house_number")
@@ -80,31 +80,37 @@ fn query(q: &String, args: &Args) -> Result<Vec<mimir::Place>, rs_es::error::EsE
     let mut client = build_rs_client(args);
 
     let result: SearchResult<mimir::Addr> = try!(client.search_query()
-                                                   .with_indexes(&["munin"])
-                                                   .with_query(&final_query)
-                                                   .send());
+                                                       .with_indexes(&["munin"])
+                                                       .with_query(&final_query)
+                                                       .send());
 
     debug!("{} documents found", result.hits.total);
 
     // for the moment we can only get Addr, so they are transformed into Places
     // TODO: reads Place, not Addr
-    Ok(result.hits.hits.into_iter()
-    .map(|hit| mimir::Place::Addr(*hit.source.unwrap())).collect())
+    Ok(result.hits
+             .hits
+             .into_iter()
+             .map(|hit| mimir::Place::Addr(*hit.source.unwrap()))
+             .collect())
 }
 
-fn query_location(_q: &String, _coord: &model::Coord) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn query_location(_q: &String,
+                  _coord: &model::Coord)
+                  -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     panic!("todo!");
 }
 
-pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+pub fn autocomplete(q: String,
+                    coord: Option<model::Coord>)
+                    -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     if let Some(ref coord) = coord {
-         query_location(&q, coord)
+        query_location(&q, coord)
     } else {
         let args = Args {
-
-    flag_bind: "".to_string(),
-    flag_connection_string: "http://localhost:9200/munin".to_string(),
-};
-         query(&q, &args)
-     }
+            flag_bind: "".to_string(),
+            flag_connection_string: "http://localhost:9200/munin".to_string(),
+        };
+        query(&q, &args)
+    }
 }
