@@ -52,6 +52,8 @@ pub struct Properties {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GeocodingResponse {
+    pub id: String,
+    #[serde(rename="type")]
     pub place_type: String, /* TODO enum cf https://github.com/geocoders/geocodejson-spec/blob/master/draft/README.md#feature-object */
     pub label: Option<String>,
     pub name: Option<String>,
@@ -90,6 +92,7 @@ impl From<mimir::Admin> for GeocodingResponse {
         let postcode = Some(other.zip_code);
         let label = name.clone();
         GeocodingResponse {
+            id: other.id,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -111,6 +114,7 @@ impl From<mimir::Street> for GeocodingResponse {
         });
 
         GeocodingResponse {
+            id: other.id,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -134,6 +138,7 @@ impl From<mimir::Addr> for GeocodingResponse {
         });
 
         GeocodingResponse {
+            id: other.id,
             place_type: type_,
             name: name,
             postcode: postcode,
