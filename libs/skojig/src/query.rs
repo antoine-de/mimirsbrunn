@@ -94,24 +94,6 @@ fn query(q: &String, args: &Args) -> Result<Vec<mimir::Place>, rs_es::error::EsE
 
 fn query_location(_q: &String, _coord: &model::Coord) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     panic!("todo!");
-    // use rustc_serialize::json::Json::String;
-    // let query = format!(include_str!("../../../json/query_exact_location.json"),
-    // query=String(q.to_string()),
-    // lon=coord.lon,
-    // lat=coord.lat);
-    // let resp = try!(curl::http::handle()
-    // .post("http://localhost:9200/munin/_search?pretty", &query)
-    // .exec());
-    // let body = Json::from_str(str::from_utf8(resp.get_body()).unwrap()).unwrap();
-    // if body["hits"]["total"].as_u64().unwrap() > 0 { return Ok(resp); }
-    // let query = format!(include_str!("../../../json/query_location.json"),
-    // query=String(q.to_string()),
-    // lon=coord.lon,
-    // lat=coord.lat);
-    // let resp = curl::http::handle()
-    // .post("http://localhost:9200/munin/_search?pretty", &query)
-    // .exec();
-    // resp
 }
 
 pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
@@ -121,7 +103,7 @@ pub fn autocomplete(q: String, coord: Option<model::Coord>) -> Result<Vec<mimir:
         let args = Args {
 
     flag_bind: "".to_string(),
-    flag_connection_string: "".to_string(),
+    flag_connection_string: "http://localhost:9200/munin".to_string(),
 };
          query(&q, &args)
      }
