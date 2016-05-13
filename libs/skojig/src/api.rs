@@ -169,7 +169,7 @@ fn autocomplete(&self) -> rustless::Namespace {
                         lat: lat.unwrap(),
                     })
                 });
-                let model_autocomplete = query::autocomplete(q, coord, cnx.clone());
+                let model_autocomplete = query::autocomplete(q, coord, &cnx);
 
                 let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                 render(client, response)
@@ -198,4 +198,3 @@ fn check_bound(val: &json::Json,
         panic!("should never happen, already checked");
     }
 }
-

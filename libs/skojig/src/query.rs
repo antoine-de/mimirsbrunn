@@ -35,7 +35,7 @@ use rs_es::operations::search::SearchResult;
 use mimir;
 use serde_json;
 
-fn build_rs_client(cnx: String) -> rs_es::Client {
+fn build_rs_client(cnx: &String) -> rs_es::Client {
     let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)/(?P<index>\w+)")
                  .unwrap();
     let cap = re.captures(&cnx).unwrap();
@@ -61,7 +61,7 @@ fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option
     })
 }
 
-fn query(q: &String, cnx: String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn query(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
                         .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
@@ -94,7 +94,7 @@ fn query(q: &String, cnx: String) -> Result<Vec<mimir::Place>, rs_es::error::EsE
                           .with_filter(filter)
                           .build();
 
-    let mut client = build_rs_client(args);
+    let mut client = build_rs_client(cnx);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                        .with_indexes(&["munin"])
@@ -120,7 +120,7 @@ fn query_location(_q: &String,
 
 pub fn autocomplete(q: String,
                     coord: Option<model::Coord>,
-                    cnx: String)
+                    cnx: &String)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     if let Some(ref coord) = coord {
         query_location(&q, coord)
