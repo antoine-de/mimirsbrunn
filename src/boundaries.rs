@@ -34,6 +34,7 @@ extern crate osm_builder;
 
 use std::collections::HashMap;
 use mimir::objects::{Polygon, MultiPolygon};
+#[cfg(test)]
 use osm_builder::named_node;
 
 struct BoundaryPart {
@@ -249,10 +250,8 @@ fn test_build_bounadry_not_closed() {
     {
         let mut rel = builder.relation();
         rel_id = rel.relation_id;
-        rel.outer(vec![named_node(3.4, 5.2, "start"),
-                       named_node(5.4, 5.1, "1")])
-           .outer(vec![named_node(5.4, 5.1, "1"),
-                       named_node(2.4, 3.1, "2")])
+        rel.outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
+           .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
            .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "end")]);
     }
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {

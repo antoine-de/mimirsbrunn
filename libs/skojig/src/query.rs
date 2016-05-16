@@ -27,7 +27,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use super::{Args, model};
+use super::model;
 use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;

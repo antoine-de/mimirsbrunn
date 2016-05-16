@@ -42,7 +42,7 @@ pub trait Incr: Clone {
 pub enum Place {
     Admin(Admin),
     Street(Street),
-    Addr(Addr)
+    Addr(Addr),
 }
 
 
@@ -50,10 +50,10 @@ pub trait DocType {
     fn doc_type() -> &'static str; // provides the elasticsearch type name
 }
 
-impl <'a, T: DocType> DocType for &'a T {
+impl<'a, T: DocType> DocType for &'a T {
     fn doc_type() -> &'static str {
         T::doc_type()
-  }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -81,7 +81,9 @@ impl Incr for Admin {
     }
 }
 impl DocType for Admin {
-    fn doc_type() -> &'static str { "admin" }
+    fn doc_type() -> &'static str {
+        "admin"
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -101,7 +103,9 @@ impl Incr for Street {
     }
 }
 impl DocType for Street {
-    fn doc_type() -> &'static str { "street" }
+    fn doc_type() -> &'static str {
+        "street"
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -114,7 +118,9 @@ pub struct Addr {
     pub weight: u32,
 }
 impl DocType for Addr {
-    fn doc_type() -> &'static str { "addr" }
+    fn doc_type() -> &'static str {
+        "addr"
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -130,13 +136,16 @@ impl Polygon {
         }
         let mut coords = Vec::new();
         for c in &self.outer {
-            coords.push(format!("{lon} {lat}", lon=c.lon, lat=c.lat))
+            coords.push(format!("{lon} {lat}", lon = c.lon, lat = c.lat))
         }
         format!("POLYGON (({}))", coords.join(", "))
     }
 
     pub fn new(outer: Vec<Coord>) -> Polygon {
-        Polygon{outer: outer, inner: Vec::new()}
+        Polygon {
+            outer: outer,
+            inner: Vec::new(),
+        }
     }
 }
 
@@ -151,14 +160,13 @@ impl MultiPolygon {
             return "".to_string();
         }
         let mut polys = Vec::new();
-        for p in &self.polygons{
+        for p in &self.polygons {
             let mut coords = Vec::new();
             for c in &p.outer {
-                coords.push(format!("{lon} {lat}", lon=c.lon, lat=c.lat))
+                coords.push(format!("{lon} {lat}", lon = c.lon, lat = c.lat))
             }
             polys.push(format!("(({}))", coords.join(", ")))
         }
         format!("MULTIPOLYGON({})", polys.join(", "))
     }
-
 }
