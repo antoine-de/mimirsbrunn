@@ -36,6 +36,7 @@ extern crate regex;
 
 use super::objects::{Addr, Incr, DocType};
 
+use super::objects::{AliasOperations, AliasOperation, AliasParameter};
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
     index_name: String,
@@ -122,6 +123,40 @@ impl Rubber {
         if !res {
             info!("Error adding analysis");
         }
+    }
+
+    pub fn create_index_with_name(&mut self, name: &String) {
+        debug!("creating index");
+        // Note: for the moment I don't see an easy way to do this with rs_es
+        let analysis = include_str!("../../../json/settings.json");
+        let res = curl::http::handle()
+                      .put(self.client.full_url(&name), analysis)
+                      .exec()
+                      .map(|res| res.get_code() == 200)
+                      .unwrap_or(false);
+        if !res {
+            info!("Error while creating new index {}", name);
+        }
+    }
+
+    pub fn is_existing_index(&self, name: &String) -> Result<bool, String> {
+        curl::http::handle()
+            .get(self.client.full_url(&name))
+            .exec()
+            .map_err(|e| e.to_string())
+            .map(|res| res.get_code() == 200)
+    }
+
+    pub fn alias(&self, index_name: &String, add: &Vec<String>, remove: &Vec<String>) -> Result<(), String> {
+        let add_operations = add.iter().map(|x| AliasOperation{remove: None, add : Some(AliasParameter{index: index_name.clone(), alias: x.clone()})});
+        let remove_operations = remove.iter().map(|x| AliasOperation{add: None, remove : Some(AliasParameter{index: index_name.clone(), alias: x.clone()})});
+        let operations = AliasOperations{actions: add_operations.chain(remove_operations).collect()};
+        let json = serde_json::to_string(&operations).unwrap();
+        let e = curl::http::handle()
+            .put(self.client.full_url("_index"), &json)
+            .exec();
+        e.map_err(|e| e.to_string())
+            .and_then(|res| {if res.get_code() == 200 {Ok(())} else {Err("failed".to_string())}})
     }
 
     pub fn delete_index(&mut self) -> Result<(), Box<::std::error::Error>> {

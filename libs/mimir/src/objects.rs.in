@@ -170,3 +170,21 @@ impl MultiPolygon {
         format!("MULTIPOLYGON({})", polys.join(", "))
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AliasOperations {
+    pub actions: Vec<AliasOperation>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AliasOperation {
+    pub add: Option<AliasParameter>,
+    pub remove: Option<AliasParameter>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AliasParameter{
+    pub index: String,
+    pub alias: String,
+
+}
