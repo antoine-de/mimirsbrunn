@@ -13,6 +13,8 @@ curl = "*"
 rs-es = { version = "0.3.4", default-features = false }
 regex = "*"
 osmpbfreader = "*"
+chrono = "0.2"
+serde = "*"
 
 [dev-dependencies]
 serde_json = "*"

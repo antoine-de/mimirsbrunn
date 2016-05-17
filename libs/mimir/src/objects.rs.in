@@ -178,7 +178,9 @@ pub struct AliasOperations {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AliasOperation {
+    #[serde(skip_serializing_if="Option::is_none")]
     pub add: Option<AliasParameter>,
+    #[serde(skip_serializing_if="Option::is_none")]
     pub remove: Option<AliasParameter>,
 }
 

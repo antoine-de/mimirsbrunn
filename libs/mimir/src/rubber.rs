@@ -62,6 +62,24 @@ impl Rubber {
             client: rs_es::Client::new(&host, port),
         }
     }
+
+    pub fn new_with_index(cnx: &str, index: &str) -> Rubber {
+        let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)")
+                     .unwrap();
+        let cap = re.captures(cnx).unwrap();
+        let host = cap.name("host").unwrap();
+        let port = cap.name("port").unwrap().parse::<u32>().unwrap();
+        info!("elastic search host {:?} port {:?} index {:?}",
+              host,
+              port,
+              index);
+
+        Rubber {
+            index_name: index.to_string(),
+            client: rs_es::Client::new(&host, port),
+        }
+    }
+
     pub fn clean_db_by_doc_type(&mut self,
                                 doc_type: &[&str])
                                 -> Result<usize, rs_es::error::EsError> {
@@ -147,16 +165,17 @@ impl Rubber {
             .map(|res| res.get_code() == 200)
     }
 
-    pub fn alias(&self, index_name: &String, add: &Vec<String>, remove: &Vec<String>) -> Result<(), String> {
-        let add_operations = add.iter().map(|x| AliasOperation{remove: None, add : Some(AliasParameter{index: index_name.clone(), alias: x.clone()})});
-        let remove_operations = remove.iter().map(|x| AliasOperation{add: None, remove : Some(AliasParameter{index: index_name.clone(), alias: x.clone()})});
+    pub fn alias(&self, alias: &String, add: &Vec<String>, remove: &Vec<String>) -> Result<(), String> {
+        let add_operations = add.iter().map(|x| AliasOperation{remove: None, add : Some(AliasParameter{index: x.clone(), alias: alias.clone()})});
+        let remove_operations = remove.iter().map(|x| AliasOperation{add: None, remove : Some(AliasParameter{index: x.clone(), alias: alias.clone()})});
         let operations = AliasOperations{actions: add_operations.chain(remove_operations).collect()};
         let json = serde_json::to_string(&operations).unwrap();
+        debug!("{}", json);
         let e = curl::http::handle()
-            .put(self.client.full_url("_index"), &json)
+            .post(self.client.full_url("_aliases"), &json)
             .exec();
         e.map_err(|e| e.to_string())
-            .and_then(|res| {if res.get_code() == 200 {Ok(())} else {Err("failed".to_string())}})
+            .and_then(|res| {if res.get_code() == 200 {Ok(())} else {error!("es response: {}", res); Err("failed".to_string())}})
     }
 
     pub fn delete_index(&mut self) -> Result<(), Box<::std::error::Error>> {
