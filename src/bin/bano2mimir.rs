@@ -85,7 +85,7 @@ impl Bano {
             weight: 1,
         };
         mimir::Addr {
-            id: format!("addr:{};{}", self.lat, self.lon),
+            id: format!("addr:{};{}", self.lon, self.lat),
             house_number: self.nb,
             street: street,
             name: addr_name,
