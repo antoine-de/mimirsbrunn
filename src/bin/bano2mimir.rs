@@ -62,7 +62,7 @@ impl Bano {
         &self.id[..10]
     }
     pub fn into_addr(self) -> mimir::Addr {
-        let street_name = format!("{}, {} {}", self.street, self.zip, self.city);
+        let street_name = format!("{}, ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.nb, street_name);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let admin = mimir::Admin {
