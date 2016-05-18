@@ -70,6 +70,7 @@ pub struct Admin {
     pub zip_code: String,
     pub weight: u32,
     pub coord: Option<Coord>,
+    #[serde(skip_serializing)]
     pub boundary: Option<MultiPolygon>,
 }
 impl Incr for Admin {
