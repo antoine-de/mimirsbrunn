@@ -20,6 +20,7 @@ rs-es = { version = "0.3.4", default-features = false}
 serde = "*"
 serde_json = "*"
 serde_macros = { version = "*", optional = true }
+geojson = {version="*", features=["with-serde"]}
 
 [features]
 default = ["serde_codegen", "rs-es/default"]
