@@ -37,6 +37,8 @@ extern crate env_logger;
 extern crate serde;
 extern crate serde_json;
 
+extern crate chrono;
+
 pub mod objects;
 pub mod rubber;
 

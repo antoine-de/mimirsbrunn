@@ -15,6 +15,7 @@ serde = "*"
 serde_json = "*"
 regex = "*"
 serde_macros = { version = "*", optional = true }
+chrono = "0.2.*"
 
 [features]
 default = ["serde_codegen", "rs-es/default"]
@@ -23,4 +24,3 @@ nightly = ["serde_macros"]
 [build-dependencies]
 serde_codegen = { version = "0.7.5", optional = true }
 syntex = "0.32.0"
-

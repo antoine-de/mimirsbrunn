@@ -49,9 +49,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     }
 
     pub fn init(&self) {
-        let mut rubber = mimir::rubber::Rubber::new(&format!("{}/_all",
-                                                                   self.docker_wrapper.host()));
-        rubber.delete_index().unwrap();
+        let mut rubber = mimir::rubber::Rubber::new(&self.docker_wrapper.host());
+        rubber.delete_index(&"_all".to_string()).unwrap();
     }
 
     //    A way to watch if indexes are built might be curl http://localhost:9200/_stats

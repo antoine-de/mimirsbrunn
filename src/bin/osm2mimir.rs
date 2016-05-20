@@ -237,25 +237,7 @@ fn streets(pbf: &mut OsmPbfReader) -> StreetsVec {
             .collect()
 
 }
-fn index<C>(es_cnx_string: &str, items: C, index_name: &str) -> Result<u32, rs_es::error::EsError>
-        where C: IntoIterator,
-              C::Item: serde::Serialize + mimir::DocType,
-{
-    let mut rubber = Rubber::new_with_index(es_cnx_string, index_name);
-    rubber.bulk_index(items.into_iter())
-}
 
-
-fn init_indexes(es_cnx_string: &str, type_: &str, dataset: &str,) -> Result<String, String> {
-    let mut rubber = Rubber::new(es_cnx_string);
-    let index_name = format!("{}_{}", type_, dataset);
-    if !rubber.is_existing_index(&index_name).unwrap() {
-        rubber.create_index_with_name(&index_name.to_string());
-        try!(rubber.alias(&type_.to_string(), &vec![index_name.clone()], &vec![]));
-        try!(rubber.alias(&"munin".to_string(), &vec![type_.to_string()], &vec![]));
-    }
-    Ok(index_name)
-}
 
 fn main() {
     mimir::logger_init().unwrap();
@@ -266,15 +248,22 @@ fn main() {
     let levels = args.flag_level.iter().cloned().collect();
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
     debug!("creation of indexes");
-    let index_name = init_indexes(&args.flag_connection_string, &"admin", &args.flag_dataset).unwrap();
+    let mut rubber = Rubber::new(&args.flag_connection_string);
 
     debug!("importing adminstrative region into Mimir");
-    let nb_admins = index(&args.flag_connection_string, administrative_regions(&mut parsed_pbf, levels), &index_name).unwrap();
+    let nb_admins = rubber.index("admin",
+                                 &args.flag_dataset,
+                                 administrative_regions(&mut parsed_pbf, levels).into_iter())
+                          .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.flag_way {
-        let index_name = init_indexes(&args.flag_connection_string, &"way", &args.flag_dataset).unwrap();
-        let nb_street = index(&args.flag_connection_string, streets(&mut parsed_pbf), &index_name).unwrap();
-        info!("Nb of indexed street: {}", nb_street);
+        debug!("importing streets into Mimir");
+        let nb_streets = rubber.index("way",
+                                      &args.flag_dataset,
+                                      streets(&mut parsed_pbf).into_iter())
+                               .unwrap();
+        info!("Nb of indexed street: {}", nb_streets);
     }
+
 }
