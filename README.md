@@ -1,6 +1,7 @@
 # Mímirsbrunn
 
-mimir data import
+As a part of `Navitia <https://github.com/CanalTP/navitia>`_, Mimir is the geocoding service.
+Mimirsbrunn is the process which manages data import in Elasticsearch.
 
 ## build
 
@@ -58,7 +59,7 @@ There are several components in Mimirsbrunn:
 
 ### bano2mimir
 
-This component import bano's data into Mimir.
+This component imports bano's data into Mimir.
 
 You can get bano's data from http://bano.openstreetmap.fr/data/
 
@@ -77,7 +78,7 @@ To import all those data into Mimir, you only have to do:
 
 ### osm2mimir
 
-This component import openstreetmap data into Mimir.
+This component imports openstreetmap data into Mimir.
 
 You can get openstreetmap data from http://download.geofabrik.de/
 
