@@ -44,7 +44,7 @@ pub struct DockerWrapper {
 
 impl DockerWrapper {
     pub fn host(&self) -> String {
-        format!("localhost:{}", self.port)
+        format!("http://localhost:{}", self.port)
     }
 
     fn setup(&self) -> Result<(), Box<Error>> {

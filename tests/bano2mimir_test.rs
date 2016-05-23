@@ -29,6 +29,25 @@
 // www.navitia.io
 
 use std::process::Command;
+use hyper;
+use hyper::client::Client;
+use hyper::client::response::Response;
+//use rs_es;
+//use rs_es::EsResponse;
+use serde_json;
+use serde_json::value::Value;
+
+trait ToJson {
+    fn to_json(self) -> Value;
+}
+impl ToJson for Response {
+    fn to_json(self) -> Value {
+        match serde_json::from_reader(self) {
+            Ok(v) => v,
+            Err(e) => { assert!(false, "could not get json value from response: {:?}", e); panic!("should not be possible") }
+        }
+    }
+}
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
@@ -37,21 +56,27 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     info!("Launching {}", bano2mimir);
     let status = Command::new(bano2mimir)
                      .args(&["--input=./tests/sample-bano.csv".into(),
-                             format!("--connection-string={}/munin", es_wrapper.host())])
+                             format!("--connection-string={}", es_wrapper.host())])
                      .status()
                      .unwrap();
     assert!(status.success(), "`bano2mimir` failed {}", &status);
 
     es_wrapper.refresh();
+    let master_index = "munin"; // for the moment it's hard coded, but hopefully that will change
 
-    let res = ::curl::http::handle()
-                  .get(format!("{}/munin/_search?q=20", es_wrapper.host()))
-                  .exec()
-                  .unwrap();
-    assert!(res.get_code() == 200, "Error ES search: {}", res);
-    let body = ::std::str::from_utf8(res.get_body()).unwrap();
-    debug!("_search?q=20 :\n{}", body);
-    let value: ::serde_json::value::Value = ::serde_json::from_str(body).unwrap();
+    let client = Client::new();
+    let res = client.get(&format!("{host}/{index}/_search?q=20",
+                  host=es_wrapper.host(),
+                  index=master_index)).send().unwrap();
+    assert!(res.status == hyper::Ok);
+    let value = res.to_json();
+
     let nb_hits = value.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
     assert_eq!(nb_hits, 1);
+
+    // after an import, we should have 1 index, and some aliases to this index
+    let res = client.get(&format!("{host}/_aliases", host=es_wrapper.host()))
+                  .send()
+                  .unwrap();
+    assert!(res.status == hyper::Ok);
 }

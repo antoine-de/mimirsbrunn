@@ -18,6 +18,7 @@ serde = "*"
 
 [dev-dependencies]
 serde_json = "*"
+hyper = "0.9.4"
 
 [features]
 default = ["rs-es/default", "skojig/default", "mimir/default"]
