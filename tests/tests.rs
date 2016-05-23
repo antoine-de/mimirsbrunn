@@ -35,6 +35,8 @@ extern crate rs_es;
 extern crate serde_json;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate mdo;
 
 use docker_wrapper::*;
 

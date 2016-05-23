@@ -32,10 +32,9 @@ use std::process::Command;
 use hyper;
 use hyper::client::Client;
 use hyper::client::response::Response;
-//use rs_es;
-//use rs_es::EsResponse;
 use serde_json;
 use serde_json::value::Value;
+use mdo::option::{bind, ret};
 
 trait ToJson {
     fn to_json(self) -> Value;
@@ -79,4 +78,51 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                   .send()
                   .unwrap();
     assert!(res.status == hyper::Ok);
+
+    let json = res.to_json();
+    let raw_indexes = json.as_object().unwrap();
+    let first_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
+
+    assert!(first_indexes.len() == 1);
+    // our index should be aliased by the master_index + an alias over the document type + dataset
+     let aliases = mdo! {
+         s =<< raw_indexes.get(first_indexes.first().unwrap());
+         s =<< s.as_object();
+         s =<< s.get("aliases");
+         s =<< s.as_object();
+         ret ret(s.keys().cloned().collect())
+     }.unwrap_or(vec![]);
+     assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
+
+     // then we import again the bano file:
+     info!("importing again {}", bano2mimir);
+     let status = Command::new(bano2mimir)
+                      .args(&["--input=./tests/sample-bano.csv".into(),
+                              format!("--connection-string={}", es_wrapper.host())])
+                      .status()
+                      .unwrap();
+     assert!(status.success(), "`bano2mimir` failed {}", &status);
+    es_wrapper.refresh();
+
+    // we should still have only one index (but a different one)
+    let res = client.get(&format!("{host}/_aliases", host=es_wrapper.host()))
+                  .send()
+                  .unwrap();
+    assert!(res.status == hyper::Ok);
+
+    let json = res.to_json();
+    let raw_indexes = json.as_object().unwrap();
+    let final_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
+
+    assert!(final_indexes.len() == 1);
+    assert!(final_indexes != first_indexes);
+
+    let aliases = mdo! {
+        s =<< raw_indexes.get(final_indexes.first().unwrap());
+        s =<< s.as_object();
+        s =<< s.get("aliases");
+        s =<< s.as_object();
+        ret ret(s.keys().cloned().collect())
+    }.unwrap_or(vec![]);
+    assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
 }

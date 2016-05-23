@@ -9,6 +9,7 @@ dependencies = [
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mdo 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mimir 0.0.1",
  "osm_builder 0.1.0",
  "osmpbfreader 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
