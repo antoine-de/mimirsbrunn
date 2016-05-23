@@ -30,6 +30,7 @@
 
 use mimir;
 
+use geojson;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Geocoding {
@@ -41,7 +42,7 @@ pub struct Geocoding {
 pub struct Feature {
     #[serde(rename="type")]
     pub feature_type: String,
-    pub geometry: Option<Geometry>, // should be required but geojson sucks
+    pub geometry: Option<geojson::Geometry>, // should be required
     pub properties: Properties,
 }
 
@@ -70,8 +71,29 @@ pub struct GeocodingResponse {
     //pub geohash: Option<String>
 }
 
+trait ToGeom {
+    fn to_geom(&self) -> Option<geojson::Geometry>;
+}
+
+impl ToGeom for mimir::Place {
+    fn to_geom(&self) -> Option<geojson::Geometry> {
+        match self {
+            &mimir::Place::Admin(ref admin) => admin.coord.as_ref().map(|c| c.to_geom().unwrap()),
+            &mimir::Place::Street(ref _street) => None,
+            &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
+        }
+    }
+}
+
+impl ToGeom for mimir::Coord {
+    fn to_geom(&self) -> Option<geojson::Geometry> {
+        Some(geojson::Geometry::new(geojson::Value::Point(vec![self.lon, self.lat])))
+    }
+}
+
 impl From<mimir::Place> for Feature {
     fn from(other: mimir::Place) -> Feature {
+        let geom = other.to_geom();
         let geocoding = match other {
             mimir::Place::Admin(admin) => GeocodingResponse::from(admin),
             mimir::Place::Street(street) => GeocodingResponse::from(street),
@@ -79,7 +101,7 @@ impl From<mimir::Place> for Feature {
         };
         Feature {
             feature_type: "Feature".to_string(),
-            geometry: None, // TODO :)
+            geometry: geom,
             properties: Properties { geocoding: geocoding },
         }
     }
@@ -148,24 +170,6 @@ impl From<mimir::Addr> for GeocodingResponse {
             city: city,
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Geometry {
-    #[serde(rename="type")]
-    pub geometry_type: String, /* ("type", String("Point".to_string())),
-                                * ("coordinates", Array(vec![
-                                * json.find("coord")
-                                * .and_then(|j| j.find("lon"))
-                                * .map(|j| j.clone())
-                                * .unwrap_or(Null),
-                                * json.find("coord")
-                                * .and_then(|j| j.find("lat"))
-                                * .map(|j| j.clone())
-                                * .unwrap_or(Null)
-                                * ]))
-                                * ])),
-                                * */
 }
 
 #[derive(Serialize, Deserialize, Debug)]
