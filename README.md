@@ -1,6 +1,7 @@
 # Mímirsbrunn
 
-mimir data import
+As a part of `Navitia <https://github.com/CanalTP/navitia>`_, Mimir is the geocoding service.
+Mimirsbrunn is the process which manage data import in Elasticsearch.
 
 ## build
 
