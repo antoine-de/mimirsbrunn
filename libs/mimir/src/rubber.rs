@@ -75,7 +75,6 @@ impl Rubber {
     }
 
     fn create_index(&self, name: &String) -> Result<(), String> {
-        // TODO return an error
         debug!("creating index");
         // Note: for the moment I don't see an easy way to do this with rs_es
         let analysis = include_str!("../../../json/settings.json");
@@ -97,7 +96,6 @@ impl Rubber {
     }
 
     fn get_last_index(&self, doc_type: &str, dataset: &str) -> Result<Vec<String>, String> {
-
         debug!("get last index: {base_index}/_aliases",
                base_index = get_main_index(doc_type, dataset));
         curl::http::handle()
@@ -259,4 +257,5 @@ impl Rubber {
         self.publish_index(doc_type, dataset, index).unwrap();
         Ok(nb_elements)
     }
+
 }
