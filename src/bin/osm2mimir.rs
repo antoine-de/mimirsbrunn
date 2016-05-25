@@ -35,8 +35,11 @@ extern crate rustc_serialize;
 extern crate docopt;
 extern crate mimir;
 extern crate rs_es;
+extern crate chrono;
 
 extern crate mimirsbrunn;
+extern crate serde;
+
 
 use std::collections::HashSet;
 use mimir::rubber::Rubber;
@@ -51,6 +54,7 @@ struct Args {
     flag_level: Vec<u32>,
     flag_connection_string: String,
     flag_way: bool,
+    flag_dataset: String,
 }
 
 static USAGE: &'static str = "
@@ -65,6 +69,7 @@ Options:
     -w, --way             Import ways
     -c, --connection-string=<connection-string>
                           Elasticsearch parameters, [default: http://localhost:9200/munin]
+    -d, --dataset=<dataset>         Name of the dataset, [default: fr]
 ";
 
 #[derive(Debug)]
@@ -232,52 +237,33 @@ fn streets(pbf: &mut OsmPbfReader) -> StreetsVec {
             .collect()
 
 }
-// TODO: template these two functions
-fn index_admin(es_cnx_string: &str, admins: AdminsVec) {
-    let mut rubber = Rubber::new(es_cnx_string);
-    match rubber.clean_db_by_doc_type(&["admin"]) {
-        Err(e) => panic!("failed to clean data for admin: {}", e),
-        Ok(nb) => info!("Nb of cleaned indexed admins: {}", nb),
-    }
-    match rubber.bulk_index(admins.iter()) {
-        Err(e) => panic!("failed to index admins of osm because: {}", e),
-        Ok(nb) => info!("Nb of indexed adminstrative regions: {}", nb),
-    }
-}
 
-fn index_ways(es_cnx_string: &str, streets: StreetsVec) {
-    let mut rubber = Rubber::new(es_cnx_string);
-    match rubber.clean_db_by_doc_type(&["street"]) {
-        Err(e) => panic!("failed to clean data for street: {}", e),
-        Ok(nb) => info!("Nb of cleaned indexed streets: {}", nb),
-    }
-    match rubber.bulk_index(streets.iter()) {
-        Err(e) => panic!("failed to index streets of osm because: {}", e),
-        Ok(nb) => info!("Nb of indexed street: {}", nb),
-    }
-}
-
-fn index_settings(es_cnx_string: &str) {
-    let mut rubber = Rubber::new(es_cnx_string);
-    rubber.create_index();
-}
 
 fn main() {
     mimir::logger_init().unwrap();
-    debug!("importing adminstrative region into Mimir");
     let args: Args = docopt::Docopt::new(USAGE)
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
 
     let levels = args.flag_level.iter().cloned().collect();
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
+    debug!("creation of indexes");
+    let mut rubber = Rubber::new(&args.flag_connection_string);
 
-    let admins = administrative_regions(&mut parsed_pbf, levels);
-
-    index_settings(&args.flag_connection_string);
-    index_admin(&args.flag_connection_string, admins);
+    debug!("importing adminstrative region into Mimir");
+    let nb_admins = rubber.index("admin",
+                                 &args.flag_dataset,
+                                 administrative_regions(&mut parsed_pbf, levels).into_iter())
+                          .unwrap();
+    info!("Nb of indexed admin: {}", nb_admins);
 
     if args.flag_way {
-        index_ways(&args.flag_connection_string, streets(&mut parsed_pbf));
+        debug!("importing streets into Mimir");
+        let nb_streets = rubber.index("way",
+                                      &args.flag_dataset,
+                                      streets(&mut parsed_pbf).into_iter())
+                               .unwrap();
+        info!("Nb of indexed street: {}", nb_streets);
     }
+
 }

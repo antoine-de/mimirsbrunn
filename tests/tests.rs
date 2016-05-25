@@ -30,10 +30,13 @@
 
 extern crate mimir;
 extern crate docker_wrapper;
-extern crate curl;
+extern crate hyper;
+extern crate rs_es;
 extern crate serde_json;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate mdo;
 
 use docker_wrapper::*;
 
@@ -49,9 +52,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     }
 
     pub fn init(&self) {
-        let mut rubber = mimir::rubber::Rubber::new(&format!("{}/_all",
-                                                                   self.docker_wrapper.host()));
-        rubber.delete_index().unwrap();
+        let mut rubber = mimir::rubber::Rubber::new(&self.docker_wrapper.host());
+        rubber.delete_index(&"_all".to_string()).unwrap();
     }
 
     //    A way to watch if indexes are built might be curl http://localhost:9200/_stats
@@ -59,11 +61,9 @@ impl<'a> ElasticSearchWrapper<'a> {
     // 	  should be == 0 if indexes are ok (no refresh needed)
     pub fn refresh(&self) {
         info!("Refreshing ES indexes");
-        let res = ::curl::http::handle()
-                      .get(format!("{}/_refresh", self.host()))
-                      .exec()
-                      .unwrap();
-        assert!(res.get_code() == 200, "Error ES refresh: {}", res);
+
+        let res = hyper::client::Client::new().get(&format!("{}/_refresh", self.host())).send().unwrap();
+        assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
     }
 
     pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper {

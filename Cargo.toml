@@ -13,9 +13,13 @@ curl = "*"
 rs-es = { version = "0.3.4", default-features = false }
 regex = "*"
 osmpbfreader = "*"
+chrono = "0.2"
+serde = "*"
 
 [dev-dependencies]
 serde_json = "*"
+hyper = "0.9.4"
+mdo = "*"
 
 [features]
 default = ["rs-es/default", "skojig/default", "mimir/default"]

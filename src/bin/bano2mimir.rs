@@ -98,11 +98,12 @@ impl Bano {
     }
 }
 
-fn index_bano<I>(cnx_string: &str, files: I)
+fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
     where I: Iterator<Item = std::path::PathBuf>
 {
+    let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
-    rubber.create_index();
+    let addr_index = rubber.make_index(doc_type, dataset).unwrap();
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -112,17 +113,19 @@ fn index_bano<I>(cnx_string: &str, files: I)
             let b: Bano = r.unwrap();
             b.into_addr()
         });
-        match rubber.index(iter) {
+        match rubber.bulk_index(&addr_index, iter) {
             Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
             Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
         }
     }
+    rubber.publish_index(doc_type, dataset, addr_index).unwrap();
 }
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
     flag_input: String,
     flag_connection_string: String,
+    flag_dataset: String,
 }
 
 static USAGE: &'static str = "
@@ -132,6 +135,7 @@ Usage:
     -i, --input=<input>           Bano files. Can be either a directory or a file.
     -c, --connection-string=<connection-string>
                                   Elasticsearch parameters, [default: http://localhost:9200/munin]
+    -d, --dataset=<dataset>       Name of the dataset, [default: fr]
 ";
 
 fn main() {
@@ -146,9 +150,11 @@ fn main() {
     if file_path.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.flag_input).unwrap();
         index_bano(&args.flag_connection_string,
+                   &args.flag_dataset,
                    paths.map(|p| p.unwrap().path()));
     } else {
         index_bano(&args.flag_connection_string,
+                   &args.flag_dataset,
                    std::iter::once(std::path::PathBuf::from(&args.flag_input)));
     }
 }
