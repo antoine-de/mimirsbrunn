@@ -18,7 +18,7 @@ serde = "*"
 
 [dev-dependencies]
 serde_json = "*"
-hyper = "0.9.4"
+hyper = "0.8.1"
 mdo = "*"
 
 [features]

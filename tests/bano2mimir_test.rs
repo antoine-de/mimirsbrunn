@@ -31,22 +31,8 @@
 use std::process::Command;
 use hyper;
 use hyper::client::Client;
-use hyper::client::response::Response;
-use serde_json;
-use serde_json::value::Value;
 use mdo::option::{bind, ret};
-
-trait ToJson {
-    fn to_json(self) -> Value;
-}
-impl ToJson for Response {
-    fn to_json(self) -> Value {
-        match serde_json::from_reader(self) {
-            Ok(v) => v,
-            Err(e) => { assert!(false, "could not get json value from response: {:?}", e); panic!("should not be possible") }
-        }
-    }
-}
+use super::ToJson;
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
@@ -61,29 +47,23 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(status.success(), "`bano2mimir` failed {}", &status);
 
     es_wrapper.refresh();
-    let master_index = "munin"; // for the moment it's hard coded, but hopefully that will change
 
-    let client = Client::new();
-    let res = client.get(&format!("{host}/{index}/_search?q=20",
-                  host=es_wrapper.host(),
-                  index=master_index)).send().unwrap();
-    assert!(res.status == hyper::Ok);
-    let value = res.to_json();
-
+    let value = es_wrapper.search("20");
     let nb_hits = value.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
     assert_eq!(nb_hits, 1);
 
     // after an import, we should have 1 index, and some aliases to this index
+    let client = Client::new();
     let res = client.get(&format!("{host}/_aliases", host=es_wrapper.host()))
                   .send()
                   .unwrap();
-    assert!(res.status == hyper::Ok);
+    assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
     let raw_indexes = json.as_object().unwrap();
     let first_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
 
-    assert!(first_indexes.len() == 1);
+    assert_eq!(first_indexes.len(), 1);
     // our index should be aliased by the master_index + an alias over the document type + dataset
      let aliases = mdo! {
          s =<< raw_indexes.get(first_indexes.first().unwrap());
@@ -92,6 +72,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
          s =<< s.as_object();
          ret ret(s.keys().cloned().collect())
      }.unwrap_or(vec![]);
+     // for the moment 'munin' is hard coded, but hopefully that will change
      assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
 
      // then we import again the bano file:
@@ -108,13 +89,13 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let res = client.get(&format!("{host}/_aliases", host=es_wrapper.host()))
                   .send()
                   .unwrap();
-    assert!(res.status == hyper::Ok);
+    assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
     let raw_indexes = json.as_object().unwrap();
     let final_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
 
-    assert!(final_indexes.len() == 1);
+    assert_eq!(final_indexes.len(), 1);
     assert!(final_indexes != first_indexes);
 
     let aliases = mdo! {

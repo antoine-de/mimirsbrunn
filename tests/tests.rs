@@ -41,9 +41,26 @@ extern crate mdo;
 use docker_wrapper::*;
 
 mod bano2mimir_test;
+mod rubber_test;
+use serde_json::value::Value;
+use hyper::client::response::Response;
+
+trait ToJson {
+    fn to_json(self) -> Value;
+}
+impl ToJson for Response {
+    fn to_json(self) -> Value {
+        match serde_json::from_reader(self) {
+            Ok(v) => v,
+            Err(e) => { panic!("could not get json value from response: {:?}", e); }
+        }
+    }
+}
+
 
 pub struct ElasticSearchWrapper<'a> {
     docker_wrapper: &'a DockerWrapper,
+    pub rubber: mimir::rubber::Rubber
 }
 
 impl<'a> ElasticSearchWrapper<'a> {
@@ -51,9 +68,8 @@ impl<'a> ElasticSearchWrapper<'a> {
         self.docker_wrapper.host()
     }
 
-    pub fn init(&self) {
-        let mut rubber = mimir::rubber::Rubber::new(&self.docker_wrapper.host());
-        rubber.delete_index(&"_all".to_string()).unwrap();
+    pub fn init(&mut self) {
+        self.rubber.delete_index(&"_all".to_string()).unwrap();
     }
 
     //    A way to watch if indexes are built might be curl http://localhost:9200/_stats
@@ -67,9 +83,20 @@ impl<'a> ElasticSearchWrapper<'a> {
     }
 
     pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper {
-        let es_wrapper = ElasticSearchWrapper { docker_wrapper: docker_wrapper };
+        let mut es_wrapper = ElasticSearchWrapper {
+            docker_wrapper: docker_wrapper,
+            rubber: mimir::rubber::Rubber::new(&docker_wrapper.host())
+         };
         es_wrapper.init();
         es_wrapper
+    }
+
+    /// simple search on an index
+    /// assert that the result is OK and transform it to a json Value
+    pub fn search(&self, word: &str) -> serde_json::Value {
+        let res = self.rubber.get(&format!("munin/_search?q={}", word)).unwrap();
+        assert!(res.status == hyper::Ok);
+        res.to_json()
     }
 }
 
@@ -84,4 +111,5 @@ fn all_tests() {
 
     // we call all tests here
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
+    rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
 }

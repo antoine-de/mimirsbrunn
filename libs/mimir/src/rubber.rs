@@ -55,7 +55,7 @@ fn get_main_index(doc_type: &str, dataset: &str) -> String {
 }
 
 impl Rubber {
-    // build a rubber with a connection string (http://host:port/index)
+    // build a rubber with a connection string (http://host:port/)
     pub fn new(cnx: &str) -> Rubber {
         let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
         let cap = re.captures(cnx).unwrap();
@@ -69,7 +69,7 @@ impl Rubber {
         }
     }
 
-    fn get(&self, path: &str) -> Result<hyper::client::response::Response, EsError> {
+    pub fn get(&self, path: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         info!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
@@ -278,10 +278,22 @@ impl Rubber {
               I: Iterator<Item = T>
     {
         // TODO better error handling
-        let index = self.make_index(doc_type, dataset).unwrap();
-        let nb_elements = self.bulk_index(&index, iter).unwrap();
-        self.publish_index(doc_type, dataset, index).unwrap();
+        let index = try!(self.make_index(doc_type, dataset));
+        let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
+        try!(self.publish_index(doc_type, dataset, index));
         Ok(nb_elements)
     }
+}
 
+#[test]
+pub fn test_valid_url() {
+    Rubber::new("http://localhost:9200");
+    Rubber::new("localhost:9200");
+    Rubber::new("localhost");
+}
+
+#[test]
+#[should_panic]
+pub fn test_invalid_url() {
+    Rubber::new("http://bob");
 }
