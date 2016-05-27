@@ -50,6 +50,10 @@ pub trait DocType {
     fn doc_type() -> &'static str; // provides the elasticsearch type name
 }
 
+pub trait EsId {
+    fn es_id(&self) -> Option<String>; // provides the elasticsearch id
+}
+
 impl<'a, T: DocType> DocType for &'a T {
     fn doc_type() -> &'static str {
         T::doc_type()
@@ -81,6 +85,13 @@ impl Incr for Admin {
         self.weight += 1;
     }
 }
+
+impl EsId for Admin {
+    fn es_id(&self) -> Option<String> {
+        Some(self.id.clone())
+    }
+}
+
 impl DocType for Admin {
     fn doc_type() -> &'static str {
         "admin"
@@ -109,6 +120,12 @@ impl DocType for Street {
     }
 }
 
+impl EsId for Street {
+    fn es_id(&self) -> Option<String> {
+        None
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Addr {
     pub id: String,
@@ -121,6 +138,12 @@ pub struct Addr {
 impl DocType for Addr {
     fn doc_type() -> &'static str {
         "addr"
+    }
+}
+
+impl EsId for Addr {
+    fn es_id(&self) -> Option<String> {
+        None
     }
 }
 
