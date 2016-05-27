@@ -240,35 +240,30 @@ impl Rubber {
 
     pub fn bulk_index<T, I>(&mut self,
                             index: &String,
-                            mut iter: I)
-                            -> Result<u32, rs_es::error::EsError>
+                            iter: I)
+                            -> Result<usize, rs_es::error::EsError>
         where T: serde::Serialize + DocType + EsId,
               I: Iterator<Item = T>
     {
         use rs_es::operations::bulk::Action;
-        let mut chunk = Vec::new();
         let mut nb = 0;
+        let chunk_size = 1000;
+        //fold is used for creating the action and optionally set the id of the object
+        let mut actions = iter.map(|v| v.es_id()
+                                        .into_iter()
+                                        .fold(Action::index(v), |action, id| action.with_id(id)));
         loop {
-            chunk.clear();
-            let addr = match iter.next() {
-                Some(a) => a,
-                None => break,
-            };
-            //create the action and apply with_id to it if es_id returned Something
-            let action = addr.es_id().into_iter().fold(Action::index(addr), |action, id| action.with_id(id));
-            chunk.push(action);
-
-            nb += 1;
-            for addr in iter.by_ref().take(1000) {
-                let action = addr.es_id().into_iter().fold(Action::index(addr), |action, id| action.with_id(id));
-                chunk.push(action);
-                nb += 1;
-            }
+            let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
+            nb += chunk.len();
             try!(self.es_client
                      .bulk(&chunk)
                      .with_index(&index)
                      .with_doc_type(T::doc_type())
                      .send());
+
+            if chunk.len() < chunk_size {
+                break;
+            }
         }
 
         Ok(nb)
@@ -279,7 +274,7 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<u32, String>
+    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<usize, String>
         where T: serde::Serialize + DocType + EsId,
               I: Iterator<Item = T>
     {
