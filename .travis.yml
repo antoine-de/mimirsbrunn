@@ -7,5 +7,10 @@ matrix:
   allow_failures:
     - rust: nightly
 
+script:
+  - cargo test
+  - cargo test --package skojig
+  - cargo test --package mimir
+
 services:
   - docker

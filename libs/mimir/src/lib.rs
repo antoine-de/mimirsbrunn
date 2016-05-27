@@ -38,6 +38,9 @@ extern crate serde;
 extern crate serde_json;
 
 extern crate chrono;
+extern crate hyper;
+extern crate rs_es;
+extern crate regex;
 
 pub mod objects;
 pub mod rubber;

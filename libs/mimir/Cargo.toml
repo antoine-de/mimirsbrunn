@@ -9,13 +9,13 @@ log = "*"
 env_logger = "*"
 docopt = "*"
 rustc-serialize = "*"
-curl = "*"
 rs-es = { version = "0.3.4", default-features = false }
 serde = "*"
 serde_json = "*"
 regex = "*"
 serde_macros = { version = "*", optional = true }
 chrono = "0.2.*"
+hyper = "0.8.1"
 
 [features]
 default = ["serde_codegen", "rs-es/default"]

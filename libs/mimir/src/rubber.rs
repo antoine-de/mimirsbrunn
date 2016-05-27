@@ -28,21 +28,24 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate curl;
-extern crate rs_es;
-extern crate serde;
-extern crate serde_json;
-extern crate regex;
-
 use super::objects::DocType;
 use chrono;
+use regex;
+use hyper;
+use hyper::status::StatusCode;
+use rs_es::error::EsError;
+use rs_es;
+use rs_es::EsResponse;
+use serde;
+use serde_json;
 
 use super::objects::{AliasOperations, AliasOperation, AliasParameter};
-use serde_json::value::Value;
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
-    client: rs_es::Client,
+    es_client: rs_es::Client,
+    // some operation are not implemented in rs_es, we need to use a raw http client
+    http_client: hyper::client::Client,
 }
 
 /// return the index associated to the given type and dataset
@@ -52,7 +55,7 @@ fn get_main_index(doc_type: &str, dataset: &str) -> String {
 }
 
 impl Rubber {
-    // build a rubber with a connection string (http://host:port/index)
+    // build a rubber with a connection string (http://host:port/)
     pub fn new(cnx: &str) -> Rubber {
         let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
         let cap = re.captures(cnx).unwrap();
@@ -60,37 +63,64 @@ impl Rubber {
         let port = cap.name("port").unwrap().parse::<u32>().unwrap();
         info!("elastic search host {:?} port {:?}", host, port);
 
-        Rubber { client: rs_es::Client::new(&host, port) }
+        Rubber {
+            es_client: rs_es::Client::new(&host, port),
+            http_client: hyper::client::Client::new(),
+        }
+    }
+
+    pub fn get(&self, path: &str) -> Result<hyper::client::response::Response, EsError> {
+        // Note: a bit duplicate on rs_es because some ES operations are not implemented
+        debug!("doing a get on {}", path);
+        let url = self.es_client.full_url(path);
+        let result = try!(self.http_client
+                              .get(&url)
+                              .send());
+        rs_es::do_req(result)
+    }
+    fn put(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
+        // Note: a bit duplicate on rs_es because some ES operations are not implemented
+        debug!("doing a put on {} with {}", path, body);
+        let url = self.es_client.full_url(path);
+        let result = try!(self.http_client
+                              .put(&url)
+                              .body(body)
+                              .send());
+        rs_es::do_req(result)
+    }
+    fn post(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
+        // Note: a bit duplicate on rs_es because some ES operations are not implemented
+        debug!("doing a post on {} with {}", path, body);
+        let url = self.es_client.full_url(path);
+        let result = try!(self.http_client
+                              .post(&url)
+                              .body(body)
+                              .send());
+        rs_es::do_req(result)
     }
 
     pub fn make_index(&self, doc_type: &str, dataset: &str) -> Result<String, String> {
-        let current_time = chrono::UTC::now().format("%Y%m%d_%H%M%S");
+        let current_time = chrono::UTC::now().format("%Y%m%d_%H%M%S_%f");
         let index_name = format!("munin_{}_{}_{}", doc_type, dataset, current_time);
-        if !self.is_existing_index(&index_name).unwrap() {
-            info!("creating index {}", index_name);
-            self.create_index(&index_name.to_string()).map(|_| index_name)
-        } else {
-            Ok(index_name)
-        }
+        info!("creating index {}", index_name);
+        self.create_index(&index_name.to_string()).map(|_| index_name)
     }
 
     fn create_index(&self, name: &String) -> Result<(), String> {
         debug!("creating index");
-        // Note: for the moment I don't see an easy way to do this with rs_es
+        // Note: in rs_es it can be done with MappingOperation but for the moment I think
+        // storing the mapping in json is more convenient
         let analysis = include_str!("../../../json/settings.json");
-        curl::http::handle()
-            .put(self.client.full_url(&name), analysis)
-            .exec()
+        self.put(name, &analysis)
             .map_err(|e| {
                 info!("Error while creating new index {}", name);
                 e.to_string()
             })
             .and_then(|res| {
-                if res.get_code() == 200 {
+                if res.status == StatusCode::Ok {
                     Ok(())
                 } else {
-                    Err(format!("cannot create index: {}",
-                                ::std::str::from_utf8(res.get_body()).unwrap()))
+                    Err(format!("cannot create index: {:?}", res))
                 }
             })
     }
@@ -98,16 +128,14 @@ impl Rubber {
     fn get_last_index(&self, doc_type: &str, dataset: &str) -> Result<Vec<String>, String> {
         debug!("get last index: {base_index}/_aliases",
                base_index = get_main_index(doc_type, dataset));
-        curl::http::handle()
-            .get(self.client.full_url(&format!("{base_index}/_aliases",
-                                               base_index = get_main_index(doc_type, dataset))))
-            .exec()
+        self.get(&format!("{base_index}/_aliases",
+                          base_index = get_main_index(doc_type, dataset)))
             .map_err(|e| e.to_string())
             .and_then(|res| {
-                match res.get_code() {
-                    200 => {
-                        let body = ::std::str::from_utf8(res.get_body()).unwrap();
-                        let value: Value = ::serde_json::from_str(body).unwrap();
+                match res.status {
+                    StatusCode::Ok => {
+                        let value: serde_json::Value = try!(res.read_response()
+                                                               .map_err(|e| e.to_string()));
                         Ok(value.as_object()
                                 .and_then(|aliases| Some(aliases.keys().cloned().collect()))
                                 .unwrap_or_else(|| {
@@ -117,13 +145,14 @@ impl Rubber {
                                     vec![]
                                 }))
                     }
-                    404 => {
+                    StatusCode::NotFound => {
                         info!("impossible to find alias {}, no last index to remove",
                               get_main_index(doc_type, dataset));
                         Ok(vec![])
                     }
                     _ => Err(format!("invalid elasticsearch response: {:?}", res)),
                 }
+
             })
     }
 
@@ -141,23 +170,24 @@ impl Rubber {
         try!(self.alias(&main_index, &vec![index.clone()], &last_indexes));
         try!(self.alias("munin", &vec![main_index.to_string()], &vec![]));
         for i in last_indexes {
-            try!(self.delete_index(&i))
+            try!(self.delete_index(&i));
         }
         Ok(())
     }
 
-    fn is_existing_index(&self, name: &String) -> Result<bool, String> {
-        curl::http::handle()
-            .get(self.client.full_url(&name))
-            .exec()
+    pub fn is_existing_index(&self, name: &String) -> Result<bool, String> {
+        self.get(&name)
             .map_err(|e| e.to_string())
-            .map(|res| res.get_code() == 200)
+            .map(|res| res.status == StatusCode::Ok)
     }
 
     /// add a list of new indexes to the alias
     /// remove a list of indexes from the alias
     fn alias(&self, alias: &str, add: &Vec<String>, remove: &Vec<String>) -> Result<(), String> {
-        debug!("adding aliases for {}", alias);
+        info!("for {}, adding alias {:?}, removing {:?}",
+              alias,
+              add,
+              remove);
         let add_operations = add.iter().map(|x| {
             AliasOperation {
                 remove: None,
@@ -180,25 +210,23 @@ impl Rubber {
             actions: add_operations.chain(remove_operations).collect(),
         };
         let json = serde_json::to_string(&operations).unwrap();
-        let e = curl::http::handle()
-                    .post(self.client.full_url("_aliases"), &json)
-                    .exec();
-        e.map_err(|e| e.to_string())
-         .and_then(|res| {
-             info!("es response: {}",
-                   ::std::str::from_utf8(res.get_body()).unwrap());
-             if res.get_code() == 200 {
-                 Ok(())
-             } else {
-                 error!("es response: {}", res);
-                 Err("failed".to_string())
-             }
-         })
+        self.post("_aliases", &json)
+            .map_err(|e| e.to_string())
+            .and_then(|res| {
+                if res.status == StatusCode::Ok {
+                    Ok(())
+                } else {
+                    error!("failed to change aliases for {}, es response: {:?}",
+                           alias,
+                           res);
+                    Err(format!("failed to post aliases for {}: {:?}", alias, res).to_string())
+                }
+            })
     }
 
     pub fn delete_index(&mut self, index: &String) -> Result<(), String> {
         debug!("deleting index {}", &index);
-        let res = self.client
+        let res = self.es_client
                       .delete_index(&index)
                       .map(|res| res.acknowledged)
                       .unwrap_or(false);
@@ -216,7 +244,7 @@ impl Rubber {
         where T: serde::Serialize + DocType,
               I: Iterator<Item = T>
     {
-        use self::rs_es::operations::bulk::Action;
+        use rs_es::operations::bulk::Action;
         let mut chunk = Vec::new();
         let mut nb = 0;
         loop {
@@ -232,7 +260,7 @@ impl Rubber {
                 chunk.push(Action::index(addr));
                 nb += 1;
             }
-            try!(self.client
+            try!(self.es_client
                      .bulk(&chunk)
                      .with_index(&index)
                      .with_doc_type(T::doc_type())
@@ -252,10 +280,27 @@ impl Rubber {
               I: Iterator<Item = T>
     {
         // TODO better error handling
-        let index = self.make_index(doc_type, dataset).unwrap();
-        let nb_elements = self.bulk_index(&index, iter).unwrap();
-        self.publish_index(doc_type, dataset, index).unwrap();
+        let index = try!(self.make_index(doc_type, dataset));
+        let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
+        try!(self.publish_index(doc_type, dataset, index));
         Ok(nb_elements)
     }
+}
 
+#[test]
+pub fn test_valid_url() {
+    Rubber::new("http://localhost:9200");
+    Rubber::new("localhost:9200");
+}
+
+#[test]
+#[should_panic]
+pub fn test_invalid_url() {
+    Rubber::new("http://bob");
+}
+
+#[test]
+#[should_panic]
+pub fn test_invalid_url_no_port() {
+    Rubber::new("localhost");
 }
