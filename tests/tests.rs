@@ -52,7 +52,9 @@ impl ToJson for Response {
     fn to_json(self) -> Value {
         match serde_json::from_reader(self) {
             Ok(v) => v,
-            Err(e) => { panic!("could not get json value from response: {:?}", e); }
+            Err(e) => {
+                panic!("could not get json value from response: {:?}", e);
+            }
         }
     }
 }
@@ -60,7 +62,7 @@ impl ToJson for Response {
 
 pub struct ElasticSearchWrapper<'a> {
     docker_wrapper: &'a DockerWrapper,
-    pub rubber: mimir::rubber::Rubber
+    pub rubber: mimir::rubber::Rubber,
 }
 
 impl<'a> ElasticSearchWrapper<'a> {
@@ -78,15 +80,18 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn refresh(&self) {
         info!("Refreshing ES indexes");
 
-        let res = hyper::client::Client::new().get(&format!("{}/_refresh", self.host())).send().unwrap();
+        let res = hyper::client::Client::new()
+                      .get(&format!("{}/_refresh", self.host()))
+                      .send()
+                      .unwrap();
         assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
     }
 
     pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper {
         let mut es_wrapper = ElasticSearchWrapper {
             docker_wrapper: docker_wrapper,
-            rubber: mimir::rubber::Rubber::new(&docker_wrapper.host())
-         };
+            rubber: mimir::rubber::Rubber::new(&docker_wrapper.host()),
+        };
         es_wrapper.init();
         es_wrapper
     }

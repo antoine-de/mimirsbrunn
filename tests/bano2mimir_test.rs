@@ -54,9 +54,9 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // after an import, we should have 1 index, and some aliases to this index
     let client = Client::new();
-    let res = client.get(&format!("{host}/_aliases", host=es_wrapper.host()))
-                  .send()
-                  .unwrap();
+    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
+                    .send()
+                    .unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
@@ -65,30 +65,31 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     assert_eq!(first_indexes.len(), 1);
     // our index should be aliased by the master_index + an alias over the document type + dataset
-     let aliases = mdo! {
+    let aliases = mdo! {
          s =<< raw_indexes.get(first_indexes.first().unwrap());
          s =<< s.as_object();
          s =<< s.get("aliases");
          s =<< s.as_object();
          ret ret(s.keys().cloned().collect())
-     }.unwrap_or(vec![]);
-     // for the moment 'munin' is hard coded, but hopefully that will change
-     assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
+     }
+                      .unwrap_or(vec![]);
+    // for the moment 'munin' is hard coded, but hopefully that will change
+    assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
 
-     // then we import again the bano file:
-     info!("importing again {}", bano2mimir);
-     let status = Command::new(bano2mimir)
-                      .args(&["--input=./tests/sample-bano.csv".into(),
-                              format!("--connection-string={}", es_wrapper.host())])
-                      .status()
-                      .unwrap();
-     assert!(status.success(), "`bano2mimir` failed {}", &status);
+    // then we import again the bano file:
+    info!("importing again {}", bano2mimir);
+    let status = Command::new(bano2mimir)
+                     .args(&["--input=./tests/sample-bano.csv".into(),
+                             format!("--connection-string={}", es_wrapper.host())])
+                     .status()
+                     .unwrap();
+    assert!(status.success(), "`bano2mimir` failed {}", &status);
     es_wrapper.refresh();
 
     // we should still have only one index (but a different one)
-    let res = client.get(&format!("{host}/_aliases", host=es_wrapper.host()))
-                  .send()
-                  .unwrap();
+    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
+                    .send()
+                    .unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
@@ -104,6 +105,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         s =<< s.get("aliases");
         s =<< s.as_object();
         ret ret(s.keys().cloned().collect())
-    }.unwrap_or(vec![]);
+    }
+                      .unwrap_or(vec![]);
     assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
 }

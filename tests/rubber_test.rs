@@ -36,16 +36,19 @@ use std;
 fn check_has_elt(es: &::ElasticSearchWrapper, fun: Box<Fn(&Value)>) {
     let search = es.search("*:*"); // we get all documents in the base
     // we should have our elt
-    assert_eq!(search.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0), 1);
+    assert_eq!(search.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0),
+               1);
     let es_elt = search.lookup("hits.hits")
-    .and_then(|h| h.as_array())
-    .and_then(|v| v.first()).unwrap();
+                       .and_then(|h| h.as_array())
+                       .and_then(|v| v.first())
+                       .unwrap();
     fun(es_elt);
 }
 
 fn check_has_bob(es: &::ElasticSearchWrapper) {
     let check_is_bob = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(), "street");
+        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
+                   "street");
         let es_bob = es_elt.find("_source").unwrap();
         assert_eq!(es_bob.find("id"), Some(&to_value("bob")));
         assert_eq!(es_bob.find("street_name"), Some(&to_value("bob's street")));
@@ -68,7 +71,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         street_name: "bob's street".to_string(),
         name: "bob's name".to_string(),
         administrative_region: None,
-        weight: 42u32
+        weight: 42u32,
     };
 
     // we index our bob
@@ -86,7 +89,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         street_name: "bobette's street".to_string(),
         name: "bobette's name".to_string(),
         administrative_region: None,
-        weight: 24u32
+        weight: 24u32,
     };
 
     info!("inserting bobette");
@@ -97,17 +100,21 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         check_has_bob(&es);
     });
     let result = rubber.index(doc_type, dataset, checker_iter);
-    assert!(result.is_ok());
+    assert!(result.is_ok(),
+            "impossible to index bobette, res: {:?}",
+            result);
     assert_eq!(result.unwrap(), 1); // we still have only indexed 1 element
 
     es.refresh(); // we send another refresh
 
     // then we should have our bobette
     let check_is_bobette = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(), "street");
+        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
+                   "street");
         let es_bob = es_elt.find("_source").unwrap();
         assert_eq!(es_bob.find("id"), Some(&to_value("bobette")));
-        assert_eq!(es_bob.find("street_name"), Some(&to_value("bobette's street")));
+        assert_eq!(es_bob.find("street_name"),
+                   Some(&to_value("bobette's street")));
         assert_eq!(es_bob.find("name"), Some(&to_value("bobette's name")));
         assert_eq!(es_bob.find("weight"), Some(&Value::U64(24)));
     };
