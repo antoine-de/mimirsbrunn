@@ -103,6 +103,16 @@ impl<'a> ElasticSearchWrapper<'a> {
         assert!(res.status == hyper::Ok);
         res.to_json()
     }
+
+    pub fn get_nb_hits(&self, val: serde_json::Value) -> u64 {
+        val.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0)
+    }
+
+    pub fn get_nb_elt_by_type(&self, document_type: &str) -> u64 {
+        let res = self.rubber.get(&format!("munin/{}/_search?q=*:*", document_type)).unwrap();
+        assert!(res.status == hyper::Ok);
+        self.get_nb_hits(res.to_json())
+    }
 }
 
 /// Main test method (regroups all tests)

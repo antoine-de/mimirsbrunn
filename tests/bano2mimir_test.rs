@@ -49,8 +49,13 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     es_wrapper.refresh();
 
     let value = es_wrapper.search("20");
-    let nb_hits = value.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
-    assert_eq!(nb_hits, 1);
+    assert_eq!(es_wrapper.get_nb_hits(value), 1);
+    // we check that no admin or way has been inserted
+    assert_eq!(es_wrapper.get_nb_elt_by_type("street"), 0u64);
+    assert_eq!(es_wrapper.get_nb_elt_by_type("admin"), 0u64);
+    // but we have 31 house number (number of lines of the sample-bano.csv file)
+    assert_eq!(es_wrapper.get_nb_elt_by_type("addr"), 31u64);
+
 
     // after an import, we should have 1 index, and some aliases to this index
     let client = Client::new();
