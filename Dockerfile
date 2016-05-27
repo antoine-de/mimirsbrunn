@@ -9,13 +9,12 @@ RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 #you will need to update .dockerignore if you set this to another value
-ARG SKOJIG_BIN=target/release/skojig
+ARG BRAGI_BIN=target/release/bragi
 
-COPY $SKOJIG_BIN /srv/skojig
+COPY $BRAGI_BIN /srv/bragi
 
 EXPOSE 4000
-ENV ES_SKOJIG http://localhost:9200/munin
+ENV BRAGI_ES http://localhost:9200/munin
 ENV RUST_LOG=debug,hyper=info
 
-CMD /srv/skojig -b 0.0.0.0:4000
-
+CMD /srv/bragi -b 0.0.0.0:4000

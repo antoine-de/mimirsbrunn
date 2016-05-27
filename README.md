@@ -56,7 +56,7 @@ munin -> addr_dataset1 -> addr_dataset1_20160101T123200
      |-> street_dataset1 -> street_dataset1_20160101T123200
 ```
 
-Munin is the root index, it's an alias used by the frontend (skojig), it pointing to an index for each dataset/document type.
+Munin is the root index, it's an alias used by the frontend (bragi), it pointing to an index for each dataset/document type.
 So if we have address data for France and Belgium we will have two indexes: "addr_fr" and "addr_be". These are also aliases, they point to a dated index, this way we can import data in another index without impacting anyone, then switch the alias to point to the new data.
 
 This will give us the ability to only a part of the world without any downtime.
@@ -85,7 +85,7 @@ munin -> addr_dataset1
 ```
 
 
-There is one major drawback: dataset aren't hermetic since we import multiple OSM files, the area near the border will be in multiple dataset, for now we accept these duplicate. We will be able to filter with shape at import time and/or remove them in skojig.
+There is one major drawback: dataset aren't hermetic since we import multiple OSM files, the area near the border will be in multiple dataset, for now we accept these duplicate. We will be able to filter with shape at import time and/or remove them in bragi.
 
 ## <a name=components> components
 
@@ -144,7 +144,7 @@ Its responses format follow the [geocodejson-spec](https://github.com/geocoders/
 To run Bragi:
 
 ```shell
-./target/release/skojig --connection-string=http://localhost:9200
+./target/release/bragi --connection-string=http://localhost:9200
 ```
 
 you then can call the API (the default Bragi's listening port is 4000):

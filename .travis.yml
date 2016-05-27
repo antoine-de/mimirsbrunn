@@ -9,7 +9,7 @@ matrix:
 
 script:
   - cargo test
-  - cargo test --package skojig
+  - cargo test --package bragi
   - cargo test --package mimir
 
 services:

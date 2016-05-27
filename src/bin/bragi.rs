@@ -31,10 +31,10 @@
 #[macro_use]
 extern crate log;
 extern crate mimir;
-extern crate skojig;
+extern crate bragi;
 
 fn main() {
     mimir::logger_init().unwrap();
-    debug!("running skojig webserver");
-    skojig::runserver();
+    debug!("running bragi webserver");
+    bragi::runserver();
 }
