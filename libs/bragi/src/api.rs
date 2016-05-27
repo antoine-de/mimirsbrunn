@@ -32,7 +32,7 @@ use serde;
 use serde_json;
 use rustc_serialize::json;
 use rustless::server::status;
-use rustless::{Api, Nesting, Versioning};
+use rustless::{Api, Nesting};
 use valico::json_dsl;
 use valico::common::error as valico_error;
 use super::query;
@@ -89,15 +89,6 @@ pub fn root(&self) -> rustless::Api {
 
 fn v1(&self) -> rustless::Api {
     Api::build(|api| {
-        api.version("v1", Versioning::Path);
-
-        api.get("", |endpoint| {
-            endpoint.desc("api interface version v1");
-            endpoint.handle(|client, _params| {
-                render(client,
-                       V1Reponse::Response { description: "api version 1".to_string() })
-            })
-        });
         api.mount(self.status());
         api.mount(self.autocomplete());
     })
@@ -117,9 +108,9 @@ fn status(&self) -> rustless::Api {
     })
 }
 
-fn autocomplete(&self) -> rustless::Namespace {
-    rustless::Namespace::build("autocomplete", |ns| {
-        ns.get("", |endpoint| {
+fn autocomplete(&self) -> rustless::Api {
+    Api::build(|api| {
+        api.get("autocomplete", |endpoint| {
             endpoint.params(|params| {
                 params.req_typed("q", json_dsl::string());
 
