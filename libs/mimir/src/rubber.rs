@@ -28,7 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::objects::DocType;
+
+use super::objects::{DocType, EsId};
 use chrono;
 use regex;
 use hyper;
@@ -241,7 +242,7 @@ impl Rubber {
                             index: &String,
                             mut iter: I)
                             -> Result<u32, rs_es::error::EsError>
-        where T: serde::Serialize + DocType,
+        where T: serde::Serialize + DocType + EsId,
               I: Iterator<Item = T>
     {
         use rs_es::operations::bulk::Action;
@@ -253,11 +254,14 @@ impl Rubber {
                 Some(a) => a,
                 None => break,
             };
-            chunk.push(Action::index(addr));
+            //create the action and apply with_id to it if es_id returned Something
+            let action = addr.es_id().into_iter().fold(Action::index(addr), |action, id| action.with_id(id));
+            chunk.push(action);
 
             nb += 1;
             for addr in iter.by_ref().take(1000) {
-                chunk.push(Action::index(addr));
+                let action = addr.es_id().into_iter().fold(Action::index(addr), |action, id| action.with_id(id));
+                chunk.push(action);
                 nb += 1;
             }
             try!(self.es_client
@@ -276,7 +280,7 @@ impl Rubber {
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
     pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<u32, String>
-        where T: serde::Serialize + DocType,
+        where T: serde::Serialize + DocType + EsId,
               I: Iterator<Item = T>
     {
         // TODO better error handling
