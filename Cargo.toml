@@ -22,11 +22,11 @@ hyper = "0.8.1"
 mdo = "*"
 
 [features]
-default = ["rs-es/default", "skojig/default", "mimir/default"]
-#nightly = ["skojig/nightly", "mimir/nightly"]
+default = ["rs-es/default", "bragi/default", "mimir/default"]
+#nightly = ["bragi/nightly", "mimir/nightly"]
 
-[dependencies.skojig]
-path = "libs/skojig"
+[dependencies.bragi]
+path = "libs/bragi"
 default-features = false
 
 [dependencies.mimir]

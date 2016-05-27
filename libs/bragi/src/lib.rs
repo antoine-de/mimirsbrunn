@@ -69,14 +69,14 @@ pub struct Args {
 
 static USAGE: &'static str = "
 Usage:
-    skojig --help
-    skojig [--bind=<address>] [--connection-string=<connection-string>]
+    bragi --help
+    bragi [--bind=<address>] [--connection-string=<connection-string>]
 
 Options:
     -h, --help            Show this message.
     -b, --bind=<addres>   adresse to bind, [default: 127.0.0.1:4000]
     -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, override SKOJIG_ES and default to http://localhost:9200/munin
+                          Elasticsearch parameters, override BRAGI_ES and default to http://localhost:9200/munin
 ";
 
 pub fn runserver() {
@@ -84,7 +84,7 @@ pub fn runserver() {
                          .and_then(|d| d.decode())
                          .unwrap_or_else(|e| e.exit());
     if args.flag_connection_string.is_empty() {
-        args.flag_connection_string = std::env::var("SKOJIG_ES").ok().unwrap_or("http://localhost:9200/munin".to_string());
+        args.flag_connection_string = std::env::var("BRAGI_ES").ok().unwrap_or("http://localhost:9200/munin".to_string());
     }
     let api = api::ApiEndPoint{es_cnx_string: args.flag_connection_string.clone()}.root();
     let app = Application::new(api);

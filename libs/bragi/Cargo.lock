@@ -1,5 +1,5 @@
 [root]
-name = "skojig"
+name = "bragi"
 version = "0.1.0"
 dependencies = [
  "curl 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
