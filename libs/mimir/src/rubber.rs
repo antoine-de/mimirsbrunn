@@ -71,7 +71,7 @@ impl Rubber {
 
     pub fn get(&self, path: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
-        info!("doing a get on {}", path);
+        debug!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
         let result = try!(self.http_client
                               .get(&url)
@@ -80,7 +80,7 @@ impl Rubber {
     }
     fn put(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
-        info!("doing a put on {} with {}", path, body);
+        debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
         let result = try!(self.http_client
                               .put(&url)
@@ -90,7 +90,7 @@ impl Rubber {
     }
     fn post(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
-        info!("doing a post on {} with {}", path, body);
+        debug!("doing a post on {} with {}", path, body);
         let url = self.es_client.full_url(path);
         let result = try!(self.http_client
                               .post(&url)
