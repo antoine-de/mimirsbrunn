@@ -117,4 +117,5 @@ fn all_tests() {
     // we call all tests here
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
+    rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
 }
