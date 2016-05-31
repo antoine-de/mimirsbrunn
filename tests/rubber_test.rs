@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use serde_json::value::{to_value, Value};
-use mimir::Street;
+use mimir::{Street, Admin};
 use mimir::rubber::Rubber;
 use std;
 
@@ -119,4 +119,37 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         assert_eq!(es_bob.find("weight"), Some(&Value::U64(24)));
     };
     check_has_elt(&es, Box::new(check_is_bobette));
+}
+
+pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
+    info!("running rubber_custom_id");
+    let doc_type = "admin";
+    let dataset = "my_dataset";
+
+    let admin = Admin {
+        id: "admin:bob".to_string(),
+        level: 8,
+        name: "my admin".to_string(),
+        zip_code: "zip_code".to_string(),
+        weight: 42u32,
+        coord: None,
+        boundary: None,
+    };
+
+    // we index our admin
+    let result = es.rubber.index(doc_type, dataset, std::iter::once(admin));
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 1); // we have indexed 1 element
+
+    es.refresh(); // we need to refresh the index to be sure to get the elt;
+
+    let check_admin = |es_elt: &Value| {
+        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
+                   "admin");
+        let es_source = es_elt.find("_source").unwrap();
+        assert_eq!(es_elt.find("_id"), es_source.find("id"));
+        assert_eq!(es_elt.find("_id"), Some(&to_value("admin:bob")));
+    };
+    check_has_elt(&es, Box::new(check_admin));
 }
