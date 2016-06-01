@@ -9,7 +9,6 @@ log = "*"
 docopt = "*"
 rustc-serialize = "*"
 csv = "*"
-curl = "*"
 rs-es = { version = "0.3.4", default-features = false }
 regex = "*"
 osmpbfreader = "*"

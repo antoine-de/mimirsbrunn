@@ -1,6 +1,6 @@
 [package]
 name = "mimir"
-version = "0.0.1"
+version = "1.0.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 build = "build.rs"
 
@@ -22,5 +22,5 @@ default = ["serde_codegen", "rs-es/default"]
 nightly = ["serde_macros"]
 
 [build-dependencies]
-serde_codegen = { version = "0.7.5", optional = true }
-syntex = "0.32.0"
+serde_codegen = { version = "0.7.6", optional = true }
+syntex = "0.33.0"
