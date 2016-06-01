@@ -31,7 +31,6 @@
 extern crate docopt;
 extern crate csv;
 extern crate rustc_serialize;
-extern crate curl;
 extern crate mimir;
 #[macro_use]
 extern crate log;

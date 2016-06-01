@@ -27,11 +27,10 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
-extern crate curl;
 extern crate retry;
 #[macro_use]
 extern crate log;
+extern crate hyper;
 
 use std::process::Command;
 use std::error::Error;
@@ -63,10 +62,10 @@ impl DockerWrapper {
         info!("Waiting for ES in docker to be up and running...");
         match retry::retry(200,
                            100,
-                           || curl::http::handle().get(self.host()).exec(),
+                           || hyper::client::Client::new().get(&self.host()).send(),
                            |response| {
                                response.as_ref()
-                                       .map(|res| res.get_code() == 200)
+                                       .map(|res| res.status == hyper::Ok)
                                        .unwrap_or(false)
                            }) {
             Ok(_) => Ok(()),
