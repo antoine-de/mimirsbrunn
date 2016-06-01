@@ -130,7 +130,7 @@ struct Args {
 
 static USAGE: &'static str = "
 Usage:
-    bano2mimir --input=<input> [--connection-string=<connection-string>]
+    bano2mimir --input=<input> [--connection-string=<connection-string>] [--dataset=<dataset>]
 
     -i, --input=<input>           Bano files. Can be either a directory or a file.
     -c, --connection-string=<connection-string>

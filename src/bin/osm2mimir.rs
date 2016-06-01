@@ -53,20 +53,22 @@ struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
     flag_connection_string: String,
-    flag_way: bool,
+    flag_import_way: bool,
+    flag_import_admin: bool,
     flag_dataset: String,
 }
 
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] --level=<level> ... [--way]
+    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--dataset=<dataset>] --level=<level> ...
 
 Options:
     -h, --help            Show this message.
     -i, --input=<file>    OSM PBF file.
     -l, --level=<level>   Admin levels to keep.
-    -w, --way             Import ways
+    -w, --import-way             Import ways
+    -a, --import-admin           Import admins
     -c, --connection-string=<connection-string>
                           Elasticsearch parameters, [default: http://localhost:9200/munin]
     -d, --dataset=<dataset>         Name of the dataset, [default: fr]
@@ -257,7 +259,7 @@ fn main() {
                           .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
-    if args.flag_way {
+    if args.flag_import_way {
         debug!("importing streets into Mimir");
         let nb_streets = rubber.index("way",
                                       &args.flag_dataset,
