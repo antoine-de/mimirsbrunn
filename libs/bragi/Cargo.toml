@@ -1,6 +1,6 @@
 [package]
 name = "bragi"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 build = "build.rs"
 
@@ -27,8 +27,8 @@ default = ["serde_codegen", "rs-es/default"]
 nightly = ["serde_macros"]
 
 [build-dependencies]
-serde_codegen = { version = "0.7.5", optional = true }
-syntex = "0.32.0"
+serde_codegen = { version = "0.7.6", optional = true }
+syntex = "0.33.0"
 
 [dependencies.mimir]
 path = "../mimir"
