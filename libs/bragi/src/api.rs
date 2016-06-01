@@ -97,9 +97,11 @@ fn v1(&self) -> rustless::Api {
 fn status(&self) -> rustless::Api {
     Api::build(|api| {
         api.get("status", |endpoint| {
-            endpoint.handle(|client, _params| {
+            let cnx = self.es_cnx_string.clone();
+            endpoint.handle(move |client, _params| {
                 let status = Status {
-                    version: "14".to_string(),
+                    version: env!("CARGO_PKG_VERSION").to_string(),
+                    es: cnx.to_string(),
                     status: "good".to_string(),
                 };
                 render(client, status)
