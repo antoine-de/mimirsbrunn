@@ -29,7 +29,7 @@
 // www.navitia.io
 
 
-use super::objects::{DocType, EsId};
+use super::objects::{DocType, EsId, Admin};
 use chrono;
 use regex;
 use hyper;
@@ -39,8 +39,11 @@ use rs_es;
 use rs_es::EsResponse;
 use serde;
 use serde_json;
+use rs_es::operations::search::ScanResult;
 
 use super::objects::{AliasOperations, AliasOperation, AliasParameter};
+use rs_es::units::{Duration};
+use std::collections::BTreeMap;
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
@@ -246,6 +249,7 @@ impl Rubber {
               I: Iterator<Item = T>
     {
         use rs_es::operations::bulk::Action;
+        let mut chunk = Vec::new();
         let mut nb = 0;
         let chunk_size = 1000;
         //fold is used for creating the action and optionally set the id of the object
@@ -274,8 +278,8 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<usize, String>
-        where T: serde::Serialize + DocType + EsId,
+    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<u32, String>
+        where T: serde::Serialize + DocType,
               I: Iterator<Item = T>
     {
         // TODO better error handling
@@ -283,6 +287,54 @@ impl Rubber {
         let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
         try!(self.publish_index(doc_type, dataset, index));
         Ok(nb_elements)
+    }
+
+	fn make_admin(&self, value: Option<Box<serde_json::Value>>) -> Option<Admin> {
+	    value.and_then(|v| {
+	    		serde_json::from_value::<Admin>(*v).ok().and_then(|o| Some(o))
+	    })
+	}
+
+    pub fn get_admins(&mut self) -> Result<BTreeMap<String, Admin>, rs_es::error::EsError> {
+        debug!("Get Admins.");
+		let mut result: BTreeMap<String, Admin> = BTreeMap::new();
+		let scroll = Duration::minutes(1);
+		let mut scan: ScanResult<serde_json::Value> =
+		match self.es_client
+                     .search_query()
+                     .with_size(10000)
+                     .with_types(&[&"admin"])
+                     .scan(&scroll) {
+						Ok(scan) => scan,
+						Err(e) => {
+							info!("Scan error: {:?}", e);
+							return Err(e);
+						}
+					};
+		loop {
+			let page = match scan.scroll(&mut self.es_client, &scroll) {
+				Ok(page) => page,
+				Err(e) => {
+					info!("scroll error: {:?}", e);
+					try!(scan.close(&mut self.es_client));
+					return Err(e);
+				}
+			};
+		if page.hits.hits.len() == 0 {
+			break;
+		}
+		let tmp: Vec<Admin> = page.hits
+             .hits
+             .into_iter()
+             .filter_map(|hit| self.make_admin(hit.source))
+             .collect();
+		for ad in tmp {
+			result.insert(ad.id.to_string(), ad);
+		}
+		}
+		try!(scan.close(&mut self.es_client));
+	
+		Ok(result)
     }
 }
 
