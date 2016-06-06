@@ -76,7 +76,6 @@ impl Bano {
         let addr_name = format!("{} {}", self.nb, street_name);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let admin = admin_getter.admin_by_insee(&format!("admin:fr:{}", self.insee()));
-        println!("Admin: {:?}", admin);
         let street = mimir::Street {
             id: street_id,
             street_name: self.street,
