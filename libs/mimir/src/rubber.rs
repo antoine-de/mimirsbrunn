@@ -301,41 +301,40 @@ impl Rubber {
         let scroll = Duration::minutes(1);
         let mut scan: ScanResult<serde_json::Value> =
         match self.es_client
-                     .search_query()
-                     .with_size(10000)
-                     .with_types(&[&"admin"])
-                     .scan(&scroll) {
-                        Ok(scan) => scan,
-                        Err(e) => {
-                            info!("Scan error: {:?}", e);
-                            return Err(e);
-                        }
-                     };
+                  .search_query()
+                  .with_size(10000)
+                  .with_types(&[&"admin"])
+                  .scan(&scroll) {
+        	Ok(scan) => scan,
+        	Err(e) => {
+        		info!("Scan error: {:?}", e);
+        		return Err(e);
+        	}
+        };
         loop {
-			let page = match scan.scroll(&mut self.es_client, &scroll) {
-				Ok(page) => page,
-				Err(e) => {
-					info!("scroll error: {:?}", e);
-					try!(scan.close(&mut self.es_client));
-					return Err(e);
-				}
-			};
-	        if page.hits.hits.len() == 0 {
-				break;
-	        }
-	        let tmp: Vec<Admin> = page.hits
-	             .hits
-	             .into_iter()
-	             .filter_map(|hit| self.make_admin(hit.source))
-	             .collect();
-	        for ad in tmp {
-				result.insert(ad.id.to_string(), ad);
-	        }
-		}
-		try!(scan.close(&mut self.es_client));
-
-		Ok(result)
-    }
+        	let page = match scan.scroll(&mut self.es_client, &scroll) {
+        		Ok(page) => page,
+        		Err(e) => {
+        			info!("scroll error: {:?}", e);
+        			try!(scan.close(&mut self.es_client));
+        			return Err(e);
+        		}
+        	};
+        	if page.hits.hits.len() == 0 {
+        		break;
+        	}
+        	let tmp: Vec<Admin> = page.hits
+        	                          .hits
+        	                          .into_iter()
+        	                          .filter_map(|hit| self.make_admin(hit.source))
+        	                          .collect();
+        	for ad in tmp {
+        		result.insert(ad.id.to_string(), ad);
+        	}
+        }
+        try!(scan.close(&mut self.es_client));
+        Ok(result)
+	}
 }
 
 #[test]
