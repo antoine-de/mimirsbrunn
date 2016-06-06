@@ -297,21 +297,21 @@ impl Rubber {
 
     pub fn get_admins(&mut self) -> Result<BTreeMap<String, Admin>, rs_es::error::EsError> {
         debug!("Get Admins.");
-		let mut result: BTreeMap<String, Admin> = BTreeMap::new();
-		let scroll = Duration::minutes(1);
-		let mut scan: ScanResult<serde_json::Value> =
-		match self.es_client
+        let mut result: BTreeMap<String, Admin> = BTreeMap::new();
+        let scroll = Duration::minutes(1);
+        let mut scan: ScanResult<serde_json::Value> =
+        match self.es_client
                      .search_query()
                      .with_size(10000)
                      .with_types(&[&"admin"])
                      .scan(&scroll) {
-						Ok(scan) => scan,
-						Err(e) => {
+                        Ok(scan) => scan,
+                        Err(e) => {
 							info!("Scan error: {:?}", e);
 							return Err(e);
-						}
-					};
-		loop {
+                        }
+                     };
+        loop {
 			let page = match scan.scroll(&mut self.es_client, &scroll) {
 				Ok(page) => page,
 				Err(e) => {
@@ -320,20 +320,20 @@ impl Rubber {
 					return Err(e);
 				}
 			};
-		if page.hits.hits.len() == 0 {
-			break;
-		}
-		let tmp: Vec<Admin> = page.hits
-             .hits
-             .into_iter()
-             .filter_map(|hit| self.make_admin(hit.source))
-             .collect();
-		for ad in tmp {
-			result.insert(ad.id.to_string(), ad);
-		}
+	        if page.hits.hits.len() == 0 {
+				break;
+	        }
+	        let tmp: Vec<Admin> = page.hits
+	             .hits
+	             .into_iter()
+	             .filter_map(|hit| self.make_admin(hit.source))
+	             .collect();
+	        for ad in tmp {
+				result.insert(ad.id.to_string(), ad);
+	        }
 		}
 		try!(scan.close(&mut self.es_client));
-	
+
 		Ok(result)
     }
 }
