@@ -249,7 +249,6 @@ impl Rubber {
               I: Iterator<Item = T>
     {
         use rs_es::operations::bulk::Action;
-        let mut chunk = Vec::new();
         let mut nb = 0;
         let chunk_size = 1000;
         //fold is used for creating the action and optionally set the id of the object
@@ -278,8 +277,8 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<u32, String>
-        where T: serde::Serialize + DocType,
+    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<usize, String>
+        where T: serde::Serialize + DocType + EsId,
               I: Iterator<Item = T>
     {
         // TODO better error handling
@@ -296,25 +295,18 @@ impl Rubber {
 	}
 
     pub fn get_admins(&mut self, dataset: &str) -> Result<BTreeMap<String, Admin>, rs_es::error::EsError> {
-        debug!("Get Admins.");
+
         let mut result: BTreeMap<String, Admin> = BTreeMap::new();
-        let scroll = Duration::minutes(1);
         let index = get_main_index("admin", dataset);
         let mut scan: ScanResult<serde_json::Value> =
-        match self.es_client
+        try!(self.es_client
                   .search_query()
                   .with_indexes(&[&index])
-                  .with_size(10000)
+                  .with_size(1000)
                   .with_types(&[&"admin"])
-                  .scan(&scroll) {
-        	Ok(scan) => scan,
-        	Err(e) => {
-        		info!("Scan error: {:?}", e);
-        		return Err(e);
-        	}
-        };
+                  .scan(&Duration::minutes(1))); 
         loop {
-        	let page = match scan.scroll(&mut self.es_client, &scroll) {
+        	let page = match scan.scroll(&mut self.es_client, &Duration::minutes(1)) {
         		Ok(page) => page,
         		Err(e) => {
         			info!("scroll error: {:?}", e);
@@ -330,6 +322,7 @@ impl Rubber {
         	                          .into_iter()
         	                          .filter_map(|hit| self.make_admin(hit.source))
         	                          .collect();
+        	
         	for ad in tmp {
         		result.insert(ad.id.to_string(), ad);
         	}
