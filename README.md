@@ -149,5 +149,5 @@ To run Bragi:
 
 you then can call the API (the default Bragi's listening port is 4000):
 ```
-curl "http://localhost:4000/v1/autocomplete?q=rue+hector+malot"
+curl "http://localhost:4000/autocomplete?q=rue+hector+malot"
 ```
