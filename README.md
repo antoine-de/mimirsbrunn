@@ -144,7 +144,7 @@ Its responses format follow the [geocodejson-spec](https://github.com/geocoders/
 To run Bragi:
 
 ```shell
-./target/release/bragi --connection-string=http://localhost:9200
+./target/release/bragi --connection-string=http://localhost:9200/munin
 ```
 
 you then can call the API (the default Bragi's listening port is 4000):
