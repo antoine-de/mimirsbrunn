@@ -103,7 +103,7 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
     let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
     let admin_getter = AdminGetter {
-        admins: match rubber.get_admins() {
+        admins: match rubber.get_admins(dataset) {
             Ok(val) => val,
             _ => BTreeMap::new(),
         },

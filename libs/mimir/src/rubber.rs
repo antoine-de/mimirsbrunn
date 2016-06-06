@@ -295,13 +295,15 @@ impl Rubber {
 	    })
 	}
 
-    pub fn get_admins(&mut self) -> Result<BTreeMap<String, Admin>, rs_es::error::EsError> {
+    pub fn get_admins(&mut self, dataset: &str) -> Result<BTreeMap<String, Admin>, rs_es::error::EsError> {
         debug!("Get Admins.");
         let mut result: BTreeMap<String, Admin> = BTreeMap::new();
         let scroll = Duration::minutes(1);
+        let index = get_main_index("admin", dataset);
         let mut scan: ScanResult<serde_json::Value> =
         match self.es_client
                   .search_query()
+                  .with_indexes(&[&index])
                   .with_size(10000)
                   .with_types(&[&"admin"])
                   .scan(&scroll) {
