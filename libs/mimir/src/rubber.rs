@@ -307,8 +307,8 @@ impl Rubber {
                      .scan(&scroll) {
                         Ok(scan) => scan,
                         Err(e) => {
-							info!("Scan error: {:?}", e);
-							return Err(e);
+                            info!("Scan error: {:?}", e);
+                            return Err(e);
                         }
                      };
         loop {
