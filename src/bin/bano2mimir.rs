@@ -39,16 +39,7 @@ use std::path::Path;
 use mimir::rubber::Rubber;
 use std::fs;
 use std::collections::BTreeMap;
-
-pub struct AdminGetter {
-    admins: BTreeMap<String, mimir::Admin>,
-}
-
-impl AdminGetter {
-    pub fn admin_by_insee(&self, insee: &str) -> Option<&mimir::Admin> {
-        self.admins.get(&insee.to_string())
-    }
-}
+use mimir::rubber::AdminFromInsee;
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct Bano {
@@ -71,11 +62,11 @@ impl Bano {
         assert!(self.id.len() >= 10);
         &self.id[..10]
     }
-    pub fn into_addr(self, admin_getter: &AdminGetter) -> mimir::Addr {
+    pub fn into_addr(self, admins: &AdminFromInsee) -> mimir::Addr {
         let street_name = format!("{}, ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.nb, street_name);
         let street_id = format!("street:{}", self.fantoir().to_string());
-        let admin = admin_getter.admin_by_insee(&format!("admin:fr:{}", self.insee()));
+        let admin = admins.get(&format!("admin:fr:{}", self.insee()));
         let street = mimir::Street {
             id: street_id,
             street_name: self.street,
@@ -102,15 +93,15 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
 {
     let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
-    let admin_getter = AdminGetter {
-        admins: match rubber.get_admins(dataset) {
-            Ok(val) => val,
-            _ => {
-            	info!("Administratives regions not found in elasticsearch db for dataset {}.", dataset);
-            	BTreeMap::new()
-            }	
-        },
+    let admins = match rubber.get_admins(dataset) {
+        Ok(val) => val,
+        _ => {
+            info!("Administratives regions not found in elasticsearch db for dataset {}.",
+                  dataset);
+            BTreeMap::new()
+        }
     };
+
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
     info!("Add data in elasticsearch db.");
     for f in files {
@@ -119,7 +110,7 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
 
         let iter = rdr.decode().map(|r| {
             let b: Bano = r.unwrap();
-            b.into_addr(&admin_getter)
+            b.into_addr(&admins)
         });
         match rubber.bulk_index(&addr_index, iter) {
             Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
