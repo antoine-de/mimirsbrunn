@@ -289,9 +289,7 @@ impl Rubber {
     }
 
 	fn make_admin(&self, value: Option<Box<serde_json::Value>>) -> Option<Admin> {
-	    value.and_then(|v| {
-	    		serde_json::from_value::<Admin>(*v).ok().and_then(|o| Some(o))
-	    })
+		value.and_then(|v| serde_json::from_value::<Admin>(*v).ok())
 	}
 
     pub fn get_admins(&mut self, dataset: &str) -> Result<BTreeMap<String, Admin>, rs_es::error::EsError> {
@@ -304,16 +302,9 @@ impl Rubber {
                   .with_indexes(&[&index])
                   .with_size(1000)
                   .with_types(&[&"admin"])
-                  .scan(&Duration::minutes(1))); 
+                  .scan(&Duration::minutes(1)));
         loop {
-        	let page = match scan.scroll(&mut self.es_client, &Duration::minutes(1)) {
-        		Ok(page) => page,
-        		Err(e) => {
-        			info!("scroll error: {:?}", e);
-        			try!(scan.close(&mut self.es_client));
-        			return Err(e);
-        		}
-        	};
+        	let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
         	if page.hits.hits.len() == 0 {
         		break;
         	}

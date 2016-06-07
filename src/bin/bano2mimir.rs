@@ -80,7 +80,7 @@ impl Bano {
             id: street_id,
             street_name: self.street,
             name: street_name,
-            administrative_region: admin.map(|a| a.clone()),
+            administrative_region: admin.cloned(),
             weight: 1,
         };
         mimir::Addr {
@@ -105,7 +105,10 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
     let admin_getter = AdminGetter {
         admins: match rubber.get_admins(dataset) {
             Ok(val) => val,
-            _ => BTreeMap::new(),
+            _ => {
+            	info!("Administratives regions not found in elasticsearch db for dataset {}.", dataset);
+            	BTreeMap::new()
+            }	
         },
     };
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
