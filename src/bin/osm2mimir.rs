@@ -152,10 +152,9 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
                                                }
                                            })
                                        });
-
-            let admin_id = match relation.tags.get("ref:INSEE") {
-                Some(val) => format!("admin:fr:{}", val.trim_left_matches('0')),
-                None => format!("admin:osm:{}", relation.id),
+            let (admin_id, insee_id) = match relation.tags.get("ref:INSEE") {
+                Some(val) => (format!("admin:fr:{}", val.trim_left_matches('0')), val.trim_left_matches('0')),
+                None => (format!("admin:osm:{}", relation.id), ""),
             };
             let zip_code = match relation.tags.get("addr:postcode") {
                 Some(val) => &val[..],
@@ -164,6 +163,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
             let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
             let admin = mimir::Admin {
                 id: admin_id,
+                insee: insee_id.to_string(),
                 level: level,
                 name: name.to_string(),
                 zip_code: zip_code.to_string(),
