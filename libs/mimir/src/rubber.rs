@@ -291,25 +291,25 @@ impl Rubber {
     }
 
     pub fn get_admins(&mut self, dataset: &str) -> Result<AdminFromInsee, rs_es::error::EsError> {
-    	let mut result: AdminFromInsee = BTreeMap::new();
-    	let index = get_main_index("admin", dataset);
-    	let mut scan: ScanResult<Admin> = try!(self.es_client
-    		.search_query()
-    		.with_indexes(&[&index])
-    		.with_size(1000)
-    		.with_types(&[&"admin"])
-    		.scan(&Duration::minutes(1)));
-    	loop {
-    		let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
-    		if page.hits.hits.len() == 0 {
-    			break;
-    		}
-    		for ad in page.hits.hits.into_iter().filter_map(|hit| hit.source) {
-    			result.insert(ad.id.to_string(), *ad);
-    		}
-    	}
-    	try!(scan.close(&mut self.es_client));
-    	Ok(result)
+        let mut result: AdminFromInsee = BTreeMap::new();
+        let index = get_main_index("admin", dataset);
+        let mut scan: ScanResult<Admin> = try!(self.es_client
+            .search_query()
+            .with_indexes(&[&index])
+            .with_size(1000)
+            .with_types(&[&"admin"])
+            .scan(&Duration::minutes(1)));
+        loop {
+            let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
+            if page.hits.hits.len() == 0 {
+                break;
+            }
+            for ad in page.hits.hits.into_iter().filter_map(|hit| hit.source) {
+                result.insert(ad.id.to_string(), *ad);
+            }
+        }
+        try!(scan.close(&mut self.es_client));
+        Ok(result)
     }
 }
 
