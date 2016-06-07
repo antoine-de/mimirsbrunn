@@ -29,7 +29,7 @@
 // www.navitia.io
 
 
-use super::objects::{DocType, EsId};
+use super::objects::{DocType, EsId, Admin};
 use chrono;
 use regex;
 use hyper;
@@ -39,8 +39,13 @@ use rs_es;
 use rs_es::EsResponse;
 use serde;
 use serde_json;
+use rs_es::operations::search::ScanResult;
 
 use super::objects::{AliasOperations, AliasOperation, AliasParameter};
+use rs_es::units::Duration;
+use std::collections::BTreeMap;
+
+pub type AdminFromInsee = BTreeMap<String, Admin>;
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
@@ -283,6 +288,28 @@ impl Rubber {
         let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
         try!(self.publish_index(doc_type, dataset, index));
         Ok(nb_elements)
+    }
+
+    pub fn get_admins(&mut self, dataset: &str) -> Result<AdminFromInsee, rs_es::error::EsError> {
+        let mut result: AdminFromInsee = BTreeMap::new();
+        let index = get_main_index("admin", dataset);
+        let mut scan: ScanResult<Admin> = try!(self.es_client
+            .search_query()
+            .with_indexes(&[&index])
+            .with_size(1000)
+            .with_types(&[&"admin"])
+            .scan(&Duration::minutes(1)));
+        loop {
+            let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
+            if page.hits.hits.len() == 0 {
+                break;
+            }
+            for ad in page.hits.hits.into_iter().filter_map(|hit| hit.source) {
+                result.insert(ad.id.to_string(), *ad);
+            }
+        }
+        try!(scan.close(&mut self.es_client));
+        Ok(result)
     }
 }
 

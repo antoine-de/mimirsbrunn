@@ -38,6 +38,8 @@ extern crate log;
 use std::path::Path;
 use mimir::rubber::Rubber;
 use std::fs;
+use std::collections::BTreeMap;
+use mimir::rubber::AdminFromInsee;
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct Bano {
@@ -60,27 +62,16 @@ impl Bano {
         assert!(self.id.len() >= 10);
         &self.id[..10]
     }
-    pub fn into_addr(self) -> mimir::Addr {
+    pub fn into_addr(self, admins: &AdminFromInsee) -> mimir::Addr {
         let street_name = format!("{}, ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.nb, street_name);
         let street_id = format!("street:{}", self.fantoir().to_string());
-        let admin = mimir::Admin {
-            id: format!("admin:fr:{}", self.insee()),
-            level: 8,
-            name: self.city,
-            zip_code: self.zip,
-            weight: 1,
-            coord: Some(mimir::Coord {
-                lat: 0.0,
-                lon: 0.0,
-            }),
-            boundary: None,
-        };
+        let admin = admins.get(&format!("admin:fr:{}", self.insee()));
         let street = mimir::Street {
             id: street_id,
             street_name: self.street,
             name: street_name,
-            administrative_region: Some(admin),
+            administrative_region: admin.cloned(),
             weight: 1,
         };
         mimir::Addr {
@@ -102,6 +93,13 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
 {
     let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
+
+    let admins = rubber.get_admins(dataset).unwrap_or_else(|_| {
+        info!("Administratives regions not found in elasticsearch db for dataset {}.",
+              dataset);
+        BTreeMap::new()
+    });
+
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
     info!("Add data in elasticsearch db.");
     for f in files {
@@ -110,7 +108,7 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
 
         let iter = rdr.decode().map(|r| {
             let b: Bano = r.unwrap();
-            b.into_addr()
+            b.into_addr(&admins)
         });
         match rubber.bulk_index(&addr_index, iter) {
             Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
