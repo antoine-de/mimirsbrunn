@@ -128,6 +128,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
 
     let admin = Admin {
         id: "admin:bob".to_string(),
+        insee: "insee:dummy".to_string(),
         level: 8,
         name: "my admin".to_string(),
         zip_code: "zip_code".to_string(),
@@ -150,6 +151,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         let es_source = es_elt.find("_source").unwrap();
         assert_eq!(es_elt.find("_id"), es_source.find("id"));
         assert_eq!(es_elt.find("_id"), Some(&to_value("admin:bob")));
+        assert_eq!(es_source.find("insee"), Some(&to_value("insee:dummy")));
     };
     check_has_elt(&es, Box::new(check_admin));
 }

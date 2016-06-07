@@ -69,6 +69,7 @@ pub struct Coord {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Admin {
     pub id: String,
+    pub insee: String,
     pub level: u32,
     pub name: String,
     pub zip_code: String,
