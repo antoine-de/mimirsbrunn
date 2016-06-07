@@ -93,14 +93,12 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
 {
     let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
-    let admins = match rubber.get_admins(dataset) {
-        Ok(val) => val,
-        _ => {
-            info!("Administratives regions not found in elasticsearch db for dataset {}.",
-                  dataset);
-            BTreeMap::new()
-        }
-    };
+
+    let admins = rubber.get_admins(dataset).unwrap_or_else(|_| {
+        info!("Administratives regions not found in elasticsearch db for dataset {}.",
+              dataset);
+        BTreeMap::new()
+    });
 
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
     info!("Add data in elasticsearch db.");
