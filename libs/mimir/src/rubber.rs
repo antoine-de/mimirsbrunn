@@ -288,15 +288,11 @@ impl Rubber {
         Ok(nb_elements)
     }
 
-	fn make_admin(&self, value: Option<Box<serde_json::Value>>) -> Option<Admin> {
-		value.and_then(|v| serde_json::from_value::<Admin>(*v).ok())
-	}
-
     pub fn get_admins(&mut self, dataset: &str) -> Result<BTreeMap<String, Admin>, rs_es::error::EsError> {
 
         let mut result: BTreeMap<String, Admin> = BTreeMap::new();
         let index = get_main_index("admin", dataset);
-        let mut scan: ScanResult<serde_json::Value> =
+        let mut scan: ScanResult<Admin> =
         try!(self.es_client
                   .search_query()
                   .with_indexes(&[&index])
@@ -308,14 +304,8 @@ impl Rubber {
         	if page.hits.hits.len() == 0 {
         		break;
         	}
-        	let tmp: Vec<Admin> = page.hits
-        	                          .hits
-        	                          .into_iter()
-        	                          .filter_map(|hit| self.make_admin(hit.source))
-        	                          .collect();
-        	
-        	for ad in tmp {
-        		result.insert(ad.id.to_string(), ad);
+        	for ad in page.hits.hits.into_iter().filter_map(|hit| hit.source) {
+        		result.insert(ad.id.to_string(), *ad);
         	}
         }
         try!(scan.close(&mut self.es_client));
