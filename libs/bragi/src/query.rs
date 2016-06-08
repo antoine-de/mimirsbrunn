@@ -61,11 +61,11 @@ fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option
     })
 }
 
-fn query(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
                         .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
-                       rs_q::build_match("name.prefix", q.to_string())
+                       rs_q::build_match(match_type, q.to_string())
                               .with_boost(100)
                               .build(),
                        rs_q::build_function_score()
@@ -85,10 +85,11 @@ fn query(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::Es
                                                               .build())
                                            .build(),
                                        rs_q::build_match("house_number", q.to_string()).build()])
-                     .with_must(vec![rs_q::build_match("name.prefix", q.to_string())
+                     .with_must(vec![rs_q::build_match(match_type, q.to_string())
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()])
                      .build();
 
+    
     let final_query = rs_q::build_bool()
                           .with_must(vec![sub_query])
                           .with_filter(filter)
@@ -125,6 +126,13 @@ pub fn autocomplete(q: String,
     if let Some(ref coord) = coord {
         query_location(&q, coord)
     } else {
-        query(&q, cnx)
+    	//First search with match = "name.prefix".
+    	//If no result then another search with match = "name.ngram"  
+    	let results = try!(query(&q, cnx, "name.prefix"));
+        if results.is_empty() {
+        	query(&q, cnx, "name.ngram")
+        } else {
+        	Ok(results)
+        }
     }
 }
