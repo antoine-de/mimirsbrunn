@@ -21,6 +21,7 @@ serde = "*"
 serde_json = "*"
 serde_macros = { version = "*", optional = true }
 geojson = {version="*", features=["with-serde"]}
+geo = "0.1.1"
 
 [features]
 default = ["serde_codegen", "rs-es/default"]

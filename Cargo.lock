@@ -77,6 +77,7 @@ name = "bragi"
 version = "1.0.0"
 dependencies = [
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "geo 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "geojson 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.9.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
