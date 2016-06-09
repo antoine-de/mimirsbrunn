@@ -233,10 +233,21 @@ pub mod v1 {
             description: String,
         },
     }
-    #[derive(Serialize, Deserialize, Debug)]
+    #[derive(Debug)]
     pub enum AutocompleteResponse {
         Error(CustomError),
         Autocomplete(super::Autocomplete),
+    }
+
+
+    use serde;
+    impl serde::Serialize for AutocompleteResponse {
+        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error> where S: serde::Serializer{
+            match self {
+                &AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
+                &AutocompleteResponse::Error(ref e) => serializer.serialize_some(e)
+            }
+        }
     }
 
     #[derive(Serialize, Deserialize, Debug)]
