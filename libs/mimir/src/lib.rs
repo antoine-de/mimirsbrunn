@@ -41,6 +41,7 @@ extern crate chrono;
 extern crate hyper;
 extern crate rs_es;
 extern crate regex;
+extern crate geo;
 
 pub mod objects;
 pub mod rubber;

@@ -16,6 +16,7 @@ regex = "*"
 serde_macros = { version = "*", optional = true }
 chrono = "0.2.*"
 hyper = "0.8.1"
+geo = "0.1.1"
 
 [features]
 default = ["serde_codegen", "rs-es/default"]

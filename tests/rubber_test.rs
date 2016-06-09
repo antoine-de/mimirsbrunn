@@ -70,7 +70,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         id: "bob".to_string(),
         street_name: "bob's street".to_string(),
         name: "bob's name".to_string(),
-        administrative_region: None,
+        administrative_regions: vec![],
         weight: 42u32,
     };
 
@@ -88,7 +88,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         id: "bobette".to_string(),
         street_name: "bobette's street".to_string(),
         name: "bobette's name".to_string(),
-        administrative_region: None,
+        administrative_regions: vec![],
         weight: 24u32,
     };
 

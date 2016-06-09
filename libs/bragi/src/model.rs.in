@@ -135,7 +135,7 @@ impl From<mimir::Street> for GeocodingResponse {
         let (postcode, city, admins) = other.administrative_region.map_or((None, None, vec![]), |admin| {
             (Some(admin.zip_code.clone()), Some(admin.name.clone()), vec![admin])
         });
-
+	/* TODO */
         GeocodingResponse {
             id: other.id,
             place_type: type_,
@@ -160,6 +160,8 @@ impl From<mimir::Addr> for GeocodingResponse {
         let (postcode, city, admins) = other.street.administrative_region.map_or((None, None, vec![]), |admin| {
             (Some(admin.zip_code.clone()), Some(admin.name.clone()), vec![admin])
         });
+	/* TODO */
+
         GeocodingResponse {
             id: other.id,
             place_type: type_,

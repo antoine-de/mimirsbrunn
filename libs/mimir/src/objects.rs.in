@@ -28,6 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use geo;
+use serde;
 
 // Note: this file is needed to use serde in rust stable
 // cf mimirsbrunn/build.rs for explanations
@@ -59,6 +61,11 @@ impl<'a, T: DocType> DocType for &'a T {
         T::doc_type()
     }
 }
+impl<'a, T: EsId> EsId for &'a T {
+    fn es_id(&self) -> Option<String> {
+        T::es_id(self)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Coord {
@@ -74,9 +81,10 @@ pub struct Admin {
     pub name: String,
     pub zip_code: String,
     pub weight: u32,
-    pub coord: Option<Coord>,
-    #[serde(skip_serializing)]
-    pub boundary: Option<MultiPolygon>,
+    #[serde(skip_serializing, skip_deserializing)]  // TODO
+    pub coord: Option<geo::Coordinate>,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub boundary: Option<geo::MultiPolygon>,
 }
 impl Incr for Admin {
     fn id(&self) -> &str {
@@ -104,7 +112,7 @@ pub struct Street {
     pub id: String,
     pub street_name: String,
     pub name: String,
-    pub administrative_region: Option<Admin>,
+    pub administrative_regions: Vec<Admin>, // TODO use Rc<Admin> ?
     pub weight: u32,
 }
 impl Incr for Street {
@@ -136,6 +144,26 @@ pub struct Addr {
     pub coord: Coord,
     pub weight: u32,
 }
+/*
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Addr {
+    pub id: String,
+    pub house_number: String,
+    pub street: Street,
+    pub name: String,
+    #[serde(default="default_coord")] // TODO remove this when rust-geo implement the default trait for Coordinate
+    #[serde(skip_serializing, skip_deserializing)]  // TODO
+    pub coord: geo::Coordinate,
+    pub weight: u32,
+}
+
+fn default_coord() -> geo::Coordinate {
+  geo::Coordinate {
+    x: 0.,
+    y: 0.
+  }
+}
+*/
 impl DocType for Addr {
     fn doc_type() -> &'static str {
         "addr"
@@ -145,54 +173,6 @@ impl DocType for Addr {
 impl EsId for Addr {
     fn es_id(&self) -> Option<String> {
         None
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Polygon {
-    pub outer: Vec<Coord>,
-    pub inner: Vec<Coord>,
-}
-
-impl Polygon {
-    pub fn to_wkt(&self) -> String {
-        if self.outer.is_empty() {
-            return "".to_string();
-        }
-        let mut coords = Vec::new();
-        for c in &self.outer {
-            coords.push(format!("{lon} {lat}", lon = c.lon, lat = c.lat))
-        }
-        format!("POLYGON (({}))", coords.join(", "))
-    }
-
-    pub fn new(outer: Vec<Coord>) -> Polygon {
-        Polygon {
-            outer: outer,
-            inner: Vec::new(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct MultiPolygon {
-    pub polygons: Vec<Polygon>,
-}
-
-impl MultiPolygon {
-    pub fn to_wkt(&self) -> String {
-        if self.polygons.is_empty() {
-            return "".to_string();
-        }
-        let mut polys = Vec::new();
-        for p in &self.polygons {
-            let mut coords = Vec::new();
-            for c in &p.outer {
-                coords.push(format!("{lon} {lat}", lon = c.lon, lat = c.lat))
-            }
-            polys.push(format!("(({}))", coords.join(", ")))
-        }
-        format!("MULTIPOLYGON({})", polys.join(", "))
     }
 }
 
