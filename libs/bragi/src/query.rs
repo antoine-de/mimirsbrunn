@@ -118,6 +118,14 @@ fn query_location(_q: &String,
                   -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     panic!("todo!");
 }
+                  
+fn query_prefix(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+	query(&q, cnx, "name.prefix")
+}
+
+fn query_ngram(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+	query(&q, cnx, "name.ngram")
+}                  
 
 pub fn autocomplete(q: String,
                     coord: Option<model::Coord>,
@@ -127,10 +135,10 @@ pub fn autocomplete(q: String,
         query_location(&q, coord)
     } else {
     	//First search with match = "name.prefix".
-    	//If no result then another search with match = "name.ngram"  
-    	let results = try!(query(&q, cnx, "name.prefix"));
+    	//If no result then another search with match = "name.ngram"
+    	let results = try!(query_prefix(&q, cnx));
         if results.is_empty() {
-        	query(&q, cnx, "name.ngram")
+        	query_ngram(&q, cnx)
         } else {
         	Ok(results)
         }
