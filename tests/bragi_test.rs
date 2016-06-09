@@ -51,23 +51,23 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert!(status.success(), "`bano2mimir` failed {}", &status);
     es_wrapper.refresh();
 
-	let handler = get_handler(format!("{}/munin", es_wrapper.host()));
-    
+    let handler = get_handler(format!("{}/munin", es_wrapper.host()));
+
     // Call status
     let resp = iron_test::request::get("http://localhost:3000/status",
                                 iron::Headers::new(),
                                 &handler).unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
-    
+
     assert_eq!(result_body, r#"{"version":"1.0.0","es":"http://localhost:9242/munin","status":"good"}"#);
-	
+
     // Call autocomplete
     let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=15 Rue Hector Malot, (Paris)",
                                 iron::Headers::new(),
                                 &handler).unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"Autocomplete":{"type":"FeatureCollection","#,
-    	                 r#""geocoding":{"version":"0.1.0","query":""},"#,
+                         r#""geocoding":{"version":"0.1.0","query":""},"#,
                          r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
                          r#"[2.3763789999999996,48.846495],"type":"Point"},"#,
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
