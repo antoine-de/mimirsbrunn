@@ -73,7 +73,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
                          r#""type":"house","label":"15 Rue Hector Malot, (Paris)","#,
                          r#""name":"15 Rue Hector Malot, (Paris)","housenumber":"15","#,
-                         r#""street":"Rue Hector Malot, (Paris)","postcode":null,"#
+                         r#""street":"Rue Hector Malot, (Paris)","postcode":null,"#,
                          r#""city":null}}}]}}"#);
     assert_eq!(result_body, result);
 }
