@@ -42,6 +42,7 @@ use docker_wrapper::*;
 
 mod bano2mimir_test;
 mod rubber_test;
+mod bragi_test;
 use serde_json::value::Value;
 use hyper::client::response::Response;
 
@@ -118,4 +119,5 @@ fn all_tests() {
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_test::bragi_tests(ElasticSearchWrapper::new(&docker_wrapper));
 }

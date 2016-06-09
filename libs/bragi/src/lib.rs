@@ -57,7 +57,7 @@ extern crate mdo;
 extern crate log;
 
 
-mod api;
+pub mod api;
 mod query;
 mod model;
 
