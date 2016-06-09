@@ -66,9 +66,14 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                                 iron::Headers::new(),
                                 &handler).unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
-    let result = vec![r#"{"Autocomplete":{"type":"FeatureCollection","geocoding":{"version":"0.1.0","query":""},"#,
-                  r#""features":[{"type":"Feature","geometry":{"coordinates":[2.3763789999999996,48.846495],"type":"Point"},"#,
-                  r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","type":"house","label":"15 Rue Hector Malot, (Paris)","#,
-                  r#""name":"15 Rue Hector Malot, (Paris)","housenumber":"15","street":"Rue Hector Malot, (Paris)","postcode":null,"city":null}}}]}}"#];
-    assert_eq!(result_body, result.join(""));
+    let result = concat!(r#"{"Autocomplete":{"type":"FeatureCollection","#,
+    	                 r#""geocoding":{"version":"0.1.0","query":""},"#,
+                         r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
+                         r#"[2.3763789999999996,48.846495],"type":"Point"},"#,
+                         r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
+                         r#""type":"house","label":"15 Rue Hector Malot, (Paris)","#,
+                         r#""name":"15 Rue Hector Malot, (Paris)","housenumber":"15","#,
+                         r#""street":"Rue Hector Malot, (Paris)","postcode":null,"#
+                         r#""city":null}}}]}}"#);
+    assert_eq!(result_body, result);
 }
