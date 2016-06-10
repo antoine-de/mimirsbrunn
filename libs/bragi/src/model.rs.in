@@ -67,7 +67,7 @@ pub struct GeocodingResponse {
     //pub county: Option<String>,
     //pub state: Option<String>,
     //pub country: Option<String>,
-    pub administrative_regions: Option<Vec<mimir::Admin>>,
+    pub administrative_regions: Vec<mimir::Admin>,
     //pub geohash: Option<String>
 }
 
@@ -122,7 +122,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: None,
-            administrative_regions: None,
+            administrative_regions: vec![],
         }
     }
 }
@@ -132,8 +132,8 @@ impl From<mimir::Street> for GeocodingResponse {
         let type_ = "street".to_string();
         let name = Some(other.street_name);
         let label = Some(other.name);
-        let (postcode, city, admins) = other.administrative_region.map_or((None, None, None), |admin| {
-            (Some(admin.zip_code.clone()), Some(admin.name.clone()), Some(vec![admin]))
+        let (postcode, city, admins) = other.administrative_region.map_or((None, None, vec![]), |admin| {
+            (Some(admin.zip_code.clone()), Some(admin.name.clone()), vec![admin])
         });
 
         GeocodingResponse {
@@ -157,10 +157,9 @@ impl From<mimir::Addr> for GeocodingResponse {
         let label = Some(other.name);
         let housenumber = Some(other.house_number);
         let street_name = Some(other.street.name);
-        let (postcode, city, admins) = other.street.administrative_region.map_or((None, None, None), |admin| {
-            (Some(admin.zip_code.clone()), Some(admin.name.clone()), Some(vec![admin]))
+        let (postcode, city, admins) = other.street.administrative_region.map_or((None, None, vec![]), |admin| {
+            (Some(admin.zip_code.clone()), Some(admin.name.clone()), vec![admin])
         });
-        
         GeocodingResponse {
             id: other.id,
             place_type: type_,
