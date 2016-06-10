@@ -72,6 +72,9 @@ pub struct GeocodingResponse {
     //pub geohash: Option<String>
 }
 
+// TODO: change this trait with From<>
+// and when street will have Coords, we'll have to change Option<Geometry> to
+// Geometry
 trait ToGeom {
     fn to_geom(&self) -> Option<geojson::Geometry>;
 }
@@ -134,17 +137,25 @@ impl From<mimir::Admin> for GeocodingResponse {
     }
 }
 
+fn get_postcode_and_city_name(admins: &Vec<mimir::Admin>) -> (Option<String>, Option<String>) {
+    // for the moment for the 'postcode' and the 'city', we take first admin
+    // that has a postcode
+    // TODO: change this (with a 'city tag in the admin ?')
+    admins.iter()
+          .find(|a| a.zip_code != "")
+          .or_else(|| admins.iter().next())
+          .map_or((None, None), |admin| {
+              (Some(admin.zip_code.clone()), Some(admin.name.clone()))
+          })
+}
+
 impl From<mimir::Street> for GeocodingResponse {
     fn from(other: mimir::Street) -> GeocodingResponse {
         let type_ = "street".to_string();
         let name = Some(other.street_name);
         let label = Some(other.name);
-        // for the moment for the 'postcode' and the 'city', we take the postcode
-        // and name of the first admin of the street
-        // TODO: change this (with a 'city tag in the admin ?')
-        let (postcode, city) = other.administrative_regions.iter().next().map_or((None, None), |admin| {
-            (Some(admin.zip_code.clone()), Some(admin.name.clone()))
-        });
+        let admins = other.administrative_regions;
+        let (postcode, city) = get_postcode_and_city_name(&admins);
 
         GeocodingResponse {
             id: other.id,
@@ -155,7 +166,7 @@ impl From<mimir::Street> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: city,
-            administrative_regions: other.administrative_regions
+            administrative_regions: admins
         }
     }
 }
@@ -167,12 +178,8 @@ impl From<mimir::Addr> for GeocodingResponse {
         let label = Some(other.name);
         let housenumber = Some(other.house_number);
         let street_name = Some(other.street.name);
-        // for the moment for the 'postcode' and the 'city', we take the postcode
-        // and name of the first admin of the street
-        // TODO: change this (with a 'city tag in the admin ?')
-        let (postcode, city) = other.street.administrative_regions.iter().next().map_or((None, None), |admin| {
-            (Some(admin.zip_code.clone()), Some(admin.name.clone()))
-        });
+        let admins = other.street.administrative_regions;
+        let (postcode, city) = get_postcode_and_city_name(&admins);
 
         GeocodingResponse {
             id: other.id,
@@ -183,7 +190,7 @@ impl From<mimir::Addr> for GeocodingResponse {
             housenumber: housenumber,
             street: street_name,
             city: city,
-            administrative_regions: other.street.administrative_regions
+            administrative_regions: admins
         }
     }
 }
