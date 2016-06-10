@@ -40,7 +40,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
     let status = Command::new(bano2mimir)
-                     .args(&["--input=./tests/sample-bano.csv".into(),
+                     .args(&["--input=./tests/fixtures/sample-bano.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())])
                      .status()
                      .unwrap();
@@ -79,7 +79,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // then we import again the bano file:
     info!("importing again {}", bano2mimir);
     let status = Command::new(bano2mimir)
-                     .args(&["--input=./tests/sample-bano.csv".into(),
+                     .args(&["--input=./tests/fixtures/sample-bano.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())])
                      .status()
                      .unwrap();

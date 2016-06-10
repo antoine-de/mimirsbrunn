@@ -19,6 +19,9 @@ serde = "*"
 serde_json = "*"
 hyper = "0.8.1"
 mdo = "*"
+iron-test = "0.3.0"
+rustless = "*"
+iron = "*"
 
 [features]
 default = ["rs-es/default", "bragi/default", "mimir/default"]
