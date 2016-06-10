@@ -146,10 +146,10 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
                                            objects.get(&r.member).and_then(|value| {
                                                match value {
                                                    &osmpbfreader::OsmObj::Node(ref node) => {
-                                                       Some(geo::Coordinate {
+                                                       Some(mimir::CoordWrapper(geo::Coordinate {
                                                            x: node.lat,
                                                            y: node.lon,
-                                                       })
+                                                       }))
                                                    }
                                                    _ => None,
                                                }

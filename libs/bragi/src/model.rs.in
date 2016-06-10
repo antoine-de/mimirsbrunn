@@ -82,7 +82,7 @@ trait ToGeom {
 impl ToGeom for mimir::Place {
     fn to_geom(&self) -> Option<geojson::Geometry> {
         match self {
-            &mimir::Place::Admin(ref admin) => admin.coord.as_ref().map(|c| c.to_geom().unwrap()),
+            &mimir::Place::Admin(ref admin) => admin.coord.as_ref().map(|c| c.0.to_geom().unwrap()),
             &mimir::Place::Street(ref _street) => None,
             &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
         }

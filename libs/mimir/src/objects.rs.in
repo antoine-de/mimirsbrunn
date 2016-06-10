@@ -81,8 +81,7 @@ pub struct Admin {
     pub name: String,
     pub zip_code: String,
     pub weight: u32,
-    #[serde(skip_serializing, skip_deserializing)]  // TODO
-    pub coord: Option<geo::Coordinate>,
+    pub coord: Option<CoordWrapper>,
     #[serde(skip_serializing, skip_deserializing)]
     pub boundary: Option<geo::MultiPolygon>,
 }
@@ -175,4 +174,119 @@ pub struct AliasParameter{
     pub index: String,
     pub alias: String,
 
+}
+
+// we want a custom serialization for coords, and so far the cleanest way
+// to do this that has been found is to wrap the coord in another struct
+#[derive(Debug, Clone)]
+pub struct CoordWrapper(pub geo::Coordinate);
+
+impl serde::Serialize for CoordWrapper {
+  fn serialize<S>(&self, serializer: &mut S)
+    -> Result<(), S::Error> where S: serde::Serializer
+  {
+    serializer.serialize_struct("Coord", GeoCoordSerializerVisitor {
+        value: self,
+        state: 0,
+    })
+  }
+  }
+
+    struct GeoCoordSerializerVisitor<'a> {
+        value: &'a CoordWrapper,
+        state: u8,
+    }
+
+    impl<'a> serde::ser::MapVisitor for GeoCoordSerializerVisitor<'a> {
+        fn visit<S>(&mut self, serializer: &mut S) -> Result<Option<()>, S::Error>
+            where S: serde::Serializer
+        {
+          // for coord, y => longitude, x => latitude
+            match self.state {
+                0 => {
+                    self.state += 1;
+                    Ok(Some(try!(serializer.serialize_struct_elt("lat", &self.value.0.x))))
+                }
+                1 => {
+                    self.state += 1;
+                    Ok(Some(try!(serializer.serialize_struct_elt("lon", &self.value.0.y))))
+                }
+                _ => {
+                    Ok(None)
+                }
+            }
+        }
+    }
+
+
+enum GeoCoordField {
+    X,
+    Y,
+}
+
+impl serde::Deserialize for GeoCoordField {
+    fn deserialize<D>(deserializer: &mut D) -> Result<GeoCoordField, D::Error>
+        where D: serde::de::Deserializer
+    {
+        struct GeoCoordFieldVisitor;
+
+        impl serde::de::Visitor for GeoCoordFieldVisitor {
+            type Value = GeoCoordField;
+
+            fn visit_str<E>(&mut self, value: &str) -> Result<GeoCoordField, E>
+                where E: serde::de::Error
+            {
+                match value {
+                    "lat" => Ok(GeoCoordField::X),
+                    "lon" => Ok(GeoCoordField::Y),
+                    _ => Err(serde::de::Error::custom("expected lon or lat")),
+                }
+            }
+        }
+
+        deserializer.deserialize(GeoCoordFieldVisitor)
+    }
+}
+
+impl serde::Deserialize for CoordWrapper {
+  fn deserialize<D>(deserializer: &mut D) -> Result<CoordWrapper, D::Error>
+      where D: serde::de::Deserializer
+  {
+      static FIELDS: &'static [&'static str] = &["lat", "lon"];
+      deserializer.deserialize_struct("Coord", FIELDS, GeoCoordDeserializerVisitor)
+  }
+}
+struct GeoCoordDeserializerVisitor;
+
+impl serde::de::Visitor for GeoCoordDeserializerVisitor {
+    type Value = CoordWrapper;
+
+    fn visit_map<V>(&mut self, mut visitor: V) -> Result<CoordWrapper, V::Error>
+        where V: serde::de::MapVisitor
+    {
+        let mut x = None;
+        let mut y = None;
+
+        loop {
+            match try!(visitor.visit_key()) {
+                Some(GeoCoordField::X) => { x = Some(try!(visitor.visit_value())); }
+                Some(GeoCoordField::Y) => { y = Some(try!(visitor.visit_value())); }
+                None => { break; }
+            }
+        }
+
+        let x = match x {
+            Some(x) => x,
+            None => try!(visitor.missing_field("x")),
+        };
+
+        let y = match y {
+            Some(y) => y,
+            None => try!(visitor.missing_field("y")),
+        };
+
+        try!(visitor.end());
+
+        Ok(CoordWrapper(geo::Coordinate{ x: x, y: y }))
+    }
 }
