@@ -34,6 +34,7 @@ extern crate rustc_serialize;
 extern crate mimir;
 #[macro_use]
 extern crate log;
+extern crate geo;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
@@ -67,11 +68,12 @@ impl Bano {
         let addr_name = format!("{} {}", self.nb, street_name);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let admin = admins.get(&format!("admin:fr:{}", self.insee()));
+
         let street = mimir::Street {
             id: street_id,
             street_name: self.street,
             name: street_name,
-            administrative_region: admin.cloned(),
+            administrative_regions: admin.map_or(vec![], |a| vec!(a.clone())),
             weight: 1,
         };
         mimir::Addr {

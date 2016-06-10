@@ -31,6 +31,7 @@
 use mimir;
 
 use geojson;
+use geo;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Geocoding {
@@ -71,6 +72,9 @@ pub struct GeocodingResponse {
     //pub geohash: Option<String>
 }
 
+// TODO: change this trait with From<>
+// and when street will have Coords, we'll have to change Option<Geometry> to
+// Geometry
 trait ToGeom {
     fn to_geom(&self) -> Option<geojson::Geometry>;
 }
@@ -78,10 +82,16 @@ trait ToGeom {
 impl ToGeom for mimir::Place {
     fn to_geom(&self) -> Option<geojson::Geometry> {
         match self {
-            &mimir::Place::Admin(ref admin) => admin.coord.as_ref().map(|c| c.to_geom().unwrap()),
+            &mimir::Place::Admin(ref admin) => admin.coord.as_ref().map(|c| c.0.to_geom().unwrap()),
             &mimir::Place::Street(ref _street) => None,
             &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
         }
+    }
+}
+
+impl ToGeom for geo::Coordinate {
+    fn to_geom(&self) -> Option<geojson::Geometry> {
+        Some(geojson::Geometry::new(geojson::Value::Point(vec![self.y, self.x])))
     }
 }
 
@@ -122,9 +132,21 @@ impl From<mimir::Admin> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: None,
-            administrative_regions: vec![],
+            administrative_regions: vec![]
         }
     }
+}
+
+fn get_postcode_and_city_name(admins: &Vec<mimir::Admin>) -> (Option<String>, Option<String>) {
+    // for the moment for the 'postcode' and the 'city', we take first admin
+    // that has a postcode
+    // TODO: change this (with a 'city tag in the admin ?')
+    admins.iter()
+          .find(|a| ! a.zip_code.is_empty())
+          .or_else(|| admins.iter().next())
+          .map_or((None, None), |admin| {
+              (Some(admin.zip_code.clone()), Some(admin.name.clone()))
+          })
 }
 
 impl From<mimir::Street> for GeocodingResponse {
@@ -132,9 +154,8 @@ impl From<mimir::Street> for GeocodingResponse {
         let type_ = "street".to_string();
         let name = Some(other.street_name);
         let label = Some(other.name);
-        let (postcode, city, admins) = other.administrative_region.map_or((None, None, vec![]), |admin| {
-            (Some(admin.zip_code.clone()), Some(admin.name.clone()), vec![admin])
-        });
+        let admins = other.administrative_regions;
+        let (postcode, city) = get_postcode_and_city_name(&admins);
 
         GeocodingResponse {
             id: other.id,
@@ -145,7 +166,7 @@ impl From<mimir::Street> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: city,
-            administrative_regions: admins,
+            administrative_regions: admins
         }
     }
 }
@@ -157,9 +178,9 @@ impl From<mimir::Addr> for GeocodingResponse {
         let label = Some(other.name);
         let housenumber = Some(other.house_number);
         let street_name = Some(other.street.name);
-        let (postcode, city, admins) = other.street.administrative_region.map_or((None, None, vec![]), |admin| {
-            (Some(admin.zip_code.clone()), Some(admin.name.clone()), vec![admin])
-        });
+        let admins = other.street.administrative_regions;
+        let (postcode, city) = get_postcode_and_city_name(&admins);
+
         GeocodingResponse {
             id: other.id,
             place_type: type_,
@@ -169,7 +190,7 @@ impl From<mimir::Addr> for GeocodingResponse {
             housenumber: housenumber,
             street: street_name,
             city: city,
-            administrative_regions: admins, 
+            administrative_regions: admins
         }
     }
 }

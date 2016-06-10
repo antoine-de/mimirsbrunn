@@ -33,7 +33,8 @@ extern crate mimir;
 extern crate osm_builder;
 
 use std::collections::HashMap;
-use mimir::objects::{Polygon, MultiPolygon};
+use geo::{Polygon, MultiPolygon, LineString, Coordinate, Point};
+
 #[cfg(test)]
 use osm_builder::named_node;
 
@@ -152,7 +153,7 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
                 .filter(|nodes| nodes.len() > 1)
                 .map(|nodes| BoundaryPart::new(nodes))
                 .collect();
-    let mut multipoly = MultiPolygon { polygons: Vec::new() };
+    let mut multipoly = MultiPolygon(vec![]);
     // we want to try build a polygon for a least each way
     while !boundary_parts.is_empty() {
         let mut current = -1;
@@ -195,25 +196,22 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
                 }
                 if current == first {
                     // our polygon is closed, we create it and add it to the multipolygon
-                    let polygon = Polygon::new(outer.iter()
+                    let polygon = Polygon(LineString(outer.iter()
                                                     .map(|n| {
-                                                        mimir::Coord {
-                                                            lat: n.lat,
-                                                            lon: n.lon,
-                                                        }
+                                                        Point(Coordinate {
+                                                            x: n.lat,
+                                                            y: n.lon,
+                                                        })
                                                     })
-                                                    .collect());
-                    multipoly.polygons.push(polygon);
+                                                    .collect()), vec![]);
+                    multipoly.0.push(polygon);
                     break;
                 }
             }
             nb_try += 1;
         }
     }
-    debug!("polygon for relation {};\"{}\"",
-           relation.id,
-           multipoly.to_wkt());
-    if multipoly.polygons.is_empty() {
+    if multipoly.0.is_empty() {
         None
     } else {
         Some(multipoly)
@@ -276,7 +274,7 @@ fn test_build_bounadry_closed() {
         let multipolygon = build_boundary(&relation, &builder.objects);
         assert!(multipolygon.is_some());
         let multipolygon = multipolygon.unwrap();
-        assert_eq!(multipolygon.polygons.len(), 1);
+        assert_eq!(multipolygon.0.len(), 1);
 
     } else {
         assert!(false);//this should not happen

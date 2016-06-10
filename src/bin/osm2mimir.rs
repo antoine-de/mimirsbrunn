@@ -39,14 +39,17 @@ extern crate chrono;
 
 extern crate mimirsbrunn;
 extern crate serde;
+extern crate geo;
 
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use mimir::rubber::Rubber;
 
 pub type AdminsVec = Vec<mimir::Admin>;
 pub type StreetsVec = Vec<mimir::Street>;
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<std::fs::File>;
+
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -143,10 +146,10 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
                                            objects.get(&r.member).and_then(|value| {
                                                match value {
                                                    &osmpbfreader::OsmObj::Node(ref node) => {
-                                                       Some(mimir::Coord {
-                                                           lat: node.lat,
-                                                           lon: node.lon,
-                                                       })
+                                                       Some(mimir::CoordWrapper(geo::Coordinate {
+                                                           x: node.lat,
+                                                           y: node.lon,
+                                                       }))
                                                    }
                                                    _ => None,
                                                }
@@ -178,7 +181,44 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
     return administrative_regions;
 }
 
-fn streets(pbf: &mut OsmPbfReader) -> StreetsVec {
+fn make_admin_geofinder(admins: AdminsVec) -> AdminGeoFinder {
+    let mut geofinder = AdminGeoFinder::new();
+
+    for a in admins {
+        geofinder.add_admin(a);
+    }
+    geofinder
+}
+
+fn get_street_admin(admins_geofinder: &AdminGeoFinder,
+                    obj_map: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+                    way: &osmpbfreader::objects::Way)
+                    -> Vec<mimir::Admin> {
+    // for the moment we consider that the coord of the way is the coord of it's first node
+    let coord = way.nodes
+                   .iter()
+                   .filter_map(|node_id| obj_map.get(&osmpbfreader::OsmId::Node(*node_id)))
+                   .filter_map(|node_obj| {
+                       if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+                           Some(geo::Coordinate {
+                               x: node.lat,
+                               y: node.lon,
+                           })
+                       } else {
+                           None
+                       }
+                   })
+                   .next();
+    coord.map_or(vec![], |c| {
+        admins_geofinder.get_admins_for_coord(&c)
+    .iter()
+    .map(|&a| a.clone()) // TODO use RC<Admin> to avoid copying them too much ?
+    .collect()
+    })
+}
+
+fn streets(pbf: &mut OsmPbfReader, admins: AdminsVec) -> StreetsVec {
+    let admins_geofinder = make_admin_geofinder(admins);
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
@@ -223,13 +263,14 @@ fn streets(pbf: &mut OsmPbfReader) -> StreetsVec {
     objs_map.iter()
             .filter_map(|(_, obj)| {
                 if let &osmpbfreader::OsmObj::Way(ref way) = obj {
+                    let admin = get_street_admin(&admins_geofinder, &objs_map, way);
                     way.tags.get("name").and_then(|way_name| {
                         Some(mimir::Street {
                             id: way.id.to_string(),
                             street_name: way_name.to_string(),
                             name: way_name.to_string(),
                             weight: 1,
-                            administrative_region: None,
+                            administrative_regions: admin,
                         })
                     })
                 } else {
@@ -253,9 +294,8 @@ fn main() {
     let mut rubber = Rubber::new(&args.flag_connection_string);
 
     debug!("importing adminstrative region into Mimir");
-    let nb_admins = rubber.index("admin",
-                                 &args.flag_dataset,
-                                 administrative_regions(&mut parsed_pbf, levels).into_iter())
+    let admins = administrative_regions(&mut parsed_pbf, levels);
+    let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
                           .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
@@ -263,7 +303,7 @@ fn main() {
         debug!("importing streets into Mimir");
         let nb_streets = rubber.index("way",
                                       &args.flag_dataset,
-                                      streets(&mut parsed_pbf).into_iter())
+                                      streets(&mut parsed_pbf, admins).into_iter())
                                .unwrap();
         info!("Nb of indexed street: {}", nb_streets);
     }

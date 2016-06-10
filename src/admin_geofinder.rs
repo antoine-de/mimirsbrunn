@@ -27,32 +27,37 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-#![cfg_attr(feature = "serde_macros", feature(custom_derive, plugin))]
-#![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
+use mimir::Admin;
+use geo::contains::Contains;
+use geo;
 
-#[macro_use]
-extern crate log;
-extern crate env_logger;
+pub struct AdminGeoFinder {
+    //quadtree: ntree::NTree<QuadTreeRegion, Admin>,
+    admins: Vec<Admin>
+}
 
-extern crate serde;
-extern crate serde_json;
-
-extern crate chrono;
-extern crate hyper;
-extern crate rs_es;
-extern crate regex;
-extern crate geo;
-
-pub mod objects;
-pub mod rubber;
-
-pub use objects::*;
-
-pub fn logger_init() -> Result<(), log::SetLoggerError> {
-    let mut builder = env_logger::LogBuilder::new();
-    builder.filter(None, log::LogLevelFilter::Info);
-    if let Ok(s) = std::env::var("RUST_LOG") {
-        builder.parse(&s);
+impl AdminGeoFinder {
+    pub fn new() -> AdminGeoFinder {
+        AdminGeoFinder {
+            admins: vec![]
+        }
     }
-    builder.init()
+
+    pub fn add_admin(&mut self, admin: Admin) {
+        self.admins.push(admin);
+    }
+
+    /// Get all Admins overlaping the coordinate
+    pub fn get_admins_for_coord(&self, coord: &geo::Coordinate) -> Vec<&Admin> {
+        self.admins.iter().filter(|a| {
+                a.boundary.as_ref().map_or(false, |b| {
+                    b.contains(&geo::Point(coord.clone()))
+                })
+            })
+            .collect()
+    }
+
+    pub fn get_admins_for_street(&self) -> Vec<&Admin> {
+        panic!("get_admin_for_street");
+    }
 }

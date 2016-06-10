@@ -46,6 +46,7 @@ extern crate jsonway;
 extern crate valico;
 extern crate mimir;
 extern crate geojson;
+extern crate geo;
 
 extern crate rs_es;
 use iron::Iron;
