@@ -142,7 +142,7 @@ fn get_postcode_and_city_name(admins: &Vec<mimir::Admin>) -> (Option<String>, Op
     // that has a postcode
     // TODO: change this (with a 'city tag in the admin ?')
     admins.iter()
-          .find(|a| a.zip_code != "")
+          .find(|a| ! a.zip_code.is_empty())
           .or_else(|| admins.iter().next())
           .map_or((None, None), |admin| {
               (Some(admin.zip_code.clone()), Some(admin.name.clone()))
