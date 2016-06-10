@@ -144,26 +144,7 @@ pub struct Addr {
     pub coord: Coord,
     pub weight: u32,
 }
-/*
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Addr {
-    pub id: String,
-    pub house_number: String,
-    pub street: Street,
-    pub name: String,
-    #[serde(default="default_coord")] // TODO remove this when rust-geo implement the default trait for Coordinate
-    #[serde(skip_serializing, skip_deserializing)]  // TODO
-    pub coord: geo::Coordinate,
-    pub weight: u32,
-}
 
-fn default_coord() -> geo::Coordinate {
-  geo::Coordinate {
-    x: 0.,
-    y: 0.
-  }
-}
-*/
 impl DocType for Addr {
     fn doc_type() -> &'static str {
         "addr"
