@@ -74,6 +74,6 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""type":"house","label":"15 Rue Hector Malot, (Paris)","#,
                          r#""name":"15 Rue Hector Malot, (Paris)","housenumber":"15","#,
                          r#""street":"Rue Hector Malot, (Paris)","postcode":null,"#,
-                         r#""city":null}}}]}}"#);
+                         r#""city":null,"administrative_regions":[]}}}]}}"#);
     assert_eq!(result_body, result);
 }
