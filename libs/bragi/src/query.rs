@@ -36,7 +36,7 @@ use mimir;
 use serde_json;
 
 fn build_rs_client(cnx: &String) -> rs_es::Client {
-    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)/(?P<index>\w+)")
+    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)")
                  .unwrap();
     let cap = re.captures(&cnx).unwrap();
     let host = cap.name("host").unwrap();
@@ -89,7 +89,7 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()])
                      .build();
 
-    
+
     let final_query = rs_q::build_bool()
                           .with_must(vec![sub_query])
                           .with_filter(filter)
@@ -118,14 +118,14 @@ fn query_location(_q: &String,
                   -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     panic!("todo!");
 }
-                  
+
 fn query_prefix(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
 	query(&q, cnx, "name.prefix")
 }
 
 fn query_ngram(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
 	query(&q, cnx, "name.ngram")
-}                  
+}
 
 pub fn autocomplete(q: String,
                     coord: Option<model::Coord>,
