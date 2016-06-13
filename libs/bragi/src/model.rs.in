@@ -43,6 +43,7 @@ pub struct Geocoding {
 pub struct Feature {
     #[serde(rename="type")]
     pub feature_type: String,
+    #[serde(skip_serializing_if="Option::is_none")]
     pub geometry: Option<geojson::Geometry>, // should be required
     pub properties: Properties,
 }
