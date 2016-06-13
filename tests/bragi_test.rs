@@ -66,7 +66,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                                 iron::Headers::new(),
                                 &handler).unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
-    let result = concat!(r#"{"Autocomplete":{"type":"FeatureCollection","#,
+    let result = concat!(r#"{"type":"FeatureCollection","#,
                          r#""geocoding":{"version":"0.1.0","query":""},"#,
                          r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
                          r#"[2.3763789999999996,48.846495],"type":"Point"},"#,
@@ -74,6 +74,6 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""type":"house","label":"15 Rue Hector Malot, (Paris)","#,
                          r#""name":"15 Rue Hector Malot, (Paris)","housenumber":"15","#,
                          r#""street":"Rue Hector Malot, (Paris)","postcode":null,"#,
-                         r#""city":null,"administrative_regions":[]}}}]}}"#);
+                         r#""city":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 }
