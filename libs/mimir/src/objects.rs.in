@@ -30,6 +30,7 @@
 
 use geo;
 use serde;
+use std::rc::Rc;
 
 // Note: this file is needed to use serde in rust stable
 // cf mimirsbrunn/build.rs for explanations
@@ -62,6 +63,16 @@ impl<'a, T: DocType> DocType for &'a T {
     }
 }
 impl<'a, T: EsId> EsId for &'a T {
+    fn es_id(&self) -> Option<String> {
+        T::es_id(self)
+    }
+}
+impl<'a, T: DocType> DocType for Rc<T> {
+    fn doc_type() -> &'static str {
+        T::doc_type()
+    }
+}
+impl<'a, T: EsId> EsId for Rc<T> {
     fn es_id(&self) -> Option<String> {
         T::es_id(self)
     }
@@ -110,8 +121,8 @@ impl DocType for Admin {
 pub struct Street {
     pub id: String,
     pub street_name: String,
+    pub administrative_regions: Vec<Rc<Admin>>,
     pub label: String,
-    pub administrative_regions: Vec<Admin>, // TODO use Rc<Admin> ?
     pub weight: u32,
 }
 impl Incr for Street {

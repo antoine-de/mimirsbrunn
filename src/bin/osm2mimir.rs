@@ -45,11 +45,12 @@ extern crate geo;
 use std::collections::{HashSet, HashMap};
 use mimir::rubber::Rubber;
 
-pub type AdminsVec = Vec<mimir::Admin>;
+pub type AdminsVec = Vec<Rc<mimir::Admin>>;
 pub type StreetsVec = Vec<mimir::Street>;
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<std::fs::File>;
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use std::rc::Rc;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -175,7 +176,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
                 coord: coord_centre,
                 boundary: boundary,
             };
-            administrative_regions.push(admin);
+            administrative_regions.push(Rc::new(admin));
         }
     }
     return administrative_regions;
@@ -193,7 +194,7 @@ fn make_admin_geofinder(admins: AdminsVec) -> AdminGeoFinder {
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,
                     obj_map: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
                     way: &osmpbfreader::objects::Way)
-                    -> Vec<mimir::Admin> {
+                    -> Vec<Rc<mimir::Admin>> {
     // for the moment we consider that the coord of the way is the coord of it's first node
     let coord = way.nodes
                    .iter()
@@ -212,7 +213,7 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     coord.map_or(vec![], |c| {
         admins_geofinder.get_admins_for_coord(&c)
     .iter()
-    .map(|&a| a.clone()) // TODO use RC<Admin> to avoid copying them too much ?
+    .cloned()
     .collect()
     })
 }

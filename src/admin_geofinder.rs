@@ -30,10 +30,11 @@
 use mimir::Admin;
 use geo::contains::Contains;
 use geo;
+use std::rc::Rc;
 
 pub struct AdminGeoFinder {
     //quadtree: ntree::NTree<QuadTreeRegion, Admin>,
-    admins: Vec<Admin>
+    admins: Vec<Rc<Admin>>
 }
 
 impl AdminGeoFinder {
@@ -43,18 +44,18 @@ impl AdminGeoFinder {
         }
     }
 
-    pub fn add_admin(&mut self, admin: Admin) {
+    pub fn add_admin(&mut self, admin: Rc<Admin>) {
         self.admins.push(admin);
     }
 
     /// Get all Admins overlaping the coordinate
-    pub fn get_admins_for_coord(&self, coord: &geo::Coordinate) -> Vec<&Admin> {
+    pub fn get_admins_for_coord(&self, coord: &geo::Coordinate) -> Vec<Rc<Admin>> {
         self.admins.iter().filter(|a| {
                 a.boundary.as_ref().map_or(false, |b| {
                     b.contains(&geo::Point(coord.clone()))
                 })
             })
-            .collect()
+            .cloned().collect()
     }
 
     pub fn get_admins_for_street(&self) -> Vec<&Admin> {
