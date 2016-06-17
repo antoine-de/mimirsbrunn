@@ -121,7 +121,7 @@ impl From<mimir::Place> for Feature {
 impl From<mimir::Admin> for GeocodingResponse {
     fn from(other: mimir::Admin) -> GeocodingResponse {
         let type_ = "city".to_string(); //to be improved: it can be something else
-        let name = Some(other.name);
+        let name = Some(other.label);
         let postcode = Some(other.zip_code);
         let label = name.clone();
         GeocodingResponse {
@@ -146,7 +146,7 @@ fn get_postcode_and_city_name(admins: &Vec<mimir::Admin>) -> (Option<String>, Op
           .find(|a| ! a.zip_code.is_empty())
           .or_else(|| admins.iter().next())
           .map_or((None, None), |admin| {
-              (Some(admin.zip_code.clone()), Some(admin.name.clone()))
+              (Some(admin.zip_code.clone()), Some(admin.label.clone()))
           })
 }
 
@@ -154,7 +154,7 @@ impl From<mimir::Street> for GeocodingResponse {
     fn from(other: mimir::Street) -> GeocodingResponse {
         let type_ = "street".to_string();
         let name = Some(other.street_name);
-        let label = Some(other.name);
+        let label = Some(other.label);
         let admins = other.administrative_regions;
         let (postcode, city) = get_postcode_and_city_name(&admins);
 
@@ -175,10 +175,10 @@ impl From<mimir::Street> for GeocodingResponse {
 impl From<mimir::Addr> for GeocodingResponse {
     fn from(other: mimir::Addr) -> GeocodingResponse {
         let type_ = "house".to_string();
-        let name = Some(other.name.clone());
-        let label = Some(other.name);
-        let housenumber = Some(other.house_number);
-        let street_name = Some(other.street.name);
+        let label = Some(other.label);
+        let housenumber = Some(other.house_number.to_string());
+        let street_name = Some(other.street.street_name.to_string());
+        let name = Some(format!("{} {}", other.house_number, other.street.street_name));
         let admins = other.street.administrative_regions;
         let (postcode, city) = get_postcode_and_city_name(&admins);
 

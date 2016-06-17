@@ -65,14 +65,15 @@ impl Bano {
     }
     pub fn into_addr(self, admins: &AdminFromInsee) -> mimir::Addr {
         let street_name = format!("{} ({})", self.street, self.city);
-        let addr_name = format!("{} {}", self.nb, street_name);
+        let addr_name = format!("{} {}", self.nb, self.street);
+        let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let admin = admins.get(&format!("admin:fr:{}", self.insee()));
 
         let street = mimir::Street {
             id: street_id,
             street_name: self.street,
-            name: street_name,
+            label: street_name.to_string(),
             administrative_regions: admin.map_or(vec![], |a| vec!(a.clone())),
             weight: 1,
         };
@@ -80,7 +81,7 @@ impl Bano {
             id: format!("addr:{};{}", self.lon, self.lat),
             house_number: self.nb,
             street: street,
-            name: addr_name,
+            label: addr_label,
             coord: mimir::Coord {
                 lat: self.lat,
                 lon: self.lon,

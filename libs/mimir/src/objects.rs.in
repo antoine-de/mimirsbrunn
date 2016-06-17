@@ -78,7 +78,7 @@ pub struct Admin {
     pub id: String,
     pub insee: String,
     pub level: u32,
-    pub name: String,
+    pub label: String,
     pub zip_code: String,
     pub weight: u32,
     pub coord: Option<CoordWrapper>,
@@ -110,7 +110,7 @@ impl DocType for Admin {
 pub struct Street {
     pub id: String,
     pub street_name: String,
-    pub name: String,
+    pub label: String,
     pub administrative_regions: Vec<Admin>, // TODO use Rc<Admin> ?
     pub weight: u32,
 }
@@ -139,7 +139,7 @@ pub struct Addr {
     pub id: String,
     pub house_number: String,
     pub street: Street,
-    pub name: String,
+    pub label: String,
     pub coord: Coord,
     pub weight: u32,
 }

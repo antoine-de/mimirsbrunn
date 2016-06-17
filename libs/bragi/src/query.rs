@@ -72,7 +72,7 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
                               .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
                               .with_boost(30)
                               .with_query(rs_q::build_match_all().build())
-			                  .with_function(
+                              .with_function(
                           rs_es::query::functions::Function::build_field_value_factor("weight")
 			                                  .with_factor(1)
                                       .with_modifier(rs_es::query::functions::Modifier::Log1p)
@@ -120,11 +120,11 @@ fn query_location(_q: &String,
 }
 
 fn query_prefix(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "name.prefix")
+	query(&q, cnx, "label.prefix")
 }
 
 fn query_ngram(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "name.ngram")
+	query(&q, cnx, "label.ngram")
 }
 
 pub fn autocomplete(q: String,
