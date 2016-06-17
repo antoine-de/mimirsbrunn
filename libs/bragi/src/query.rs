@@ -32,6 +32,7 @@ use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
+use rs_es::units as rs_u;
 use mimir;
 use serde_json;
 
@@ -73,6 +74,37 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
     })
 }
 
+fn build_query(q: &String, match_type: &str, coord: &Option<model::Coord>) -> rs_es::query::Query {
+    let boost_addr = rs_q::build_term("_type","addr").with_boost(1000).build();
+    let boost_match_query = rs_q::build_match(match_type, q.to_string()).with_boost(100).build();
+
+    let mut should_query = vec![
+   boost_addr,
+   boost_match_query];
+   if let &Some(ref c) = coord {
+       // if we have coordinate, we boost we result near this coordinate
+       let boost_on_proximity = rs_q::build_function_score()
+              .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+              .with_boost(300)
+              .with_function(
+          rs_es::query::functions::Function::build_decay("coord", rs_u::Location::LatLon(c.lat, c.lon), rs_u::Distance::new(3f64, rs_u::DistanceUnit::Kilometer)).build_gauss()).build();
+        should_query.push(boost_on_proximity);
+   } else {
+       // if we don't have coords, we take the field `weight` into account
+       let boost_on_weight = rs_q::build_function_score()
+              .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+              .with_boost(300)
+              .with_query(rs_q::build_match_all().build())
+              .with_function(
+          rs_es::query::functions::Function::build_field_value_factor("weight")
+                              .with_factor(1)
+                      .with_modifier(rs_es::query::functions::Modifier::Log1p)
+                                                      .build())
+              .build();
+        should_query.push(boost_on_weight);
+   }
+}
+
 fn query(q: &str,
          cnx: &str,
          match_type: &str,
@@ -80,21 +112,7 @@ fn query(q: &str,
          shape: Option<Vec<rs_es::units::Location>>)
          -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
-                        .with_should(vec![
-                       rs_q::build_term("_type","addr").with_boost(1000).build(),
-                       rs_q::build_match(match_type, q.to_string())
-                              .with_boost(100)
-                              .build(),
-                       rs_q::build_function_score()
-                              .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-                              .with_boost(300)
-                              .with_query(rs_q::build_match_all().build())
-			                  .with_function(
-                          rs_es::query::functions::Function::build_field_value_factor("weight")
-			                                  .with_factor(1)
-                                      .with_modifier(rs_es::query::functions::Modifier::Log1p)
-			                                                          .build())
-                              .build()])
+                        .with_should(should_query)
                         .build();
 
     let mut must = vec![rs_q::build_match(match_type, q.to_string())
@@ -112,17 +130,21 @@ fn query(q: &str,
         .with_must(must)
         .build();
 
-
-    let final_query = rs_q::build_bool()
+    rs_q::build_bool()
                           .with_must(vec![sub_query])
                           .with_filter(filter)
-                          .build();
+                          .build()
+}
+
+fn query(q: &String, cnx: &String, match_type: &str, coord: &Option<model::Coord>,
+         shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    let query = build_query(q, match_type, coord, shape);
 
     let mut client = build_rs_client(cnx);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                        .with_indexes(&["munin"])
-                                                       .with_query(&final_query)
+                                                       .with_query(&query)
                                                        .send());
 
     debug!("{} documents found", result.hits.total);
@@ -136,12 +158,15 @@ fn query(q: &str,
              .collect())
 }
 
-fn query_prefix(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "name.prefix")
+
+fn query_prefix(q: &String, cnx: &String, coord: &Option<model::Coord>,
+         shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+	query(&q, cnx, "name.prefix", coord, shape)
 }
 
-fn query_ngram(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "name.ngram")
+fn query_ngram(q: &String, cnx: &String, coord: &Option<model::Coord>,
+         shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+	query(&q, cnx, "name.ngram", coord, shape)
 }
 
 pub fn autocomplete(q: String,
