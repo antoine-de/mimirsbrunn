@@ -32,6 +32,7 @@ use serde_json::value::{to_value, Value};
 use mimir::{Street, Admin};
 use mimir::rubber::Rubber;
 use std;
+use std::cell::Cell;
 
 fn check_has_elt(es: &::ElasticSearchWrapper, fun: Box<Fn(&Value)>) {
     let search = es.search("*:*"); // we get all documents in the base
@@ -132,7 +133,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         level: 8,
         label: "my admin".to_string(),
         zip_code: "zip_code".to_string(),
-        weight: 42u32,
+        weight: Cell::new(42),
         coord: None,
         boundary: None,
     };

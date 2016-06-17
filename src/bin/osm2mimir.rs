@@ -51,6 +51,7 @@ pub type OsmPbfReader = osmpbfreader::OsmPbfReader<std::fs::File>;
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::rc::Rc;
+use std::cell::Cell;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -172,7 +173,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
                 label: name.to_string(),
                 zip_code: zip_code.to_string(),
                 // TODO weight value ?
-                weight: 1,
+                weight: Cell::new(0),
                 coord: coord_centre,
                 boundary: boundary,
             };
@@ -296,17 +297,37 @@ fn main() {
 
     debug!("importing adminstrative region into Mimir");
     let admins = administrative_regions(&mut parsed_pbf, levels);
-    let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
-                          .unwrap();
-    info!("Nb of indexed admin: {}", nb_admins);
 
+    let mut streets = streets(&mut parsed_pbf, admins.clone());
+    
+    for st in &mut streets {
+    	for admin in &mut st.administrative_regions {
+    		if admin.level == 8 {
+    			admin.weight.set(admin.weight.get() + 1)
+    		}
+    	}
+    }
+    
+    for st in &mut streets {
+    	for admin in &mut st.administrative_regions {
+    		if admin.level == 8 {
+    			st.weight = admin.weight.get();
+    			break;
+    		}
+    	}
+    } 
+    
     if args.flag_import_way {
         debug!("importing streets into Mimir");
         let nb_streets = rubber.index("way",
                                       &args.flag_dataset,
-                                      streets(&mut parsed_pbf, admins).into_iter())
+                                      streets.into_iter())
                                .unwrap();
         info!("Nb of indexed street: {}", nb_streets);
     }
+    
+    let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
+                          .unwrap();
+    info!("Nb of indexed admin: {}", nb_admins);
 
 }

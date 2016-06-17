@@ -31,6 +31,8 @@
 use geo;
 use serde;
 use std::rc::Rc;
+use std::cell::Cell;
+use serde::ser::Serializer;
 
 // Note: this file is needed to use serde in rust stable
 // cf mimirsbrunn/build.rs for explanations
@@ -84,6 +86,7 @@ pub struct Coord {
     pub lon: f64,
 }
 
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Admin {
     pub id: String,
@@ -91,18 +94,17 @@ pub struct Admin {
     pub level: u32,
     pub label: String,
     pub zip_code: String,
-    pub weight: u32,
+    #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
+    pub weight: Cell<u32>,
     pub coord: Option<CoordWrapper>,
     #[serde(skip_serializing, skip_deserializing)]
     pub boundary: Option<geo::MultiPolygon>,
 }
-impl Incr for Admin {
-    fn id(&self) -> &str {
-        &self.id
-    }
-    fn incr(&mut self) {
-        self.weight += 1;
-    }
+
+fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
+	// we can serialize the cell as a u32, since the reference is important only while loading the data
+	// and not in ES
+	serializer.serialize_u32(cell.get())
 }
 
 impl EsId for Admin {
