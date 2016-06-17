@@ -95,6 +95,8 @@ pub struct Admin {
     pub label: String,
     pub zip_code: String,
     #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
+    //Attribut weight is used in elastic search to sort the result. It is absent in the response 
+    //of navitia (jormungandr) and hence deserializing is not necessary 
     pub weight: Cell<u32>,
     pub coord: Option<CoordWrapper>,
     #[serde(skip_serializing, skip_deserializing)]

@@ -32,6 +32,9 @@ use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
+use rs_es::operations::search::Sort;
+use rs_es::operations::search::Order;
+
 use mimir;
 use serde_json;
 
@@ -88,8 +91,7 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
                      .with_must(vec![rs_q::build_match(match_type, q.to_string())
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()])
                      .build();
-
-
+	
     let final_query = rs_q::build_bool()
                           .with_must(vec![sub_query])
                           .with_filter(filter)
@@ -100,6 +102,7 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                        .with_indexes(&["munin"])
                                                        .with_query(&final_query)
+                                                       .with_sort(&Sort::field_order("weight", Order::Desc))
                                                        .send());
 
     debug!("{} documents found", result.hits.total);
