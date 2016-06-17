@@ -57,6 +57,7 @@ use std::cell::Cell;
 struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
+    flag_city_level: u32,
     flag_connection_string: String,
     flag_import_way: bool,
     flag_import_admin: bool,
@@ -66,17 +67,21 @@ struct Args {
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--dataset=<dataset>] --level=<level> ...
+    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--dataset=<dataset>] [--city-level=<level>] --level=<level> ...
 
 Options:
-    -h, --help            Show this message.
-    -i, --input=<file>    OSM PBF file.
-    -l, --level=<level>   Admin levels to keep.
-    -w, --import-way             Import ways
-    -a, --import-admin           Import admins
+    -h, --help              Show this message.
+    -i, --input=<file>      OSM PBF file.
+    -l, --level=<level>     Admin levels to keep.
+    -C, --city-level=<level>
+                            City level to calculate weight, [default: 8] 		
+    -w, --import-way        Import ways
+    -a, --import-admin      Import admins
     -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, [default: http://localhost:9200/munin]
-    -d, --dataset=<dataset>         Name of the dataset, [default: fr]
+                            Elasticsearch parameters, [default: http://localhost:9200/munin]
+    -d, --dataset=<dataset>
+                            Name of the dataset, [default: fr]
+    
 ";
 
 #[derive(Debug)]
@@ -291,6 +296,7 @@ fn main() {
                          .unwrap_or_else(|e| e.exit());
 
     let levels = args.flag_level.iter().cloned().collect();
+    let city_level = args.flag_city_level;
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
@@ -302,7 +308,7 @@ fn main() {
     
     for st in &mut streets {
     	for admin in &mut st.administrative_regions {
-    		if admin.level == 8 {
+    		if admin.level == city_level {
     			admin.weight.set(admin.weight.get() + 1)
     		}
     	}
@@ -310,7 +316,7 @@ fn main() {
     
     for st in &mut streets {
     	for admin in &mut st.administrative_regions {
-    		if admin.level == 8 {
+    		if admin.level == city_level {
     			st.weight = admin.weight.get();
     			break;
     		}
