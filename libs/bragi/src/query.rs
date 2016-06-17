@@ -75,19 +75,23 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
 }
 
 fn build_query(q: &String, match_type: &str, coord: &Option<model::Coord>) -> rs_es::query::Query {
-    let boost_addr = rs_q::build_term("_type","addr").with_boost(1000).build();
+    let boost_addr = rs_q::build_term("_type", "addr").with_boost(1000).build();
     let boost_match_query = rs_q::build_match(match_type, q.to_string()).with_boost(100).build();
 
-    let mut should_query = vec![
-   boost_addr,
-   boost_match_query];
-   if let &Some(ref c) = coord {
-       // if we have coordinate, we boost we result near this coordinate
-       let boost_on_proximity = rs_q::build_function_score()
-              .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-              .with_boost(300)
-              .with_function(
-          rs_es::query::functions::Function::build_decay("coord", rs_u::Location::LatLon(c.lat, c.lon), rs_u::Distance::new(3f64, rs_u::DistanceUnit::Kilometer)).build_gauss()).build();
+    let mut should_query = vec![boost_addr, boost_match_query];
+    if let &Some(ref c) = coord {
+        // if we have coordinate, we boost we result near this coordinate
+        use rs_es::query::functions::Function::build_decay;
+        let boost_on_proximity =
+            rs_q::build_function_score()
+                .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+                .with_boost(300)
+                .with_function(build_decay("coord",
+                                           rs_u::Location::LatLon(c.lat, c.lon),
+                                           rs_u::Distance::new(3f64,
+                                                               rs_u::DistanceUnit::Kilometer))
+                                   .build_gauss())
+                .build();
         should_query.push(boost_on_proximity);
    } else {
        // if we don't have coords, we take the field `weight` into account
@@ -103,14 +107,7 @@ fn build_query(q: &String, match_type: &str, coord: &Option<model::Coord>) -> rs
               .build();
         should_query.push(boost_on_weight);
    }
-}
 
-fn query(q: &str,
-         cnx: &str,
-         match_type: &str,
-	 coord: &Option<model::Coord>,
-         shape: Option<Vec<rs_es::units::Location>>)
-         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
                         .with_should(should_query)
                         .build();
@@ -131,14 +128,17 @@ fn query(q: &str,
         .build();
 
     rs_q::build_bool()
-                          .with_must(vec![sub_query])
-                          .with_filter(filter)
-                          .build()
+        .with_must(vec![sub_query])
+        .with_filter(filter)
+        .build()
 }
 
-fn query(q: &String, cnx: &String, match_type: &str, coord: &Option<model::Coord>,
-         shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    let query = build_query(q, match_type, coord, shape);
+fn query(q: &String,
+         cnx: &String,
+         match_type: &str,
+         coord: &Option<model::Coord>)
+         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    let query = build_query(q, match_type, coord);
 
     let mut client = build_rs_client(cnx);
 
