@@ -35,7 +35,7 @@ extern crate iron_test;
 use std::process::Command;
 
 fn get_handler(url: String) -> rustless::Application {
-    let api = bragi::api::ApiEndPoint{es_cnx_string: url}.root();
+    let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
     rustless::Application::new(api)
 }
 
@@ -55,16 +55,20 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     // Call status
     let resp = iron_test::request::get("http://localhost:3000/status",
-                                iron::Headers::new(),
-                                &handler).unwrap();
+                                       iron::Headers::new(),
+                                       &handler)
+                   .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
 
-    assert_eq!(result_body, r#"{"version":"1.0.0","es":"http://localhost:9242/munin","status":"good"}"#);
+    assert_eq!(result_body,
+               r#"{"version":"1.1.0","es":"http://localhost:9242/munin","status":"good"}"#);
 
     // Call autocomplete
-    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=15 Rue Hector Malot, (Paris)",
-                                iron::Headers::new(),
-                                &handler).unwrap();
+    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=15 Rue Hector \
+                                        Malot, (Paris)",
+                                       iron::Headers::new(),
+                                       &handler)
+                   .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
                          r#""geocoding":{"version":"0.1.0","query":""},"#,
