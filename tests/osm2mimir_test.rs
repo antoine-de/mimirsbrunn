@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use std::process::Command;
 extern crate serde_json;
 use serde_json::value::Value;
 
@@ -36,16 +35,13 @@ use serde_json::value::Value;
 /// Checks that we are able to find one object (a specific address)
 pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    let status = Command::new(osm2mimir)
-                     .args(&["--input=./tests/fixtures/rues_trois_communes.osm.pbf".into(),
-                             "--import-way".into(),
-                             "--import-admin".into(),
-                             "--level=8".into(),
-                             format!("--connection-string={}", es_wrapper.host())])
-                     .status()
-                     .unwrap();
-    assert!(status.success(), "`bano2mimir` failed {}", &status);
-    es_wrapper.refresh();
+    ::launch_and_assert(osm2mimir,
+                      vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
+                       "--import-way".into(),
+                       "--import-admin".into(),
+                       "--level=8".into(),
+                       format!("--connection-string={}", es_wrapper.host())],
+                       &es_wrapper);
 
     // Test: Import of Admin
     let city = es_wrapper.search("name:Livry-sur-Seine");

@@ -28,32 +28,22 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use std::process::Command;
-
-/// Simple call to a BANO load into ES base
-/// Checks that we are able to find one object (a specific address)
 pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    let status = Command::new(osm2mimir)
-                     .args(&["--input=./tests/fixtures/rues_trois_communes.osm.pbf".into(),
+    ::launch_and_assert(osm2mimir,
+                        vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
                              "--import-way".into(),
                              "--import-admin".into(),
                              "--level=8".into(),
-                             format!("--connection-string={}", es_wrapper.host())])
-                     .status()
-                     .unwrap();
-    assert!(status.success(), "`bano2mimir` failed {}", &status);
-
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
+    
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
-    let status = Command::new(bano2mimir)
-                     .args(&["--input=./tests/fixtures/bano-trois_communes.csv".into(),
-                             format!("--connection-string={}", es_wrapper.host())])
-                     .status()
-                     .unwrap();
-    assert!(status.success(), "`bano2mimir` failed {}", &status);
-
-    es_wrapper.refresh();
+    ::launch_and_assert(bano2mimir,
+                        vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
     
 	// TODO: more tests will be written here
 }

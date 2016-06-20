@@ -47,6 +47,7 @@ mod rubber_test;
 mod bragi_test;
 use serde_json::value::Value;
 use hyper::client::response::Response;
+use std::process::Command;
 
 trait ToJson {
     fn to_json(self) -> Value;
@@ -139,6 +140,17 @@ impl<'a> ElasticSearchWrapper<'a> {
             })
             .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = Value>>)
     }
+}
+
+fn launch_and_assert(cmd: &'static str,
+                     args: Vec<std::string::String>, 
+                     es_wrapper: &ElasticSearchWrapper) {
+    let status = Command::new(cmd)
+                     .args(&args)
+                     .status()
+                     .unwrap();
+    assert!(status.success(), "`{}` failed {}", cmd, &status);
+    es_wrapper.refresh();
 }
 
 /// Main test method (regroups all tests)
