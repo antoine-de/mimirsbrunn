@@ -29,10 +29,8 @@
 // www.navitia.io
 
 use std::process::Command;
-use hyper;
-use hyper::client::Client;
-use mdo::option::{bind, ret};
-use super::ToJson;
+extern crate serde_json;
+use serde_json::value::Value;
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
@@ -51,7 +49,7 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // Test: Import of Admin
     let city = es_wrapper.search("name:Livry-sur-Seine");
-    let nb_hits = city.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
+    let nb_hits = city.pointer("/hits/total").and_then(|v| v.as_u64()).unwrap_or(0);
     assert_eq!(nb_hits, 1);
     let city_type = city.pointer("/hits/hits/0/_type").and_then(|v| v.as_string()).unwrap_or("");
     assert_eq!(city_type, "admin");
@@ -62,53 +60,28 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let rue_name = search.pointer("/hits/hits/0/_source/name").and_then(|v| v.as_string()).unwrap_or("");
     assert_eq!(rue_name, r#"Rue des Près"#);
     // And there should be only ONE "Rue des Près"
-    let mut nb = 0;
-    if let Some(hits) = search.pointer("/hits/hits") {
-    	if let Some(hits_array) = hits.as_array() {
-    	    nb = hits_array.iter().filter(|street| {
-    	            let name = street.pointer("/_source/name").and_then(|n| n.as_string()).unwrap_or("");
+    let street_filter = |street: &Value| {
+    	         	let name = street.pointer("/_source/name").and_then(|n| n.as_string()).unwrap_or("");
     	            name == r#"Rue des Près"#
-    	    }).count();
-    	};
-    };
+    			};
+    let nb = es_wrapper.search_and_filter(r#"name:Rue des Près"#, street_filter).count();
     assert_eq!(nb, 1);
-    nb = 0;
+  
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
-    let search = es_wrapper.search(r#"name:Rue du Four à Chaux"#);    
-        if let Some(hits) = search.pointer("/hits/hits") {
-    	if let Some(hits_array) = hits.as_array() {
-    	    nb = hits_array.iter().filter(|street| {
+    let street_filter = |street: &Value| {
     	            let name = street.pointer("/_source/name").and_then(|n| n.as_string()).unwrap_or("");
     	            let admin_name = street.pointer("/_source/administrative_regions/0/name").and_then(|n| n.as_string()).unwrap_or("");            
     	            name == r#"Rue du Four à Chaux"# && admin_name == r#"Livry-sur-Seine"#
-    	    }).count();
-    	};
-    };
+    			};
+    let nb = es_wrapper.search_and_filter(r#"name:Rue du Four à Chaux"#, street_filter).count();
     assert_eq!(nb, 6);
-    nb = 0;
     
     //Test: Streets having the same name in different cities
-    let search = es_wrapper.search(r#"name:Rue du Port"#);    
-        if let Some(hits) = search.pointer("/hits/hits") {
-    	if let Some(hits_array) = hits.as_array() {
-    	    nb = hits_array.iter().filter(|street| {
-    	            let name = street.pointer("/_source/name").and_then(|n| n.as_string()).unwrap_or("");
-    	            let admin_name = street.pointer("/_source/administrative_regions/0/name").and_then(|n| n.as_string()).unwrap_or("");            
-    	            name == r#"Rue du Port"# && admin_name == r#"Vaux-le-Pénil"#
-    	    }).count();
-    	};
-    };
-    assert_eq!(nb, 1);
-    nb = 0;
-    let search = es_wrapper.search(r#"name:Rue du Port"#);    
-        if let Some(hits) = search.pointer("/hits/hits") {
-    	if let Some(hits_array) = hits.as_array() {
-    	    nb = hits_array.iter().filter(|street| {
-    	            let name = street.pointer("/_source/name").and_then(|n| n.as_string()).unwrap_or("");
-    	            let admin_name = street.pointer("/_source/administrative_regions/0/name").and_then(|n| n.as_string()).unwrap_or("");            
-    	            name == r#"Rue du Port"# && admin_name == r#"Melun"#
-    	    }).count();
-    	};
-    };
+    let street_filter = |street: &Value| {
+                        let name = street.pointer("/_source/name").and_then(|n| n.as_string()).unwrap_or("");
+                        let admin_name = street.pointer("/_source/administrative_regions/0/name").and_then(|n| n.as_string()).unwrap_or("");
+                        name == r#"Rue du Port"# && admin_name == r#"Melun"#
+    			};
+    let nb = es_wrapper.search_and_filter(r#"name:Rue du Port"#, street_filter).count();
     assert_eq!(nb, 1);
 }

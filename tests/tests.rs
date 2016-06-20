@@ -106,6 +106,39 @@ impl<'a> ElasticSearchWrapper<'a> {
         assert!(res.status == hyper::Ok);
         res.to_json()
     }
+    
+    pub fn search_and_filter<'b, F>(&self, word: &str, predicate: F)
+    	-> Box<Iterator<Item=serde_json::value::Value> + 'b>
+    	where F: 'b + FnMut(&serde_json::value::Value) -> bool
+    {
+        use serde_json::value::Value;
+        use std::collections::btree_map;
+    	fn into_object(json: Value) -> Option<btree_map::BTreeMap<String, Value>> {
+    	    match json {
+    	        Value::Object(o) => Some(o),
+    	        _ => None
+    	    }
+    	}
+    	fn get(json: Value, key: &str) -> Option<Value> {
+    	    into_object(json).and_then(|mut json| {
+    	        match json.entry(key.into()) {
+    	        	btree_map::Entry::Occupied(o) => Some(o.remove()),
+    	        	_ => None
+    	    	}
+    	    })
+    	}
+    	let json = self.search(word);
+    	get(json, "hits")
+    		.and_then(|json| get(json, "hits"))
+            .and_then(|hits| {
+                match hits {
+                    Value::Array(v) =>
+                    	Some(Box::new(v.into_iter().filter(predicate)) as Box<Iterator<Item = Value>>),
+                    _ => None
+                }
+            })
+            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = Value>>)
+    }
 }
 
 /// Main test method (regroups all tests)
