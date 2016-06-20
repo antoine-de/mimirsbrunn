@@ -188,11 +188,11 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
     return administrative_regions;
 }
 
-fn make_admin_geofinder(admins: AdminsVec) -> AdminGeoFinder {
+fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
     let mut geofinder = AdminGeoFinder::new();
 
     for a in admins {
-        geofinder.add_admin(a);
+        geofinder.add_admin(a.clone());
     }
     geofinder
 }
@@ -224,7 +224,7 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     })
 }
 
-fn streets(pbf: &mut OsmPbfReader, admins: AdminsVec) -> StreetsVec {
+fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec) -> StreetsVec {
     let admins_geofinder = make_admin_geofinder(admins);
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
@@ -304,7 +304,7 @@ fn main() {
     debug!("importing adminstrative region into Mimir");
     let admins = administrative_regions(&mut parsed_pbf, levels);
 
-    let mut streets = streets(&mut parsed_pbf, admins.clone());
+    let mut streets = streets(&mut parsed_pbf, &admins);
     
     for st in &mut streets {
     	for admin in &mut st.administrative_regions {
