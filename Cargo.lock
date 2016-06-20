@@ -1,11 +1,11 @@
 [root]
 name = "mimirsbrunn"
-version = "0.0.1"
+version = "1.1.0"
 dependencies = [
- "bragi 1.0.0",
+ "bragi 1.1.0",
  "chrono 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "csv 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "docker_wrapper 0.1.0",
+ "docker_wrapper 1.1.0",
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -13,9 +13,9 @@ dependencies = [
  "iron-test 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mdo 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mimir 1.0.0",
+ "mimir 1.1.0",
  "ntree 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "osm_builder 1.0.0",
+ "osm_builder 1.1.0",
  "osmpbfreader 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.71 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -76,7 +76,7 @@ dependencies = [
 
 [[package]]
 name = "bragi"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -86,7 +86,7 @@ dependencies = [
  "jsonway 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mdo 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mimir 1.0.0",
+ "mimir 1.1.0",
  "regex 0.1.71 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -148,7 +148,7 @@ dependencies = [
 
 [[package]]
 name = "docker_wrapper"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "hyper 0.9.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -408,7 +408,7 @@ dependencies = [
 
 [[package]]
 name = "mimir"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "chrono 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -532,9 +532,9 @@ dependencies = [
 
 [[package]]
 name = "osm_builder"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
- "mimir 1.0.0",
+ "mimir 1.1.0",
  "osmpbfreader 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
