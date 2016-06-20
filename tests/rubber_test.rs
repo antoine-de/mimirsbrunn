@@ -52,7 +52,7 @@ fn check_has_bob(es: &::ElasticSearchWrapper) {
         let es_bob = es_elt.find("_source").unwrap();
         assert_eq!(es_bob.find("id"), Some(&to_value("bob")));
         assert_eq!(es_bob.find("street_name"), Some(&to_value("bob's street")));
-        assert_eq!(es_bob.find("name"), Some(&to_value("bob's name")));
+        assert_eq!(es_bob.find("label"), Some(&to_value("bob's name")));
         assert_eq!(es_bob.find("weight"), Some(&Value::U64(42)));
     };
     check_has_elt(es, Box::new(check_is_bob));
@@ -69,7 +69,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     let bob = Street {
         id: "bob".to_string(),
         street_name: "bob's street".to_string(),
-        name: "bob's name".to_string(),
+        label: "bob's name".to_string(),
         administrative_regions: vec![],
         weight: 42u32,
     };
@@ -87,7 +87,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     let bobette = Street {
         id: "bobette".to_string(),
         street_name: "bobette's street".to_string(),
-        name: "bobette's name".to_string(),
+        label: "bobette's name".to_string(),
         administrative_regions: vec![],
         weight: 24u32,
     };
@@ -115,7 +115,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         assert_eq!(es_bob.find("id"), Some(&to_value("bobette")));
         assert_eq!(es_bob.find("street_name"),
                    Some(&to_value("bobette's street")));
-        assert_eq!(es_bob.find("name"), Some(&to_value("bobette's name")));
+        assert_eq!(es_bob.find("label"), Some(&to_value("bobette's name")));
         assert_eq!(es_bob.find("weight"), Some(&Value::U64(24)));
     };
     check_has_elt(&es, Box::new(check_is_bobette));
@@ -130,7 +130,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
         level: 8,
-        name: "my admin".to_string(),
+        label: "my admin".to_string(),
         zip_code: "zip_code".to_string(),
         weight: 42u32,
         coord: None,

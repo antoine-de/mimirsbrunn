@@ -168,7 +168,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
                 id: admin_id,
                 insee: insee_id.to_string(),
                 level: level,
-                name: name.to_string(),
+                label: name.to_string(),
                 zip_code: zip_code.to_string(),
                 // TODO weight value ?
                 weight: 1,
@@ -268,7 +268,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: AdminsVec) -> StreetsVec {
                         Some(mimir::Street {
                             id: way.id.to_string(),
                             street_name: way_name.to_string(),
-                            name: way_name.to_string(),
+                            label: way_name.to_string(),
                             weight: 1,
                             administrative_regions: admin,
                         })
