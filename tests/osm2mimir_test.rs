@@ -49,7 +49,7 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // Test: Import of Admin
     let city = es_wrapper.search("name:Livry-sur-Seine");
-    let nb_hits = city.pointer("/hits/total").and_then(|v| v.as_u64()).unwrap_or(0);
+    let nb_hits = city.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
     assert_eq!(nb_hits, 1);
     let city_type = city.pointer("/hits/hits/0/_type").and_then(|v| v.as_string()).unwrap_or("");
     assert_eq!(city_type, "admin");
