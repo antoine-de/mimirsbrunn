@@ -32,7 +32,6 @@ use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
-
 use mimir;
 use serde_json;
 
@@ -62,7 +61,7 @@ fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option
     })
 }
 
-fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn query(q: &String, cnx: &String, match_type: &str, shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
                         .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
@@ -89,12 +88,21 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
                      .with_must(vec![rs_q::build_match(match_type, q.to_string())
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()])
                      .build();
+	let final_query = match shape {
+		Some(locations) =>  {
+			let geo_filter = rs_q::build_geo_polygon("coord", locations).build();
+			rs_q::build_bool()
+	                          .with_must(vec![sub_query])
+	                          .with_filter(filter)
+	                          .with_filter(geo_filter)
+	                          .build()
+		}
+		None => rs_q::build_bool()
+	                          .with_must(vec![sub_query])
+	                          .with_filter(filter)
+	                          .build()
+	};
 	
-    let final_query = rs_q::build_bool()
-                          .with_must(vec![sub_query])
-                          .with_filter(filter)
-                          .build();
-
     let mut client = build_rs_client(cnx);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
@@ -119,26 +127,27 @@ fn query_location(_q: &String,
     panic!("todo!");
 }
 
-fn query_prefix(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "label.prefix")
+fn query_prefix(q: &String, cnx: &String, shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+	query(&q, cnx, "label.prefix", shape)
 }
 
-fn query_ngram(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "label.ngram")
+fn query_ngram(q: &String, cnx: &String, shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+	query(&q, cnx, "label.ngram", shape)
 }
 
 pub fn autocomplete(q: String,
                     coord: Option<model::Coord>,
-                    cnx: &String)
+                    cnx: &String,
+                    shape: Option<Vec<rs_es::units::Location>>)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     if let Some(ref coord) = coord {
         query_location(&q, coord)
     } else {
     	//First search with match = "name.prefix".
     	//If no result then another search with match = "name.ngram"
-    	let results = try!(query_prefix(&q, cnx));
+    	let results = try!(query_prefix(&q, cnx, shape));
         if results.is_empty() {
-        	query_ngram(&q, cnx)
+        	query_ngram(&q, cnx, None)
         } else {
         	Ok(results)
         }
