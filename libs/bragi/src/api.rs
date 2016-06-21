@@ -55,66 +55,66 @@ fn render<T>(mut client: rustless::Client,
 }
 
 pub struct ApiEndPoint {
-    pub es_cnx_string: String
+    pub es_cnx_string: String,
 }
 
 impl ApiEndPoint {
+    pub fn root(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("", |endpoint| {
+                endpoint.handle(|client, _params| {
+                    let desc = EndPoint { description: "autocomplete service".to_string() };
+                    render(client, desc)
+                })
+            });
 
-pub fn root(&self) -> rustless::Api {
-    Api::build(|api| {
-        api.get("", |endpoint| {
-            endpoint.handle(|client, _params| {
-                let desc = EndPoint { description: "autocomplete service".to_string() };
-                render(client, desc)
-            })
-        });
-
-        api.error_formatter(|error, _media| {
-            let err = if error.is::<rustless::errors::Validation>() {
-                let val_err = error.downcast::<rustless::errors::Validation>().unwrap();
-                // TODO better message, we shouldn't use {:?} but access the `path`
-                // and `detail` of all errrors in val_err.reason
-                CustomError {
-                    short: "validation error".to_string(),
-                    long: format!("invalid arguments {:?}", val_err.reason),
-                }
-            } else {
-                CustomError {
-                    short: "bad_request".to_string(),
-                    long: format!("bad request, error: {}", error),
-                }
-            };
-            let mut resp = rustless::Response::from(status::StatusCode::BadRequest,
-                                                    Box::new(serde_json::to_string(&err).unwrap()));
-            resp.set_json_content_type();
-            Some(resp)
-        });
-        api.mount(self.v1());
-    })
-}
-
-fn v1(&self) -> rustless::Api {
-    Api::build(|api| {
-        api.mount(self.status());
-        api.mount(self.autocomplete());
-    })
-}
-
-fn status(&self) -> rustless::Api {
-    Api::build(|api| {
-        api.get("status", |endpoint| {
-            let cnx = self.es_cnx_string.clone();
-            endpoint.handle(move |client, _params| {
-                let status = Status {
-                    version: env!("CARGO_PKG_VERSION").to_string(),
-                    es: cnx.to_string(),
-                    status: "good".to_string(),
+            api.error_formatter(|error, _media| {
+                let err = if error.is::<rustless::errors::Validation>() {
+                    let val_err = error.downcast::<rustless::errors::Validation>().unwrap();
+                    // TODO better message, we shouldn't use {:?} but access the `path`
+                    // and `detail` of all errrors in val_err.reason
+                    CustomError {
+                        short: "validation error".to_string(),
+                        long: format!("invalid arguments {:?}", val_err.reason),
+                    }
+                } else {
+                    CustomError {
+                        short: "bad_request".to_string(),
+                        long: format!("bad request, error: {}", error),
+                    }
                 };
-                render(client, status)
-            })
-        });
-    })
-}
+                let mut resp = rustless::Response::from(status::StatusCode::BadRequest,
+                                                        Box::new(serde_json::to_string(&err)
+                                                            .unwrap()));
+                resp.set_json_content_type();
+                Some(resp)
+            });
+            api.mount(self.v1());
+        })
+    }
+
+    fn v1(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.mount(self.status());
+            api.mount(self.autocomplete());
+        })
+    }
+
+    fn status(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("status", |endpoint| {
+                let cnx = self.es_cnx_string.clone();
+                endpoint.handle(move |client, _params| {
+                    let status = Status {
+                        version: env!("CARGO_PKG_VERSION").to_string(),
+                        es: cnx.to_string(),
+                        status: "good".to_string(),
+                    };
+                    render(client, status)
+                })
+            });
+        })
+    }
 
     fn autocomplete(&self) -> rustless::Api {
         Api::build(|api| {
@@ -122,22 +122,22 @@ fn status(&self) -> rustless::Api {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
                     params.req("geometry", |geometry| {
-                    		geometry.coerce(json_dsl::object());
-		                    geometry.nest(|params| {
-			                    params.req("type", |geojson_type| {
-			                        geojson_type.coerce(json_dsl::string());
-			                        geojson_type.allow_values(&["Polygon".to_string()]);
-			                    });
-		                    });
-		                    geometry.nest(|params| {
-			                    params.req("coordinates", |shape| {
-			                        shape.coerce(json_dsl::array());
-			                        shape.validate_with(|val, path| {
-			                            check_coordinates(val, path, "Coordinates is invalid")
-			                        });
-			                    });
-		                    });
-                    	})
+                        geometry.coerce(json_dsl::object());
+                        geometry.nest(|params| {
+                            params.req("type", |geojson_type| {
+                                geojson_type.coerce(json_dsl::string());
+                                geojson_type.allow_values(&["Polygon".to_string()]);
+                            });
+                        });
+                        geometry.nest(|params| {
+                            params.req("coordinates", |shape| {
+                                shape.coerce(json_dsl::array());
+                                shape.validate_with(|val, path| {
+                                    check_coordinates(val, path, "Coordinates is invalid")
+                                });
+                            });
+                        });
+                    })
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -147,7 +147,8 @@ fn status(&self) -> rustless::Api {
                         None => "".to_string(),
                     };
                     let geometry = params.find_path(&["geometry"]).unwrap();
-                    let coordinates = geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
+                    let coordinates =
+                        geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
                     let mut shape = Vec::new();
                     for ar in coordinates[0].as_array().unwrap() {
                         shape.push((ar[0].as_f64().unwrap(), ar[1].as_f64().unwrap()));
