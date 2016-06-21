@@ -38,7 +38,6 @@ use valico::common::error as valico_error;
 use super::query;
 use model::v1::*;
 use model;
-use rs_es;
 
 static MAX_LAT: f64 = 180f64;
 static MIN_LAT: f64 = -180f64;
@@ -117,80 +116,80 @@ fn status(&self) -> rustless::Api {
     })
 }
 
-fn autocomplete(&self) -> rustless::Api {
-    Api::build(|api| {
-		api.post("autocomplete", |endpoint| {
-		    endpoint.params(|params| {
-				params.opt_typed("q", json_dsl::string());
-                params.opt("type", |geojson_type| {
-                    geojson_type.coerce(json_dsl::string());
-                    geojson_type.validate_with(|val, path| {
-                        check_value(val, path, "Polygon" , "GeoJson type is invalid")
+    fn autocomplete(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.post("autocomplete", |endpoint| {
+                endpoint.params(|params| {
+                    params.opt_typed("q", json_dsl::string());
+                    params.req("type", |geojson_type| {
+                        geojson_type.coerce(json_dsl::string());
+                        geojson_type.validate_with(|val, path| {
+                            check_value(val, path, "Polygon", "GeoJson type is invalid")
+                        });
                     });
-                });
-                params.opt("coordinates", |shape| {
-                    shape.coerce(json_dsl::array());
-                    shape.validate_with(|val, path| {
-                        check_coordinates(val, path, "Coordinates is invalid")
-                    });
-                });
-		    	});
-		    
-		    let cnx = self.es_cnx_string.clone();
-		    endpoint.handle(move |client, params| {
-                let q = match params.find("q"){
-                	Some(val) => val.as_string().unwrap_or("").to_string(),
-                	None => "".to_string()
-                };
-                let goe = params.find_path(&["coordinates"]).unwrap().as_array().unwrap();
-                let mut shape: Vec<rs_es::units::Location> = Vec::new();
-                for ar in goe[0].as_array().unwrap() {
-                	shape.push(rs_es::units::Location::LatLon(ar[0].as_f64().unwrap(), ar[1].as_f64().unwrap()));
-                }
-                let model_autocomplete = query::autocomplete(q, None, &cnx, Some(shape));
-
-                let response = model::v1::AutocompleteResponse::from(model_autocomplete);
-                render(client, response)
-		    })
-		});
-        api.get("autocomplete", |endpoint| {
-            endpoint.params(|params| {
-                params.req_typed("q", json_dsl::string());
-                params.opt("lon", |lon| {
-                    lon.coerce(json_dsl::f64());
-                    lon.validate_with(|val, path| {
-                        check_bound(val, path, MIN_LON, MAX_LON, "lon is not a valid longitude")
+                    params.opt("coordinates", |shape| {
+                        shape.coerce(json_dsl::array());
+                        shape.validate_with(|val, path| {
+                            check_coordinates(val, path, "Coordinates is invalid")
+                        });
                     });
                 });
 
-                params.opt("lat", |lat| {
-                    lat.coerce(json_dsl::f64());
-                    lat.validate_with(|val, path| {
-                        check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
-                    });
-                });
-                params.validate_with(|val, path| {
-                    // if we have a lat we should have a lon (and the opposite)
-                    if let json::Json::Object(ref obj) = *val {
-                        let has_lon = obj.get("lon").is_some();
-                        let has_lat = obj.get("lat").is_some();
-                        if has_lon ^ has_lat {
-                            Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                         path: path.to_string(),
-                                         detail: Some("you need to provide a lon AND a lat if \
-                                                       you provide one of them"
-                                                          .to_string()),
-                                     })])
-                        } else {
-                            Ok(())
-                        }
-                    } else {
-                        panic!("should never happen, already checked");
+                let cnx = self.es_cnx_string.clone();
+                endpoint.handle(move |client, params| {
+                    let q = match params.find("q") {
+                        Some(val) => val.as_string().unwrap_or("").to_string(),
+                        None => "".to_string(),
+                    };
+                    let goe = params.find_path(&["coordinates"]).unwrap().as_array().unwrap();
+                    let mut shape = Vec::new();
+                    for ar in goe[0].as_array().unwrap() {
+                        shape.push((ar[0].as_f64().unwrap(), ar[1].as_f64().unwrap()));
                     }
-                });
+                    let model_autocomplete = query::autocomplete(q, None, &cnx, Some(shape));
+
+                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    render(client, response)
+                })
             });
-            let cnx = self.es_cnx_string.clone();
-            endpoint.handle(move |client, params| {
+            api.get("autocomplete", |endpoint| {
+                endpoint.params(|params| {
+                    params.req_typed("q", json_dsl::string());
+                    params.opt("lon", |lon| {
+                        lon.coerce(json_dsl::f64());
+                        lon.validate_with(|val, path| {
+                            check_bound(val, path, MIN_LON, MAX_LON, "lon is not a valid longitude")
+                        });
+                    });
+
+                    params.opt("lat", |lat| {
+                        lat.coerce(json_dsl::f64());
+                        lat.validate_with(|val, path| {
+                            check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
+                        });
+                    });
+                    params.validate_with(|val, path| {
+                        // if we have a lat we should have a lon (and the opposite)
+                        if let json::Json::Object(ref obj) = *val {
+                            let has_lon = obj.get("lon").is_some();
+                            let has_lat = obj.get("lat").is_some();
+                            if has_lon ^ has_lat {
+                                Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                             path: path.to_string(),
+                                             detail: Some("you need to provide a lon AND a lat \
+                                                           if you provide one of them"
+                                                 .to_string()),
+                                         })])
+                            } else {
+                                Ok(())
+                            }
+                        } else {
+                            panic!("should never happen, already checked");
+                        }
+                    });
+                });
+                let cnx = self.es_cnx_string.clone();
+                endpoint.handle(move |client, params| {
                 let q = params.find("q").unwrap().as_string().unwrap().to_string();
                 let lon = params.find("lon").and_then(|p| p.as_f64());
                 let lat = params.find("lat").and_then(|p| p.as_f64());
@@ -206,9 +205,9 @@ fn autocomplete(&self) -> rustless::Api {
                 let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                 render(client, response)
             })
-        });
-    })
-}
+            });
+        })
+    }
 }
 
 fn check_bound(val: &json::Json,
@@ -230,7 +229,7 @@ fn check_bound(val: &json::Json,
         panic!("should never happen, already checked");
     }
 }
-               
+
 fn check_value(val: &json::Json,
                path: &str,
                value: &str,
@@ -251,74 +250,74 @@ fn check_value(val: &json::Json,
 }
 
 fn check_coordinates(val: &json::Json,
-               path: &str,
-               error_msg: &str)
-               -> Result<(), valico_error::ValicoErrors> {
-    
-    if ! val.is_array() {
+                     path: &str,
+                     error_msg: &str)
+                     -> Result<(), valico_error::ValicoErrors> {
+
+    if !val.is_array() {
         return Err(vec![Box::new(json_dsl::errors::WrongType {
-                     path: path.to_string(),
-                     detail: error_msg.to_string(),
-                 })]);
+                            path: path.to_string(),
+                            detail: error_msg.to_string(),
+                        })]);
     }
     let array = val.as_array().unwrap();
-	if array.is_empty() {
+    if array.is_empty() {
         return Err(vec![Box::new(json_dsl::errors::WrongValue {
-             path: path.to_string(),
-             detail: Some(error_msg.to_string()),
-         })]);
-	}
-	
-	for arr0 in array {
-		if ! arr0.is_array() {
-	        return Err(vec![Box::new(json_dsl::errors::WrongType {
-                 path: path.to_string(),
-                 detail: error_msg.to_string(),
-             })]);
-		}
-		let arr1 = arr0.as_array().unwrap();
-		if arr1.is_empty() {
-	        return Err(vec![Box::new(json_dsl::errors::WrongValue {
-	             path: path.to_string(),
-	             detail: Some(error_msg.to_string()),
-	         })]);
-		}
-		for arr2 in arr1 {
-			if ! arr2.is_array() {
-		        return Err(vec![Box::new(json_dsl::errors::WrongType {
-	                 path: path.to_string(),
-	                 detail: error_msg.to_string(),
-	             })]);
-			}
-			let lonlat = arr2.as_array().unwrap();
-			if lonlat.len() != 2 {
-		        return Err(vec![Box::new(json_dsl::errors::WrongValue {
-		             path: path.to_string(),
-		             detail: Some(error_msg.to_string()),
-		         })]);
-			}
-			
-			if ! (lonlat[0].is_f64() &&  lonlat[1].is_f64()) {
-		        return Err(vec![Box::new(json_dsl::errors::WrongType {
-		             path: path.to_string(),
-		             detail: error_msg.to_string(),
-		         })]);
-			}
-			let lon = lonlat[0].as_f64().unwrap();
-			let lat = lonlat[1].as_f64().unwrap();
-			if ! (MIN_LON <= lon && lon <= MAX_LON) {
-		        return Err(vec![Box::new(json_dsl::errors::WrongValue {
-		             path: path.to_string(),
-		             detail: Some(error_msg.to_string()),
-		         })]);
-			} 
-			if ! (MIN_LAT <= lat && lat <= MAX_LAT) {
-		        return Err(vec![Box::new(json_dsl::errors::WrongValue {
-		             path: path.to_string(),
-		             detail: Some(error_msg.to_string()),
-		         })]);
-			}
-		}
-	}
-	Ok(())
+                            path: path.to_string(),
+                            detail: Some(error_msg.to_string()),
+                        })]);
+    }
+
+    for arr0 in array {
+        if !arr0.is_array() {
+            return Err(vec![Box::new(json_dsl::errors::WrongType {
+                                path: path.to_string(),
+                                detail: error_msg.to_string(),
+                            })]);
+        }
+        let arr1 = arr0.as_array().unwrap();
+        if arr1.is_empty() {
+            return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                path: path.to_string(),
+                                detail: Some(error_msg.to_string()),
+                            })]);
+        }
+        for arr2 in arr1 {
+            if !arr2.is_array() {
+                return Err(vec![Box::new(json_dsl::errors::WrongType {
+                                    path: path.to_string(),
+                                    detail: error_msg.to_string(),
+                                })]);
+            }
+            let lonlat = arr2.as_array().unwrap();
+            if lonlat.len() != 2 {
+                return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                    path: path.to_string(),
+                                    detail: Some(error_msg.to_string()),
+                                })]);
+            }
+
+            if !(lonlat[0].is_f64() && lonlat[1].is_f64()) {
+                return Err(vec![Box::new(json_dsl::errors::WrongType {
+                                    path: path.to_string(),
+                                    detail: error_msg.to_string(),
+                                })]);
+            }
+            let lon = lonlat[0].as_f64().unwrap();
+            let lat = lonlat[1].as_f64().unwrap();
+            if !(MIN_LON <= lon && lon <= MAX_LON) {
+                return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                    path: path.to_string(),
+                                    detail: Some(error_msg.to_string()),
+                                })]);
+            }
+            if !(MIN_LAT <= lat && lat <= MAX_LAT) {
+                return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                    path: path.to_string(),
+                                    detail: Some(error_msg.to_string()),
+                                })]);
+            }
+        }
+    }
+    Ok(())
 }

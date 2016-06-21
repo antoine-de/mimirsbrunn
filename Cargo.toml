@@ -24,6 +24,7 @@ mdo = "*"
 iron-test = "0.3.0"
 rustless = "*"
 iron = "*"
+mime = "0.2"
 
 [features]
 default = ["rs-es/default", "bragi/default", "mimir/default"]
