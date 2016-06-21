@@ -61,7 +61,8 @@ fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option
     })
 }
 
-fn query(q: &String, cnx: &String, match_type: &str, shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn query(q: &String, cnx: &String, match_type: &str, shape: Option<Vec<rs_es::units::Location>>) 
+-> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
                         .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
@@ -139,12 +140,12 @@ pub fn autocomplete(q: String,
     } else {
     	//First search with match = "name.prefix".
     	//If no result then another search with match = "name.ngram"
-    	fn clone_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
+    	fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
     		shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
     	}
-    	let results = try!(query_prefix(&q, cnx, clone_shape(&shape)));
+    	let results = try!(query_prefix(&q, cnx, make_shape(&shape)));
         if results.is_empty() {
-        	query_ngram(&q, cnx, clone_shape(&shape))
+        	query_ngram(&q, cnx, make_shape(&shape))
         } else {
         	Ok(results)
         }

@@ -39,11 +39,11 @@ use super::query;
 use model::v1::*;
 use model;
 
-static MAX_LAT: f64 = 180f64;
-static MIN_LAT: f64 = -180f64;
+const MAX_LAT: f64 = 180f64;
+const MIN_LAT: f64 = -180f64;
 
-static MAX_LON: f64 = 90f64;
-static MIN_LON: f64 = -90f64;
+const MAX_LON: f64 = 90f64;
+const MIN_LON: f64 = -90f64;
 
 fn render<T>(mut client: rustless::Client,
              obj: T)
@@ -190,7 +190,7 @@ fn status(&self) -> rustless::Api {
                                 Ok(())
                             }
                         } else {
-                            panic!("should never happen, already checked");
+                            unreachable!("should never happen, already checked");
                         }
                     });
                 });
@@ -232,7 +232,7 @@ fn check_bound(val: &json::Json,
                      })])
         }
     } else {
-        panic!("should never happen, already checked");
+        unreachable!("should never happen, already checked");
     }
 }
 
