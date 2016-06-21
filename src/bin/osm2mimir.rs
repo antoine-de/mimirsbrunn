@@ -45,16 +45,19 @@ extern crate geo;
 use std::collections::{HashSet, HashMap};
 use mimir::rubber::Rubber;
 
-pub type AdminsVec = Vec<mimir::Admin>;
+pub type AdminsVec = Vec<Rc<mimir::Admin>>;
 pub type StreetsVec = Vec<mimir::Street>;
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<std::fs::File>;
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use std::rc::Rc;
+use std::cell::Cell;
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
+    flag_city_level: u32,
     flag_connection_string: String,
     flag_import_way: bool,
     flag_import_admin: bool,
@@ -64,17 +67,21 @@ struct Args {
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--dataset=<dataset>] --level=<level> ...
+    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--dataset=<dataset>] [--city-level=<level>] --level=<level> ...
 
 Options:
-    -h, --help            Show this message.
-    -i, --input=<file>    OSM PBF file.
-    -l, --level=<level>   Admin levels to keep.
-    -w, --import-way             Import ways
-    -a, --import-admin           Import admins
+    -h, --help              Show this message.
+    -i, --input=<file>      OSM PBF file.
+    -l, --level=<level>     Admin levels to keep.
+    -C, --city-level=<level>
+                            City level to calculate weight, [default: 8] 		
+    -w, --import-way        Import ways
+    -a, --import-admin      Import admins
     -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, [default: http://localhost:9200/munin]
-    -d, --dataset=<dataset>         Name of the dataset, [default: fr]
+                            Elasticsearch parameters, [default: http://localhost:9200/munin]
+    -d, --dataset=<dataset>
+                            Name of the dataset, [default: fr]
+    
 ";
 
 #[derive(Debug)]
@@ -171,21 +178,21 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> Admin
                 label: name.to_string(),
                 zip_code: zip_code.to_string(),
                 // TODO weight value ?
-                weight: 1,
+                weight: Cell::new(0),
                 coord: coord_centre,
                 boundary: boundary,
             };
-            administrative_regions.push(admin);
+            administrative_regions.push(Rc::new(admin));
         }
     }
     return administrative_regions;
 }
 
-fn make_admin_geofinder(admins: AdminsVec) -> AdminGeoFinder {
+fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
     let mut geofinder = AdminGeoFinder::new();
 
     for a in admins {
-        geofinder.add_admin(a);
+        geofinder.add_admin(a.clone());
     }
     geofinder
 }
@@ -193,7 +200,7 @@ fn make_admin_geofinder(admins: AdminsVec) -> AdminGeoFinder {
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,
                     obj_map: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
                     way: &osmpbfreader::objects::Way)
-                    -> Vec<mimir::Admin> {
+                    -> Vec<Rc<mimir::Admin>> {
     // for the moment we consider that the coord of the way is the coord of it's first node
     let coord = way.nodes
                    .iter()
@@ -212,12 +219,12 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     coord.map_or(vec![], |c| {
         admins_geofinder.get_admins_for_coord(&c)
     .iter()
-    .map(|&a| a.clone()) // TODO use RC<Admin> to avoid copying them too much ?
+    .cloned()
     .collect()
     })
 }
 
-fn streets(pbf: &mut OsmPbfReader, admins: AdminsVec) -> StreetsVec {
+fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec) -> StreetsVec {
     let admins_geofinder = make_admin_geofinder(admins);
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
@@ -289,23 +296,44 @@ fn main() {
                          .unwrap_or_else(|e| e.exit());
 
     let levels = args.flag_level.iter().cloned().collect();
+    let city_level = args.flag_city_level;
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
 
     debug!("importing adminstrative region into Mimir");
     let admins = administrative_regions(&mut parsed_pbf, levels);
-    let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
-                          .unwrap();
-    info!("Nb of indexed admin: {}", nb_admins);
 
+    let mut streets = streets(&mut parsed_pbf, &admins);
+    
+    for st in &mut streets {
+    	for admin in &mut st.administrative_regions {
+    		if admin.level == city_level {
+    			admin.weight.set(admin.weight.get() + 1)
+    		}
+    	}
+    }
+    
+    for st in &mut streets {
+    	for admin in &mut st.administrative_regions {
+    		if admin.level == city_level {
+    			st.weight = admin.weight.get();
+    			break;
+    		}
+    	}
+    } 
+    
     if args.flag_import_way {
         debug!("importing streets into Mimir");
         let nb_streets = rubber.index("way",
                                       &args.flag_dataset,
-                                      streets(&mut parsed_pbf, admins).into_iter())
+                                      streets.into_iter())
                                .unwrap();
         info!("Nb of indexed street: {}", nb_streets);
     }
+    
+    let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
+                          .unwrap();
+    info!("Nb of indexed admin: {}", nb_admins);
 
 }

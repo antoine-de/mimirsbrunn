@@ -32,6 +32,7 @@ use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
+
 use mimir;
 use serde_json;
 
@@ -70,7 +71,7 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
                               .build(),
                        rs_q::build_function_score()
                               .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-                              .with_boost(30)
+                              .with_boost(300)
                               .with_query(rs_q::build_match_all().build())
                               .with_function(
                           rs_es::query::functions::Function::build_field_value_factor("weight")
@@ -88,8 +89,7 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
                      .with_must(vec![rs_q::build_match(match_type, q.to_string())
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()])
                      .build();
-
-
+	
     let final_query = rs_q::build_bool()
                           .with_must(vec![sub_query])
                           .with_filter(filter)

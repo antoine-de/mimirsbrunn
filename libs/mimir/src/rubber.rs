@@ -44,8 +44,9 @@ use rs_es::operations::search::ScanResult;
 use super::objects::{AliasOperations, AliasOperation, AliasParameter};
 use rs_es::units::Duration;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
-pub type AdminFromInsee = BTreeMap<String, Admin>;
+pub type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
@@ -305,7 +306,7 @@ impl Rubber {
                 break;
             }
             for ad in page.hits.hits.into_iter().filter_map(|hit| hit.source) {
-                result.insert(ad.id.to_string(), *ad);
+                result.insert(ad.id.to_string(), Rc::new(*ad));
             }
         }
         try!(scan.close(&mut self.es_client));
