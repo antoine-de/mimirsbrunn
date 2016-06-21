@@ -33,6 +33,7 @@ extern crate rustless;
 extern crate iron;
 extern crate iron_test;
 use std::process::Command;
+extern crate mime;
 
 fn get_handler(url: String) -> rustless::Application {
     let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
@@ -79,5 +80,54 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
                          r#""street":"Rue Hector Malot","postcode":null,"#,
                          r#""city":null,"administrative_regions":[]}}}]}"#);
+    assert_eq!(result_body, result);
+    
+// A(48.846431 2.376488)
+// B(48.846430 2.376306)
+// C(48.846606 2.376309)
+// D(48.846603 2.376486)
+// R(48.846495 2.376378) : 15 Rue Hector Malot, (Paris)
+// E(48.846452 2.376580) : 18 Rue Hector Malot, (Paris)
+
+
+//             E
+//
+//      A ---------------------D
+//      |                      |
+//      |         R            |
+//      |                      |
+//      |                      |
+//      B ---------------------C
+    // Search with shape where house number in shape
+    let mut header = iron::Headers::new();
+    let mime: mime::Mime = "application/json".parse().unwrap();
+    header.set(iron::headers::ContentType(mime));
+    let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=15 Rue Hector \
+                                        Malot, (Paris)",
+                                       header.clone(),
+                                       r#"{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}"#,
+                                       &handler)
+                   .unwrap();
+    let result_body = iron_test::response::extract_body_to_string(resp);
+    let result = concat!(r#"{"type":"FeatureCollection","#,
+                         r#""geocoding":{"version":"0.1.0","query":""},"#,
+                         r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
+                         r#"[2.3763789999999996,48.846495],"type":"Point"},"#,
+                         r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
+                         r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
+                         r#""name":"15 Rue Hector Malot","housenumber":"15","#,
+                         r#""street":"Rue Hector Malot","postcode":null,"#,
+                         r#""city":null,"administrative_regions":[]}}}]}"#);
+    assert_eq!(result_body, result);
+
+    // Search with shape where house number out shape
+    let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=18 Rue Hector \
+                                        Malot, (Paris)",
+                                       header,
+                                       r#"{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}"#,
+                                       &handler)
+                   .unwrap();
+    let result_body = iron_test::response::extract_body_to_string(resp);
+    let result = concat!(r#"{"type":"FeatureCollection","geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
     assert_eq!(result_body, result);
 }
