@@ -104,7 +104,7 @@ pub struct Admin {
 
 fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
 	// we can serialize the cell as a u32, since the reference is important only while loading the data
-	// and not in ES but not in bragi
+	// in ES but not in bragi
 	serializer.serialize_u32(cell.get())
 }
 
