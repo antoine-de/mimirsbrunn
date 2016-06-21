@@ -61,8 +61,8 @@ fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option
     })
 }
 
-fn query(q: &String,
-         cnx: &String,
+fn query(q: &str,
+         cnx: &str,
          match_type: &str,
          shape: Option<Vec<rs_es::units::Location>>)
          -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
@@ -87,7 +87,7 @@ fn query(q: &String,
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()];
 
 	if let Some(s) = shape {
-		must.push(rs_q::build_geo_polygon("coord", s).build());
+        must.push(rs_q::build_geo_polygon("coord", s).build());
 	}
     let filter = rs_q::build_bool()
                      .with_should(vec![rs_q::build_bool()
@@ -101,7 +101,7 @@ fn query(q: &String,
 	                          .with_must(vec![sub_query])
 	                          .with_filter(filter)
 	                          .build();
-    let mut client = build_rs_client(cnx);
+    let mut client = build_rs_client(&cnx.to_string());
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                        .with_indexes(&["munin"])

@@ -127,6 +127,7 @@ impl ApiEndPoint {
                             params.req("type", |geojson_type| {
                                 geojson_type.coerce(json_dsl::string());
                                 geojson_type.allow_values(&["Polygon".to_string()]);
+                                geojson_type.reject_values(&["Polygon".to_string()]);
                             });
                         });
                         geometry.nest(|params| {
@@ -143,9 +144,9 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = match params.find("q") {
-                        Some(val) => val.as_string().unwrap_or("").to_string(),
-                        None => "".to_string(),
-                    };
+                        Some(val) => val.as_string().unwrap_or(""),
+                        None => "",
+                    }.to_string();
                     let geometry = params.find_path(&["geometry"]).unwrap();
                     let coordinates =
                         geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
@@ -197,21 +198,21 @@ impl ApiEndPoint {
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                let q = params.find("q").unwrap().as_string().unwrap().to_string();
-                let lon = params.find("lon").and_then(|p| p.as_f64());
-                let lat = params.find("lat").and_then(|p| p.as_f64());
-                // we have already checked that if there is a lon, lat is not None so we can unwrap
-                let coord = lon.and_then(|lon| {
-                    Some(model::Coord {
-                        lon: lon,
-                        lat: lat.unwrap(),
-                    })
-                });
-                let model_autocomplete = query::autocomplete(q, coord, &cnx, None);
+                    let q = params.find("q").unwrap().as_string().unwrap().to_string();
+                    let lon = params.find("lon").and_then(|p| p.as_f64());
+                    let lat = params.find("lat").and_then(|p| p.as_f64());
+                    // we have already checked that if there is a lon, lat is not None so we can unwrap
+                    let coord = lon.and_then(|lon| {
+                        Some(model::Coord {
+                            lon: lon,
+                            lat: lat.unwrap(),
+                        })
+                    });
+                    let model_autocomplete = query::autocomplete(q, coord, &cnx, None);
 
-                let response = model::v1::AutocompleteResponse::from(model_autocomplete);
-                render(client, response)
-            })
+                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    render(client, response)
+                })
             });
         })
     }
