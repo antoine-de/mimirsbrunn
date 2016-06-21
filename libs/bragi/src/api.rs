@@ -121,18 +121,23 @@ fn status(&self) -> rustless::Api {
             api.post("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
-                    params.req("type", |geojson_type| {
-                        geojson_type.coerce(json_dsl::string());
-                        geojson_type.validate_with(|val, path| {
-                            check_value(val, path, "Polygon", "GeoJson type is invalid")
-                        });
-                    });
-                    params.opt("coordinates", |shape| {
-                        shape.coerce(json_dsl::array());
-                        shape.validate_with(|val, path| {
-                            check_coordinates(val, path, "Coordinates is invalid")
-                        });
-                    });
+                    params.req("geometry", |geometry| {
+                    		geometry.coerce(json_dsl::object());
+		                    geometry.nest(|params| {
+			                    params.req("type", |geojson_type| {
+			                        geojson_type.coerce(json_dsl::string());
+			                        geojson_type.allow_values(&["Polygon".to_string()]);
+			                    });
+		                    });
+		                    geometry.nest(|params| {
+			                    params.req("coordinates", |shape| {
+			                        shape.coerce(json_dsl::array());
+			                        shape.validate_with(|val, path| {
+			                            check_coordinates(val, path, "Coordinates is invalid")
+			                        });
+			                    });
+		                    });
+                    	})
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -141,9 +146,10 @@ fn status(&self) -> rustless::Api {
                         Some(val) => val.as_string().unwrap_or("").to_string(),
                         None => "".to_string(),
                     };
-                    let goe = params.find_path(&["coordinates"]).unwrap().as_array().unwrap();
+                    let geometry = params.find_path(&["geometry"]).unwrap();
+                    let coordinates = geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
                     let mut shape = Vec::new();
-                    for ar in goe[0].as_array().unwrap() {
+                    for ar in coordinates[0].as_array().unwrap() {
                         shape.push((ar[0].as_f64().unwrap(), ar[1].as_f64().unwrap()));
                     }
                     let model_autocomplete = query::autocomplete(q, None, &cnx, Some(shape));
@@ -218,25 +224,6 @@ fn check_bound(val: &json::Json,
                -> Result<(), valico_error::ValicoErrors> {
     if let json::Json::F64(lon) = *val {
         if min <= lon && lon <= max {
-            Ok(())
-        } else {
-            Err(vec![Box::new(json_dsl::errors::WrongValue {
-                         path: path.to_string(),
-                         detail: Some(error_msg.to_string()),
-                     })])
-        }
-    } else {
-        panic!("should never happen, already checked");
-    }
-}
-
-fn check_value(val: &json::Json,
-               path: &str,
-               value: &str,
-               error_msg: &str)
-               -> Result<(), valico_error::ValicoErrors> {
-    if let json::Json::String(ref geojson_type) = *val {
-        if geojson_type == value {
             Ok(())
         } else {
             Err(vec![Box::new(json_dsl::errors::WrongValue {
