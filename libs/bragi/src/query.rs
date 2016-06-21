@@ -81,9 +81,7 @@ fn query(q: &String, cnx: &String, match_type: &str, shape: Option<Vec<rs_es::un
                         .build();
     let mut must = vec![rs_q::build_match(match_type, q.to_string())
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()];
-//	if let &Some(ref s) = shape {
-//		must.push(rs_q::build_geo_polygon("coord", s.clone()).build());
-//	}
+
 	if let Some(s) = shape {
 		must.push(rs_q::build_geo_polygon("coord", s).build());
 	}
