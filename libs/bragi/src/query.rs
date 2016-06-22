@@ -32,13 +32,11 @@ use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
-
 use mimir;
 use serde_json;
 
 fn build_rs_client(cnx: &String) -> rs_es::Client {
-    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)")
-                 .unwrap();
+    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
     let cap = re.captures(&cnx).unwrap();
     let host = cap.name("host").unwrap();
     let port = cap.name("port").unwrap().parse::<u32>().unwrap();
@@ -51,10 +49,22 @@ fn build_rs_client(cnx: &String) -> rs_es::Client {
 fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<mimir::Place> {
     value.and_then(|v| {
         match doc_type.as_ref() {
-            "addr" => serde_json::from_value::<mimir::Addr>(*v).ok().and_then(|o| Some(mimir::Place::Addr(o))),
-            "street" => serde_json::from_value::<mimir::Street>(*v).ok().and_then(|o| Some(mimir::Place::Street(o))),
-            "admin" => serde_json::from_value::<mimir::Admin>(*v).ok().and_then(|o| Some(mimir::Place::Admin(o))),
-            _    => {
+            "addr" => {
+                serde_json::from_value::<mimir::Addr>(*v)
+                    .ok()
+                    .and_then(|o| Some(mimir::Place::Addr(o)))
+            }
+            "street" => {
+                serde_json::from_value::<mimir::Street>(*v)
+                    .ok()
+                    .and_then(|o| Some(mimir::Place::Street(o)))
+            }
+            "admin" => {
+                serde_json::from_value::<mimir::Admin>(*v)
+                    .ok()
+                    .and_then(|o| Some(mimir::Place::Admin(o)))
+            }
+            _ => {
                 warn!("unknown ES return value, _type field = {}", doc_type);
                 None
             }
@@ -62,9 +72,13 @@ fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option
     })
 }
 
-fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn query(q: &str,
+         cnx: &str,
+         match_type: &str,
+         shape: Option<Vec<rs_es::units::Location>>)
+         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let sub_query = rs_q::build_bool()
-                        .with_should(vec![
+        .with_should(vec![
                        rs_q::build_term("_type","addr").with_boost(1000).build(),
                        rs_q::build_match(match_type, q.to_string())
                               .with_boost(100)
@@ -79,38 +93,40 @@ fn query(q: &String, cnx: &String, match_type: &str) -> Result<Vec<mimir::Place>
                                       .with_modifier(rs_es::query::functions::Modifier::Log1p)
 			                                                          .build())
                               .build()])
-                        .build();
-    let filter = rs_q::build_bool()
-                     .with_should(vec![rs_q::build_bool()
-                                           .with_must_not(rs_q::build_exists("house_number")
-                                                              .build())
-                                           .build(),
-                                       rs_q::build_match("house_number", q.to_string()).build()])
-                     .with_must(vec![rs_q::build_match(match_type, q.to_string())
-             .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()])
-                     .build();
-	
-    let final_query = rs_q::build_bool()
-                          .with_must(vec![sub_query])
-                          .with_filter(filter)
-                          .build();
+        .build();
+    let mut must = vec![rs_q::build_match(match_type, q.to_string())
+             .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()];
 
-    let mut client = build_rs_client(cnx);
+    if let Some(s) = shape {
+        must.push(rs_q::build_geo_polygon("coord", s).build());
+    }
+    let filter = rs_q::build_bool()
+        .with_should(vec![rs_q::build_bool()
+                              .with_must_not(rs_q::build_exists("house_number").build())
+                              .build(),
+                          rs_q::build_match("house_number", q.to_string()).build()])
+        .with_must(must)
+        .build();
+    let final_query = rs_q::build_bool()
+        .with_must(vec![sub_query])
+        .with_filter(filter)
+        .build();
+    let mut client = build_rs_client(&cnx.to_string());
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
-                                                       .with_indexes(&["munin"])
-                                                       .with_query(&final_query)
-                                                       .send());
+        .with_indexes(&["munin"])
+        .with_query(&final_query)
+        .send());
 
     debug!("{} documents found", result.hits.total);
 
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(result.hits
-             .hits
-             .into_iter()
-             .filter_map(|hit| make_place(hit.doc_type, hit.source))
-             .collect())
+        .hits
+        .into_iter()
+        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .collect())
 }
 
 fn query_location(_q: &String,
@@ -119,28 +135,38 @@ fn query_location(_q: &String,
     panic!("todo!");
 }
 
-fn query_prefix(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "label.prefix")
+fn query_prefix(q: &String,
+                cnx: &String,
+                shape: Option<Vec<rs_es::units::Location>>)
+                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    query(&q, cnx, "label.prefix", shape)
 }
 
-fn query_ngram(q: &String, cnx: &String) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "label.ngram")
+fn query_ngram(q: &String,
+               cnx: &String,
+               shape: Option<Vec<rs_es::units::Location>>)
+               -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    query(&q, cnx, "label.ngram", shape)
 }
 
 pub fn autocomplete(q: String,
                     coord: Option<model::Coord>,
-                    cnx: &String)
+                    cnx: &String,
+                    shape: Option<Vec<(f64, f64)>>)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     if let Some(ref coord) = coord {
         query_location(&q, coord)
     } else {
-    	//First search with match = "name.prefix".
-    	//If no result then another search with match = "name.ngram"
-    	let results = try!(query_prefix(&q, cnx));
+        // First search with match = "name.prefix".
+        // If no result then another search with match = "name.ngram"
+        fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
+            shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
+        }
+        let results = try!(query_prefix(&q, cnx, make_shape(&shape)));
         if results.is_empty() {
-        	query_ngram(&q, cnx)
+            query_ngram(&q, cnx, make_shape(&shape))
         } else {
-        	Ok(results)
+            Ok(results)
         }
     }
 }

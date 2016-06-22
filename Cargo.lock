@@ -13,6 +13,7 @@ dependencies = [
  "iron-test 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mdo 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mime 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mimir 1.1.0",
  "ntree 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "osm_builder 1.1.0",
