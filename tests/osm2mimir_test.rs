@@ -60,7 +60,7 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         let label = street.pointer("/_source/label").and_then(|n| n.as_string()).unwrap_or("");
         label == "Rue des Près"
     };
-    let nb = es_wrapper.search_and_filter(r#"label:Rue des Près"#, street_filter).count();
+    let nb = es_wrapper.search_and_filter("label:Rue des Près", street_filter).count();
     assert_eq!(nb, 1);
   
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
@@ -76,8 +76,8 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let street_filter = |street: &Value| {
         let label = street.pointer("/_source/label").and_then(|n| n.as_string()).unwrap_or("");
         let admin_label = street.pointer("/_source/administrative_regions/0/label").and_then(|n| n.as_string()).unwrap_or("");
-        label == r#"Rue du Port"# && admin_label == r#"Melun"#
+        label == "Rue du Port" && admin_label == "Melun"
     };
-    let nb = es_wrapper.search_and_filter(r#"label:Rue du Port"#, street_filter).count();
+    let nb = es_wrapper.search_and_filter("label:Rue du Port", street_filter).count();
     assert_eq!(nb, 1);
 }
