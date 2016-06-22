@@ -127,7 +127,6 @@ impl ApiEndPoint {
                             params.req("type", |geojson_type| {
                                 geojson_type.coerce(json_dsl::string());
                                 geojson_type.allow_values(&["Polygon".to_string()]);
-                                geojson_type.reject_values(&["Polygon".to_string()]);
                             });
                         });
                         geometry.nest(|params| {
