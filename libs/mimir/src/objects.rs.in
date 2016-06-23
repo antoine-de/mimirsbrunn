@@ -101,7 +101,7 @@ pub trait Members{
 
 impl<'a, T: DocType> DocType for &'a T {
     fn doc_type() -> &'static str {
-        T::doc_type()admin
+        T::doc_type()
     }
 }
 impl<'a, T: EsId> EsId for &'a T {
