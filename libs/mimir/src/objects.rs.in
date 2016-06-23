@@ -50,6 +50,41 @@ pub enum Place {
     Addr(Addr),
 }
 
+impl Place{
+    pub fn is_admin(&self) -> bool { 
+        match *self {
+            Place::Admin(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_street(&self) -> bool { 
+        match *self {
+            Place::Street(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_addr(&self) -> bool { 
+        match *self {
+            Place::Addr(_) => true,
+            _ => false
+        }
+    }
+    pub fn label(&self) -> Option<String> {
+        match *self {
+            Place::Admin(ref o) => o.label(),
+            Place::Street(ref o) => o.label(),
+            Place::Addr(ref o) => o.label(),
+        }
+    }
+    
+    pub fn admin(&self) -> Option<String> {
+        match *self {
+            Place::Admin(ref o) => o.admin(),
+            Place::Street(ref o) => o.admin(),
+            Place::Addr(ref o) => o.admin(),
+        }
+    }
+}
 
 pub trait DocType {
     fn doc_type() -> &'static str; // provides the elasticsearch type name
@@ -57,6 +92,11 @@ pub trait DocType {
 
 pub trait EsId {
     fn es_id(&self) -> Option<String>; // provides the elasticsearch id
+}
+
+pub trait Members{
+    fn label(&self) -> Option<String>;
+    fn admin(&self) -> Option<String>;
 }
 
 impl<'a, T: DocType> DocType for &'a T {
@@ -120,6 +160,15 @@ impl DocType for Admin {
     }
 }
 
+impl Members for Admin {
+    fn label(&self) -> Option<String> {
+        Some(self.label.clone())
+    }
+    fn admin(&self) -> Option<String> {
+        Some(self.label.clone())
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Street {
     pub id: String,
@@ -148,6 +197,16 @@ impl EsId for Street {
     }
 }
 
+impl Members for Street {
+    fn label(&self) -> Option<String> {
+        Some(self.label.clone())
+    }
+    fn admin(&self) -> Option<String> {
+        self.administrative_regions.first().and_then(|admin| admin.admin())
+    }
+    
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Addr {
     pub id: String,
@@ -167,6 +226,15 @@ impl DocType for Addr {
 impl EsId for Addr {
     fn es_id(&self) -> Option<String> {
         None
+    }
+}
+
+impl Members for Addr {
+    fn label(&self) -> Option<String> {
+        Some(self.label.clone())
+    }
+    fn admin(&self) -> Option<String> {
+        self.street.admin()
     }
 }
 

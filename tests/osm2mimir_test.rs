@@ -29,7 +29,8 @@
 // www.navitia.io
 
 extern crate serde_json;
-use serde_json::value::Value;
+extern crate mimir;
+
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
@@ -46,38 +47,38 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper.search_and_filter("label:Livry-sur-Seine", |_| true).collect();
     assert_eq!(res.len(), 1);
-    let city_type = res[0].pointer("/_type").and_then(|v| v.as_string());
-    assert_eq!(city_type, Some("admin"));
+    assert!(res[0].is_admin());
 
 
     // Test: search for "Rue des Près"
-    let search = es_wrapper.search("label:Rue des Près");
+    let res: Vec<_> = es_wrapper.search_and_filter("label:Rue des Près", |_| true).collect();
+    assert!(res.len() != 0);
+    assert!(res[0].is_street());
     // The first hit should be "Rue des Près"
-    let street_label = search.pointer("/hits/hits/0/_source/label").and_then(|v| v.as_string()).unwrap_or("");
-    assert_eq!(street_label, "Rue des Près");
+    assert!( res[0].label() == Some("Rue des Près".into()) );
+
     // And there should be only ONE "Rue des Près"
-    let street_filter = |street: &Value| {
-        let label = street.pointer("/_source/label").and_then(|n| n.as_string()).unwrap_or("");
-        label == "Rue des Près"
+    let place_filter = |place: &mimir::Place| {
+        place.is_street() && place.label() == Some("Rue des Près".into())
     };
-    let nb = es_wrapper.search_and_filter("label:Rue des Près", street_filter).count();
+    let nb = es_wrapper.search_and_filter("label:Rue des Près", place_filter).count();
     assert_eq!(nb, 1);
   
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
-    let street_filter = |street: &Value| {
-        let label = street.pointer("/_source/label").and_then(|n| n.as_string()).unwrap_or("");
-        let admin_label = street.pointer("/_source/administrative_regions/0/label").and_then(|n| n.as_string()).unwrap_or("");
-        label == "Rue du Four à Chaux" && admin_label == "Livry-sur-Seine"
+    let place_filter = |place: &mimir::Place| {
+        place.is_street()
+            && place.label() == Some("Rue du Four à Chaux".into()) 
+            && place.admin() == Some("Livry-sur-Seine".into())
     };
-    let nb = es_wrapper.search_and_filter("label:Rue du Four à Chaux", street_filter).count();
+    let nb = es_wrapper.search_and_filter("label:Rue du Four à Chaux", place_filter).count();
     assert_eq!(nb, 6);
     
     //Test: Streets having the same label in different cities
-    let street_filter = |street: &Value| {
-        let label = street.pointer("/_source/label").and_then(|n| n.as_string()).unwrap_or("");
-        let admin_label = street.pointer("/_source/administrative_regions/0/label").and_then(|n| n.as_string()).unwrap_or("");
-        label == "Rue du Port" && admin_label == "Melun"
+    let place_filter = |place: &mimir::Place| {
+        place.is_street()
+            && place.label() == Some("Rue du Port".into())
+            && place.admin() == Some("Melun".into())
     };
-    let nb = es_wrapper.search_and_filter("label:Rue du Port", street_filter).count();
+    let nb = es_wrapper.search_and_filter("label:Rue du Port", place_filter).count();
     assert_eq!(nb, 1);
 }

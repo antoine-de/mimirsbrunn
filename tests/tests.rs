@@ -33,6 +33,7 @@ extern crate docker_wrapper;
 extern crate hyper;
 extern crate rs_es;
 extern crate serde_json;
+extern crate bragi;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -109,8 +110,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     }
     
     pub fn search_and_filter<'b, F>(&self, word: &str, predicate: F)
-    	-> Box<Iterator<Item=serde_json::value::Value> + 'b>
-    	where F: 'b + FnMut(&serde_json::value::Value) -> bool
+    	-> Box<Iterator<Item=mimir::Place> + 'b>
+    	where F: 'b + FnMut(&mimir::Place) -> bool
     {
         use serde_json::value::Value;
         use std::collections::btree_map;
@@ -130,15 +131,28 @@ impl<'a> ElasticSearchWrapper<'a> {
     	}
     	let json = self.search(word);
     	get(json, "hits")
-    		.and_then(|json| get(json, "hits"))
-            .and_then(|hits| {
-                match hits {
-                    Value::Array(v) =>
-                    	Some(Box::new(v.into_iter().filter(predicate)) as Box<Iterator<Item = Value>>),
+    	.and_then(|json| get(json, "hits"))
+    	.and_then(|hits| {
+    	    match hits {
+                Value::Array(v) =>
+                    Some(Box::new(v.into_iter().filter_map(|json| 
+                    	    into_object(json).and_then(|obj| {
+                    	  	let doc_type = obj.get("_type").and_then(|doc_type| doc_type.as_string())
+                    	  	                  .map(|doc_type| doc_type.into());
+                    	  	                  
+                    	  	doc_type.and_then(|doc_type| {
+                    	  	    // The real object is contained in the _source section.
+                    	  	    obj.get("_source").and_then(|src|{
+                    	  	        bragi::query::make_place(doc_type, Some(Box::new(src.clone())))
+                    	  	    })
+                    	  	})                  
+                    	  	                    	  	
+                    	    })
+                    	).filter(predicate)) as Box<Iterator<Item = mimir::Place>>
+                    ),
                     _ => None
-                }
-            })
-            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = Value>>)
+    	    }
+    	}).unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
     }
 }
 
