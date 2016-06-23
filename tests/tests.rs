@@ -115,7 +115,7 @@ impl<'a> ElasticSearchWrapper<'a> {
     {
         use serde_json::value::Value;
         use std::collections::btree_map;
-    	fn into_object(json: Value) -> Option<btree_map::BTreeMap<String, Value>> {
+        fn into_object(json: Value) -> Option<btree_map::BTreeMap<String, Value>> {
     	    match json {
     	        Value::Object(o) => Some(o),
     	        _ => None

@@ -31,18 +31,19 @@
 extern crate serde_json;
 extern crate mimir;
 
+use mimir::Members;
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     ::launch_and_assert(osm2mimir,
-                      vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
-                       "--import-way".into(),
-                       "--import-admin".into(),
-                       "--level=8".into(),
-                       format!("--connection-string={}", es_wrapper.host())],
-                       &es_wrapper);
+                        vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
+                             "--import-way".into(),
+                             "--import-admin".into(),
+                             "--level=8".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
 
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper.search_and_filter("label:Livry-sur-Seine", |_| true).collect();
@@ -55,29 +56,25 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res.len() != 0);
     assert!(res[0].is_street());
     // The first hit should be "Rue des Près"
-    assert!( res[0].label() == Some("Rue des Près".into()) );
+    assert!(res[0].label() == "Rue des Près");
 
     // And there should be only ONE "Rue des Près"
-    let place_filter = |place: &mimir::Place| {
-        place.is_street() && place.label() == Some("Rue des Près".into())
-    };
+    let place_filter = |place: &mimir::Place| place.is_street() && place.label() == "Rue des Près";
     let nb = es_wrapper.search_and_filter("label:Rue des Près", place_filter).count();
     assert_eq!(nb, 1);
-  
+
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
     let place_filter = |place: &mimir::Place| {
-        place.is_street()
-            && place.label() == Some("Rue du Four à Chaux".into()) 
-            && place.admin() == Some("Livry-sur-Seine".into())
+        place.is_street() && place.label() == "Rue du Four à Chaux" &&
+        place.admins().first().and_then(|admin| Some(admin.label() == "Livry-sur-Seine")).unwrap_or(false) 
     };
     let nb = es_wrapper.search_and_filter("label:Rue du Four à Chaux", place_filter).count();
     assert_eq!(nb, 6);
-    
-    //Test: Streets having the same label in different cities
+
+    // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
-        place.is_street()
-            && place.label() == Some("Rue du Port".into())
-            && place.admin() == Some("Melun".into())
+        place.is_street() && place.label() == "Rue du Port"
+        && place.admins().first().and_then(|admin| Some(admin.label() == "Melun")).unwrap_or(false)
     };
     let nb = es_wrapper.search_and_filter("label:Rue du Port", place_filter).count();
     assert_eq!(nb, 1);

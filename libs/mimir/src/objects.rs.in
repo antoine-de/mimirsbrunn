@@ -69,7 +69,7 @@ impl Place{
             _ => false
         }
     }
-    pub fn label(&self) -> Option<String> {
+    pub fn label(&self) -> &str {
         match *self {
             Place::Admin(ref o) => o.label(),
             Place::Street(ref o) => o.label(),
@@ -77,11 +77,11 @@ impl Place{
         }
     }
     
-    pub fn admin(&self) -> Option<String> {
+    pub fn admins(&self) -> Vec<Rc<Admin>> {
         match *self {
-            Place::Admin(ref o) => o.admin(),
-            Place::Street(ref o) => o.admin(),
-            Place::Addr(ref o) => o.admin(),
+            Place::Admin(ref o) => o.admins(),
+            Place::Street(ref o) => o.admins(),
+            Place::Addr(ref o) => o.admins(),
         }
     }
 }
@@ -95,13 +95,13 @@ pub trait EsId {
 }
 
 pub trait Members{
-    fn label(&self) -> Option<String>;
-    fn admin(&self) -> Option<String>;
+    fn label(&self) -> &str;
+    fn admins(&self) -> Vec<Rc<Admin>>;
 }
 
 impl<'a, T: DocType> DocType for &'a T {
     fn doc_type() -> &'static str {
-        T::doc_type()
+        T::doc_type()admin
     }
 }
 impl<'a, T: EsId> EsId for &'a T {
@@ -161,11 +161,11 @@ impl DocType for Admin {
 }
 
 impl Members for Admin {
-    fn label(&self) -> Option<String> {
-        Some(self.label.clone())
+    fn label(&self) -> &str {
+        &self.label
     }
-    fn admin(&self) -> Option<String> {
-        Some(self.label.clone())
+    fn admins(&self) -> Vec<Rc<Admin>> {
+        vec![Rc::new(self.clone())]
     }
 }
 
@@ -198,11 +198,11 @@ impl EsId for Street {
 }
 
 impl Members for Street {
-    fn label(&self) -> Option<String> {
-        Some(self.label.clone())
+    fn label(&self) -> &str {
+        &self.label
     }
-    fn admin(&self) -> Option<String> {
-        self.administrative_regions.first().and_then(|admin| admin.admin())
+    fn admins(&self) -> Vec<Rc<Admin>> {
+        self.administrative_regions.clone()
     }
     
 }
@@ -230,11 +230,11 @@ impl EsId for Addr {
 }
 
 impl Members for Addr {
-    fn label(&self) -> Option<String> {
-        Some(self.label.clone())
+    fn label(&self) -> &str {
+        &self.label
     }
-    fn admin(&self) -> Option<String> {
-        self.street.admin()
+    fn admins(&self) -> Vec<Rc<Admin>> {
+        self.street.admins()
     }
 }
 

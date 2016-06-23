@@ -43,9 +43,9 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
-    let value = es_wrapper.search("20");
-    let nb_hits = value.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
-    assert_eq!(nb_hits, 1);
+    let res: Vec<_> = es_wrapper.search_and_filter("20", |_| true).collect();
+    assert_eq!(res.len(), 1);
+
 
     // after an import, we should have 1 index, and some aliases to this index
     let client = Client::new();
