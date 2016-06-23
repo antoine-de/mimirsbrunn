@@ -33,6 +33,7 @@ use serde;
 use std::rc::Rc;
 use std::cell::Cell;
 use serde::ser::Serializer;
+use std::cmp::Ordering;
 
 // Note: this file is needed to use serde in rust stable
 // cf mimirsbrunn/build.rs for explanations
@@ -142,6 +143,26 @@ pub struct Admin {
     pub boundary: Option<geo::MultiPolygon>,
 }
 
+impl Ord for Admin {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+impl PartialOrd for Admin {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Admin {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Admin {}
+
 fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
 	// we can serialize the cell as a u32, since the reference is important only while loading the data
 	// in ES but not in bragi
@@ -157,15 +178,6 @@ impl EsId for Admin {
 impl DocType for Admin {
     fn doc_type() -> &'static str {
         "admin"
-    }
-}
-
-impl Members for Admin {
-    fn label(&self) -> &str {
-        &self.label
-    }
-    fn admins(&self) -> Vec<Rc<Admin>> {
-        vec![Rc::new(self.clone())]
     }
 }
 
