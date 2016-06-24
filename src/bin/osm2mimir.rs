@@ -116,7 +116,7 @@ impl AdminMatcher {
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct StreetKey {
 	pub name: String,
-	pub admins: BTreeSet<Rc<mimir::Admin>>,
+	pub admins: AdminSet,
 }
 
 fn parse_osm_pbf(path: &str) -> OsmPbfReader {
@@ -257,27 +257,27 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
     // Sometimes, streets can be devided into several "way"s that still have the same street name.
     // The reason why a street is devided may be that a part of the street become a bridge/tunne/etc.
     // In this case, a "relation" tagged with (type = associatedStreet) is used to group all these "way"s.
-    // In order not to have duplicates in autocompleion, we should keep only one "way" in the relation
+    // In order not to have duplicates in autocompleion, we should tag the osm ways in the relation not to index them twice.
     
     for (_, rel_obj) in &objs_map {
         if let &osmpbfreader::OsmObj::Relation(ref rel) = rel_obj {
-            //TODO : create a street for the first memeber way of the relation but not for the rest.
-            
+            let way_name = rel.tags.get("name");
             for ref_obj in &rel.refs {
                 
                 use mdo::option::*;
    	    		let objs_map = &objs_map;
    	    		let street_list = &mut street_list;
    	    		let admins_geofinder = &admins_geofinder;
-                
-                mdo! {
+   	    		
+                let inserted = mdo! {
                     when ref_obj.member.is_way();
+                    when ref_obj.role == "street";
                     obj =<< objs_map.get(&ref_obj.member);
                     let way = match obj {
                         &osmpbfreader::OsmObj::Way(ref w) => w,
                         _ => unreachable!()
                     };
-                    way_name =<< way.tags.get("name");
+                    way_name =<< way_name.or_else(|| way.tags.get("name"));
                     let admin = get_street_admin(admins_geofinder, objs_map, way);
                     ret ret(street_list.push(mimir::Street {
 							id: way.id.to_string(),
@@ -287,14 +287,16 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                     		administrative_regions: admin,
             			}))
                 };
-                break;
+                if inserted.is_some() {
+                	break;    
+                }
             }
             
-            //Add osmid of all the relation members in de set street_rel.
+            //Add osmid of all the relation members in de set
             //We don't create any street for all the osmid present in street_rel  
             for ref_obj in &rel.refs {
-                if let &osmpbfreader::OsmId::Way(_) = &ref_obj.member {
-                    street_rel.insert(ref_obj.member.clone());
+                if ref_obj.member.is_way() {
+                    street_rel.insert(ref_obj.member);
                 }
             }
         };
@@ -307,33 +309,41 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
         if street_rel.contains(osmid) {
         	continue;    
         }
-        if let &osmpbfreader::OsmObj::Way(ref way) = obj {
-            let admin: BTreeSet<Rc<mimir::Admin>> = get_street_admin(&admins_geofinder, &objs_map, way).into_iter().filter(|admin| admin.level == city_level).collect();
-             if let Some(way_name) = way.tags.get("name") {
-                 name_admin_map.entry(StreetKey{name: way_name.to_string(), admins: admin}).or_insert(vec![]).push(*osmid)
-             } 
-        }
+        use mdo::option::*;
+        let admins_geofinder = &admins_geofinder;
+        let objs_map = &objs_map;
+        let name_admin_map = &mut name_admin_map;
+        mdo! {
+            way =<< obj.way();
+            let admins: BTreeSet<Rc<mimir::Admin>> = get_street_admin(admins_geofinder, objs_map, way)
+            	.into_iter()
+            	.filter(|admin| admin.level == city_level)
+            	.collect();
+            	
+            way_name =<< way.tags.get("name");
+            let key = StreetKey{name: way_name.to_string(), admins: admins};
+            ret ret(name_admin_map.entry(key).or_insert(vec![]).push(*osmid))
+        };
     }
     
    	//Create a street for each way with osmid present in in objs_map 
    	for (_, way_ids) in name_admin_map {
-   	    use mdo::option::*;
-   	    let objs_map = &objs_map;
-   	    let street_list = &mut street_list;
-   	    let admins_geofinder = &admins_geofinder;
+		use mdo::option::*;
+		let objs_map = &objs_map;
+		let street_list = &mut street_list;
+		let admins_geofinder = &admins_geofinder;
    	    mdo! {
 			obj =<< objs_map.get(&way_ids[0]);
 			way =<< obj.way();
-   	        //way =<< way(obj);
    	        way_name =<< way.tags.get("name");
    	        let admins = get_street_admin(admins_geofinder, objs_map, way);
    	        ret ret(street_list.push(mimir::Street{
-					id: way.id.to_string(),
-					street_name: way_name.to_string(),
-                	label: way_name.to_string(),
-                	weight: 1,
-                	administrative_regions: admins,
-   	    		}))
+				id: way.id.to_string(),
+				street_name: way_name.to_string(),
+				label: way_name.to_string(),
+                weight: 1,
+                administrative_regions: admins,
+   	        }))
    	    };
    	}
    	
