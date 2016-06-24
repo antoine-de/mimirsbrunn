@@ -59,14 +59,12 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res[0].label() == "Rue des Près");
 
     // And there should be only ONE "Rue des Près"
-    let place_filter = |place: &mimir::Place| place.is_street() && place.label() == "Rue des Près";
-    let nb = es_wrapper.search_and_filter("label:Rue des Près", place_filter).count();
-    assert_eq!(nb, 1);
-
+    assert_eq!(res.iter().filter(|place| place.is_street() && place.label() == "Rue des Près").count(), 1);
+    
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
     let place_filter = |place: &mimir::Place| {
         place.is_street() && place.label() == "Rue du Four à Chaux" &&
-        place.admins().first().and_then(|admin| Some(admin.label() == "Livry-sur-Seine")).unwrap_or(false) 
+        place.admins().first().map(|admin| admin.label() == "Livry-sur-Seine").unwrap_or(false) 
     };
     let nb = es_wrapper.search_and_filter("label:Rue du Four à Chaux", place_filter).count();
     assert_eq!(nb, 6);
@@ -74,7 +72,7 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
         place.is_street() && place.label() == "Rue du Port"
-        && place.admins().first().and_then(|admin| Some(admin.label() == "Melun")).unwrap_or(false)
+        && place.admins().first().map(|admin| admin.label() == "Melun").unwrap_or(false)
     };
     let nb = es_wrapper.search_and_filter("label:Rue du Port", place_filter).count();
     assert_eq!(nb, 1);
