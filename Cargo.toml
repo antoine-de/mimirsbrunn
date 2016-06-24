@@ -14,8 +14,9 @@ regex = "*"
 osmpbfreader = "*"
 chrono = "0.2"
 serde = "*"
-ntree = "0.1.0"
 geo = "0.1.1"
+gst = "0.1"
+ordered-float = "0.0.2"
 
 [dev-dependencies]
 serde_json = "*"
