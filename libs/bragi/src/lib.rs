@@ -59,7 +59,7 @@ extern crate log;
 
 
 pub mod api;
-mod query;
+pub mod query;
 mod model;
 
 #[derive(RustcDecodable, Debug)]

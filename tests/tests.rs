@@ -33,6 +33,7 @@ extern crate docker_wrapper;
 extern crate hyper;
 extern crate rs_es;
 extern crate serde_json;
+extern crate bragi;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -41,10 +42,13 @@ extern crate mdo;
 use docker_wrapper::*;
 
 mod bano2mimir_test;
+mod osm2mimir_test;
+mod osm2mimir_bano2mimir_test;
 mod rubber_test;
 mod bragi_test;
 use serde_json::value::Value;
 use hyper::client::response::Response;
+use std::process::Command;
 
 trait ToJson {
     fn to_json(self) -> Value;
@@ -104,6 +108,63 @@ impl<'a> ElasticSearchWrapper<'a> {
         assert!(res.status == hyper::Ok);
         res.to_json()
     }
+    
+    pub fn search_and_filter<'b, F>(&self, word: &str, predicate: F)
+    	-> Box<Iterator<Item=mimir::Place> + 'b>
+    	where F: 'b + FnMut(&mimir::Place) -> bool
+    {
+        use serde_json::value::Value;
+        use std::collections::btree_map;
+        fn into_object(json: Value) -> Option<btree_map::BTreeMap<String, Value>> {
+    	    match json {
+    	        Value::Object(o) => Some(o),
+    	        _ => None
+    	    }
+    	}
+    	fn get(json: Value, key: &str) -> Option<Value> {
+    	    into_object(json).and_then(|mut json| {
+    	        match json.entry(key.into()) {
+    	        	btree_map::Entry::Occupied(o) => Some(o.remove()),
+    	        	_ => None
+    	    	}
+    	    })
+    	}
+    	let json = self.search(word);
+    	get(json, "hits")
+    	.and_then(|json| get(json, "hits"))
+    	.and_then(|hits| {
+    	    match hits {
+                Value::Array(v) =>
+                    Some(Box::new(v.into_iter().filter_map(|json| 
+                    	    into_object(json).and_then(|obj| {
+                    	  	let doc_type = obj.get("_type").and_then(|doc_type| doc_type.as_string())
+                    	  	                  .map(|doc_type| doc_type.into());
+                    	  	                  
+                    	  	doc_type.and_then(|doc_type| {
+                    	  	    // The real object is contained in the _source section.
+                    	  	    obj.get("_source").and_then(|src|{
+                    	  	        bragi::query::make_place(doc_type, Some(Box::new(src.clone())))
+                    	  	    })
+                    	  	})                  
+                    	  	                    	  	
+                    	    })
+                    	).filter(predicate)) as Box<Iterator<Item = mimir::Place>>
+                    ),
+                    _ => None
+    	    }
+    	}).unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+    }
+}
+
+fn launch_and_assert(cmd: &'static str,
+                     args: Vec<std::string::String>, 
+                     es_wrapper: &ElasticSearchWrapper) {
+    let status = Command::new(cmd)
+                     .args(&args)
+                     .status()
+                     .unwrap();
+    assert!(status.success(), "`{}` failed {}", cmd, &status);
+    es_wrapper.refresh();
 }
 
 /// Main test method (regroups all tests)
@@ -117,6 +178,8 @@ fn all_tests() {
 
     // we call all tests here
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
+    osm2mimir_test::osm2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
+    osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_test::bragi_tests(ElasticSearchWrapper::new(&docker_wrapper));

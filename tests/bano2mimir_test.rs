@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use std::process::Command;
 use hyper;
 use hyper::client::Client;
 use mdo::option::{bind, ret};
@@ -39,18 +38,14 @@ use super::ToJson;
 pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
-    let status = Command::new(bano2mimir)
-                     .args(&["--input=./tests/fixtures/sample-bano.csv".into(),
-                             format!("--connection-string={}", es_wrapper.host())])
-                     .status()
-                     .unwrap();
-    assert!(status.success(), "`bano2mimir` failed {}", &status);
+    ::launch_and_assert(bano2mimir,
+                        vec!["--input=./tests/fixtures/sample-bano.csv".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
 
-    es_wrapper.refresh();
+    let res: Vec<_> = es_wrapper.search_and_filter("20", |_| true).collect();
+    assert_eq!(res.len(), 1);
 
-    let value = es_wrapper.search("20");
-    let nb_hits = value.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0);
-    assert_eq!(nb_hits, 1);
 
     // after an import, we should have 1 index, and some aliases to this index
     let client = Client::new();
@@ -78,13 +73,10 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // then we import again the bano file:
     info!("importing again {}", bano2mimir);
-    let status = Command::new(bano2mimir)
-                     .args(&["--input=./tests/fixtures/sample-bano.csv".into(),
-                             format!("--connection-string={}", es_wrapper.host())])
-                     .status()
-                     .unwrap();
-    assert!(status.success(), "`bano2mimir` failed {}", &status);
-    es_wrapper.refresh();
+    ::launch_and_assert(bano2mimir,
+                        vec!["--input=./tests/fixtures/sample-bano.csv".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
 
     // we should still have only one index (but a different one)
     let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))

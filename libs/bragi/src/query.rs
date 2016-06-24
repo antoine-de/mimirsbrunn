@@ -46,7 +46,7 @@ fn build_rs_client(cnx: &String) -> rs_es::Client {
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
-fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<mimir::Place> {
+pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<mimir::Place> {
     value.and_then(|v| {
         match doc_type.as_ref() {
             "addr" => {
