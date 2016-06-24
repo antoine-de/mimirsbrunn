@@ -161,6 +161,15 @@ impl PartialEq for Admin {
     }
 }
 
+impl Members for Admin {
+    fn label(&self) -> &str {
+        &self.label
+    }
+    fn admins(&self) -> Vec<Rc<Admin>> {
+        vec![Rc::new(self.clone())]
+    }
+}
+
 impl Eq for Admin {}
 
 fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
