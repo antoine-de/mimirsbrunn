@@ -115,7 +115,9 @@ fn parse_osm_pbf(path: &str) -> OsmPbfReader {
 fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> AdminsVec {
     let mut administrative_regions = AdminsVec::new();
     let matcher = AdminMatcher::new(levels);
+    info!("reading pbf...");
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_admin(o)).unwrap();
+    info!("reading pbf done.");
     // load administratives regions
     for (_, obj) in &objects {
         if !matcher.is_admin(&obj) {
@@ -192,7 +194,7 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
     let mut geofinder = AdminGeoFinder::new();
 
     for a in admins {
-        geofinder.add_admin(a.clone());
+        geofinder.insert(a.clone());
     }
     geofinder
 }
@@ -216,12 +218,7 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
                        }
                    })
                    .next();
-    coord.map_or(vec![], |c| {
-        admins_geofinder.get_admins_for_coord(&c)
-    .iter()
-    .cloned()
-    .collect()
-    })
+    coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec) -> StreetsVec {
@@ -240,7 +237,9 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec) -> StreetsVec {
         }
     };
 
+    info!("reading pbf...");
     let mut objs_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_obj).unwrap();
+    info!("reading pbf done.");
     // Sometimes, streets can be devided into several "way"s that still have the same street name.
     // The reason why a street is devided may be that a part of the street become a bridge/tunne/etc.
     // In this case, a "relation" tagged with (type = associatedStreet) is used to group all these "way"s.
@@ -301,11 +300,13 @@ fn main() {
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
 
-    debug!("importing adminstrative region into Mimir");
+    info!("creating adminstrative regions");
     let admins = administrative_regions(&mut parsed_pbf, levels);
 
+    info!("creating streets");
     let mut streets = streets(&mut parsed_pbf, &admins);
     
+    info!("computing city weight");
     for st in &mut streets {
     	for admin in &mut st.administrative_regions {
     		if admin.level == city_level {
@@ -314,6 +315,7 @@ fn main() {
     	}
     }
     
+    info!("computing street weight");
     for st in &mut streets {
     	for admin in &mut st.administrative_regions {
     		if admin.level == city_level {
@@ -324,7 +326,7 @@ fn main() {
     } 
     
     if args.flag_import_way {
-        debug!("importing streets into Mimir");
+        info!("importing streets into Mimir");
         let nb_streets = rubber.index("way",
                                       &args.flag_dataset,
                                       streets.into_iter())

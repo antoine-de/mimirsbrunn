@@ -33,7 +33,8 @@ extern crate log;
 extern crate osmpbfreader;
 extern crate mimir;
 extern crate osm_builder;
-extern crate ntree;
+extern crate gst;
+extern crate ordered_float;
 extern crate geo;
 
 pub mod boundaries;

@@ -31,34 +31,54 @@ use mimir::Admin;
 use geo::contains::Contains;
 use geo;
 use std::rc::Rc;
+use gst::rtree::{RTree, Rect, Point};
 
 pub struct AdminGeoFinder {
-    //quadtree: ntree::NTree<QuadTreeRegion, Admin>,
-    admins: Vec<Rc<Admin>>
+    admins: RTree<Rc<Admin>>
 }
 
 impl AdminGeoFinder {
     pub fn new() -> AdminGeoFinder {
         AdminGeoFinder {
-            admins: vec![]
+            admins: RTree::new()
         }
     }
 
-    pub fn add_admin(&mut self, admin: Rc<Admin>) {
-        self.admins.push(admin);
+    pub fn insert(&mut self, admin: Rc<Admin>) {
+        use ::ordered_float::OrderedFloat;
+        fn min(a: OrderedFloat<f32>, b: f64) -> f32 {
+            ::std::cmp::min(a, OrderedFloat(b as f32)).0
+        }
+        fn max(a: OrderedFloat<f32>, b: f64) -> f32 {
+            ::std::cmp::max(a, OrderedFloat(b as f32)).0
+        }
+
+        let rect = {
+            let mut coords = match admin.boundary {
+                Some(ref b) => b.0.iter().flat_map(|poly| (poly.0).0.iter()),
+                None => return,
+            };
+            let first_coord = match coords.next() {
+                Some(c) => c,
+                None => return,
+            };
+            let first_rect: Rect = Point::new(first_coord.x() as f32, first_coord.y() as f32).into();
+            coords.fold(first_rect, |accu, p| Rect::from_float(min(accu.xmin, p.x()),
+                                                               max(accu.xmax, p.x()),
+                                                               min(accu.ymin, p.y()),
+                                                               max(accu.ymax, p.y())))
+        };
+        self.admins.insert(rect, admin);
     }
 
-    /// Get all Admins overlaping the coordinate
-    pub fn get_admins_for_coord(&self, coord: &geo::Coordinate) -> Vec<Rc<Admin>> {
-        self.admins.iter().filter(|a| {
+    /// Get all Admins overlapping the coordinate
+    pub fn get(&self, coord: &geo::Coordinate) -> Vec<Rc<Admin>> {
+        let search: Rect = Point::new(coord.x as f32, coord.y as f32).into();
+        self.admins.get(&search).into_iter().map(|(_, a)| a).filter(|a| {
                 a.boundary.as_ref().map_or(false, |b| {
                     b.contains(&geo::Point(coord.clone()))
                 })
             })
             .cloned().collect()
-    }
-
-    pub fn get_admins_for_street(&self) -> Vec<&Admin> {
-        panic!("get_admin_for_street");
     }
 }
