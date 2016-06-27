@@ -278,12 +278,12 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                     way_name =<< way_name.or_else(|| way.tags.get("name"));
                     let admin = get_street_admin(admins_geofinder, objs_map, way);
                     ret ret(street_list.push(mimir::Street {
-						id: way.id.to_string(),
-						street_name: way_name.to_string(),
-                    	label: way_name.to_string(),
-                    	weight: 1,
-                    	administrative_regions: admin,
-            		}))
+                                id: way.id.to_string(),
+                                street_name: way_name.to_string(),
+                                label: way_name.to_string(),
+                                weight: 1,
+                                administrative_regions: admin,
+                    }))
                 };
                 if inserted.is_some() {
                     break;
@@ -331,16 +331,16 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
         let street_list = &mut street_list;
         let admins_geofinder = &admins_geofinder;
         mdo! {
-			obj =<< objs_map.get(&way_ids[0]);
-			way =<< obj.way();
-			way_name =<< way.tags.get("name");
+            obj =<< objs_map.get(&way_ids[0]);
+            way =<< obj.way();
+            way_name =<< way.tags.get("name");
 			let admins = get_street_admin(admins_geofinder, objs_map, way);
    	        ret ret(street_list.push(mimir::Street{
-				id: way.id.to_string(),
-				street_name: way_name.to_string(),
-				label: way_name.to_string(),
-                weight: 1,
-                administrative_regions: admins,
+   	                    id: way.id.to_string(),
+   	                    street_name: way_name.to_string(),
+   	                    label: way_name.to_string(),
+   	                    weight: 1,
+   	                    administrative_regions: admins,
    	        }))
    	    };
     }
