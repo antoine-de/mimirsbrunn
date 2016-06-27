@@ -32,7 +32,7 @@ extern crate osmpbfreader;
 extern crate mimir;
 extern crate osm_builder;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use geo::{Polygon, MultiPolygon, LineString, Coordinate, Point};
 
 #[cfg(test)]
@@ -55,7 +55,7 @@ impl BoundaryPart {
 }
 
 fn get_nodes(way: &osmpbfreader::Way,
-             objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
+             objects: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
              -> Vec<osmpbfreader::Node> {
     way.nodes
        .iter()
@@ -72,7 +72,7 @@ fn get_nodes(way: &osmpbfreader::Way,
 
 #[test]
 fn test_get_nodes() {
-    let mut objects = HashMap::new();
+    let mut objects = BTreeMap::new();
     let way = osmpbfreader::Way {
         id: 12,
         nodes: vec![12, 15, 8, 68],
@@ -130,7 +130,7 @@ fn test_get_nodes() {
 }
 
 pub fn build_boundary(relation: &osmpbfreader::Relation,
-                      objects: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
+                      objects: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
                       -> Option<MultiPolygon> {
     let mut boundary_parts: Vec<BoundaryPart> =
         relation.refs
@@ -220,7 +220,7 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
 
 #[test]
 fn test_build_bounadry_empty() {
-    let objects = HashMap::new();
+    let objects = BTreeMap::new();
     let mut relation = osmpbfreader::Relation {
         id: 12,
         refs: vec![],

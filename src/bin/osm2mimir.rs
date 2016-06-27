@@ -42,7 +42,7 @@ extern crate serde;
 extern crate geo;
 
 
-use std::collections::{HashSet, HashMap};
+use std::collections::{BTreeSet, BTreeMap};
 use mimir::rubber::Rubber;
 
 pub type AdminsVec = Vec<Rc<mimir::Admin>>;
@@ -86,10 +86,10 @@ Options:
 
 #[derive(Debug)]
 struct AdminMatcher {
-    admin_levels: HashSet<u32>,
+    admin_levels: BTreeSet<u32>,
 }
 impl AdminMatcher {
-    pub fn new(levels: HashSet<u32>) -> AdminMatcher {
+    pub fn new(levels: BTreeSet<u32>) -> AdminMatcher {
         AdminMatcher { admin_levels: levels }
     }
 
@@ -112,7 +112,7 @@ fn parse_osm_pbf(path: &str) -> OsmPbfReader {
     osmpbfreader::OsmPbfReader::new(std::fs::File::open(&path).unwrap())
 }
 
-fn administrative_regions(pbf: &mut OsmPbfReader, levels: HashSet<u32>) -> AdminsVec {
+fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> AdminsVec {
     let mut administrative_regions = AdminsVec::new();
     let matcher = AdminMatcher::new(levels);
     info!("reading pbf...");
@@ -200,7 +200,7 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
 }
 
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,
-                    obj_map: &HashMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+                    obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
                     way: &osmpbfreader::objects::Way)
                     -> Vec<Rc<mimir::Admin>> {
     // for the moment we consider that the coord of the way is the coord of it's first node
