@@ -31,7 +31,7 @@ use mimir::Admin;
 use geo::contains::Contains;
 use geo;
 use std::rc::Rc;
-use gst::rtree::{RTree, Rect, Point};
+use gst::rtree::{RTree, Rect};
 
 pub struct AdminGeoFinder {
     admins: RTree<Rc<Admin>>
@@ -47,10 +47,10 @@ impl AdminGeoFinder {
     pub fn insert(&mut self, admin: Rc<Admin>) {
         use ::ordered_float::OrderedFloat;
         fn min(a: OrderedFloat<f32>, b: f64) -> f32 {
-            ::std::cmp::min(a, OrderedFloat(b as f32)).0
+            a.0.min(down(b as f32))
         }
         fn max(a: OrderedFloat<f32>, b: f64) -> f32 {
-            ::std::cmp::max(a, OrderedFloat(b as f32)).0
+            a.0.max(up(b as f32))
         }
 
         let rect = {
@@ -62,7 +62,10 @@ impl AdminGeoFinder {
                 Some(c) => c,
                 None => return,
             };
-            let first_rect: Rect = Point::new(first_coord.x() as f32, first_coord.y() as f32).into();
+            let first_rect: Rect = {
+                let (x, y) = (first_coord.x() as f32, first_coord.y() as f32);
+                Rect::from_float(down(x), up(x), down(y), up(y))
+            };
             coords.fold(first_rect, |accu, p| Rect::from_float(min(accu.xmin, p.x()),
                                                                max(accu.xmax, p.x()),
                                                                min(accu.ymin, p.y()),
@@ -73,12 +76,91 @@ impl AdminGeoFinder {
 
     /// Get all Admins overlapping the coordinate
     pub fn get(&self, coord: &geo::Coordinate) -> Vec<Rc<Admin>> {
-        let search: Rect = Point::new(coord.x as f32, coord.y as f32).into();
+        let (x, y) = (coord.x as f32, coord.y as f32);
+        let search = Rect::from_float(down(x), up(x), down(y), up(y));
         self.admins.get(&search).into_iter().map(|(_, a)| a).filter(|a| {
-                a.boundary.as_ref().map_or(false, |b| {
-                    b.contains(&geo::Point(coord.clone()))
-                })
+            a.boundary.as_ref().map_or(false, |b| {
+                b.contains(&geo::Point(coord.clone()))
             })
-            .cloned().collect()
+        }).cloned().collect()
+    }
+}
+
+// the goal is that f in [down(f as f32) as f64, up(f as f32) as f64]
+fn down(f: f32) -> f32 {
+    f - (f * ::std::f32::EPSILON).abs()
+}
+fn up(f: f32) -> f32 {
+    f + (f * ::std::f32::EPSILON).abs()
+}
+
+#[test]
+fn test_up_down() {
+    for &f in [1.0f64, 0., -0., -1., 0.1, -0.1, 0.9, -0.9, 42., -42.].iter() {
+        let small_f = f as f32;
+        assert!(down(small_f) as f64 <= f, format!("{} <= {}", down(small_f) as f64, f));
+        assert!(f <= up(small_f) as f64, format!("{} <= {}", f, up(small_f) as f64));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn p(x: f64, y: f64) -> ::geo::Point {
+        ::geo::Point(::geo::Coordinate { x: x, y: y })
+    }
+
+    fn make_admin(offset: f64) -> ::std::rc::Rc<::mimir::Admin> {
+        // the boundary is a big octogon
+        let shape = ::geo::Polygon(::geo::LineString(vec![p(3. + offset, 0. + offset),
+                                                          p(6. + offset, 0. + offset),
+                                                          p(9. + offset, 3. + offset),
+                                                          p(9. + offset, 6. + offset),
+                                                          p(6. + offset, 9. + offset),
+                                                          p(3. + offset, 9. + offset),
+                                                          p(0. + offset, 6. + offset),
+                                                          p(0. + offset, 3. + offset),
+                                                          p(3. + offset, 0. + offset)]),
+                                   vec![]);
+        let boundary = ::geo::MultiPolygon(vec![shape]);
+
+        ::std::rc::Rc::new(::mimir::Admin {
+            id: format!("admin:offset:{}", offset),
+            level: 8,
+            label: format!("city {}", offset),
+            zip_code: "421337".to_string(),
+            weight: ::std::cell::Cell::new(1),
+            coord: Some(::mimir::CoordWrapper(::geo::Coordinate { x: 4.0 + offset, y: 4.0 + offset })),
+            boundary: Some(boundary),
+            insee: "outlook".to_string()
+        })
+    }
+
+    #[test]
+    fn test_two_fake_admins() {
+        let mut finder = AdminGeoFinder::new();
+        finder.insert(make_admin(40.));
+        finder.insert(make_admin(43.));
+
+        // outside
+        for coord in [p(48., 41.), p(411., 41.), p(51., 54.), p(53., 53.)].iter() {
+            assert!(finder.get(&coord.0).is_empty());
+        }
+
+        // inside one
+        let admins = finder.get(&p(44., 44.).0);
+        assert_eq!(admins.len(), 1);
+        assert_eq!(admins[0].id, "admin:offset:40");
+        let admins = finder.get(&p(48., 48.).0);
+        assert_eq!(admins.len(), 1);
+        assert_eq!(admins[0].id, "admin:offset:43");
+
+        // inside two
+        let mut admins = finder.get(&p(46., 46.).0);
+        admins.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(admins.len(), 2);
+        assert_eq!(admins[0].id, "admin:offset:40");
+        assert_eq!(admins[1].id, "admin:offset:43");
     }
 }
