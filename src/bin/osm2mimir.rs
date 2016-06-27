@@ -342,7 +342,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
    	                    weight: 1,
    	                    administrative_regions: admins,
             }))
-   	    };
+        };
     }
 
     street_list
