@@ -63,10 +63,12 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
     let place_filter = |place: &mimir::Place| {
         place.is_street() && place.label() == "Rue du Four à Chaux" &&
-        place.admins().first().map(|admin| admin.label() == "Livry-sur-Seine").unwrap_or(false) 
+        place.admins().first().map(|admin| admin.label() == "Livry-sur-Seine").unwrap_or(false)
     };
+    //As we merge all ways with same name and of the same admin(level=city_level)
+    //Here we have only one way 
     let nb = es_wrapper.search_and_filter("label:Rue du Four à Chaux", place_filter).count();
-    assert_eq!(nb, 6);
+    assert_eq!(nb, 1);
 
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
