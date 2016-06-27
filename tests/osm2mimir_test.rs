@@ -44,7 +44,6 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                              "--level=8".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
-
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper.search_and_filter("label:Livry-sur-Seine", |_| true).collect();
     assert_eq!(res.len(), 1);
