@@ -37,8 +37,7 @@ use mimir;
 use serde_json;
 
 fn build_rs_client(cnx: &String) -> rs_es::Client {
-    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)")
-                 .unwrap();
+    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
     let cap = re.captures(&cnx).unwrap();
     let host = cap.name("host").unwrap();
     let port = cap.name("port").unwrap().parse::<u32>().unwrap();
@@ -74,39 +73,43 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
     })
 }
 
-fn build_query(q: &String, match_type: &str, coord: &Option<model::Coord>) -> rs_es::query::Query {
+fn build_query(q: &String,
+               match_type: &str,
+               coord: &Option<model::Coord>,
+               shape: Option<Vec<rs_es::units::Location>>)
+               -> rs_es::query::Query {
+    use rs_es::query::functions::Function;
     let boost_addr = rs_q::build_term("_type", "addr").with_boost(1000).build();
     let boost_match_query = rs_q::build_match(match_type, q.to_string()).with_boost(100).build();
 
     let mut should_query = vec![boost_addr, boost_match_query];
     if let &Some(ref c) = coord {
         // if we have coordinate, we boost we result near this coordinate
-        use rs_es::query::functions::Function::build_decay;
         let boost_on_proximity =
             rs_q::build_function_score()
                 .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
                 .with_boost(300)
-                .with_function(build_decay("coord",
+                .with_function(Function::build_decay("coord",
                                            rs_u::Location::LatLon(c.lat, c.lon),
                                            rs_u::Distance::new(3f64,
                                                                rs_u::DistanceUnit::Kilometer))
                                    .build_gauss())
                 .build();
         should_query.push(boost_on_proximity);
-   } else {
-       // if we don't have coords, we take the field `weight` into account
-       let boost_on_weight = rs_q::build_function_score()
-              .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-              .with_boost(300)
-              .with_query(rs_q::build_match_all().build())
-              .with_function(
-          rs_es::query::functions::Function::build_field_value_factor("weight")
-                              .with_factor(1)
-                      .with_modifier(rs_es::query::functions::Modifier::Log1p)
-                                                      .build())
-              .build();
+    } else {
+        // if we don't have coords, we take the field `weight` into account
+        let boost_on_weight =
+            rs_q::build_function_score()
+                .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+                .with_boost(300)
+                .with_query(rs_q::build_match_all().build())
+                .with_function(Function::build_field_value_factor("weight")
+                                   .with_factor(1)
+                                   .with_modifier(rs_es::query::functions::Modifier::Log1p)
+                                   .build())
+                .build();
         should_query.push(boost_on_weight);
-   }
+    }
 
     let sub_query = rs_q::build_bool()
                         .with_should(should_query)
@@ -120,12 +123,13 @@ fn build_query(q: &String, match_type: &str, coord: &Option<model::Coord>) -> rs
     }
 
     let filter = rs_q::build_bool()
-        .with_should(vec![rs_q::build_bool()
-                              .with_must_not(rs_q::build_exists("house_number").build())
-                              .build(),
-                          rs_q::build_match("house_number", q.to_string()).build()])
-        .with_must(must)
-        .build();
+                     .with_should(vec![rs_q::build_bool()
+                                           .with_must_not(rs_q::build_exists("house_number")
+                                                              .build())
+                                           .build(),
+                                       rs_q::build_match("house_number", q.to_string()).build()])
+                     .with_must(must)
+                     .build();
 
     rs_q::build_bool()
         .with_must(vec![sub_query])
@@ -136,16 +140,17 @@ fn build_query(q: &String, match_type: &str, coord: &Option<model::Coord>) -> rs
 fn query(q: &String,
          cnx: &String,
          match_type: &str,
-         coord: &Option<model::Coord>)
+         coord: &Option<model::Coord>,
+         shape: Option<Vec<rs_es::units::Location>>)
          -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    let query = build_query(q, match_type, coord);
+    let query = build_query(q, match_type, coord, shape);
 
     let mut client = build_rs_client(cnx);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
-                                                       .with_indexes(&["munin"])
-                                                       .with_query(&query)
-                                                       .send());
+                                                             .with_indexes(&["munin"])
+                                                             .with_query(&query)
+                                                             .send());
 
     debug!("{} documents found", result.hits.total);
 
@@ -159,14 +164,20 @@ fn query(q: &String,
 }
 
 
-fn query_prefix(q: &String, cnx: &String, coord: &Option<model::Coord>,
-         shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "name.prefix", coord, shape)
+fn query_prefix(q: &String,
+                cnx: &String,
+                coord: &Option<model::Coord>,
+                shape: Option<Vec<rs_es::units::Location>>)
+                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    query(&q, cnx, "label.prefix", coord, shape)
 }
 
-fn query_ngram(q: &String, cnx: &String, coord: &Option<model::Coord>,
-         shape: Option<Vec<rs_es::units::Location>>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	query(&q, cnx, "name.ngram", coord, shape)
+fn query_ngram(q: &String,
+               cnx: &String,
+               coord: &Option<model::Coord>,
+               shape: Option<Vec<rs_es::units::Location>>)
+               -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    query(&q, cnx, "label.ngram", coord, shape)
 }
 
 pub fn autocomplete(q: String,
@@ -174,16 +185,16 @@ pub fn autocomplete(q: String,
                     cnx: &String,
                     shape: Option<Vec<(f64, f64)>>)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	// First search with match = "name.prefix".
-	// If no result then another search with match = "name.ngram"
-	fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
-	    shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
-	}
+    // First search with match = "name.prefix".
+    // If no result then another search with match = "name.ngram"
+    fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
+        shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
+    }
 
     let results = try!(query_prefix(&q, cnx, &coord, make_shape(&shape)));
     if results.is_empty() {
-    	query_ngram(&q, cnx, &coord, make_shape(&shape))
+        query_ngram(&q, cnx, &coord, make_shape(&shape))
     } else {
-    	Ok(results)
+        Ok(results)
     }
 }
