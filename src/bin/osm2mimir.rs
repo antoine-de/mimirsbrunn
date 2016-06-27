@@ -46,8 +46,6 @@ extern crate mdo;
 
 use std::collections::{BTreeSet, BTreeMap};
 use mimir::rubber::Rubber;
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 
 pub type AdminsVec = Vec<Rc<mimir::Admin>>;
 pub type StreetsVec = Vec<mimir::Street>;
