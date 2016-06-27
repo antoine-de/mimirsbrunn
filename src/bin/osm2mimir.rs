@@ -334,14 +334,14 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
             obj =<< objs_map.get(&way_ids[0]);
             way =<< obj.way();
             way_name =<< way.tags.get("name");
-			let admins = get_street_admin(admins_geofinder, objs_map, way);
-   	        ret ret(street_list.push(mimir::Street{
+            let admins = get_street_admin(admins_geofinder, objs_map, way);
+            ret ret(street_list.push(mimir::Street{
    	                    id: way.id.to_string(),
    	                    street_name: way_name.to_string(),
    	                    label: way_name.to_string(),
    	                    weight: 1,
    	                    administrative_regions: admins,
-   	        }))
+            }))
    	    };
     }
 
