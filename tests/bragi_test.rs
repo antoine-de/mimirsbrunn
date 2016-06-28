@@ -78,10 +78,10 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-                         r#""street":"Rue Hector Malot","postcode":null,"#,
+                         r#""street":"Rue Hector Malot","postcode":"75012","#,
                          r#""city":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
-    
+
 // A(48.846431 2.376488)
 // B(48.846430 2.376306)
 // C(48.846606 2.376309)
@@ -116,7 +116,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-                         r#""street":"Rue Hector Malot","postcode":null,"#,
+                         r#""street":"Rue Hector Malot","postcode":"75012","#,
                          r#""city":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 

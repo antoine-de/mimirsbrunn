@@ -183,7 +183,10 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
             };
             let zip_code = match relation.tags.get("addr:postcode") {
                 Some(val) => &val[..],
-                None => "",
+                None => match relation.tags.get("postal_code") {
+                    Some(val) => &val[..],
+                    None => ""
+                },
             };
             let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
             let admin = mimir::Admin {
@@ -191,7 +194,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 insee: insee_id.to_string(),
                 level: level,
                 label: name.to_string(),
-                zip_code: zip_code.to_string(),
+                zip_codes: zip_code.split(';').map(|s| s.to_string()).collect(),
                 // TODO weight value ?
                 weight: Cell::new(0),
                 coord: coord_centre,
@@ -239,6 +242,24 @@ fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
         Some(idx) => format!("{} ({})", name, admins[idx].label),
         None => name.to_string()
     }
+}
+fn get_zip_codes_for_street(admins: &AdminsVec) -> Vec<String>{
+    let level = admins.iter().fold(0, |mut level, adm| {
+            if adm.level > level && !adm.zip_codes.is_empty() {
+                level=adm.level
+            }; 
+            level
+    });
+    let mut zip_codes = Vec::new();
+	if level > 0 {
+	    // Many admins with adm.level == level
+        for adm in admins {
+            if adm.level == level {
+                zip_codes.extend(adm.zip_codes.clone());
+            }
+        }
+	}
+    zip_codes
 }
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
     let admins_geofinder = make_admin_geofinder(admins);
@@ -288,6 +309,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                                 street_name: way_name.to_string(),
                                 label: format_label(&admin, city_level, way_name),
                                 weight: 1,
+                                zip_codes: get_zip_codes_for_street(&admin),
                                 administrative_regions: admin,
                     }))
                 };
@@ -346,6 +368,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
    	                    street_name: way_name.to_string(),
    	                    label: format_label(&admins, city_level, way_name),
    	                    weight: 1,
+   	                    zip_codes: get_zip_codes_for_street(&admins),
    	                    administrative_regions: admins,
             }))
         };
