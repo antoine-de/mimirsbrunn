@@ -234,6 +234,13 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
+fn admin_by_level(admins: &AdminsVec, city_level: u32) -> Option<&Rc<mimir::Admin>> {
+    match admins.iter().position(|adm| adm.level == city_level) {
+        Some(idx) => Some(&admins[idx]),
+        None => None
+    }
+}
+
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
     let admins_geofinder = make_admin_geofinder(admins);
 
@@ -277,10 +284,14 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                     way =<<obj.way();
                     way_name =<< way_name.or_else(|| way.tags.get("name"));
                     let admin = get_street_admin(admins_geofinder, objs_map, way);
+                    let label = match admin_by_level(&admin, city_level) {
+                        Some(adm) => format!("{} ({})", way_name, adm.label),
+                        None =>  way_name.to_string()
+                    };
                     ret ret(street_list.push(mimir::Street {
                                 id: way.id.to_string(),
                                 street_name: way_name.to_string(),
-                                label: way_name.to_string(),
+                                label: label,
                                 weight: 1,
                                 administrative_regions: admin,
                     }))
@@ -335,10 +346,14 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
             way =<< obj.way();
             way_name =<< way.tags.get("name");
             let admins = get_street_admin(admins_geofinder, objs_map, way);
+            let label = match admin_by_level(&admins, city_level) {
+                Some(adm) => format!("{} ({})", way_name, adm.label),
+                None =>  way_name.to_string()
+            };
             ret ret(street_list.push(mimir::Street{
    	                    id: way.id.to_string(),
    	                    street_name: way_name.to_string(),
-   	                    label: way_name.to_string(),
+   	                    label: label,
    	                    weight: 1,
    	                    administrative_regions: admins,
             }))
