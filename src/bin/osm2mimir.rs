@@ -234,10 +234,10 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
-fn format_label(admins: &AdminsVec, city_level: u32, name: &String) -> String {
+fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
     match admins.iter().position(|adm| adm.level == city_level) {
         Some(idx) => format!("{} ({})", name, admins[idx].label),
-        None => (*name).clone()
+        None => name.to_string()
     }
 }
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {

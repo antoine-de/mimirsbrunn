@@ -47,8 +47,7 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper.search_and_filter("label:Livry-sur-Seine", |_| true).collect();
     assert_eq!(res.len(), 4);
-    assert!(res[0].is_admin());
-
+    assert!(res.iter().any(|r| r.is_admin()));
 
     // Test: search for "Rue des Près"
     let res: Vec<_> = es_wrapper.search_and_filter("label:Rue des Près", |_| true).collect();
