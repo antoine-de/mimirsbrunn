@@ -234,6 +234,12 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
+fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
+    match admins.iter().position(|adm| adm.level == city_level) {
+        Some(idx) => format!("{} ({})", name, admins[idx].label),
+        None => name.to_string()
+    }
+}
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
     let admins_geofinder = make_admin_geofinder(admins);
 
@@ -280,7 +286,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                     ret ret(street_list.push(mimir::Street {
                                 id: way.id.to_string(),
                                 street_name: way_name.to_string(),
-                                label: way_name.to_string(),
+                                label: format_label(&admin, city_level, way_name),
                                 weight: 1,
                                 administrative_regions: admin,
                     }))
@@ -338,7 +344,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
             ret ret(street_list.push(mimir::Street{
    	                    id: way.id.to_string(),
    	                    street_name: way_name.to_string(),
-   	                    label: way_name.to_string(),
+   	                    label: format_label(&admins, city_level, way_name),
    	                    weight: 1,
    	                    administrative_regions: admins,
             }))
