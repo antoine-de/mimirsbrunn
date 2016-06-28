@@ -84,6 +84,12 @@
             "properties": {
                 "id": { "type": "string", "index": "no" },
                 "street_name": { "type": "string" },
+                "coord": {
+                    "type": "geo_point",
+                    "lat_lon": true,
+                    "geohash_prefix": true,
+                    "geohash_precision": "1m"
+                },
                 "label": {
                     "type": "string",
                     "index_options": "docs",

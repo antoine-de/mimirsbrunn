@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use serde_json::value::{to_value, Value};
-use mimir::{Street, Admin};
+use mimir::{Street, Admin, Coord};
 use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
@@ -74,6 +74,10 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         administrative_regions: vec![],
         weight: 42u32,
         zip_codes: vec![],
+        coord: Coord {
+            lat: 0.,
+            lon: 0.,
+        },
     };
 
     // we index our bob
@@ -93,6 +97,11 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         administrative_regions: vec![],
         weight: 24u32,
         zip_codes: vec![],
+        coord: Coord {
+            lat: 0.,
+            lon: 0.,
+        },
+        
     };
 
     info!("inserting bobette");
@@ -134,7 +143,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         insee: "insee:dummy".to_string(),
         level: 8,
         label: "my admin".to_string(),
-        zip_codes: vec!["zip_code".to_string()],
+        zip_code: "zip_code".to_string(),
         weight: Cell::new(42),
         coord: None,
         boundary: None,

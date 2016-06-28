@@ -213,6 +213,22 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
     geofinder
 }
 
+fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    way: &osmpbfreader::objects::Way) -> mimir::Coord {
+        way.nodes
+        .iter()
+        .filter_map(|node_id| {
+                obj_map.get(&osmpbfreader::OsmId::Node(*node_id))
+                .and_then(|obj| obj.node())
+                .map(|node| mimir::Coord {
+                        lat: node.lat,
+                        lon: node.lon,
+                })
+        })
+        .next()
+        .unwrap_or(mimir::Coord { lat: 0., lon: 0. })
+    }
+
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,
                     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
                     way: &osmpbfreader::objects::Way)
@@ -305,6 +321,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                                 weight: 1,
                                 zip_codes: get_zip_codes_for_street(&admin),
                                 administrative_regions: admin,
+                                coord: get_way_coord(objs_map, way),
                     }))
                 };
                 if inserted.is_some() {
@@ -364,6 +381,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
    	                    weight: 1,
    	                    zip_codes: get_zip_codes_for_street(&admins),
    	                    administrative_regions: admins,
+   	                    coord: get_way_coord(objs_map, way),
             }))
         };
     }
