@@ -369,9 +369,7 @@ fn main() {
 
     for st in &mut streets {
         for admin in &mut st.administrative_regions {
-            if admin.level == city_level {
-                admin.weight.set(admin.weight.get() + 1)
-            }
+            admin.weight.set(admin.weight.get() + 1)
         }
     }
 
