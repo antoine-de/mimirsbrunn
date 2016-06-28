@@ -32,8 +32,10 @@ extern crate bragi;
 extern crate rustless;
 extern crate iron;
 extern crate iron_test;
+extern crate serde_json;
 use std::process::Command;
 extern crate mime;
+use std::collections::BTreeMap;
 
 fn get_handler(url: String) -> rustless::Application {
     let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
@@ -41,7 +43,6 @@ fn get_handler(url: String) -> rustless::Application {
 }
 
 pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
-
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
     let status = Command::new(bano2mimir)
@@ -54,22 +55,42 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let handler = get_handler(format!("{}/munin", es_wrapper.host()));
 
+    let bragi_get = |q| {
+        iron_test::request::get(&format!("http://localhost:3000{}", q),
+                                iron::Headers::new(),
+                                &handler)
+            .unwrap()
+    };
+    let to_json = |r| -> serde_json::Value {
+        let s = iron_test::response::extract_body_to_string(r);
+        serde_json::from_str(&s).unwrap()
+    };
+    let get_results = |r| -> Vec<_> {
+        to_json(r)
+            .find("features")
+            .expect("wrongly formated bragi response")
+            .as_array()
+            .expect("features must be array")
+            .iter()
+            .map(|f| {
+                f.pointer("/properties/geocoding")
+                 .expect("no geocoding object in bragi response")
+                 .as_object()
+                 .unwrap()
+                 .clone()
+            })
+            .collect()
+    };
+
     // Call status
-    let resp = iron_test::request::get("http://localhost:3000/status",
-                                       iron::Headers::new(),
-                                       &handler)
-                   .unwrap();
+    let resp = bragi_get("/status");
     let result_body = iron_test::response::extract_body_to_string(resp);
 
     assert_eq!(result_body,
                r#"{"version":"1.1.0","es":"http://localhost:9242/munin","status":"good"}"#);
 
     // Call autocomplete
-    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=15 Rue Hector \
-                                        Malot, (Paris)",
-                                       iron::Headers::new(),
-                                       &handler)
-                   .unwrap();
+    let resp = bragi_get("/autocomplete?q=15 Rue Hector Malot, (Paris)");
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
                          r#""geocoding":{"version":"0.1.0","query":""},"#,
@@ -78,26 +99,26 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-                         r#""street":"Rue Hector Malot","postcode":"75012","#,
+                         r#""street":"Rue Hector Malot","postcode":null,"#,
                          r#""city":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 
-// A(48.846431 2.376488)
-// B(48.846430 2.376306)
-// C(48.846606 2.376309)
-// D(48.846603 2.376486)
-// R(48.846495 2.376378) : 15 Rue Hector Malot, (Paris)
-// E(48.846452 2.376580) : 18 Rue Hector Malot, (Paris)
+    // A(48.846431 2.376488)
+    // B(48.846430 2.376306)
+    // C(48.846606 2.376309)
+    // D(48.846603 2.376486)
+    // R(48.846495 2.376378) : 15 Rue Hector Malot, (Paris)
+    // E(48.846452 2.376580) : 18 Rue Hector Malot, (Paris)
 
 
-//             E
-//
-//      A ---------------------D
-//      |                      |
-//      |         R            |
-//      |                      |
-//      |                      |
-//      B ---------------------C
+    //             E
+    //
+    //      A ---------------------D
+    //      |                      |
+    //      |         R            |
+    //      |                      |
+    //      |                      |
+    //      B ---------------------C
     // Search with shape where house number in shape
     let mut header = iron::Headers::new();
     let mime: mime::Mime = "application/json".parse().unwrap();
@@ -105,7 +126,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=15 Rue Hector \
                                         Malot, (Paris)",
                                        header.clone(),
-                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],[2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#,
+                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}}"#,
                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
@@ -124,10 +145,26 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=18 Rue Hector \
                                         Malot, (Paris)",
                                        header,
-                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],[2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#,
+                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}}"#,
                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
     assert_eq!(result_body, result);
+
+    // test with a lon/later
+    // in the dataset there are 2 '20 rue hector malot', one in paris and one in trifouilli-les-ois
+    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal")); // in the mean time we time our prefix search_query
+    assert_eq!(all_20.len(), 2);
+    // the first one is paris
+    // TODO uncomment this test, for the moment since osm is not loaded, the order is random
+    // assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-ois)"]);
+
+    // if we give a lon/lat near trifouilli-les-ois, we'll have another sort
+    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal&lat=42.1&lon=24.2"));
+    assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Trifouilli-les-ois)", "20 Rue Hector Malot (Paris)"]);
+}
+
+fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
+    r.iter().map(|e| e.get("label").and_then(|l| l.as_string()).unwrap_or("")).collect()
 }
