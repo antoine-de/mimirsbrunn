@@ -57,7 +57,8 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res[0].label() == "Rue des Près (Livry-sur-Seine)");
 
     // And there should be only ONE "Rue des Près"
-    assert_eq!(res.iter().filter(|place| place.is_street() && place.label() == "Rue des Près (Livry-sur-Seine)").count(), 1);
+    assert_eq!(res.iter().filter(|place| place.is_street() && place.label() 
+            == "Rue des Près (Livry-sur-Seine)").count(), 1);
 
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
     let place_filter = |place: &mimir::Place| {
@@ -66,7 +67,8 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     };
     //As we merge all ways with same name and of the same admin(level=city_level)
     //Here we have only one way
-    let nb = es_wrapper.search_and_filter("label:Rue du Four à Chaux (Livry-sur-Seine)", place_filter).count();
+    let nb = es_wrapper.search_and_filter("label:Rue du Four à Chaux (Livry-sur-Seine)",
+        place_filter).count();
     assert_eq!(nb, 1);
 
     // Test: Streets having the same label in different cities
