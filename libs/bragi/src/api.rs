@@ -152,7 +152,8 @@ impl ApiEndPoint {
                         geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
                     let mut shape = Vec::new();
                     for ar in coordinates[0].as_array().unwrap() {
-                        shape.push((ar[0].as_f64().unwrap(), ar[1].as_f64().unwrap()));
+                        // (Lat, Lon)
+                        shape.push((ar[1].as_f64().unwrap(), ar[0].as_f64().unwrap()));
                     }
                     let model_autocomplete = query::autocomplete(q, None, &cnx, Some(shape));
 

@@ -105,7 +105,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=15 Rue Hector \
                                         Malot, (Paris)",
                                        header.clone(),
-                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}}"#,
+                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],[2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#,
                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
@@ -124,7 +124,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=18 Rue Hector \
                                         Malot, (Paris)",
                                        header,
-                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}}"#,
+                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],[2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#,
                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
