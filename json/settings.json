@@ -41,6 +41,7 @@
             "properties": {
                 "id": { "type": "string", "index": "no" },
                 "house_number": { "type": "string", "analyzer": "word"},
+                "zip_codes": { "type": "string", "index": "not_analyzed" },
                 "label": {
                     "type": "string",
                     "index_options": "docs",
@@ -63,11 +64,12 @@
                             "properties": {
                                 "id": { "type": "string", "index": "no" },
                                 "level": { "type": "long", "index": "no" },
-                                "zip_code": { "type": "string", "index": "not_analyzed" },
+                                "zip_codes": { "type": "string", "index": "not_analyzed" },
                                 "weight": { "type": "long" }
                             }
                         },
-                        "weight": { "type": "long" }
+                        "weight": { "type": "long" },
+                        "zip_codes": { "type": "string", "index": "not_analyzed" }
                     }
                 },
                 "coord": {
@@ -100,11 +102,12 @@
                     "properties": {
                         "id": { "type": "string", "index": "no" },
                         "level": { "type": "long", "index": "no" },
-                        "zip_code": { "type": "string", "index": "not_analyzed" },
+                        "zip_codes": { "type": "string", "index": "not_analyzed" },
                         "weight": { "type": "long" }
                     }
                 },
-                "weight": { "type": "long" }
+                "weight": { "type": "long" },
+                "zip_codes": { "type": "string", "index": "not_analyzed" }
             }
         },
         "admin": {
@@ -125,7 +128,7 @@
                         "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
                     }
                 },
-                "zip_code": { "type": "string", "index": "not_analyzed" },
+                "zip_codes": { "type": "string", "index": "not_analyzed" },
                 "weight": { "type": "long" },
                 "coord": {
                     "type": "geo_point",

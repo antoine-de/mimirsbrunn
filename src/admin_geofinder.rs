@@ -129,7 +129,7 @@ mod tests {
             id: format!("admin:offset:{}", offset),
             level: 8,
             label: format!("city {}", offset),
-            zip_code: "421337".to_string(),
+            zip_codes: vec!["421337".to_string()],
             weight: ::std::cell::Cell::new(1),
             coord: Some(::mimir::CoordWrapper(::geo::Coordinate { x: 4.0 + offset, y: 4.0 + offset })),
             boundary: Some(boundary),

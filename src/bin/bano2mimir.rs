@@ -76,6 +76,7 @@ impl Bano {
             label: street_name.to_string(),
             administrative_regions: admin.map_or(vec![], |a| vec!(a.clone())),
             weight: 1,
+            zip_codes: vec![self.zip.clone()],
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
@@ -87,6 +88,7 @@ impl Bano {
                 lon: self.lon,
             },
             weight: 1,
+            zip_codes: vec![self.zip.clone()],
         }
     }
 }

@@ -133,10 +133,10 @@ pub struct Admin {
     pub insee: String,
     pub level: u32,
     pub label: String,
-    pub zip_code: String,
+    pub zip_codes: Vec<String>,
     #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
     //Attribut weight is used in elastic search to sort the result. It is absent in the response 
-    //of navitia (jormungandr) and hence deserializing is not necessary 
+    //of navitia (jormungandr) and hence deserializing is not necessary
     pub weight: Cell<u32>,
     pub coord: Option<CoordWrapper>,
     #[serde(skip_serializing, skip_deserializing)]
@@ -197,6 +197,7 @@ pub struct Street {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub label: String,
     pub weight: u32,
+    pub zip_codes: Vec<String>,
 }
 impl Incr for Street {
     fn id(&self) -> &str {
@@ -236,6 +237,7 @@ pub struct Addr {
     pub label: String,
     pub coord: Coord,
     pub weight: u32,
+    pub zip_codes: Vec<String>,
 }
 
 impl DocType for Addr {
