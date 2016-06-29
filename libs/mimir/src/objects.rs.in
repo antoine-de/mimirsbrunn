@@ -284,6 +284,14 @@ impl Coord {
     pub fn new(lat: f64, lon: f64) -> Coord {
         Coord(geo::Coordinate {x: lat, y: lon})
     }
+    
+    pub fn lat(&self) -> f64 {
+        self.x
+    }
+    
+    pub fn lon(&self) -> f64 {
+        self.y
+    }
 }
 
 impl ::std::ops::Deref for Coord {
