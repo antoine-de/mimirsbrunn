@@ -180,9 +180,9 @@ fn query_ngram(q: &str,
     query(&q, cnx, "label.ngram", coord, shape)
 }
 
-pub fn autocomplete(q: String,
+pub fn autocomplete(q: &str,
                     coord: Option<model::Coord>,
-                    cnx: &String,
+                    cnx: &str,
                     shape: Option<Vec<(f64, f64)>>)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     // First search with match = "name.prefix".

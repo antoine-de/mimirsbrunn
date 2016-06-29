@@ -99,7 +99,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-                         r#""street":"Rue Hector Malot","postcode":null,"#,
+                         r#""street":"Rue Hector Malot","postcode":"75012","#,
                          r#""city":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 
@@ -120,13 +120,14 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     //      |                      |
     //      B ---------------------C
     // Search with shape where house number in shape
+    let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],[2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#;
     let mut header = iron::Headers::new();
     let mime: mime::Mime = "application/json".parse().unwrap();
     header.set(iron::headers::ContentType(mime));
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=15 Rue Hector \
                                         Malot, (Paris)",
                                        header.clone(),
-                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}}"#,
+                                       shape,
                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
@@ -145,7 +146,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=18 Rue Hector \
                                         Malot, (Paris)",
                                        header,
-                                       r#"{"geometry":{"type":"Polygon","coordinates":[[[48.846431,2.376488],[48.846430,2.376306],[48.846606,2.376309],[ 48.846603,2.376486]]]}}"#,
+                                       shape,
                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
@@ -165,7 +166,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_labels(&all_20),
                vec!["20 Rue Hector Malot (Trifouilli-les-Oies)", "20 Rue Hector Malot (Paris)"]);
     // and when we're in paris, we get paris first
-    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=48&lon=3"));
+    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=48&lon=2"));
     assert_eq!(get_labels(&all_20),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
 }

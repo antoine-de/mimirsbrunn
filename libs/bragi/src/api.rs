@@ -155,7 +155,7 @@ impl ApiEndPoint {
                         // (Lat, Lon)
                         shape.push((ar[1].as_f64().unwrap(), ar[0].as_f64().unwrap()));
                     }
-                    let model_autocomplete = query::autocomplete(q, None, &cnx, Some(shape));
+                    let model_autocomplete = query::autocomplete(&q, None, &cnx, Some(shape));
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -210,7 +210,7 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
-                    let model_autocomplete = query::autocomplete(q, coord, &cnx, None);
+                    let model_autocomplete = query::autocomplete(&q, coord, &cnx, None);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
