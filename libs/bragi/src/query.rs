@@ -88,10 +88,10 @@ fn build_query(q: &str,
         let boost_on_proximity =
             rs_q::build_function_score()
                 .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-                .with_boost(300)
+                .with_boost(500)
                 .with_function(Function::build_decay("coord",
                                            rs_u::Location::LatLon(c.lat, c.lon),
-                                           rs_u::Distance::new(10f64,
+                                           rs_u::Distance::new(50f64,
                                                                rs_u::DistanceUnit::Kilometer))
                                    .build_exp())
                 .build();
