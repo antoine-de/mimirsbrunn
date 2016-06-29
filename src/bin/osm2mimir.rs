@@ -181,13 +181,12 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 }
                 None => (format!("admin:osm:{}", relation.id), ""),
             };
-            let zip_code = match relation.tags.get("addr:postcode") {
-                Some(val) => &val[..],
-                None => match relation.tags.get("postal_code") {
-                    Some(val) => &val[..],
-                    None => ""
-                },
-            };
+
+            let zip_code = relation.tags.get("addr:postcode")
+                .or_else(|| relation.tags.get("postal_code"))
+                .map(|val| &val[..])
+                .unwrap_or("");
+
             let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
             let admin = mimir::Admin {
                 id: admin_id,
@@ -195,7 +194,6 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 level: level,
                 label: name.to_string(),
                 zip_codes: zip_code.split(';').map(|s| s.to_string()).collect(),
-                // TODO weight value ?
                 weight: Cell::new(0),
                 coord: coord_centre,
                 boundary: boundary,
@@ -244,22 +242,18 @@ fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
     }
 }
 fn get_zip_codes_for_street(admins: &AdminsVec) -> Vec<String>{
-    let level = admins.iter().fold(0, |mut level, adm| {
+    let level = admins.iter().fold(0, |level, adm| {
             if adm.level > level && !adm.zip_codes.is_empty() {
-                level=adm.level
-            }; 
-            level
-    });
-    let mut zip_codes = Vec::new();
-	if level > 0 {
-	    // Many admins with adm.level == level
-        for adm in admins {
-            if adm.level == level {
-                zip_codes.extend(adm.zip_codes.clone());
+                adm.level
+            } else { 
+            	level
             }
-        }
-	}
-    zip_codes
+    });
+    if level == 0 { return vec![]; }
+    admins.into_iter()
+          .filter(|adm| adm.level == level)
+          .flat_map(|adm| adm.zip_codes.iter().cloned())
+          .collect()
 }
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
     let admins_geofinder = make_admin_geofinder(admins);
