@@ -149,7 +149,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         label: "my admin".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: Cell::new(42),
-        coord: CoordWrapper::new(0., 0.),
+        coord: CoordWrapper::new(48.5110722f64, 2.68326290f64),
         boundary: None,
     };
 
@@ -170,8 +170,8 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         assert_eq!(es_source.find("insee"), Some(&to_value("insee:dummy")));
         
         let es_coord = es_source.find("coord").unwrap();
-        assert_eq!(es_coord.find("lat"), Some(&Value::U64(0)));
-        assert_eq!(es_coord.find("lon"), Some(&Value::U64(0)));
+        assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
+        assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
     };
     check_has_elt(&es, Box::new(check_admin));
 }

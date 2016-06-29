@@ -287,15 +287,16 @@ pub struct AliasParameter{
 #[derive(Debug, Clone)]
 pub struct CoordWrapper(pub geo::Coordinate);
 impl CoordWrapper {
-	pub fn new(lat: f64, lon: f64) -> CoordWrapper {
-		CoordWrapper(geo::Coordinate {x: lon, y: lat})
-	}
+    pub fn new(lat: f64, lon: f64) -> CoordWrapper {
+        CoordWrapper(geo::Coordinate {x: lat, y: lon})
+    }
 }
+
 impl ::std::ops::Deref for CoordWrapper {
-	type Target = geo::Coordinate;
-	fn deref(&self) -> &Self::Target {
-		&self.0
-	}
+    type Target = geo::Coordinate;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl serde::Serialize for CoordWrapper {

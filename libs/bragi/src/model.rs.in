@@ -73,9 +73,6 @@ pub struct GeocodingResponse {
     //pub geohash: Option<String>
 }
 
-// TODO: change this trait with From<>
-// and when street will have Coords, we'll have to change Option<Geometry> to
-// Geometry
 trait ToGeom {
     fn to_geom(&self) -> geojson::Geometry;
 }
