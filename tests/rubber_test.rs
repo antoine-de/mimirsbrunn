@@ -98,10 +98,9 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         weight: 24u32,
         zip_codes: vec![],
         coord: Coord {
-            lat: 0.,
-            lon: 0.,
+            lat: 48.5110722f64,
+            lon: 2.68326290f64,
         },
-        
     };
 
     info!("inserting bobette");
@@ -129,6 +128,11 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
                    Some(&to_value("bobette's street")));
         assert_eq!(es_bob.find("label"), Some(&to_value("bobette's name")));
         assert_eq!(es_bob.find("weight"), Some(&Value::U64(24)));
+        
+        let es_coord = es_bob.find("coord").unwrap();
+        assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
+        assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
+        
     };
     check_has_elt(&es, Box::new(check_is_bobette));
 }
@@ -164,6 +168,10 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         assert_eq!(es_elt.find("_id"), es_source.find("id"));
         assert_eq!(es_elt.find("_id"), Some(&to_value("admin:bob")));
         assert_eq!(es_source.find("insee"), Some(&to_value("insee:dummy")));
+        
+        let es_coord = es_source.find("coord").unwrap();
+        assert_eq!(es_coord.find("lat"), Some(&Value::U64(0)));
+        assert_eq!(es_coord.find("lon"), Some(&Value::U64(0)));
     };
     check_has_elt(&es, Box::new(check_admin));
 }
