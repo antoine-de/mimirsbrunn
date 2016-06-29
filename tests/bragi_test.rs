@@ -152,17 +152,20 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let result = concat!(r#"{"type":"FeatureCollection","geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
     assert_eq!(result_body, result);
 
-    // test with a lon/later
-    // in the dataset there are 2 '20 rue hector malot', one in paris and one in trifouilli-les-ois
-    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal")); // in the mean time we time our prefix search_query
-    assert_eq!(all_20.len(), 2);
+    // test with a lon/lat
+    // in the dataset there are 2 '20 rue hector malot', one in paris and one in trifouilli-les-oies
+    //let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal")); // in the mean time we time our prefix search_query
+    //assert_eq!(all_20.len(), 2);
     // the first one is paris
     // TODO uncomment this test, for the moment since osm is not loaded, the order is random
-    // assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-ois)"]);
+    // assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-oies)"]);
 
-    // if we give a lon/lat near trifouilli-les-ois, we'll have another sort
-    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal&lat=42.1&lon=24.2"));
-    assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Trifouilli-les-ois)", "20 Rue Hector Malot (Paris)"]);
+    // if we give a lon/lat near trifouilli-les-oies, we'll have another sort
+    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal&lat=42.0&lon=24.0"));
+    assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Trifouilli-les-oies)", "20 Rue Hector Malot (Paris)"]);
+    // and when we're in paris, we get paris first
+    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal&lat=48.845801&lon=2.375630"));
+    assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-oies)"]);
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {

@@ -73,7 +73,7 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
     })
 }
 
-fn build_query(q: &String,
+fn build_query(q: &str,
                match_type: &str,
                coord: &Option<model::Coord>,
                shape: Option<Vec<rs_es::units::Location>>)
@@ -137,15 +137,15 @@ fn build_query(q: &String,
         .build()
 }
 
-fn query(q: &String,
-         cnx: &String,
+fn query(q: &str,
+         cnx: &str,
          match_type: &str,
          coord: &Option<model::Coord>,
          shape: Option<Vec<rs_es::units::Location>>)
          -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let query = build_query(q, match_type, coord, shape);
 
-    let mut client = build_rs_client(cnx);
+    let mut client = build_rs_client(&cnx.to_string());
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                              .with_indexes(&["munin"])
@@ -164,16 +164,16 @@ fn query(q: &String,
 }
 
 
-fn query_prefix(q: &String,
-                cnx: &String,
+fn query_prefix(q: &str,
+                cnx: &str,
                 coord: &Option<model::Coord>,
                 shape: Option<Vec<rs_es::units::Location>>)
                 -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     query(&q, cnx, "label.prefix", coord, shape)
 }
 
-fn query_ngram(q: &String,
-               cnx: &String,
+fn query_ngram(q: &str,
+               cnx: &str,
                coord: &Option<model::Coord>,
                shape: Option<Vec<rs_es::units::Location>>)
                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
