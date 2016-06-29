@@ -44,8 +44,7 @@ pub struct Geocoding {
 pub struct Feature {
     #[serde(rename="type")]
     pub feature_type: String,
-    #[serde(skip_serializing_if="Option::is_none")]
-    pub geometry: Option<geojson::Geometry>, // should be required
+    pub geometry: geojson::Geometry,
     pub properties: Properties,
 }
 
@@ -78,13 +77,13 @@ pub struct GeocodingResponse {
 // and when street will have Coords, we'll have to change Option<Geometry> to
 // Geometry
 trait ToGeom {
-    fn to_geom(&self) -> Option<geojson::Geometry>;
+    fn to_geom(&self) -> geojson::Geometry;
 }
 
 impl ToGeom for mimir::Place {
-    fn to_geom(&self) -> Option<geojson::Geometry> {
+    fn to_geom(&self) -> geojson::Geometry {
         match self {
-            &mimir::Place::Admin(ref admin) => admin.coord.as_ref().map(|c| c.0.to_geom().unwrap()),
+            &mimir::Place::Admin(ref admin) => admin.coord.to_geom(),
             &mimir::Place::Street(ref street) => street.coord.to_geom(),
             &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
         }
@@ -92,14 +91,14 @@ impl ToGeom for mimir::Place {
 }
 
 impl ToGeom for geo::Coordinate {
-    fn to_geom(&self) -> Option<geojson::Geometry> {
-        Some(geojson::Geometry::new(geojson::Value::Point(vec![self.y, self.x])))
+    fn to_geom(&self) -> geojson::Geometry {
+        geojson::Geometry::new(geojson::Value::Point(vec![self.y, self.x]))
     }
 }
 
 impl ToGeom for mimir::Coord {
-    fn to_geom(&self) -> Option<geojson::Geometry> {
-        Some(geojson::Geometry::new(geojson::Value::Point(vec![self.lon, self.lat])))
+    fn to_geom(&self) -> geojson::Geometry {
+        geojson::Geometry::new(geojson::Value::Point(vec![self.lon, self.lat]))
     }
 }
 

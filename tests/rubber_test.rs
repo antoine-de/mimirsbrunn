@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use serde_json::value::{to_value, Value};
-use mimir::{Street, Admin, Coord};
+use mimir::{Street, Admin, Coord, CoordWrapper};
 use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
@@ -145,7 +145,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         label: "my admin".to_string(),
         zip_code: "zip_code".to_string(),
         weight: Cell::new(42),
-        coord: None,
+        coord: CoordWrapper::new(0., 0.),
         boundary: None,
     };
 

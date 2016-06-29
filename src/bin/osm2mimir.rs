@@ -55,6 +55,7 @@ pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use geo::algorithm::centroid::Centroid;
 use std::rc::Rc;
 use std::cell::Cell;
 
@@ -188,6 +189,11 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 .unwrap_or("");
 
             let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
+            let coord = coord_centre.or_else(|| {
+                boundary.as_ref().and_then(|b| {
+                    b.centroid().map(|c| mimir::CoordWrapper(c.0))
+                })
+            }).unwrap_or(mimir::CoordWrapper::new(0., 0.));
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -195,7 +201,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 label: name.to_string(),
                 zip_codes: zip_code.split(';').map(|s| s.to_string()).collect(),
                 weight: Cell::new(0),
-                coord: coord_centre,
+                coord: coord,
                 boundary: boundary,
             };
             administrative_regions.push(Rc::new(admin));

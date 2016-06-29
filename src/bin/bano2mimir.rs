@@ -81,7 +81,6 @@ impl Bano {
                 lat: self.lat,
                 lon: self.lon,
             }
-            
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
