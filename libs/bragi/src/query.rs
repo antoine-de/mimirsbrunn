@@ -195,6 +195,16 @@ pub fn autocomplete(q: &str,
     if results.is_empty() {
         query_ngram(&q, cnx, &coord, make_shape(&shape))
     } else {
-        Ok(results)
+        // First search with match = "name.prefix".
+        // If no result then another search with match = "name.ngram"
+        fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
+            shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
+        }
+        let results = try!(query_prefix(&q, cnx, make_shape(&shape)));
+        if results.is_empty() {
+            query_ngram(&q, cnx, make_shape(&shape))
+        } else {
+            Ok(results)
+        }
     }
 }
