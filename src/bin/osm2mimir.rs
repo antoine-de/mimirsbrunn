@@ -220,19 +220,16 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
 }
 
 fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-    way: &osmpbfreader::objects::Way) -> mimir::Coord {
+    way: &osmpbfreader::objects::Way) -> mimir::CoordWrapper {
         way.nodes
         .iter()
         .filter_map(|node_id| {
                 obj_map.get(&osmpbfreader::OsmId::Node(*node_id))
                 .and_then(|obj| obj.node())
-                .map(|node| mimir::Coord {
-                        lat: node.lat,
-                        lon: node.lon,
-                })
+                .map(|node| mimir::CoordWrapper::new(node.lat, node.lon))
         })
         .next()
-        .unwrap_or(mimir::Coord { lat: 0., lon: 0. })
+        .unwrap_or(mimir::CoordWrapper::new(0., 0.))
     }
 
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,

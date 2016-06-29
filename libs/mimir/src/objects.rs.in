@@ -197,7 +197,7 @@ pub struct Street {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub label: String,
     pub weight: u32,
-    pub coord: Coord,
+    pub coord: CoordWrapper,
     pub zip_codes: Vec<String>,
 }
 impl Incr for Street {
@@ -236,7 +236,7 @@ pub struct Addr {
     pub house_number: String,
     pub street: Street,
     pub label: String,
-    pub coord: Coord,
+    pub coord: CoordWrapper,
     pub weight: u32,
     pub zip_codes: Vec<String>,
 }
