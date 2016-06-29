@@ -167,7 +167,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                                            objects.get(&r.member).and_then(|value| {
                                                match value {
                                                    &osmpbfreader::OsmObj::Node(ref node) => {
-                                                       Some(mimir::CoordWrapper(geo::Coordinate {
+                                                       Some(mimir::Coord(geo::Coordinate {
                                                            x: node.lat,
                                                            y: node.lon,
                                                        }))
@@ -191,9 +191,9 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
             let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
             let coord = coord_centre.or_else(|| {
                 boundary.as_ref().and_then(|b| {
-                    b.centroid().map(|c| mimir::CoordWrapper(c.0))
+                    b.centroid().map(|c| mimir::Coord(c.0))
                 })
-            }).unwrap_or(mimir::CoordWrapper::new(0., 0.));
+            }).unwrap_or(mimir::Coord::new(0., 0.));
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -220,16 +220,16 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
 }
 
 fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-    way: &osmpbfreader::objects::Way) -> mimir::CoordWrapper {
+    way: &osmpbfreader::objects::Way) -> mimir::Coord {
         way.nodes
         .iter()
         .filter_map(|node_id| {
                 obj_map.get(&osmpbfreader::OsmId::Node(*node_id))
                 .and_then(|obj| obj.node())
-                .map(|node| mimir::CoordWrapper::new(node.lat, node.lon))
+                .map(|node| mimir::Coord::new(node.lat, node.lon))
         })
         .next()
-        .unwrap_or(mimir::CoordWrapper::new(0., 0.))
+        .unwrap_or(mimir::Coord::new(0., 0.))
     }
 
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,
