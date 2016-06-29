@@ -7,7 +7,7 @@ build = "build.rs"
 [dependencies]
 docopt = "*"
 rustc-serialize = "*"
-hyper = "*"
+hyper = "^0.9"
 jsonway = "*"
 iron = "*"
 log = "*"
@@ -16,11 +16,11 @@ urlencoded = "*"
 regex = "*"
 mdo = "*"
 valico = "0.8.2"
-rs-es = { version = "0.3.4", default-features = false}
-serde = "*"
+rs-es = { version = "^0.4.4", default-features = false }
+serde = "^0.7.10"
 serde_json = "*"
 serde_macros = { version = "*", optional = true }
-geojson = {version="*", features=["with-serde"]}
+geojson = { version="*", features=["with-serde"] }
 geo = "0.1.1"
 
 [features]
@@ -28,8 +28,8 @@ default = ["serde_codegen", "rs-es/default"]
 nightly = ["serde_macros"]
 
 [build-dependencies]
-serde_codegen = { version = "0.7.6", optional = true }
-syntex = "0.33.0"
+serde_codegen = { version = "^0.7.6", optional = true }
+syntex = "^0.36.0"
 
 [dependencies.mimir]
 path = "../mimir"

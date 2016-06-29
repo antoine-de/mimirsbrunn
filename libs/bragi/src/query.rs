@@ -32,6 +32,7 @@ use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
+use rs_es::units as rs_u;
 use mimir;
 use serde_json;
 
@@ -72,101 +73,128 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
     })
 }
 
-fn query(q: &str,
-         cnx: &str,
-         match_type: &str,
-         shape: Option<Vec<rs_es::units::Location>>)
-         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+fn build_query(q: &str,
+               match_type: &str,
+               coord: &Option<model::Coord>,
+               shape: Option<Vec<rs_es::units::Location>>)
+               -> rs_es::query::Query {
+    use rs_es::query::functions::Function;
+    let boost_addr = rs_q::build_term("_type", "addr").with_boost(1000).build();
+    let boost_match_query = rs_q::build_match(match_type, q.to_string()).with_boost(100).build();
+
+    let mut should_query = vec![boost_addr, boost_match_query];
+    if let &Some(ref c) = coord {
+        // if we have coordinate, we boost we result near this coordinate
+        let boost_on_proximity =
+            rs_q::build_function_score()
+                .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+                .with_boost(500)
+                .with_function(Function::build_decay("coord",
+                                           rs_u::Location::LatLon(c.lat, c.lon),
+                                           rs_u::Distance::new(50f64,
+                                                               rs_u::DistanceUnit::Kilometer))
+                                   .build_exp())
+                .build();
+        should_query.push(boost_on_proximity);
+    } else {
+        // if we don't have coords, we take the field `weight` into account
+        let boost_on_weight =
+            rs_q::build_function_score()
+                .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+                .with_boost(300)
+                .with_query(rs_q::build_match_all().build())
+                .with_function(Function::build_field_value_factor("weight")
+                                   .with_factor(1)
+                                   .with_modifier(rs_es::query::functions::Modifier::Log1p)
+                                   .build())
+                .build();
+        should_query.push(boost_on_weight);
+    }
+
     let sub_query = rs_q::build_bool()
-        .with_should(vec![
-                       rs_q::build_term("_type","addr").with_boost(1000).build(),
-                       rs_q::build_match(match_type, q.to_string())
-                              .with_boost(100)
-                              .build(),
-                       rs_q::build_function_score()
-                              .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-                              .with_boost(300)
-                              .with_query(rs_q::build_match_all().build())
-                              .with_function(
-                          rs_es::query::functions::Function::build_field_value_factor("weight")
-			                                  .with_factor(1)
-                                      .with_modifier(rs_es::query::functions::Modifier::Log1p)
-			                                                          .build())
-                              .build()])
-        .build();
+                        .with_should(should_query)
+                        .build();
+
     let mut must = vec![rs_q::build_match(match_type, q.to_string())
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()];
 
     if let Some(s) = shape {
         must.push(rs_q::build_geo_polygon("coord", s).build());
     }
+
     let filter = rs_q::build_bool()
-        .with_should(vec![rs_q::build_bool()
-                              .with_must_not(rs_q::build_exists("house_number").build())
-                              .build(),
-                          rs_q::build_match("house_number", q.to_string()).build()])
-        .with_must(must)
-        .build();
-    let final_query = rs_q::build_bool()
+                     .with_should(vec![rs_q::build_bool()
+                                           .with_must_not(rs_q::build_exists("house_number")
+                                                              .build())
+                                           .build(),
+                                       rs_q::build_match("house_number", q.to_string()).build()])
+                     .with_must(must)
+                     .build();
+
+    rs_q::build_bool()
         .with_must(vec![sub_query])
         .with_filter(filter)
-        .build();
+        .build()
+}
+
+fn query(q: &str,
+         cnx: &str,
+         match_type: &str,
+         coord: &Option<model::Coord>,
+         shape: Option<Vec<rs_es::units::Location>>)
+         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    let query = build_query(q, match_type, coord, shape);
+
     let mut client = build_rs_client(&cnx.to_string());
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
-        .with_indexes(&["munin"])
-        .with_query(&final_query)
-        .send());
+                                                             .with_indexes(&["munin"])
+                                                             .with_query(&query)
+                                                             .send());
 
     debug!("{} documents found", result.hits.total);
 
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(result.hits
-        .hits
-        .into_iter()
-        .filter_map(|hit| make_place(hit.doc_type, hit.source))
-        .collect())
+             .hits
+             .into_iter()
+             .filter_map(|hit| make_place(hit.doc_type, hit.source))
+             .collect())
 }
 
-fn query_location(_q: &String,
-                  _coord: &model::Coord)
-                  -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    panic!("todo!");
-}
 
-fn query_prefix(q: &String,
-                cnx: &String,
+fn query_prefix(q: &str,
+                cnx: &str,
+                coord: &Option<model::Coord>,
                 shape: Option<Vec<rs_es::units::Location>>)
                 -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    query(&q, cnx, "label.prefix", shape)
+    query(&q, cnx, "label.prefix", coord, shape)
 }
 
-fn query_ngram(q: &String,
-               cnx: &String,
+fn query_ngram(q: &str,
+               cnx: &str,
+               coord: &Option<model::Coord>,
                shape: Option<Vec<rs_es::units::Location>>)
                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    query(&q, cnx, "label.ngram", shape)
+    query(&q, cnx, "label.ngram", coord, shape)
 }
 
-pub fn autocomplete(q: String,
+pub fn autocomplete(q: &str,
                     coord: Option<model::Coord>,
-                    cnx: &String,
+                    cnx: &str,
                     shape: Option<Vec<(f64, f64)>>)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    if let Some(ref coord) = coord {
-        query_location(&q, coord)
+    // First search with match = "name.prefix".
+    // If no result then another search with match = "name.ngram"
+    fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
+        shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
+    }
+
+    let results = try!(query_prefix(&q, cnx, &coord, make_shape(&shape)));
+    if results.is_empty() {
+        query_ngram(&q, cnx, &coord, make_shape(&shape))
     } else {
-        // First search with match = "name.prefix".
-        // If no result then another search with match = "name.ngram"
-        fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
-            shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
-        }
-        let results = try!(query_prefix(&q, cnx, make_shape(&shape)));
-        if results.is_empty() {
-            query_ngram(&q, cnx, make_shape(&shape))
-        } else {
-            Ok(results)
-        }
+        Ok(results)
     }
 }
