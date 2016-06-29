@@ -135,10 +135,10 @@ pub struct Admin {
     pub label: String,
     pub zip_codes: Vec<String>,
     #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
-    //Attribut weight is used in elastic search to sort the result. It is absent in the response 
+    //Attribut weight is used in elastic search to sort the result. It is absent in the response
     //of navitia (jormungandr) and hence deserializing is not necessary
     pub weight: Cell<u32>,
-    pub coord: Option<CoordWrapper>,
+    pub coord: CoordWrapper,
     #[serde(skip_serializing, skip_deserializing)]
     pub boundary: Option<geo::MultiPolygon>,
 }
@@ -197,6 +197,7 @@ pub struct Street {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub label: String,
     pub weight: u32,
+    pub coord: Coord,
     pub zip_codes: Vec<String>,
 }
 impl Incr for Street {
@@ -285,6 +286,18 @@ pub struct AliasParameter{
 // to do this that has been found is to wrap the coord in another struct
 #[derive(Debug, Clone)]
 pub struct CoordWrapper(pub geo::Coordinate);
+impl CoordWrapper {
+    pub fn new(lat: f64, lon: f64) -> CoordWrapper {
+        CoordWrapper(geo::Coordinate {x: lat, y: lon})
+    }
+}
+
+impl ::std::ops::Deref for CoordWrapper {
+    type Target = geo::Coordinate;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl serde::Serialize for CoordWrapper {
   fn serialize<S>(&self, serializer: &mut S)

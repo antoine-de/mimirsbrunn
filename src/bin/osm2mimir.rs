@@ -55,6 +55,7 @@ pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use geo::algorithm::centroid::Centroid;
 use std::rc::Rc;
 use std::cell::Cell;
 
@@ -188,6 +189,11 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 .unwrap_or("");
 
             let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
+            let coord = coord_centre.or_else(|| {
+                boundary.as_ref().and_then(|b| {
+                    b.centroid().map(|c| mimir::CoordWrapper(c.0))
+                })
+            }).unwrap_or(mimir::CoordWrapper::new(0., 0.));
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -195,7 +201,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 label: name.to_string(),
                 zip_codes: zip_code.split(';').map(|s| s.to_string()).collect(),
                 weight: Cell::new(0),
-                coord: coord_centre,
+                coord: coord,
                 boundary: boundary,
             };
             administrative_regions.push(Rc::new(admin));
@@ -212,6 +218,22 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
     }
     geofinder
 }
+
+fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    way: &osmpbfreader::objects::Way) -> mimir::Coord {
+        way.nodes
+        .iter()
+        .filter_map(|node_id| {
+                obj_map.get(&osmpbfreader::OsmId::Node(*node_id))
+                .and_then(|obj| obj.node())
+                .map(|node| mimir::Coord {
+                        lat: node.lat,
+                        lon: node.lon,
+                })
+        })
+        .next()
+        .unwrap_or(mimir::Coord { lat: 0., lon: 0. })
+    }
 
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,
                     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
@@ -305,6 +327,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                                 weight: 1,
                                 zip_codes: get_zip_codes_for_street(&admin),
                                 administrative_regions: admin,
+                                coord: get_way_coord(objs_map, way),
                     }))
                 };
                 if inserted.is_some() {
@@ -364,6 +387,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
    	                    weight: 1,
    	                    zip_codes: get_zip_codes_for_street(&admins),
    	                    administrative_regions: admins,
+   	                    coord: get_way_coord(objs_map, way),
             }))
         };
     }
