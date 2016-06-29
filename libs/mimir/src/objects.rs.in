@@ -198,6 +198,7 @@ pub struct Street {
     pub label: String,
     pub weight: u32,
     pub coord: Coord,
+    pub zip_codes: Vec<String>,
 }
 impl Incr for Street {
     fn id(&self) -> &str {
@@ -237,6 +238,7 @@ pub struct Addr {
     pub label: String,
     pub coord: Coord,
     pub weight: u32,
+    pub zip_codes: Vec<String>,
 }
 
 impl DocType for Addr {

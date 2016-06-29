@@ -143,7 +143,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         insee: "insee:dummy".to_string(),
         level: 8,
         label: "my admin".to_string(),
-        zip_code: "zip_code".to_string(),
+        zip_codes: vec!["zip_code".to_string()],
         weight: Cell::new(42),
         coord: CoordWrapper::new(0., 0.),
         boundary: None,
