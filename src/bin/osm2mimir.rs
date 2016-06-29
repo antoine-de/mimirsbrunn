@@ -167,10 +167,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                                            objects.get(&r.member).and_then(|value| {
                                                match value {
                                                    &osmpbfreader::OsmObj::Node(ref node) => {
-                                                       Some(mimir::Coord(geo::Coordinate {
-                                                           x: node.lat,
-                                                           y: node.lon,
-                                                       }))
+                                                       Some(mimir::Coord::new(node.lat, node.lon))
                                                    }
                                                    _ => None,
                                                }
