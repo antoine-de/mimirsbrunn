@@ -80,7 +80,8 @@ fn build_query(q: &str,
                -> rs_es::query::Query {
     use rs_es::query::functions::Function;
     let boost_addr = rs_q::build_term("_type", "addr").with_boost(1000).build();
-    let boost_match_query = rs_q::build_match(match_type, q.to_string()).with_boost(100).build();
+    let boost_match_query = rs_q::build_multi_match(vec![match_type.to_string(), 
+        "zip_codes.prefix".to_string()], q.to_string()).with_boost(100).build();
 
     let mut should_query = vec![boost_addr, boost_match_query];
     if let &Some(ref c) = coord {
@@ -115,8 +116,9 @@ fn build_query(q: &str,
                         .with_should(should_query)
                         .build();
 
-    let mut must = vec![rs_q::build_match(match_type, q.to_string())
-             .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(100f64)).build()];
+    let mut must = vec![rs_q::build_multi_match(vec![match_type.to_string(), 
+        "zip_codes.prefix".to_string()], q.to_string())
+             .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(90f64)).build()];
 
     if let Some(s) = shape {
         must.push(rs_q::build_geo_polygon("coord", s).build());
@@ -127,7 +129,8 @@ fn build_query(q: &str,
                                            .with_must_not(rs_q::build_exists("house_number")
                                                               .build())
                                            .build(),
-                                       rs_q::build_match("house_number", q.to_string()).build()])
+                                       rs_q::build_multi_match(vec!["house_number".to_string(),
+                                           "zip_codes".to_string()], q.to_string()).build()])
                      .with_must(must)
                      .build();
 
