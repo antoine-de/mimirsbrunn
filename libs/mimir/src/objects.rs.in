@@ -122,12 +122,6 @@ impl<'a, T: EsId> EsId for Rc<T> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Coord {
-    pub lat: f64,
-    pub lon: f64,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Admin {
     pub id: String,
     pub insee: String,
