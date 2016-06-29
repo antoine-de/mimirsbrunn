@@ -36,7 +36,6 @@ extern crate serde_json;
 use std::process::Command;
 extern crate mime;
 use std::collections::BTreeMap;
-use serde_json::Value;
 
 fn get_handler(url: String) -> rustless::Application {
     let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
@@ -172,6 +171,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_labels(&all_20),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
   
+    
     // Search by zip_codes
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     info!("Launching {}", osm2mimir);
@@ -181,94 +181,41 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                              "--level=8".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
-    let handler = get_handler(format!("{}/munin", es_wrapper.host()));
-
-    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77000",
-                                       iron::Headers::new(),
-                                       &handler)
-                   .unwrap();
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    
-    let json: Value = serde_json::from_str(&result_body).unwrap();
-    let features = json.as_object().unwrap().get("features").unwrap();
-    let resp = features.as_array().unwrap();
-    assert_eq!(resp.len(), 10);
-    let mut admin_count = 0;
-    let mut street_count = 0;
-    let mut addr_count = 0;
-    for a in resp {
-        let properties = a.as_object().unwrap().get("properties").unwrap()
-        				  .as_object().unwrap().get("geocoding")
-        				  .unwrap().as_object().unwrap();
-        
-        assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77000");
-        let p_type = properties.get("type").unwrap().as_string().unwrap();
-        if p_type == "street" {
-            street_count += 1;
-        }
-        if p_type == "city" {
-            admin_count += 1;
-        }
-        if p_type == "house" {
-            addr_count += 1;
-        }
-    }
-    assert_eq!(admin_count, 3);
-    assert_eq!(street_count, 7);
-    assert_eq!(addr_count, 0);
-    
+    let all_20 = get_results(bragi_get("/autocomplete?q=77000"));
+    assert_eq!(all_20.len(), 10);
+    assert!(get_postcodes(&all_20).iter().all(|r| *r == "77000"));
+    let types = get_types(&all_20);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
+	assert_eq!(count, 7);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
+	assert_eq!(count, 3);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
+	assert_eq!(count, 0);
+	
     // zip_code and name of street
-    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77000 Lotissement le Clos de Givry",
-                                       iron::Headers::new(),
-                                       &handler)
-                   .unwrap();
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    
-    let json: Value = serde_json::from_str(&result_body).unwrap();
-    let features = json.as_object().unwrap().get("features").unwrap();
-    let resp = features.as_array().unwrap();
-    assert_eq!(resp.len(), 1);
-    let properties = resp[0].as_object().unwrap().get("properties").unwrap()
-        				  .as_object().unwrap().get("geocoding")
-        				  .unwrap().as_object().unwrap();
-	assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77000");
-	assert_eq!(properties.get("type").unwrap().as_string().unwrap(), "street");
+    let all_20 = get_results(bragi_get("/autocomplete?q=77000 Lotissement le Clos de Givry"));
+    assert_eq!(all_20.len(), 1);
+    assert!(get_postcodes(&all_20).iter().all(|r| *r == "77000"));
+    let types = get_types(&all_20);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
+	assert_eq!(count, 1);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
+	assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
+	assert_eq!(count, 0);
 	
     // zip_code and name of admin
-    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77000 Vaux-le-Pénil",
-                                       iron::Headers::new(),
-                                       &handler)
-                   .unwrap();
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    
-    let json: Value = serde_json::from_str(&result_body).unwrap();
-    let features = json.as_object().unwrap().get("features").unwrap();
-    let resp = features.as_array().unwrap();
-    assert_eq!(resp.len(), 4);
-    let mut admin_count = 0;
-    let mut street_count = 0;
-    let mut addr_count = 0;
-    for a in resp {
-        let properties = a.as_object().unwrap().get("properties").unwrap()
-        				  .as_object().unwrap().get("geocoding")
-        				  .unwrap().as_object().unwrap();
-        
-        assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77000");
-        let p_type = properties.get("type").unwrap().as_string().unwrap();
-        if p_type == "street" {
-            street_count += 1;
-        }
-        if p_type == "city" {
-            admin_count += 1;
-        }
-        if p_type == "house" {
-            addr_count += 1;
-        }
-    }
-    assert_eq!(admin_count, 1);
-    assert_eq!(street_count, 3);
-    assert_eq!(addr_count, 0);
-
+    let all_20 = get_results(bragi_get("/autocomplete?q=77000 Vaux-le-Pénil"));
+    assert_eq!(all_20.len(), 4);
+    assert!(get_postcodes(&all_20).iter().all(|r| *r == "77000"));
+    let types = get_types(&all_20);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
+	assert_eq!(count, 3);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
+	assert_eq!(count, 1);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
+	assert_eq!(count, 0);
+	
     // zip_code on addr
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
@@ -277,41 +224,40 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
     
-    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77255",
-                                       iron::Headers::new(),
-                                       &handler)
-                   .unwrap();
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    
-    let json: Value = serde_json::from_str(&result_body).unwrap();
-    let features = json.as_object().unwrap().get("features").unwrap();
-    let resp = features.as_array().unwrap();
-    assert_eq!(resp.len(), 1);
-    let properties = resp[0].as_object().unwrap().get("properties").unwrap()
-        				  .as_object().unwrap().get("geocoding")
-        				  .unwrap().as_object().unwrap();
-	assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77255");
-	assert_eq!(properties.get("type").unwrap().as_string().unwrap(), "house");
-	// zip_code and name of addr
-    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77288 Rue de la Reine Blanche",
-                                       iron::Headers::new(),
-                                       &handler)
-                   .unwrap();
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    
-    let json: Value = serde_json::from_str(&result_body).unwrap();
-    let features = json.as_object().unwrap().get("features").unwrap();
-    let resp = features.as_array().unwrap();
-    assert_eq!(resp.len(), 1);
-    let properties = resp[0].as_object().unwrap().get("properties").unwrap()
-        				  .as_object().unwrap().get("geocoding")
-        				  .unwrap().as_object().unwrap();
-	assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77288");
-	assert_eq!(properties.get("label").unwrap().as_string().unwrap(), "2 Rue de la Reine Blanche (Melun)");
-	assert_eq!(properties.get("type").unwrap().as_string().unwrap(), "house");
+    let all_20 = get_results(bragi_get("/autocomplete?q=77255"));
+    assert_eq!(all_20.len(), 1);
+    assert!(get_postcodes(&all_20).iter().all(|r| *r == "77255"));
+    let types = get_types(&all_20);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
+	assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
+	assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
+	assert_eq!(count, 1);
 
+	// zip_code and name of addr
+    let all_20 = get_results(bragi_get("/autocomplete?q=77288 Rue de la Reine Blanche"));
+    assert_eq!(all_20.len(), 1);
+    assert!(get_postcodes(&all_20).iter().all(|r| *r == "77288"));
+    let types = get_types(&all_20);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
+	assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
+	assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
+	assert_eq!(count, 1);
+    assert_eq!(get_labels(&all_20),
+           vec!["2 Rue de la Reine Blanche (Melun)"]);
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
     r.iter().map(|e| e.get("label").and_then(|l| l.as_string()).unwrap_or("")).collect()
+}
+
+fn get_postcodes<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
+    r.iter().map(|e| e.get("postcode").and_then(|l| l.as_string()).unwrap_or("")).collect()
+}
+
+fn get_types<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
+    r.iter().map(|e| e.get("type").and_then(|l| l.as_string()).unwrap_or("")).collect()
 }
