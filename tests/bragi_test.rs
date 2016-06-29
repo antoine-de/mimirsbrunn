@@ -36,6 +36,7 @@ extern crate serde_json;
 use std::process::Command;
 extern crate mime;
 use std::collections::BTreeMap;
+use serde_json::Value;
 
 fn get_handler(url: String) -> rustless::Application {
     let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
@@ -43,6 +44,7 @@ fn get_handler(url: String) -> rustless::Application {
 }
 
 pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
+
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
     let status = Command::new(bano2mimir)
@@ -169,6 +171,145 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=48&lon=2.4"));
     assert_eq!(get_labels(&all_20),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
+  
+    // Search by zip_codes
+    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    info!("Launching {}", osm2mimir);
+    ::launch_and_assert(osm2mimir,
+                        vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
+                             "--import-way".into(),
+                             "--level=8".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
+    let handler = get_handler(format!("{}/munin", es_wrapper.host()));
+
+    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77000",
+                                       iron::Headers::new(),
+                                       &handler)
+                   .unwrap();
+    let result_body = iron_test::response::extract_body_to_string(resp);
+    
+    let json: Value = serde_json::from_str(&result_body).unwrap();
+    let features = json.as_object().unwrap().get("features").unwrap();
+    let resp = features.as_array().unwrap();
+    assert_eq!(resp.len(), 10);
+    let mut admin_count = 0;
+    let mut street_count = 0;
+    let mut addr_count = 0;
+    for a in resp {
+        let properties = a.as_object().unwrap().get("properties").unwrap()
+        				  .as_object().unwrap().get("geocoding")
+        				  .unwrap().as_object().unwrap();
+        
+        assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77000");
+        let p_type = properties.get("type").unwrap().as_string().unwrap();
+        if p_type == "street" {
+            street_count += 1;
+        }
+        if p_type == "city" {
+            admin_count += 1;
+        }
+        if p_type == "house" {
+            addr_count += 1;
+        }
+    }
+    assert_eq!(admin_count, 3);
+    assert_eq!(street_count, 7);
+    assert_eq!(addr_count, 0);
+    
+    // zip_code and name of street
+    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77000 Lotissement le Clos de Givry",
+                                       iron::Headers::new(),
+                                       &handler)
+                   .unwrap();
+    let result_body = iron_test::response::extract_body_to_string(resp);
+    
+    let json: Value = serde_json::from_str(&result_body).unwrap();
+    let features = json.as_object().unwrap().get("features").unwrap();
+    let resp = features.as_array().unwrap();
+    assert_eq!(resp.len(), 1);
+    let properties = resp[0].as_object().unwrap().get("properties").unwrap()
+        				  .as_object().unwrap().get("geocoding")
+        				  .unwrap().as_object().unwrap();
+	assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77000");
+	assert_eq!(properties.get("type").unwrap().as_string().unwrap(), "street");
+	
+    // zip_code and name of admin
+    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77000 Vaux-le-Pénil",
+                                       iron::Headers::new(),
+                                       &handler)
+                   .unwrap();
+    let result_body = iron_test::response::extract_body_to_string(resp);
+    
+    let json: Value = serde_json::from_str(&result_body).unwrap();
+    let features = json.as_object().unwrap().get("features").unwrap();
+    let resp = features.as_array().unwrap();
+    assert_eq!(resp.len(), 4);
+    let mut admin_count = 0;
+    let mut street_count = 0;
+    let mut addr_count = 0;
+    for a in resp {
+        let properties = a.as_object().unwrap().get("properties").unwrap()
+        				  .as_object().unwrap().get("geocoding")
+        				  .unwrap().as_object().unwrap();
+        
+        assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77000");
+        let p_type = properties.get("type").unwrap().as_string().unwrap();
+        if p_type == "street" {
+            street_count += 1;
+        }
+        if p_type == "city" {
+            admin_count += 1;
+        }
+        if p_type == "house" {
+            addr_count += 1;
+        }
+    }
+    assert_eq!(admin_count, 1);
+    assert_eq!(street_count, 3);
+    assert_eq!(addr_count, 0);
+
+    // zip_code on addr
+    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    info!("Launching {}", bano2mimir);
+    ::launch_and_assert(bano2mimir,
+                        vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
+    
+    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77255",
+                                       iron::Headers::new(),
+                                       &handler)
+                   .unwrap();
+    let result_body = iron_test::response::extract_body_to_string(resp);
+    
+    let json: Value = serde_json::from_str(&result_body).unwrap();
+    let features = json.as_object().unwrap().get("features").unwrap();
+    let resp = features.as_array().unwrap();
+    assert_eq!(resp.len(), 1);
+    let properties = resp[0].as_object().unwrap().get("properties").unwrap()
+        				  .as_object().unwrap().get("geocoding")
+        				  .unwrap().as_object().unwrap();
+	assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77255");
+	assert_eq!(properties.get("type").unwrap().as_string().unwrap(), "house");
+	// zip_code and name of addr
+    let resp = iron_test::request::get("http://localhost:3000/autocomplete?q=77288 Rue de la Reine Blanche",
+                                       iron::Headers::new(),
+                                       &handler)
+                   .unwrap();
+    let result_body = iron_test::response::extract_body_to_string(resp);
+    
+    let json: Value = serde_json::from_str(&result_body).unwrap();
+    let features = json.as_object().unwrap().get("features").unwrap();
+    let resp = features.as_array().unwrap();
+    assert_eq!(resp.len(), 1);
+    let properties = resp[0].as_object().unwrap().get("properties").unwrap()
+        				  .as_object().unwrap().get("geocoding")
+        				  .unwrap().as_object().unwrap();
+	assert_eq!(properties.get("postcode").unwrap().as_string().unwrap(), "77288");
+	assert_eq!(properties.get("label").unwrap().as_string().unwrap(), "2 Rue de la Reine Blanche (Melun)");
+	assert_eq!(properties.get("type").unwrap().as_string().unwrap(), "house");
+
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
