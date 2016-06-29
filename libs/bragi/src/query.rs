@@ -91,9 +91,9 @@ fn build_query(q: &str,
                 .with_boost(300)
                 .with_function(Function::build_decay("coord",
                                            rs_u::Location::LatLon(c.lat, c.lon),
-                                           rs_u::Distance::new(3f64,
+                                           rs_u::Distance::new(10f64,
                                                                rs_u::DistanceUnit::Kilometer))
-                                   .build_gauss())
+                                   .build_exp())
                 .build();
         should_query.push(boost_on_proximity);
     } else {

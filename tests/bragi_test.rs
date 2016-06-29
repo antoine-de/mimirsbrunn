@@ -154,18 +154,20 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     // test with a lon/lat
     // in the dataset there are 2 '20 rue hector malot', one in paris and one in trifouilli-les-oies
-    //let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal")); // in the mean time we time our prefix search_query
-    //assert_eq!(all_20.len(), 2);
+    // let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal")); // in the mean time we time our prefix search_query
+    // assert_eq!(all_20.len(), 2);
     // the first one is paris
     // TODO uncomment this test, for the moment since osm is not loaded, the order is random
     // assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-oies)"]);
 
     // if we give a lon/lat near trifouilli-les-oies, we'll have another sort
-    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal&lat=42.0&lon=24.0"));
-    assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Trifouilli-les-oies)", "20 Rue Hector Malot (Paris)"]);
+    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=42.2&lon=24.0"));
+    assert_eq!(get_labels(&all_20),
+               vec!["20 Rue Hector Malot (Trifouilli-les-oies)", "20 Rue Hector Malot (Paris)"]);
     // and when we're in paris, we get paris first
-    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hect mal&lat=48.845801&lon=2.375630"));
-    assert_eq!(get_labels(&all_20), vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-oies)"]);
+    let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=48&lon=3"));
+    assert_eq!(get_labels(&all_20),
+               vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-oies)"]);
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
