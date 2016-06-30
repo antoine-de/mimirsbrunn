@@ -122,12 +122,6 @@ impl<'a, T: EsId> EsId for Rc<T> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Coord {
-    pub lat: f64,
-    pub lon: f64,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Admin {
     pub id: String,
     pub insee: String,
@@ -138,7 +132,7 @@ pub struct Admin {
     //Attribut weight is used in elastic search to sort the result. It is absent in the response
     //of navitia (jormungandr) and hence deserializing is not necessary
     pub weight: Cell<u32>,
-    pub coord: CoordWrapper,
+    pub coord: Coord,
     #[serde(skip_serializing, skip_deserializing)]
     pub boundary: Option<geo::MultiPolygon>,
 }
@@ -285,21 +279,29 @@ pub struct AliasParameter{
 // we want a custom serialization for coords, and so far the cleanest way
 // to do this that has been found is to wrap the coord in another struct
 #[derive(Debug, Clone)]
-pub struct CoordWrapper(pub geo::Coordinate);
-impl CoordWrapper {
-    pub fn new(lat: f64, lon: f64) -> CoordWrapper {
-        CoordWrapper(geo::Coordinate {x: lat, y: lon})
+pub struct Coord(pub geo::Coordinate);
+impl Coord {
+    pub fn new(lat: f64, lon: f64) -> Coord {
+        Coord(geo::Coordinate {x: lat, y: lon})
+    }
+    
+    pub fn lat(&self) -> f64 {
+        self.x
+    }
+    
+    pub fn lon(&self) -> f64 {
+        self.y
     }
 }
 
-impl ::std::ops::Deref for CoordWrapper {
+impl ::std::ops::Deref for Coord {
     type Target = geo::Coordinate;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl serde::Serialize for CoordWrapper {
+impl serde::Serialize for Coord {
   fn serialize<S>(&self, serializer: &mut S)
     -> Result<(), S::Error> where S: serde::Serializer
   {
@@ -311,7 +313,7 @@ impl serde::Serialize for CoordWrapper {
   }
 
     struct GeoCoordSerializerVisitor<'a> {
-        value: &'a CoordWrapper,
+        value: &'a Coord,
         state: u8,
     }
 
@@ -366,8 +368,8 @@ impl serde::Deserialize for GeoCoordField {
     }
 }
 
-impl serde::Deserialize for CoordWrapper {
-  fn deserialize<D>(deserializer: &mut D) -> Result<CoordWrapper, D::Error>
+impl serde::Deserialize for Coord {
+  fn deserialize<D>(deserializer: &mut D) -> Result<Coord, D::Error>
       where D: serde::de::Deserializer
   {
       static FIELDS: &'static [&'static str] = &["lat", "lon"];
@@ -377,9 +379,9 @@ impl serde::Deserialize for CoordWrapper {
 struct GeoCoordDeserializerVisitor;
 
 impl serde::de::Visitor for GeoCoordDeserializerVisitor {
-    type Value = CoordWrapper;
+    type Value = Coord;
 
-    fn visit_map<V>(&mut self, mut visitor: V) -> Result<CoordWrapper, V::Error>
+    fn visit_map<V>(&mut self, mut visitor: V) -> Result<Coord, V::Error>
         where V: serde::de::MapVisitor
     {
         let mut x = None;
@@ -405,6 +407,6 @@ impl serde::de::Visitor for GeoCoordDeserializerVisitor {
 
         try!(visitor.end());
 
-        Ok(CoordWrapper(geo::Coordinate{ x: x, y: y }))
+        Ok(Coord(geo::Coordinate{ x: x, y: y }))
     }
 }

@@ -77,20 +77,14 @@ impl Bano {
             administrative_regions: admin.map_or(vec![], |a| vec!(a.clone())),
             weight: 1,
             zip_codes: vec![self.zip.clone()],
-            coord: mimir::Coord {
-                lat: self.lat,
-                lon: self.lon,
-            }
+            coord: mimir::Coord::new(self.lat, self.lon)
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
             house_number: self.nb,
             street: street,
             label: addr_label,
-            coord: mimir::Coord {
-                lat: self.lat,
-                lon: self.lon,
-            },
+            coord: mimir::Coord::new(self.lat, self.lon),
             weight: 1,
             zip_codes: vec![self.zip.clone()],
         }

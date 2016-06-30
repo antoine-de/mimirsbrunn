@@ -34,7 +34,7 @@ extern crate mimir;
 use std::collections::BTreeMap;
 
 pub fn named_node(lat: f64, lon: f64, name: &'static str) -> (mimir::Coord, Option<String>) {
-    (mimir::Coord {lon: lon, lat: lat}, Some(name.to_string()))
+    (mimir::Coord::new(lon, lat), Some(name.to_string()))
 }
 
 
@@ -113,8 +113,8 @@ impl OsmBuilder {
         }
         let n = osmpbfreader::Node {
             id: self.node_id,
-            lat: coord.lat,
-            lon: coord.lon,
+            lat: coord.lat(),
+            lon: coord.lon(),
             tags: osmpbfreader::Tags::new(),
         };
         let id = osmpbfreader::OsmId::Node(self.node_id);

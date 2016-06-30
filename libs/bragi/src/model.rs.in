@@ -93,12 +93,6 @@ impl ToGeom for geo::Coordinate {
     }
 }
 
-impl ToGeom for mimir::Coord {
-    fn to_geom(&self) -> geojson::Geometry {
-        geojson::Geometry::new(geojson::Value::Point(vec![self.lon, self.lat]))
-    }
-}
-
 impl From<mimir::Place> for Feature {
     fn from(other: mimir::Place) -> Feature {
         let geom = other.to_geom();
