@@ -93,27 +93,6 @@ All Mimirsbrunn's components implement the `--help` (or `-h`) argument to explai
 
 There are several components in Mimirsbrunn:
 
-### bano2mimir
-
-This component imports bano's data into Mimir.
-
-You can get bano's data from <http://bano.openstreetmap.fr/data/>
-
-eg:
-
-```shell
-curl -O http://bano.openstreetmap.fr/data/full.csv.gz
-gunzip full.csv.gz
-```
-
-To import all those data into Mimir, you only have to do:
-
-```shell
-./target/release/bano2mimir -i full.csv --connection-string=http://localhost:9200/
-```
-
-The `--connection-string` argument refers to the ElasticSearch url
-
 ### osm2mimir
 
 This component imports openstreetmap data into Mimir.
@@ -129,17 +108,40 @@ curl -O http://download.geofabrik.de/europe/france-latest.osm.pbf
 To import all those data into Mimir, you only have to do:
 
 ```shell
-./target/release/osm2mimir --input=france-latest.osm.pbf --level=8 --level=7 --connection-string=http://localhost:9200
+./target/release/osm2mimir --input=france-latest.osm.pbf --level=8 --level=9 --import-way --import-admin --dataset=france --connection-string=http://localhost:9200
 ```
 
 level: administrative levels in openstreetmap
+
+### bano2mimir
+
+This component imports bano's data into Mimir.
+It is recommanded to run bano integration after osm integration so that addresses are attached to admins.
+
+You can get bano's data from <http://bano.openstreetmap.fr/data/>
+
+eg:
+
+```shell
+curl -O http://bano.openstreetmap.fr/data/full.csv.gz
+gunzip full.csv.gz
+```
+
+To import all those data into Mimir, you only have to do:
+
+```shell
+./target/release/bano2mimir -i full.csv --dataset=france --connection-string=http://localhost:9200/
+```
+
+The `--connection-string` argument refers to the ElasticSearch url
 
 ### Bragi
 
 Bragi is the webservice build around ElasticSearch.
 It has been done to hide the ElasticSearch complexity and to return consistent formated response.
 
-Its responses format follow the [geocodejson-spec](https://github.com/geocoders/geocodejson-spec). It's a format used by other geocoding API (https://github.com/addok/addok or https://github.com/komoot/photon).
+Its responses format follow the [geocodejson-spec](https://github.com/geocoders/geocodejson-spec).
+It's a format used by other geocoding API (https://github.com/addok/addok or https://github.com/komoot/photon).
 
 To run Bragi:
 
