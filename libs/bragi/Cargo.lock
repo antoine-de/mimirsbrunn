@@ -1,6 +1,6 @@
 [root]
 name = "bragi"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "docopt 0.6.81 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -10,7 +10,7 @@ dependencies = [
  "jsonway 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mdo 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mimir 1.0.0",
+ "mimir 1.2.0",
  "regex 0.1.71 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -333,7 +333,7 @@ dependencies = [
 
 [[package]]
 name = "mimir"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "chrono 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.81 (registry+https://github.com/rust-lang/crates.io-index)",

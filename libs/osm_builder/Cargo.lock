@@ -1,8 +1,8 @@
 [root]
 name = "osm_builder"
-version = "0.1.0"
+version = "1.2.0"
 dependencies = [
- "mimir 0.0.1",
+ "mimir 1.2.0",
  "osmpbfreader 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -232,7 +232,7 @@ dependencies = [
 
 [[package]]
 name = "mimir"
-version = "0.0.1"
+version = "1.2.0"
 dependencies = [
  "curl 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.80 (registry+https://github.com/rust-lang/crates.io-index)",

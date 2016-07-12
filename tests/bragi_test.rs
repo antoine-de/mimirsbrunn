@@ -88,7 +88,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let result_body = iron_test::response::extract_body_to_string(resp);
 
     assert_eq!(result_body,
-               r#"{"version":"1.1.0","es":"http://localhost:9242/munin","status":"good"}"#);
+               r#"{"version":"1.2.0","es":"http://localhost:9242/munin","status":"good"}"#);
 
     // Call autocomplete
     let resp = bragi_get("/autocomplete?q=15 Rue Hector Malot, (Paris)");
@@ -127,9 +127,9 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     header.set(iron::headers::ContentType(mime));
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=15 Rue Hector \
                                         Malot, (Paris)",
-                                       header.clone(),
-                                       shape,
-                                       &handler)
+                                        header.clone(),
+                                        shape,
+                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
@@ -146,9 +146,9 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // Search with shape where house number out shape
     let resp = iron_test::request::post("http://localhost:3000/autocomplete?q=18 Rue Hector \
                                         Malot, (Paris)",
-                                       header,
-                                       shape,
-                                       &handler)
+                                        header,
+                                        shape,
+                                        &handler)
                    .unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
@@ -170,8 +170,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=48&lon=2.4"));
     assert_eq!(get_labels(&all_20),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
-  
-    
+
+
     // Search by zip_codes
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     info!("Launching {}", osm2mimir);
@@ -185,37 +185,82 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(all_20.len(), 10);
     assert!(get_postcodes(&all_20).iter().all(|r| *r == "77000"));
     let types = get_types(&all_20);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
-	assert_eq!(count, 7);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
-	assert_eq!(count, 3);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
-	assert_eq!(count, 0);
-	
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "street" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 7);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "city" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 3);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "house" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+
     // zip_code and name of street
     let all_20 = get_results(bragi_get("/autocomplete?q=77000 Lotissement le Clos de Givry"));
     assert_eq!(all_20.len(), 1);
     assert!(get_postcodes(&all_20).iter().all(|r| *r == "77000"));
     let types = get_types(&all_20);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
-	assert_eq!(count, 1);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
-	assert_eq!(count, 0);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
-	assert_eq!(count, 0);
-	
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "street" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 1);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "city" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "house" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+
     // zip_code and name of admin
     let all_20 = get_results(bragi_get("/autocomplete?q=77000 Vaux-le-Pénil"));
     assert_eq!(all_20.len(), 4);
     assert!(get_postcodes(&all_20).iter().all(|r| *r == "77000"));
     let types = get_types(&all_20);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
-	assert_eq!(count, 3);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
-	assert_eq!(count, 1);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
-	assert_eq!(count, 0);
-	
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "street" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 3);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "city" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 1);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "house" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+
     // zip_code on addr
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
@@ -223,31 +268,61 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                         vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
-    
+
     let all_20 = get_results(bragi_get("/autocomplete?q=77255"));
     assert_eq!(all_20.len(), 1);
     assert!(get_postcodes(&all_20).iter().all(|r| *r == "77255"));
     let types = get_types(&all_20);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
-	assert_eq!(count, 0);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
-	assert_eq!(count, 0);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
-	assert_eq!(count, 1);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "street" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "city" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "house" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 1);
 
-	// zip_code and name of addr
+    // zip_code and name of addr
     let all_20 = get_results(bragi_get("/autocomplete?q=77288 Rue de la Reine Blanche"));
     assert_eq!(all_20.len(), 1);
     assert!(get_postcodes(&all_20).iter().all(|r| *r == "77288"));
     let types = get_types(&all_20);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "street" {sum +=1;} sum });
-	assert_eq!(count, 0);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "city" {sum +=1;} sum });
-	assert_eq!(count, 0);
-    let count = types.iter().fold(0, |mut sum, tt| { if *tt == "house" {sum +=1;} sum });
-	assert_eq!(count, 1);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "street" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "city" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 0);
+    let count = types.iter().fold(0, |mut sum, tt| {
+        if *tt == "house" {
+            sum += 1;
+        }
+        sum
+    });
+    assert_eq!(count, 1);
     assert_eq!(get_labels(&all_20),
-           vec!["2 Rue de la Reine Blanche (Melun)"]);
+               vec!["2 Rue de la Reine Blanche (Melun)"]);
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
