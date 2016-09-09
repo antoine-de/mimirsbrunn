@@ -28,6 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use hyper;
+use hyper::client::Client;
+use super::ToJson;
+
 pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     ::launch_and_assert(osm2mimir,
@@ -45,5 +49,17 @@ pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
-    // TODO: more tests will be written here
+    // after an import, we should have 3 index, and some aliases to this index
+    let client = Client::new();
+    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
+                    .send()
+                    .unwrap();
+    assert_eq!(res.status, hyper::Ok);
+    println!("{:?}", res);
+    let json = res.to_json();
+    println!("{:?}", json);
+    let raw_indexes = json.as_object().unwrap();
+    let first_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
+
+    assert_eq!(first_indexes.len(), 3);
 }
