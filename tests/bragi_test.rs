@@ -63,13 +63,13 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
             .unwrap()
     };
 
-    let bragi_post = |q, shape| {
+    let bragi_post_shape = |q, shape| {
         let mut header = iron::Headers::new();
         let mime: mime::Mime = "application/json".parse().unwrap();
         header.set(iron::headers::ContentType(mime));
 
         iron_test::request::post(&format!("http://localhost:3000{}", q),
-                                 header.clone(),
+                                 header,
                                  shape,
                                  &handler)
             .unwrap()
@@ -136,7 +136,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     //      B ---------------------C
     // Search with shape where house number in shape
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],[2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#;
-    let resp = bragi_post("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape);
+    let resp = bragi_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape);
 
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
@@ -151,7 +151,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(result_body, result);
 
     // Search with shape where house number out shape
-    let resp = bragi_post("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape);
+    let resp = bragi_post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape);
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
     assert_eq!(result_body, result);
@@ -274,7 +274,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // Search with shape where street in shape
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.656546, 48.537227],[2.657608, 48.537244],[2.656476, 48.536545],[2.657340, 48.536602]]]}}"#;
 
-    let geocodings = get_results(bragi_post("/autocomplete?q=Rue du Port", shape));
+    let geocodings = get_results(bragi_post_shape("/autocomplete?q=Rue du Port", shape));
     assert_eq!(geocodings.len(), 1);
     assert_eq!(get_labels(&geocodings), vec!["Rue du Port (Melun)"]);
 
@@ -288,7 +288,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // Search with shape where street outside shape
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.656546, 68.537227],[2.657608, 68.537244],[2.656476, 68.536545],[2.657340, 68.536602]]]}}"#;
 
-    let geocodings = get_results(bragi_post("/autocomplete?q=Rue du Port", shape));
+    let geocodings = get_results(bragi_post_shape("/autocomplete?q=Rue du Port", shape));
     assert_eq!(geocodings.len(), 0);
 
     //
@@ -301,7 +301,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // Search with shape where admin in shape
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.656546, 48.538927],[2.670816, 48.538927],[2.676476, 48.546545],[2.656546, 48.546545]]]}}"#;
 
-    let geocodings = get_results(bragi_post("/autocomplete?q=Melun", shape));
+    let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 1);
     assert_eq!(get_labels(&geocodings), vec!["Melun"]);
 
@@ -315,7 +315,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // Search with shape where admin outside shape
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.656546, 66.538927],[2.670816, 68.538927],[2.676476, 68.546545],[2.656546, 68.546545]]]}}"#;
 
-    let geocodings = get_results(bragi_post("/autocomplete?q=Melun", shape));
+    let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 0);
 }
 
