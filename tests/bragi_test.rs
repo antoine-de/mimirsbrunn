@@ -331,11 +331,6 @@ fn get_types<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str
     r.iter().map(|e| e.get("type").and_then(|l| l.as_string()).unwrap_or("")).collect()
 }
 
-fn count_types(types: &Vec<&str>, value: &str) -> i32 {
-    types.iter().fold(0, |mut sum, tt| {
-        if *tt == value {
-            sum += 1;
-        }
-        sum
-    })
+fn count_types(types: &Vec<&str>, value: &str) -> usize {
+    types.iter().filter(|&t| *t == value).count()
 }
