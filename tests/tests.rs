@@ -137,7 +137,7 @@ impl<'a> ElasticSearchWrapper<'a> {
                 Value::Array(v) =>
                     Some(Box::new(v.into_iter().filter_map(|json| 
                     	    into_object(json).and_then(|obj| {
-                    	  	let doc_type = obj.get("_type").and_then(|doc_type| doc_type.as_string())
+                                let doc_type = obj.get("_type").and_then(|doc_type| doc_type.as_str())
                     	  	                  .map(|doc_type| doc_type.into());
                     	  	                  
                     	  	doc_type.and_then(|doc_type| {

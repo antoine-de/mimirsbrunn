@@ -27,15 +27,17 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-#![cfg_attr(feature = "serde_macros", feature(custom_derive, plugin))]
-#![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
+#![cfg_attr(feature = "serde_derive", feature(rustc_macro))]
+#[cfg(feature = "serde_derive")]
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
 
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-
-extern crate serde;
-extern crate serde_json;
 
 extern crate chrono;
 extern crate hyper;

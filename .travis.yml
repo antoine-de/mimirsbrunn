@@ -9,8 +9,12 @@ matrix:
 
 script:
   - cargo test
+  - if [ $TRAVIS_RUST_VERSION = nightly ]; then cargo test --no-default-features --features nightly; fi
+  # These test "almost" fail because of a bug of cargo (TODO: link to bug)
   - cargo test --package bragi
   - cargo test --package mimir
+  - if [ $TRAVIS_RUST_VERSION = nightly ]; then cargo test --package bragi --no-default-features --features nightly; fi
+  - if [ $TRAVIS_RUST_VERSION = nightly ]; then cargo test --package mimir --no-default-features --features nightly; fi
 
 services:
   - docker

@@ -30,7 +30,6 @@
 use rustless;
 use serde;
 use serde_json;
-use rustc_serialize::json;
 use rustless::server::status;
 use rustless::{Api, Nesting};
 use valico::json_dsl;
@@ -143,7 +142,7 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = match params.find("q") {
-                            Some(val) => val.as_string().unwrap_or(""),
+                            Some(val) => val.as_str().unwrap_or(""),
                             None => "",
                         }
                         .to_string();
@@ -153,7 +152,8 @@ impl ApiEndPoint {
                     let mut shape = Vec::new();
                     for ar in coordinates[0].as_array().unwrap() {
                         // (Lat, Lon)
-                        shape.push((ar[1].as_f64().unwrap(), ar[0].as_f64().unwrap()));
+                        shape.push((ar.as_array().unwrap()[1].as_f64().unwrap(),
+                                    ar.as_array().unwrap()[0].as_f64().unwrap()));
                     }
                     let model_autocomplete = query::autocomplete(&q, None, &cnx, Some(shape));
 
@@ -179,7 +179,7 @@ impl ApiEndPoint {
                     });
                     params.validate_with(|val, path| {
                         // if we have a lat we should have a lon (and the opposite)
-                        if let json::Json::Object(ref obj) = *val {
+                        if let Some(obj) = val.as_object() {
                             let has_lon = obj.get("lon").is_some();
                             let has_lat = obj.get("lat").is_some();
                             if has_lon ^ has_lat {
@@ -199,7 +199,7 @@ impl ApiEndPoint {
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = params.find("q").unwrap().as_string().unwrap().to_string();
+                    let q = params.find("q").unwrap().as_str().unwrap().to_string();
                     let lon = params.find("lon").and_then(|p| p.as_f64());
                     let lat = params.find("lat").and_then(|p| p.as_f64());
                     // we have already checked that if there is a lon, lat
@@ -220,13 +220,13 @@ impl ApiEndPoint {
     }
 }
 
-fn check_bound(val: &json::Json,
+fn check_bound(val: &serde_json::Value,
                path: &str,
                min: f64,
                max: f64,
                error_msg: &str)
                -> Result<(), valico_error::ValicoErrors> {
-    if let json::Json::F64(lon) = *val {
+    if let Some(lon) = val.as_f64() {
         if min <= lon && lon <= max {
             Ok(())
         } else {
@@ -240,7 +240,7 @@ fn check_bound(val: &json::Json,
     }
 }
 
-fn check_coordinates(val: &json::Json,
+fn check_coordinates(val: &serde_json::Value,
                      path: &str,
                      error_msg: &str)
                      -> Result<(), valico_error::ValicoErrors> {
