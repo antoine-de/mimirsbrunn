@@ -10,7 +10,7 @@ matrix:
 script:
   - cargo test
   - if [ $TRAVIS_RUST_VERSION = nightly ]; then cargo test --no-default-features --features nightly; fi
-  # These test "almost" fail because of a bug of cargo (TODO: link to bug)
+  # These test "almost" fail because of a bug of cargo https://github.com/rust-lang/cargo/issues/3172
   - cargo test --package bragi
   - cargo test --package mimir
   - if [ $TRAVIS_RUST_VERSION = nightly ]; then cargo test --package bragi --no-default-features --features nightly; fi
