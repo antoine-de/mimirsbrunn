@@ -24,8 +24,8 @@ geojson = { version="*", features=["with-serde"] }
 geo = "0.1.1"
 
 [features]
-default = ["serde_codegen"]
-nightly = ["serde_derive"]
+default = ["serde_codegen", "mimir/default"]
+nightly = ["serde_derive", "mimir/nightly"]
 
 [build-dependencies]
 serde_codegen = { version = "0.8", optional = true }
