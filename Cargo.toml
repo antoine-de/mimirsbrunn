@@ -4,16 +4,18 @@ version = "1.2.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 build = "build.rs"
 
+[workspace]
+
 [dependencies]
 log = "*"
 docopt = "*"
 rustc-serialize = "*"
 csv = "*"
-rs-es = { version = "^0.4.4", default-features = false }
+rs-es = "0.5"
 regex = "*"
 osmpbfreader = "*"
 chrono = "0.2"
-serde = "^0.7.10"
+serde = "0.8"
 geo = "0.1.1"
 gst = "0.1"
 ordered-float = "0.0.2"
@@ -22,14 +24,14 @@ mdo = "*"
 [dev-dependencies]
 serde_json = "*"
 hyper = "^0.9"
-iron-test = "0.3.0"
+iron-test = "*"
 rustless = "*"
 iron = "*"
 mime = "0.2"
 
 [features]
-default = ["rs-es/default", "bragi/default", "mimir/default"]
-#nightly = ["bragi/nightly", "mimir/nightly"]
+default = ["bragi/default", "mimir/default"]
+nightly = ["bragi/nightly", "mimir/nightly"]
 
 [dependencies.bragi]
 path = "libs/bragi"

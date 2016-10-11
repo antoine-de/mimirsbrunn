@@ -48,7 +48,7 @@ fn check_has_elt(es: &::ElasticSearchWrapper, fun: Box<Fn(&Value)>) {
 
 fn check_has_bob(es: &::ElasticSearchWrapper) {
     let check_is_bob = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
+        assert_eq!(es_elt.find("_type").and_then(|t| t.as_str()).unwrap(),
                    "street");
         let es_bob = es_elt.find("_source").unwrap();
         assert_eq!(es_bob.find("id"), Some(&to_value("bob")));
@@ -114,7 +114,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
 
     // then we should have our bobette
     let check_is_bobette = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
+        assert_eq!(es_elt.find("_type").and_then(|t| t.as_str()).unwrap(),
                    "street");
         let es_bob = es_elt.find("_source").unwrap();
         assert_eq!(es_bob.find("id"), Some(&to_value("bobette")));
@@ -156,7 +156,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     es.refresh(); // we need to refresh the index to be sure to get the elt;
 
     let check_admin = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
+        assert_eq!(es_elt.find("_type").and_then(|t| t.as_str()).unwrap(),
                    "admin");
         let es_source = es_elt.find("_source").unwrap();
         assert_eq!(es_elt.find("_id"), es_source.find("id"));

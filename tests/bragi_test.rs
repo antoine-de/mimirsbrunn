@@ -110,7 +110,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let result = concat!(r#"{"type":"FeatureCollection","#,
                          r#""geocoding":{"version":"0.1.0","query":""},"#,
                          r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-                         r#"[2.3763789999999996,48.846495],"type":"Point"},"#,
+                         r#"[2.376379,48.846495],"type":"Point"},"#,
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
@@ -142,7 +142,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let result = concat!(r#"{"type":"FeatureCollection","#,
                          r#""geocoding":{"version":"0.1.0","query":""},"#,
                          r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-                         r#"[2.3763789999999996,48.846495],"type":"Point"},"#,
+                         r#"[2.376379,48.846495],"type":"Point"},"#,
                          r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
@@ -320,15 +320,15 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
-    r.iter().map(|e| e.get("label").and_then(|l| l.as_string()).unwrap_or("")).collect()
+    r.iter().map(|e| e.get("label").and_then(|l| l.as_str()).unwrap_or("")).collect()
 }
 
 fn get_postcodes<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
-    r.iter().map(|e| e.get("postcode").and_then(|l| l.as_string()).unwrap_or("")).collect()
+    r.iter().map(|e| e.get("postcode").and_then(|l| l.as_str()).unwrap_or("")).collect()
 }
 
 fn get_types<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
-    r.iter().map(|e| e.get("type").and_then(|l| l.as_string()).unwrap_or("")).collect()
+    r.iter().map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("")).collect()
 }
 
 fn count_types(types: &Vec<&str>, value: &str) -> usize {

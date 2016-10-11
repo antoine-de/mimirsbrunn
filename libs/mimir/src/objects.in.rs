@@ -302,42 +302,14 @@ impl ::std::ops::Deref for Coord {
 }
 
 impl serde::Serialize for Coord {
-  fn serialize<S>(&self, serializer: &mut S)
-    -> Result<(), S::Error> where S: serde::Serializer
-  {
-    serializer.serialize_struct("Coord", GeoCoordSerializerVisitor {
-        value: self,
-        state: 0,
-    })
+  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: serde::Serializer {
+      let mut state = try!(serializer.serialize_struct("Coord", 2));
+      try!(serializer.serialize_struct_elt(&mut state, "lat", &self.0.x));
+      try!(serializer.serialize_struct_elt(&mut state, "lon", &self.0.y));
+      serializer.serialize_struct_end(state)
   }
-  }
-
-    struct GeoCoordSerializerVisitor<'a> {
-        value: &'a Coord,
-        state: u8,
-    }
-
-    impl<'a> serde::ser::MapVisitor for GeoCoordSerializerVisitor<'a> {
-        fn visit<S>(&mut self, serializer: &mut S) -> Result<Option<()>, S::Error>
-            where S: serde::Serializer
-        {
-          // for coord, y => longitude, x => latitude
-            match self.state {
-                0 => {
-                    self.state += 1;
-                    Ok(Some(try!(serializer.serialize_struct_elt("lat", &self.value.0.x))))
-                }
-                1 => {
-                    self.state += 1;
-                    Ok(Some(try!(serializer.serialize_struct_elt("lon", &self.value.0.y))))
-                }
-                _ => {
-                    Ok(None)
-                }
-            }
-        }
-    }
-
+}
 
 enum GeoCoordField {
     X,
