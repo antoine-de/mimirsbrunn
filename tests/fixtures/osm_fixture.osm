@@ -2457,6 +2457,7 @@
     <tag k='amenity' v='townhall' />
     <tag k='building' v='yes' />
     <tag k='image' v='File:Melun - Hôtel de ville - 20051111.jpg' />
+    <tag k='name' v='Hôtel de Ville' />
     <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2011' />
   </way>
   <way id='112365201' timestamp='2015-05-30T16:43:07Z' uid='1238664' user='zerpou' visible='true' version='3' changeset='31588203'>
@@ -3830,6 +3831,7 @@
     <tag k='capacity:disabled' v='yes' />
     <tag k='fee' v='no' />
     <tag k='lit' v='yes' />
+    <tag k='name' v='Parking' />
     <tag k='parking' v='surface' />
     <tag k='source' v='Bing' />
     <tag k='surface' v='asphalt' />

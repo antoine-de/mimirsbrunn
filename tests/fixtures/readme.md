@@ -19,3 +19,24 @@ See http://wiki.openstreetmap.org/wiki/JOSM_file_format to learn more.
 ## BANO fixtures
 
 The BANO file-format is specified at http://bano.openstreetmap.fr/data/lisezmoi-bano.txt
+
+## OSM test data
+### Cities
+type | name
+--- | ---
+relation | Vaux-le-Pénil
+relation | Livry-sur-Seine  
+relation | Melun
+relation | Melun (not a valid boundary)
+
+### POIs
+The .osm file contains the following Data :
+
+poi type | poi category | name | city
+--- | --- | --- | ---
+relation | amenity=parking | Parking | no city provided
+relation | amenity=prison | Centre de semi-liberté de Melun | Melun
+way | amenity=townhall | Hôtel de Ville | no city provided
+way | amenity=townhall | Hôtel de Ville | Melun
+point | amenity=post_office | Le-Mée-sur-Seine Courtilleraies | no city provided
+point | amenity=post_office | Melun Rp | Melun
