@@ -108,7 +108,7 @@ curl -O http://download.geofabrik.de/europe/france-latest.osm.pbf
 To import all those data into Mimir, you only have to do:
 
 ```shell
-./target/release/osm2mimir --input=france-latest.osm.pbf --level=8 --level=9 --import-way --import-admin --dataset=france --connection-string=http://localhost:9200
+./target/release/osm2mimir --input=france-latest.osm.pbf --level=8 --level=9 --import-way --import-admin --import-poi --dataset=france --connection-string=http://localhost:9200
 ```
 
 level: administrative levels in openstreetmap

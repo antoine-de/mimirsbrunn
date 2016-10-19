@@ -317,6 +317,26 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 0);
+
+    // Test POIs
+    ::launch_and_assert(osm2mimir,
+                        vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
+                             "--import-poi".into(),
+                             "--level=8".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
+    let geocodings = get_results(bragi_get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies"));
+    let types = get_types(&geocodings);
+    let count = count_types(&types, "poi");
+    assert_eq!(count, 1);
+    assert_eq!(get_labels(&geocodings), vec!["Le-Mée-sur-Seine Courtilleraies"]);
+
+
+    let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
+    let types = get_types(&geocodings);
+    let count = count_types(&types, "poi");
+    assert_eq!(count, 1);
+    assert!(get_labels(&geocodings).contains(&"Melun Rp (Melun)"));
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {

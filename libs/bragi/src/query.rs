@@ -65,6 +65,11 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
                     .ok()
                     .and_then(|o| Some(mimir::Place::Admin(o)))
             }
+            "poi" => {
+                serde_json::from_value::<mimir::Poi>(*v)
+                    .ok()
+                    .and_then(|o| Some(mimir::Place::Poi(o)))
+            }
             _ => {
                 warn!("unknown ES return value, _type field = {}", doc_type);
                 None
@@ -80,7 +85,7 @@ fn build_query(q: &str,
                -> rs_es::query::Query {
     use rs_es::query::functions::Function;
     let boost_addr = rs_q::build_term("_type", "addr").with_boost(1000).build();
-    let boost_match_query = rs_q::build_multi_match(vec![match_type.to_string(), 
+    let boost_match_query = rs_q::build_multi_match(vec![match_type.to_string(),
         "zip_codes.prefix".to_string()], q.to_string()).with_boost(100).build();
 
     let mut should_query = vec![boost_addr, boost_match_query];
@@ -116,7 +121,7 @@ fn build_query(q: &str,
                         .with_should(should_query)
                         .build();
 
-    let mut must = vec![rs_q::build_multi_match(vec![match_type.to_string(), 
+    let mut must = vec![rs_q::build_multi_match(vec![match_type.to_string(),
         "zip_codes.prefix".to_string()], q.to_string())
              .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(90f64)).build()];
 
