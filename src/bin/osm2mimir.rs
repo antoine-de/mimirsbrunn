@@ -403,18 +403,11 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
     street_list
 }
 
-type PoiTypes = BTreeMap<String, BTreeMap<String, String>>;
+type PoiTypes = BTreeMap<String, BTreeSet<String>>;
 
 #[derive(Debug)]
 struct PoiMatcher {
     poi_types: PoiTypes,
-}
-
-#[derive(Debug)]
-struct Tag {
-    tag_name: String,
-    tag_value: String,
-    tag_value_translation: String
 }
 
 impl PoiMatcher {
@@ -425,23 +418,8 @@ impl PoiMatcher {
     pub fn is_poi(&self, obj: &osmpbfreader::OsmObj) -> bool {
         obj.is_node() && self.poi_types.iter().any(|(poi_tag, poi_types)| {
             obj.tags().get(poi_tag).map_or(false, |poi_type| {
-                poi_types.contains_key(poi_type)
+                poi_types.contains(poi_type)
             })
-        })
-    }
-
-    pub fn get_poi_type(&self, node: &osmpbfreader::Node) -> Option<Tag> {
-        self.poi_types.iter().find(|&(poi_tag, _)| {
-            node.tags.get(poi_tag).is_some()
-        }).map(|(poi_tag, poi_types)| {
-            let tag_value = node.tags.get(poi_tag).unwrap();
-            let tag_value_translation = poi_types.get(tag_value).unwrap();
-
-            Tag {
-                tag_name: poi_tag.clone(),
-                tag_value: tag_value.clone(),
-                tag_value_translation: tag_value_translation.clone()
-            }
         })
     }
 }
@@ -455,7 +433,6 @@ fn pois(pbf: &mut OsmPbfReader, poi_types: PoiTypes, admins: &AdminsVec, city_le
         let node = obj.node().unwrap();
         let node_name = node.tags.get("name").map_or("", |name| name);
         let admins = get_node_admin(&admins_geofinder, node);
-        let tag = matcher.get_poi_type(&node).unwrap();
 
         mimir::Poi {
             id: format!("poi:osm:{}", node.id).to_string(),
@@ -464,32 +441,28 @@ fn pois(pbf: &mut OsmPbfReader, poi_types: PoiTypes, admins: &AdminsVec, city_le
             coord: mimir::Coord::new(node.lat, node.lon),
             administrative_regions: admins,
             weight: 1,
-            poi_type: mimir::PoiType {
-                id: format!("poi:{}:{}", tag.tag_name, tag.tag_value),
-                name: tag.tag_value_translation
-            }
         }
     }).collect()
 }
 
-fn default_amenity_types() -> BTreeMap<String, String> {
+fn default_amenity_types() -> BTreeSet<String> {
     [
-        ("university", "université"),
-        ("hospital", "hôpital"),
-        ("post_office", "bureau de poste"),
-        ("bicycle_rental", "station vls"),
-        ("bicycle_parking", "Parking vélo"),
-        ("parking", "Parking"),
-        ("police", "Police, Gendarmerie"),
-        ("townhall", "Mairie")
-    ].iter().map(|&(k, v)| (k.to_string(), v.to_string())).collect()
+        "university",
+        "hospital",
+        "post_office",
+        "bicycle_rental",
+        "bicycle_parking",
+        "parking",
+        "police",
+        "townhall"
+    ].iter().map(|&k| k.to_string()).collect()
 }
 
-fn default_leisure_types() -> BTreeMap<String, String> {
+fn default_leisure_types() -> BTreeSet<String> {
     [
-        ("garden", "Jardin"),
-        ("park", "Zone Parc. Zone verte ouverte, pour déambuler. habituellement municipale")
-    ].iter().map(|&(k, v)| (k.to_string(), v.to_string())).collect()
+        "garden",
+        "park"
+    ].iter().map(|&k| k.to_string()).collect()
 }
 
 fn main() {

@@ -88,16 +88,4 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let res: Vec<_> = es_wrapper.search_and_filter("label:Melun Rp", |_| true).collect();
     assert!(res.len() != 0);
     assert!(res.iter().any(|r| r.is_poi()));
-
-    // Test: search Pois of type "bureau de poste"
-    let res: Vec<_> = es_wrapper.search_and_filter("bureau de poste", |_| true)
-        .filter(|place: &mimir::Place| {
-            place.is_poi()
-        })
-        .collect();
-    assert_eq!(res.len(), 2);
-
-    // Test: search Poi of type "université"
-    let nb = es_wrapper.search_and_filter("université", |_| true).count();
-    assert_eq!(nb, 0);
 }

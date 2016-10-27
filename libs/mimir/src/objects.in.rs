@@ -138,7 +138,6 @@ pub struct Poi {
     pub coord: Coord,
     pub administrative_regions: Vec<Rc<Admin>>,
     pub weight: u32,
-    pub poi_type: PoiType,
 }
 
 impl DocType for Poi {
@@ -160,12 +159,6 @@ impl Members for Poi {
     fn admins(&self) -> Vec<Rc<Admin>> {
         self.administrative_regions.clone()
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PoiType {
-    pub id: String,
-    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
