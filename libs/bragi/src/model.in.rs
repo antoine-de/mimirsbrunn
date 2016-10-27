@@ -192,8 +192,8 @@ impl From<mimir::Addr> for GeocodingResponse {
 impl From<mimir::Poi> for GeocodingResponse {
     fn from(other: mimir::Poi) -> GeocodingResponse {
         let type_ = "poi".to_string();
-        let name = Some(other.label);
-        let label = name.clone();
+        let label = Some(other.label);
+        let name = label.clone();
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
 

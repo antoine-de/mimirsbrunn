@@ -212,13 +212,7 @@
                         "weight": { "type": "long" }
                     }
                 },
-                "weight": { "type": "long" },
-                "poi_type": {
-                    "properties": {
-                        "id": { "type": "string", "index": "no" },
-                        "name": { "type": "string" }
-                    }
-                }
+                "weight": { "type": "long" }
             }
         }
     }
