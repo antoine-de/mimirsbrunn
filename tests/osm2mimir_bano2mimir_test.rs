@@ -38,6 +38,7 @@ pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
                         vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
                              "--import-way".into(),
                              "--import-admin".into(),
+                             "--import-poi".into(),
                              "--level=8".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
@@ -49,17 +50,17 @@ pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
-    // after an import, we should have 3 index, and some aliases to this index
+    // after an import, we should have 4 indexes, and some aliases to this index
     let client = Client::new();
     let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
                     .send()
                     .unwrap();
     assert_eq!(res.status, hyper::Ok);
-    println!("{:?}", res);
+
     let json = res.to_json();
-    println!("{:?}", json);
+
     let raw_indexes = json.as_object().unwrap();
     let first_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
 
-    assert_eq!(first_indexes.len(), 3);
+    assert_eq!(first_indexes.len(), 4);
 }

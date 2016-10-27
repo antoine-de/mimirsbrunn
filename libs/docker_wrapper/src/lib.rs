@@ -53,7 +53,7 @@ impl DockerWrapper {
                                       &format!("--publish={}:9200", self.port),
                                       "-d",
                                       "--name=mimirsbrunn_tests",
-                                      "elasticsearch"])
+                                      "elasticsearch:2"])
                               .status());
         if !status.success() {
             return Err(format!("`docker run` failed {}", &status).into());

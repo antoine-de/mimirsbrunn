@@ -49,24 +49,31 @@ pub enum Place {
     Admin(Admin),
     Street(Street),
     Addr(Addr),
+    Poi(Poi),
 }
 
 impl Place{
-    pub fn is_admin(&self) -> bool { 
+    pub fn is_admin(&self) -> bool {
         match *self {
             Place::Admin(_) => true,
             _ => false
         }
     }
-    pub fn is_street(&self) -> bool { 
+    pub fn is_street(&self) -> bool {
         match *self {
             Place::Street(_) => true,
             _ => false
         }
     }
-    pub fn is_addr(&self) -> bool { 
+    pub fn is_addr(&self) -> bool {
         match *self {
             Place::Addr(_) => true,
+            _ => false
+        }
+    }
+    pub fn is_poi(&self) -> bool {
+        match *self {
+            Place::Poi(_) => true,
             _ => false
         }
     }
@@ -75,14 +82,16 @@ impl Place{
             Place::Admin(ref o) => o.label(),
             Place::Street(ref o) => o.label(),
             Place::Addr(ref o) => o.label(),
+            Place::Poi(ref o) => o.label(),
         }
     }
-    
+
     pub fn admins(&self) -> Vec<Rc<Admin>> {
         match *self {
             Place::Admin(ref o) => o.admins(),
             Place::Street(ref o) => o.admins(),
             Place::Addr(ref o) => o.admins(),
+            Place::Poi(ref o) => o.admins(),
         }
     }
 }
@@ -118,6 +127,37 @@ impl<'a, T: DocType> DocType for Rc<T> {
 impl<'a, T: EsId> EsId for Rc<T> {
     fn es_id(&self) -> Option<String> {
         T::es_id(self)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Poi {
+    pub id: String,
+    pub label: String,
+    pub name: String,
+    pub coord: Coord,
+    pub administrative_regions: Vec<Rc<Admin>>,
+    pub weight: u32,
+}
+
+impl DocType for Poi {
+    fn doc_type() -> &'static str {
+        "poi"
+    }
+}
+
+impl EsId for Poi {
+    fn es_id(&self) -> Option<String> {
+        Some(self.id.clone())
+    }
+}
+
+impl Members for Poi {
+    fn label(&self) -> &str {
+        &self.label
+    }
+    fn admins(&self) -> Vec<Rc<Admin>> {
+        self.administrative_regions.clone()
     }
 }
 
@@ -221,7 +261,6 @@ impl Members for Street {
     fn admins(&self) -> Vec<Rc<Admin>> {
         self.administrative_regions.clone()
     }
-    
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -284,11 +323,9 @@ impl Coord {
     pub fn new(lat: f64, lon: f64) -> Coord {
         Coord(geo::Coordinate {x: lat, y: lon})
     }
-    
     pub fn lat(&self) -> f64 {
         self.x
     }
-    
     pub fn lon(&self) -> f64 {
         self.y
     }

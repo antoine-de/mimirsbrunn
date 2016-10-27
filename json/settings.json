@@ -41,8 +41,8 @@
             "properties": {
                 "id": { "type": "string", "index": "no" },
                 "house_number": { "type": "string", "analyzer": "word"},
-                "zip_codes": { 
-                        "type": "string", 
+                "zip_codes": {
+                        "type": "string",
                         "index_options": "docs",
                         "analyzer": "word",
                         "fields": {
@@ -125,8 +125,8 @@
                     }
                 },
                 "weight": { "type": "long" },
-                "zip_codes": { 
-                        "type": "string", 
+                "zip_codes": {
+                        "type": "string",
                         "index_options": "docs",
                         "analyzer": "word",
                         "fields": {
@@ -158,8 +158,8 @@
                         "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
                     }
                 },
-                "zip_codes": { 
-                        "type": "string", 
+                "zip_codes": {
+                        "type": "string",
                         "index_options": "docs",
                         "analyzer": "word",
                         "fields": {
@@ -178,6 +178,41 @@
                     "geohash_prefix": true,
                     "geohash_precision": "1m"
                 }
+            }
+        },
+        "poi": {
+            "properties": {
+                "id": { "type": "string", "index": "no" },
+                "name": { "type": "string" },
+                "coord": {
+                    "type": "geo_point",
+                    "lat_lon": true,
+                    "geohash_prefix": true,
+                    "geohash_precision": "1m"
+                },
+                "label": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        },
+                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                    }
+                },
+                "administrative_region": {
+                    "properties": {
+                        "id": { "type": "string", "index": "no" },
+                        "level": { "type": "long", "index": "no" },
+                        "zip_codes": { "type": "string", "index": "not_analyzed" },
+                        "weight": { "type": "long" }
+                    }
+                },
+                "weight": { "type": "long" }
             }
         }
     }

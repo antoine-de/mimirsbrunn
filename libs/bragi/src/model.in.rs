@@ -83,6 +83,7 @@ impl ToGeom for mimir::Place {
             &mimir::Place::Admin(ref admin) => admin.coord.to_geom(),
             &mimir::Place::Street(ref street) => street.coord.to_geom(),
             &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
+            &mimir::Place::Poi(ref poi) => poi.coord.to_geom(),
         }
     }
 }
@@ -100,6 +101,7 @@ impl From<mimir::Place> for Feature {
             mimir::Place::Admin(admin) => GeocodingResponse::from(admin),
             mimir::Place::Street(street) => GeocodingResponse::from(street),
             mimir::Place::Addr(addr) => GeocodingResponse::from(addr),
+            mimir::Place::Poi(poi) => GeocodingResponse::from(poi),
         };
         Feature {
             feature_type: "Feature".to_string(),
@@ -181,6 +183,28 @@ impl From<mimir::Addr> for GeocodingResponse {
             label: label,
             housenumber: housenumber,
             street: street_name,
+            city: city,
+            administrative_regions: admins
+        }
+    }
+}
+
+impl From<mimir::Poi> for GeocodingResponse {
+    fn from(other: mimir::Poi) -> GeocodingResponse {
+        let type_ = "poi".to_string();
+        let label = Some(other.label);
+        let name = label.clone();
+        let admins = other.administrative_regions;
+        let city = get_city_name(&admins);
+
+        GeocodingResponse {
+            id: other.id,
+            place_type: type_,
+            name: name,
+            postcode: None,
+            label: label,
+            housenumber: None,
+            street: None,
             city: city,
             administrative_regions: admins
         }

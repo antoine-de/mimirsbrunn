@@ -53,6 +53,7 @@ pub type OsmPbfReader = osmpbfreader::OsmPbfReader<std::fs::File>;
 pub type StreetWithRelationSet = BTreeSet<osmpbfreader::OsmId>;
 pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
+pub type PoisVec = Vec<mimir::Poi>;
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use geo::algorithm::centroid::Centroid;
@@ -67,27 +68,28 @@ struct Args {
     flag_connection_string: String,
     flag_import_way: bool,
     flag_import_admin: bool,
+    flag_import_poi: bool,
     flag_dataset: String,
 }
 
 static USAGE: &'static str = "
 Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--dataset=<dataset>] [--city-level=<level>] --level=<level> ...
+    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--import-poi] [--dataset=<dataset>] [--city-level=<level>] --level=<level> ...
 
 Options:
     -h, --help              Show this message.
     -i, --input=<file>      OSM PBF file.
     -l, --level=<level>     Admin levels to keep.
     -C, --city-level=<level>
-                            City level to calculate weight, [default: 8] 		
+                            City level to calculate weight, [default: 8]
     -w, --import-way        Import ways
     -a, --import-admin      Import admins
+    -p, --import-poi        Import POIs
     -c, --connection-string=<connection-string>
                             Elasticsearch parameters, [default: http://localhost:9200/munin]
     -d, --dataset=<dataset>
                             Name of the dataset, [default: fr]
-    
 ";
 
 #[derive(Debug)]
@@ -251,6 +253,18 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
+fn get_node_admin(admins_geofinder: &AdminGeoFinder,
+                    node: &osmpbfreader::objects::Node)
+                    -> Vec<Rc<mimir::Admin>> {
+    let coord = geo::Coordinate {
+                    x: node.lat,
+                    y: node.lon,
+                };
+
+    admins_geofinder.get(&coord)
+}
+
+
 fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
     match admins.iter().position(|adm| adm.level == city_level) {
         Some(idx) => format!("{} ({})", name, admins[idx].label),
@@ -261,7 +275,7 @@ fn get_zip_codes_for_street(admins: &AdminsVec) -> Vec<String>{
     let level = admins.iter().fold(0, |level, adm| {
             if adm.level > level && !adm.zip_codes.is_empty() {
                 adm.level
-            } else { 
+            } else {
             	level
             }
     });
@@ -389,6 +403,67 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
     street_list
 }
 
+type PoiTypes = BTreeMap<String, BTreeSet<String>>;
+
+#[derive(Debug)]
+struct PoiMatcher {
+    poi_types: PoiTypes,
+}
+
+impl PoiMatcher {
+    pub fn new(types: PoiTypes) -> PoiMatcher {
+        PoiMatcher { poi_types: types }
+    }
+
+    pub fn is_poi(&self, obj: &osmpbfreader::OsmObj) -> bool {
+        obj.is_node() && self.poi_types.iter().any(|(poi_tag, poi_types)| {
+            obj.tags().get(poi_tag).map_or(false, |poi_type| {
+                poi_types.contains(poi_type)
+            })
+        })
+    }
+}
+
+fn pois(pbf: &mut OsmPbfReader, poi_types: PoiTypes, admins: &AdminsVec, city_level: u32) -> PoisVec {
+    let admins_geofinder = make_admin_geofinder(admins);
+    let matcher = PoiMatcher::new(poi_types);
+    let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_poi(o)).unwrap();
+
+    objects.iter().map(|(_, obj)| {
+        let node = obj.node().unwrap();
+        let node_name = node.tags.get("name").map_or("", |name| name);
+        let admins = get_node_admin(&admins_geofinder, node);
+
+        mimir::Poi {
+            id: format!("poi:osm:{}", node.id).to_string(),
+            name: node_name.to_string(),
+            label: format_label(&admins, city_level, node_name),
+            coord: mimir::Coord::new(node.lat, node.lon),
+            administrative_regions: admins,
+            weight: 1,
+        }
+    }).collect()
+}
+
+fn default_amenity_types() -> BTreeSet<String> {
+    [
+        "university",
+        "hospital",
+        "post_office",
+        "bicycle_rental",
+        "bicycle_parking",
+        "parking",
+        "police",
+        "townhall"
+    ].iter().map(|&k| k.to_string()).collect()
+}
+
+fn default_leisure_types() -> BTreeSet<String> {
+    [
+        "garden",
+        "park"
+    ].iter().map(|&k| k.to_string()).collect()
+}
 
 fn main() {
     mimir::logger_init().unwrap();
@@ -434,4 +509,18 @@ fn main() {
                           .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
+    if args.flag_import_poi {
+        let mut poi_types = PoiTypes::new();
+        poi_types.insert("amenity".to_string(), default_amenity_types());
+        poi_types.insert("leisure".to_string(), default_leisure_types());
+
+        info!("Extracting pois from osm");
+        let pois = pois(&mut parsed_pbf, poi_types, &admins, city_level);
+
+        info!("Importing pois into Mimir");
+        let nb_pois = rubber.index("poi", &args.flag_dataset, pois.iter())
+                                   .unwrap();
+
+        info!("Nb of indexed pois: {}", nb_pois);
+    }
 }

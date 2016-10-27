@@ -41,12 +41,13 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                         vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
                              "--import-way".into(),
                              "--import-admin".into(),
+                             "--import-poi".into(),
                              "--level=8".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper.search_and_filter("label:Livry-sur-Seine", |_| true).collect();
-    assert_eq!(res.len(), 4);
+    assert_eq!(res.len(), 5);
     assert!(res.iter().any(|r| r.is_admin()));
 
     // Test: search for "Rue des Près"
@@ -57,7 +58,7 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res[0].label() == "Rue des Près (Livry-sur-Seine)");
 
     // And there should be only ONE "Rue des Près"
-    assert_eq!(res.iter().filter(|place| place.is_street() && place.label() 
+    assert_eq!(res.iter().filter(|place| place.is_street() && place.label()
             == "Rue des Près (Livry-sur-Seine)").count(), 1);
 
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
@@ -78,4 +79,13 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     };
     let nb = es_wrapper.search_and_filter("label:Rue du Port (Melun)", place_filter).count();
     assert_eq!(nb, 1);
+
+    // Test: search Pois by label
+    let res: Vec<_> = es_wrapper.search_and_filter("label:Le-Mée-sur-Seine Courtilleraies", |_| true).collect();
+    assert!(res.len() != 0);
+    assert!(res.iter().any(|r| r.is_poi()));
+
+    let res: Vec<_> = es_wrapper.search_and_filter("label:Melun Rp", |_| true).collect();
+    assert!(res.len() != 0);
+    assert!(res.iter().any(|r| r.is_poi()));
 }
