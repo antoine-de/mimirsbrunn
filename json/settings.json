@@ -212,7 +212,20 @@
                         "weight": { "type": "long" }
                     }
                 },
-                "weight": { "type": "long" }
+                "weight": { "type": "long" },
+                "zip_codes": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        }
+                    }
+                }
             }
         }
     }

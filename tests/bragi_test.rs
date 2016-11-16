@@ -330,6 +330,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let count = count_types(&types, "poi");
     assert_eq!(count, 1);
     assert_eq!(get_labels(&geocodings), vec!["Le-Mée-sur-Seine Courtilleraies"]);
+    assert!(get_postcodes(&geocodings).iter().all(|r| *r == ""));
 
 
     let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
@@ -337,6 +338,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let count = count_types(&types, "poi");
     assert_eq!(count, 1);
     assert!(get_labels(&geocodings).contains(&"Melun Rp (Melun)"));
+    assert!(get_postcodes(&geocodings).iter().all(|r| *r == "77000"));
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
