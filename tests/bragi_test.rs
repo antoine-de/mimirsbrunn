@@ -339,6 +339,13 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(count, 2);
     assert!(get_labels(&geocodings).contains(&"Melun Rp (Melun)"));
     assert!(get_postcodes(&geocodings).iter().all(|r| *r == "77000"));
+
+    // search by zip code
+    let geocodings = get_results(bragi_get("/autocomplete?q=77000"));
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, "poi"), 2);
+    assert_eq!(count_types(&types, "city"), 2);
+    assert_eq!(count_types(&types, "street"), 6);
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
