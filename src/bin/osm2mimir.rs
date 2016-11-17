@@ -218,6 +218,14 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
     geofinder
 }
 
+fn get_relation_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    relation: &osmpbfreader::objects::Relation) -> mimir::Coord {
+        let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &obj_map);
+        boundary.as_ref().and_then(|b| {
+                b.centroid().map(|c| mimir::Coord(c.0))
+        }).unwrap_or(mimir::Coord::new(0., 0.))
+    }
+
 fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
     way: &osmpbfreader::objects::Way) -> mimir::Coord {
         way.nodes
@@ -425,7 +433,7 @@ impl PoiMatcher {
     }
 }
 
-fn format_id(id: i64) -> String {
+fn format_poi_id(id: i64) -> String {
     format!("poi:osm:{}", id).to_string()
 }
 
@@ -437,7 +445,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
 	        let name = node.tags.get("name").map_or("", |name| name);
 	        let adms = get_node_admin(&admins_geofinder, node);
             mimir::Poi {
-                id: format_id(node.id),
+                id: format_poi_id(node.id),
                 name: name.to_string(),
                 label: format_label(&adms, city_level, name),
                 coord: mimir::Coord::new(node.lat, node.lon),
@@ -450,7 +458,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
 	        let coord = get_way_coord(obj_map, way);
 	        let name = way.tags.get("name").map_or("", |name| name);
             mimir::Poi {
-                id: format_id(way.id),
+                id: format_poi_id(way.id),
                 name: name.to_string(),
                 label: format_label(&admins, city_level, name),
                 coord: coord.clone(),
@@ -460,16 +468,9 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
 	    },
 	    osmpbfreader::OsmObj::Relation(ref relation) => {
 	        let name = relation.tags.get("name").map_or("", |name| name);
-	        let coord = match mimirsbrunn::boundaries::build_boundary(&relation, &obj_map) {
-	            Some(multipolygon) => {
-	                let p = multipolygon.centroid().unwrap();
-	                mimir::Coord::new(p.lng(), p.lat())
-	            },
-	            _ => mimir::Coord::new(0.0, 0.0)
-	        };
-
+			let coord = get_relation_coord(obj_map, relation);
             mimir::Poi {
-                id: format_id(relation.id),
+                id: format_poi_id(relation.id),
                 name: name.to_string(),
                 label: format_label(&admins, city_level, name),
                 coord: coord.clone(),
