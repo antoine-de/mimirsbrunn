@@ -138,8 +138,8 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
         }
         if let &osmpbfreader::OsmObj::Relation(ref relation) = obj {
             let level = relation.tags
-                                .get("admin_level")
-                                .and_then(|s| s.parse().ok());
+                .get("admin_level")
+                .and_then(|s| s.parse().ok());
             let level = match level {
                 None => {
                     info!("invalid admin_level for relation {}: admin_level {:?}",
@@ -163,18 +163,18 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
 
             // admininstrative region without coordinates
             let coord_centre = relation.refs
-                                       .iter()
-                                       .find(|rf| rf.role == "admin_centre")
-                                       .and_then(|r| {
-                                           objects.get(&r.member).and_then(|value| {
-                                               match value {
-                                                   &osmpbfreader::OsmObj::Node(ref node) => {
-                                                       Some(mimir::Coord::new(node.lat, node.lon))
-                                                   }
-                                                   _ => None,
-                                               }
-                                           })
-                                       });
+                .iter()
+                .find(|rf| rf.role == "admin_centre")
+                .and_then(|r| {
+                    objects.get(&r.member).and_then(|value| {
+                        match value {
+                            &osmpbfreader::OsmObj::Node(ref node) => {
+                                Some(mimir::Coord::new(node.lat, node.lon))
+                            }
+                            _ => None,
+                        }
+                    })
+                });
             let (admin_id, insee_id) = match relation.tags.get("ref:INSEE") {
                 Some(val) => {
                     (format!("admin:fr:{}", val.trim_left_matches('0')), val.trim_left_matches('0'))
@@ -182,17 +182,17 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 None => (format!("admin:osm:{}", relation.id), ""),
             };
 
-            let zip_code = relation.tags.get("addr:postcode")
+            let zip_code = relation.tags
+                .get("addr:postcode")
                 .or_else(|| relation.tags.get("postal_code"))
                 .map(|val| &val[..])
                 .unwrap_or("");
 
             let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
             let coord = coord_centre.or_else(|| {
-                boundary.as_ref().and_then(|b| {
-                    b.centroid().map(|c| mimir::Coord(c.0))
+                    boundary.as_ref().and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
                 })
-            }).unwrap_or(mimir::Coord::new(0., 0.));
+                .unwrap_or(mimir::Coord::new(0., 0.));
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -219,25 +219,27 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
 }
 
 fn get_relation_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-    relation: &osmpbfreader::objects::Relation) -> mimir::Coord {
-        let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &obj_map);
-        boundary.as_ref().and_then(|b| {
-                b.centroid().map(|c| mimir::Coord(c.0))
-        }).unwrap_or(mimir::Coord::new(0., 0.))
-    }
+                      relation: &osmpbfreader::objects::Relation)
+                      -> mimir::Coord {
+    let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &obj_map);
+    boundary.as_ref()
+        .and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
+        .unwrap_or(mimir::Coord::new(0., 0.))
+}
 
 fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-    way: &osmpbfreader::objects::Way) -> mimir::Coord {
-        way.nodes
+                 way: &osmpbfreader::objects::Way)
+                 -> mimir::Coord {
+    way.nodes
         .iter()
         .filter_map(|node_id| {
-                obj_map.get(&osmpbfreader::OsmId::Node(*node_id))
+            obj_map.get(&osmpbfreader::OsmId::Node(*node_id))
                 .and_then(|obj| obj.node())
                 .map(|node| mimir::Coord::new(node.lat, node.lon))
         })
         .next()
         .unwrap_or(mimir::Coord::new(0., 0.))
-    }
+}
 
 fn get_street_admin(admins_geofinder: &AdminGeoFinder,
                     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
@@ -245,29 +247,29 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
                     -> Vec<Rc<mimir::Admin>> {
     // for the moment we consider that the coord of the way is the coord of it's first node
     let coord = way.nodes
-                   .iter()
-                   .filter_map(|node_id| obj_map.get(&osmpbfreader::OsmId::Node(*node_id)))
-                   .filter_map(|node_obj| {
-                       if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
-                           Some(geo::Coordinate {
-                               x: node.lat,
-                               y: node.lon,
-                           })
-                       } else {
-                           None
-                       }
-                   })
-                   .next();
+        .iter()
+        .filter_map(|node_id| obj_map.get(&osmpbfreader::OsmId::Node(*node_id)))
+        .filter_map(|node_obj| {
+            if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+                Some(geo::Coordinate {
+                    x: node.lat,
+                    y: node.lon,
+                })
+            } else {
+                None
+            }
+        })
+        .next();
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
 fn get_node_admin(admins_geofinder: &AdminGeoFinder,
-                    node: &osmpbfreader::objects::Node)
-                    -> Vec<Rc<mimir::Admin>> {
+                  node: &osmpbfreader::objects::Node)
+                  -> Vec<Rc<mimir::Admin>> {
     let coord = geo::Coordinate {
-                    x: node.lat,
-                    y: node.lon,
-                };
+        x: node.lat,
+        y: node.lon,
+    };
 
     admins_geofinder.get(&coord)
 }
@@ -276,22 +278,24 @@ fn get_node_admin(admins_geofinder: &AdminGeoFinder,
 fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
     match admins.iter().position(|adm| adm.level == city_level) {
         Some(idx) => format!("{} ({})", name, admins[idx].label),
-        None => name.to_string()
+        None => name.to_string(),
     }
 }
-fn get_zip_codes_from_admins(admins: &AdminsVec) -> Vec<String>{
+fn get_zip_codes_from_admins(admins: &AdminsVec) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
-            if adm.level > level && !adm.zip_codes.is_empty() {
-                adm.level
-            } else {
-            	level
-            }
+        if adm.level > level && !adm.zip_codes.is_empty() {
+            adm.level
+        } else {
+            level
+        }
     });
-    if level == 0 { return vec![]; }
+    if level == 0 {
+        return vec![];
+    }
     admins.into_iter()
-          .filter(|adm| adm.level == level)
-          .flat_map(|adm| adm.zip_codes.iter().cloned())
-          .collect()
+        .filter(|adm| adm.level == level)
+        .flat_map(|adm| adm.zip_codes.iter().cloned())
+        .collect()
 }
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
     let admins_geofinder = make_admin_geofinder(admins);
@@ -424,11 +428,9 @@ impl PoiMatcher {
     }
 
     pub fn is_poi(&self, obj: &osmpbfreader::OsmObj) -> bool {
-        (obj.is_node() || obj.is_way() || obj.is_relation()) 
-        && self.poi_types.iter().any(|(poi_tag, poi_types)| {
-            obj.tags().get(poi_tag).map_or(false, |poi_type| {
-                poi_types.contains(poi_type)
-            })
+        (obj.is_node() || obj.is_way() || obj.is_relation()) &&
+        self.poi_types.iter().any(|(poi_tag, poi_types)| {
+            obj.tags().get(poi_tag).map_or(false, |poi_type| poi_types.contains(poi_type))
         })
     }
 }
@@ -437,27 +439,30 @@ fn format_poi_id(id: i64) -> String {
     format!("poi:osm:{}", id).to_string()
 }
 
-fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-    admins: &AdminsVec, city_level: u32) -> mimir::Poi {
-	let admins_geofinder = make_admin_geofinder(admins);
-	match *osmobj {
-	    osmpbfreader::OsmObj::Node(ref node) => {
-	        let name = node.tags.get("name").map_or("", |name| name);
-	        let adms = get_node_admin(&admins_geofinder, node);
+fn parse_poi(osmobj: &osmpbfreader::OsmObj,
+             obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+             admins: &AdminsVec,
+             city_level: u32)
+             -> mimir::Poi {
+    let admins_geofinder = make_admin_geofinder(admins);
+    match *osmobj {
+        osmpbfreader::OsmObj::Node(ref node) => {
+            let name = node.tags.get("name").map_or("", |name| name);
+            let adms = get_node_admin(&admins_geofinder, node);
             mimir::Poi {
                 id: format_poi_id(node.id),
                 name: name.to_string(),
                 label: format_label(&adms, city_level, name),
                 coord: mimir::Coord::new(node.lat, node.lon),
-				zip_codes: get_zip_codes_from_admins(&adms),
+                zip_codes: get_zip_codes_from_admins(&adms),
                 administrative_regions: adms,
                 weight: 1,
             }
-	    },
-	    osmpbfreader::OsmObj::Way(ref way) => {
-	        let coord = get_way_coord(obj_map, way);
-	        let name = way.tags.get("name").map_or("", |name| name);
-	        let adms = admins_geofinder.get(&coord);
+        }
+        osmpbfreader::OsmObj::Way(ref way) => {
+            let coord = get_way_coord(obj_map, way);
+            let name = way.tags.get("name").map_or("", |name| name);
+            let adms = admins_geofinder.get(&coord);
             mimir::Poi {
                 id: format_poi_id(way.id),
                 name: name.to_string(),
@@ -467,11 +472,11 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
                 administrative_regions: adms,
                 weight: 1,
             }
-	    },
-	    osmpbfreader::OsmObj::Relation(ref relation) => {
-	        let name = relation.tags.get("name").map_or("", |name| name);
-			let coord = get_relation_coord(obj_map, relation);
-			let adms = admins_geofinder.get(&coord);
+        }
+        osmpbfreader::OsmObj::Relation(ref relation) => {
+            let name = relation.tags.get("name").map_or("", |name| name);
+            let coord = get_relation_coord(obj_map, relation);
+            let adms = admins_geofinder.get(&coord);
             mimir::Poi {
                 id: format_poi_id(relation.id),
                 name: name.to_string(),
@@ -481,45 +486,50 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
                 administrative_regions: adms,
                 weight: 1,
             }
-	    },
-	}
+        }
+    }
 }
 
 
-fn pois(pbf: &mut OsmPbfReader, poi_types: PoiTypes, admins: &AdminsVec, city_level: u32) -> PoisVec {
+fn pois(pbf: &mut OsmPbfReader,
+        poi_types: PoiTypes,
+        admins: &AdminsVec,
+        city_level: u32)
+        -> PoisVec {
     let matcher = PoiMatcher::new(poi_types);
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_poi(o)).unwrap();
-    objects.iter().filter(|&(_, obj)| 
-        matcher.is_poi(&obj)).map(|(_, obj)| {
-            parse_poi(obj, &objects, admins, city_level)
-    }).collect()
+    objects.iter()
+        .filter(|&(_, obj)| matcher.is_poi(&obj))
+        .map(|(_, obj)| parse_poi(obj, &objects, admins, city_level))
+        .collect()
 }
 
 fn default_amenity_types() -> BTreeSet<String> {
-    [
-        "university",
-        "hospital",
-        "post_office",
-        "bicycle_rental",
-        "bicycle_parking",
-        "parking",
-        "police",
-        "townhall"
-    ].iter().map(|&k| k.to_string()).collect()
+    ["university",
+     "hospital",
+     "post_office",
+     "bicycle_rental",
+     "bicycle_parking",
+     "parking",
+     "police",
+     "townhall"]
+        .iter()
+        .map(|&k| k.to_string())
+        .collect()
 }
 
 fn default_leisure_types() -> BTreeSet<String> {
-    [
-        "garden",
-        "park"
-    ].iter().map(|&k| k.to_string()).collect()
+    ["garden", "park"]
+        .iter()
+        .map(|&k| k.to_string())
+        .collect()
 }
 
 fn main() {
     mimir::logger_init().unwrap();
     let args: Args = docopt::Docopt::new(USAGE)
-                         .and_then(|d| d.decode())
-                         .unwrap_or_else(|e| e.exit());
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
 
     let levels = args.flag_level.iter().cloned().collect();
     let city_level = args.flag_city_level;
@@ -551,12 +561,12 @@ fn main() {
     if args.flag_import_way {
         info!("importing streets into Mimir");
         let nb_streets = rubber.index("way", &args.flag_dataset, streets.into_iter())
-                               .unwrap();
+            .unwrap();
         info!("Nb of indexed street: {}", nb_streets);
     }
 
     let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
-                          .unwrap();
+        .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.flag_import_poi {
@@ -569,7 +579,7 @@ fn main() {
 
         info!("Importing pois into Mimir");
         let nb_pois = rubber.index("poi", &args.flag_dataset, pois.iter())
-                                   .unwrap();
+            .unwrap();
 
         info!("Nb of indexed pois: {}", nb_pois);
     }
