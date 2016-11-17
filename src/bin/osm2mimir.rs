@@ -271,7 +271,7 @@ fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
         None => name.to_string()
     }
 }
-fn get_zip_codes_for_street(admins: &AdminsVec) -> Vec<String>{
+fn get_zip_codes_from_admins(admins: &AdminsVec) -> Vec<String>{
     let level = admins.iter().fold(0, |level, adm| {
             if adm.level > level && !adm.zip_codes.is_empty() {
                 adm.level
@@ -333,7 +333,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                                 street_name: way_name.to_string(),
                                 label: format_label(&admin, city_level, way_name),
                                 weight: 1,
-                                zip_codes: get_zip_codes_for_street(&admin),
+                                zip_codes: get_zip_codes_from_admins(&admin),
                                 administrative_regions: admin,
                                 coord: get_way_coord(objs_map, way),
                     }))
@@ -393,7 +393,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
    	                    street_name: way_name.to_string(),
    	                    label: format_label(&admins, city_level, way_name),
    	                    weight: 1,
-   	                    zip_codes: get_zip_codes_for_street(&admins),
+   	                    zip_codes: get_zip_codes_from_admins(&admins),
    	                    administrative_regions: admins,
    	                    coord: get_way_coord(objs_map, way),
             }))
@@ -439,6 +439,7 @@ fn pois(pbf: &mut OsmPbfReader, poi_types: PoiTypes, admins: &AdminsVec, city_le
             name: node_name.to_string(),
             label: format_label(&admins, city_level, node_name),
             coord: mimir::Coord::new(node.lat, node.lon),
+            zip_codes: get_zip_codes_from_admins(&admins),
             administrative_regions: admins,
             weight: 1,
         }

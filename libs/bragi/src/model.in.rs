@@ -196,12 +196,13 @@ impl From<mimir::Poi> for GeocodingResponse {
         let name = Some(other.name);
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
+        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
 
         GeocodingResponse {
             id: other.id,
             place_type: type_,
             name: name,
-            postcode: None,
+            postcode: postcode,
             label: label,
             housenumber: None,
             street: None,

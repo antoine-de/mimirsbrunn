@@ -138,6 +138,7 @@ pub struct Poi {
     pub coord: Coord,
     pub administrative_regions: Vec<Rc<Admin>>,
     pub weight: u32,
+    pub zip_codes: Vec<String>,
 }
 
 impl DocType for Poi {
