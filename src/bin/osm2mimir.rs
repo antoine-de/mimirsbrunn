@@ -333,7 +333,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                                 street_name: way_name.to_string(),
                                 label: format_label(&admin, city_level, way_name),
                                 weight: 1,
-                                zip_codes: get_zip_codes_from_admins(&admin),
+                                zip_codes: get_zip_codes_for_street(&admin),
                                 administrative_regions: admin,
                                 coord: get_way_coord(objs_map, way),
                     }))
@@ -393,7 +393,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
    	                    street_name: way_name.to_string(),
    	                    label: format_label(&admins, city_level, way_name),
    	                    weight: 1,
-   	                    zip_codes: get_zip_codes_from_admins(&admins),
+   	                    zip_codes: get_zip_codes_for_street(&admins),
    	                    administrative_regions: admins,
    	                    coord: get_way_coord(objs_map, way),
             }))
@@ -416,7 +416,8 @@ impl PoiMatcher {
     }
 
     pub fn is_poi(&self, obj: &osmpbfreader::OsmObj) -> bool {
-        obj.is_node() && self.poi_types.iter().any(|(poi_tag, poi_types)| {
+        (obj.is_node() || obj.is_way() || obj.is_relation()) 
+        && self.poi_types.iter().any(|(poi_tag, poi_types)| {
             obj.tags().get(poi_tag).map_or(false, |poi_type| {
                 poi_types.contains(poi_type)
             })
@@ -424,25 +425,66 @@ impl PoiMatcher {
     }
 }
 
+fn format_id(id: i64) -> String {
+    format!("poi:osm:{}", id).to_string()
+}
+
+fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    admins: &AdminsVec, city_level: u32) -> mimir::Poi {
+	let admins_geofinder = make_admin_geofinder(admins);
+	match *osmobj {
+	    osmpbfreader::OsmObj::Node(ref node) => {
+	        let name = node.tags.get("name").map_or("", |name| name);
+            mimir::Poi {
+                id: format_id(node.id),
+                name: name.to_string(),
+                label: format_label(&admins, city_level, name),
+                coord: mimir::Coord::new(node.lat, node.lon),
+				zip_codes: get_zip_codes_from_admins(&admins),
+                administrative_regions: get_node_admin(&admins_geofinder, &node),
+                weight: 1,
+            }
+	    },
+	    osmpbfreader::OsmObj::Way(ref way) => {
+	        let coord = get_way_coord(obj_map, way);
+	        let name = way.tags.get("name").map_or("", |name| name);
+            mimir::Poi {
+                id: format_id(way.id),
+                name: name.to_string(),
+                label: format_label(&admins, city_level, name),
+                coord: coord.clone(),
+                administrative_regions: admins_geofinder.get(&coord),
+                weight: 1,
+            }
+	    },
+	    osmpbfreader::OsmObj::Relation(ref relation) => {
+	        let name = relation.tags.get("name").map_or("", |name| name);
+	        let coord = match mimirsbrunn::boundaries::build_boundary(&relation, &obj_map) {
+	            Some(multipolygon) => {
+	                let p = multipolygon.centroid().unwrap();
+	                mimir::Coord::new(p.lng(), p.lat())
+	            },
+	            _ => mimir::Coord::new(0.0, 0.0)
+	        };
+
+            mimir::Poi {
+                id: format_id(relation.id),
+                name: name.to_string(),
+                label: format_label(&admins, city_level, name),
+                coord: coord.clone(),
+                administrative_regions: admins_geofinder.get(&coord),
+                weight: 1,
+            }
+	    },
+	}
+}
+
 fn pois(pbf: &mut OsmPbfReader, poi_types: PoiTypes, admins: &AdminsVec, city_level: u32) -> PoisVec {
-    let admins_geofinder = make_admin_geofinder(admins);
     let matcher = PoiMatcher::new(poi_types);
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_poi(o)).unwrap();
-
-    objects.iter().map(|(_, obj)| {
-        let node = obj.node().unwrap();
-        let node_name = node.tags.get("name").map_or("", |name| name);
-        let admins = get_node_admin(&admins_geofinder, node);
-
-        mimir::Poi {
-            id: format!("poi:osm:{}", node.id).to_string(),
-            name: node_name.to_string(),
-            label: format_label(&admins, city_level, node_name),
-            coord: mimir::Coord::new(node.lat, node.lon),
-            zip_codes: get_zip_codes_from_admins(&admins),
-            administrative_regions: admins,
-            weight: 1,
-        }
+    objects.iter().filter(|&(_, obj)| 
+        matcher.is_poi(&obj)).map(|(_, obj)| {
+            parse_poi(obj, &objects, admins, city_level)
     }).collect()
 }
 
