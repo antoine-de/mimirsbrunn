@@ -26,6 +26,60 @@
     <tag k='ref:SIREN' v='217704873' />
     <tag k='source:population' v='INSEE 2013' />
   </node>
+  <node id='26696413' timestamp='2013-12-11T22:32:16Z' uid='10610' user='RedFox' visible='true' version='9' changeset='19403711' lat='48.5681896' lon='2.4826341'>
+    <tag k='addr:postcode' v='91830' />
+    <tag k='name' v='Le Coudray-Montceaux' />
+    <tag k='place' v='village' />
+    <tag k='population' v='4708' />
+    <tag k='ref:INSEE' v='91179' />
+    <tag k='ref:SIREN' v='219101797' />
+    <tag k='source:population' v='INSEE 2013' />
+  </node>
+  <node id='246774041' timestamp='2009-04-08T22:13:07Z' uid='37548' user='Marcussacapuces91' visible='true' version='14' changeset='345628' lat='48.572817' lon='2.4705653' />
+  <node id='249227604' timestamp='2009-08-05T22:27:50Z' uid='59037' user='tenshu' visible='true' version='2' changeset='2050762' lat='48.5796882' lon='2.4807233' />
+  <node id='249227608' timestamp='2012-11-01T22:44:25Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5762001' lon='2.4755879' />
+  <node id='249227609' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5717938' lon='2.4755079' />
+  <node id='249227610' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5715684' lon='2.4759815' />
+  <node id='249227611' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5711179' lon='2.4767256' />
+  <node id='249227612' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5710276' lon='2.4769963' />
+  <node id='249227613' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5704416' lon='2.4781464' />
+  <node id='249227614' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5704413' lon='2.4784174' />
+  <node id='249227615' timestamp='2009-04-08T22:17:01Z' uid='37548' user='Marcussacapuces91' visible='true' version='11' changeset='345628' lat='48.5706652' lon='2.4791633' />
+  <node id='249227616' timestamp='2012-10-14T22:15:32Z' uid='889270' user='Marcussacapuces91 - Cadastre' visible='true' version='11' changeset='13498197' lat='48.5693576' lon='2.4799377' />
+  <node id='249227617' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5694049' lon='2.480176' />
+  <node id='249227618' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5696295' lon='2.4803799' />
+  <node id='249227619' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5696743' lon='2.4805155' />
+  <node id='249227620' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5696286' lon='2.4810574' />
+  <node id='249227621' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5695835' lon='2.4811927' />
+  <node id='249227622' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5699425' lon='2.4817358' />
+  <node id='249227624' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5709332' lon='2.4805869' />
+  <node id='249227626' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5742178' lon='2.4786992' />
+  <node id='249227633' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5718333' lon='2.4799119' />
+  <node id='249227634' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5784006' lon='2.4777624' />
+  <node id='249227642' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5767817' lon='2.4778933' />
+  <node id='249227645' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.580971' lon='2.4789216' />
+  <node id='249227646' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5797131' lon='2.4781049' />
+  <node id='249227653' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5800255' lon='2.4799354' />
+  <node id='249227656' timestamp='2012-11-01T22:44:26Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5809708' lon='2.4791249' />
+  <node id='249227668' timestamp='2012-11-01T22:44:27Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5777305' lon='2.4742369' />
+  <node id='249227669' timestamp='2012-11-01T22:44:27Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5776387' lon='2.4757274' />
+  <node id='249350549' timestamp='2013-07-17T20:02:27Z' uid='709289' user='Super-Map' visible='true' version='3' changeset='16991910' lat='48.5776717' lon='2.4737816' />
+  <node id='249350550' timestamp='2012-11-01T22:44:42Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5770604' lon='2.4734091' />
+  <node id='249350554' timestamp='2013-04-18T18:09:23Z' uid='158826' user='cquest' visible='true' version='3' changeset='15776363' lat='48.5777609' lon='2.473828' />
+  <node id='249350555' timestamp='2012-11-01T22:44:43Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5764411' lon='2.4729019' />
+  <node id='249350556' timestamp='2012-11-01T22:44:43Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.576352' lon='2.4728529' />
+  <node id='249350557' timestamp='2012-11-01T22:44:43Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5761202' lon='2.4728618' />
+  <node id='249350558' timestamp='2012-11-01T22:44:43Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5756969' lon='2.4729019' />
+  <node id='249350559' timestamp='2012-11-01T22:44:43Z' uid='85516' user='MS BOT' visible='true' version='2' changeset='13716490' lat='48.5744758' lon='2.472385' />
+  <node id='249350560' timestamp='2013-09-29T17:18:27Z' uid='158826' user='cquest' visible='true' version='3' changeset='18096572' lat='48.574246' lon='2.472425' />
+  <node id='249350562' timestamp='2013-09-29T17:18:27Z' uid='158826' user='cquest' visible='true' version='9' changeset='18096572' lat='48.5741631' lon='2.4725427' />
+  <node id='249350584' timestamp='2011-09-25T21:54:06Z' uid='37548' user='Marcussacapuces91' visible='true' version='2' changeset='9397273' lat='48.5751774' lon='2.4755922' />
+  <node id='252223719' timestamp='2010-04-21T17:18:26Z' uid='25762' user='frodrigo' visible='true' version='5' changeset='4488670' lat='48.5701948' lon='2.5192204' />
+  <node id='252223723' timestamp='2010-04-21T17:18:26Z' uid='25762' user='frodrigo' visible='true' version='5' changeset='4488670' lat='48.5428898' lon='2.4994879' />
+  <node id='252223727' timestamp='2010-04-21T17:18:32Z' uid='25762' user='frodrigo' visible='true' version='4' changeset='4488670' lat='48.5736497' lon='2.522281' />
+  <node id='252223731' timestamp='2010-04-21T17:18:32Z' uid='25762' user='frodrigo' visible='true' version='5' changeset='4488670' lat='48.5465413' lon='2.499627' />
+  <node id='252223733' timestamp='2010-04-21T17:18:23Z' uid='25762' user='frodrigo' visible='true' version='5' changeset='4488670' lat='48.5661774' lon='2.5209246' />
+  <node id='252223734' timestamp='2010-04-21T17:18:32Z' uid='25762' user='frodrigo' visible='true' version='5' changeset='4488670' lat='48.5490144' lon='2.5054662' />
   <node id='280954344' timestamp='2012-01-06T17:29:49Z' uid='27454' user='Popolon' visible='true' version='2' changeset='10313779' lat='48.5366531' lon='2.6567868' />
   <node id='280954472' timestamp='2012-01-06T17:29:54Z' uid='27454' user='Popolon' visible='true' version='2' changeset='10313779' lat='48.537111' lon='2.6570822' />
   <node id='294122551' timestamp='2008-12-21T22:34:54Z' uid='65954' user='lems_faivre' visible='true' version='3' changeset='556337' lat='48.5052275' lon='2.6824227' />
@@ -50,6 +104,156 @@
   <node id='300389606' timestamp='2016-04-21T13:35:17Z' uid='432618' user='max93600' visible='true' version='3' changeset='38757384' lat='48.525527' lon='2.6576285' />
   <node id='300390389' timestamp='2012-07-27T21:05:11Z' uid='27454' user='Popolon' visible='true' version='2' changeset='12516679' lat='48.5235613' lon='2.6557551' />
   <node id='301461355' timestamp='2014-03-11T07:44:32Z' uid='432618' user='max93600' visible='true' version='3' changeset='21039877' lat='48.5196831' lon='2.673838' />
+  <node id='347167917' timestamp='2009-11-17T21:20:10Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.5441741' lon='2.4998112'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167918' timestamp='2009-11-17T21:20:10Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145528' lat='48.5452983' lon='2.4992695'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167919' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.5460537' lon='2.5029663'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167920' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.5461418' lon='2.5009339'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167921' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.5476771' lon='2.5039313'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167922' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.5481908' lon='2.5050651'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167923' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='4' changeset='3145528' lat='48.5514366' lon='2.5060574'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167924' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.5568783' lon='2.512412'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167926' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.5609125' lon='2.5158916'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='347167927' timestamp='2009-11-17T21:20:11Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145528' lat='48.562677' lon='2.5198836'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059913' timestamp='2009-11-17T21:40:00Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.569701' lon='2.5195249'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059915' timestamp='2009-11-17T21:40:00Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5692218' lon='2.5197677'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059916' timestamp='2009-11-17T21:40:00Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5692258' lon='2.519835'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059918' timestamp='2009-11-17T21:40:00Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5685558' lon='2.5201382'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059919' timestamp='2009-11-17T21:40:00Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.567966' lon='2.520275'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059921' timestamp='2009-11-17T21:40:00Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5674597' lon='2.5203379'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059922' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5668937' lon='2.5205602'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059924' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5654907' lon='2.5207195'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059925' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5654743' lon='2.5206298'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059927' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5644854' lon='2.5204517'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059929' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5644329' lon='2.5201773'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059931' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5637063' lon='2.5199362'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059933' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5637148' lon='2.5201523'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059935' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5608292' lon='2.5154332'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059936' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5608356' lon='2.5158618'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059937' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5598641' lon='2.5149006'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059938' timestamp='2009-11-17T21:40:01Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5512521' lon='2.5060677'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059939' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5489836' lon='2.5052674'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059940' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5485827' lon='2.5052391'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059941' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5480714' lon='2.5048114'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059942' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5479462' lon='2.5047517'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059943' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.547725' lon='2.5042765'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059944' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.547554' lon='2.5036882'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059945' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.547325' lon='2.5036173'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059946' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5467922' lon='2.5032166'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059947' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5461588' lon='2.5030635'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059948' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5461312' lon='2.5023625'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059949' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5462484' lon='2.5005028'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059950' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5446423' lon='2.499608'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059951' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5442341' lon='2.4996498'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348059952' timestamp='2009-11-17T21:40:02Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5435576' lon='2.499626'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060001' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5707778' lon='2.5228463'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060003' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5708943' lon='2.5240651'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060005' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5712546' lon='2.524923'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060006' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5714508' lon='2.5257666'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060008' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5715094' lon='2.5270768'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060009' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5713604' lon='2.5289314'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060011' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5713473' lon='2.5295085'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060013' timestamp='2009-11-17T21:40:04Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145722' lat='48.5712785' lon='2.5306533'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348060015' timestamp='2009-11-17T21:40:05Z' uid='183561' user='EtienneChoveBot' visible='true' version='3' changeset='3145722' lat='48.5738031' lon='2.5314739'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
   <node id='348142651' timestamp='2009-11-17T21:42:37Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145738' lat='48.4915346' lon='2.6724276'>
     <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
   </node>
@@ -708,6 +912,18 @@
   <node id='348422818' timestamp='2009-11-17T21:54:45Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145864' lat='48.5357642' lon='2.6462868'>
     <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
   </node>
+  <node id='348627189' timestamp='2009-11-17T21:56:37Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145879' lat='48.5737824' lon='2.5235114'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348627206' timestamp='2009-11-17T21:56:37Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145879' lat='48.5738154' lon='2.5241571'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348627217' timestamp='2009-11-17T21:56:37Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145879' lat='48.5737899' lon='2.5244217'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='348627230' timestamp='2009-11-17T21:56:37Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3145879' lat='48.5734329' lon='2.5267165'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
   <node id='348830905' timestamp='2010-04-03T23:08:13Z' uid='94816' user='Toff-fr60' visible='true' version='3' changeset='4318240' lat='48.5419617' lon='2.6899094'>
     <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
   </node>
@@ -1311,7 +1527,488 @@
   <node id='348832783' timestamp='2009-11-18T08:55:26Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3148456' lat='48.5131202' lon='2.6699044'>
     <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
   </node>
+  <node id='356717367' timestamp='2009-11-18T11:00:40Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5407769' lon='2.4722067'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717368' timestamp='2009-11-18T11:00:40Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5408523' lon='2.4717816'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717369' timestamp='2009-11-18T11:00:40Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5408157' lon='2.4703636'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717370' timestamp='2009-11-18T11:00:40Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5408351' lon='2.4701378'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717371' timestamp='2009-11-18T11:00:40Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5408598' lon='2.4699383'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717373' timestamp='2009-11-18T11:00:41Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5410785' lon='2.469293'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717374' timestamp='2009-11-18T11:00:41Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5412515' lon='2.4689022'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717375' timestamp='2009-11-18T11:00:41Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5415844' lon='2.4675639'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717376' timestamp='2009-11-18T11:00:41Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5415832' lon='2.4670808'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717377' timestamp='2009-11-18T11:00:41Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5415228' lon='2.466524'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356717379' timestamp='2009-11-18T11:00:41Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5413342' lon='2.4652316'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719899' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5415825' lon='2.4728271'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719909' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5400856' lon='2.4766719'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719919' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5410767' lon='2.4804091'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719924' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5422078' lon='2.4838912'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719933' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5424289' lon='2.4844474'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719942' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5427971' lon='2.4850646'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719955' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5428753' lon='2.4855916'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719965' timestamp='2009-11-18T11:00:47Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5428462' lon='2.4861264'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719974' timestamp='2009-11-18T11:00:48Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5428087' lon='2.4861849'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719982' timestamp='2009-11-18T11:00:48Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5426761' lon='2.4862117'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719986' timestamp='2009-11-18T11:00:48Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5429719' lon='2.4894445'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356719999' timestamp='2009-11-18T11:00:48Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5430566' lon='2.4894955'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356720009' timestamp='2009-11-18T11:00:48Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5426184' lon='2.4962049'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356720017' timestamp='2009-11-18T11:00:48Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5432244' lon='2.4962519'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356720026' timestamp='2009-11-18T11:00:49Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5429085' lon='2.4965139'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356720028' timestamp='2009-11-18T11:00:49Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5429275' lon='2.4981254'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='356720031' timestamp='2009-11-18T11:00:49Z' uid='183561' user='EtienneChoveBot' visible='true' version='2' changeset='3149242' lat='48.5429516' lon='2.4987247'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
   <node id='401281737' timestamp='2010-01-24T00:56:07Z' uid='96055' user='tiot' visible='true' version='3' changeset='3697397' lat='48.5375856' lon='2.6651691' />
+  <node id='412301653' timestamp='2014-08-10T22:51:10Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5777833' lon='2.4738421'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='412301663' timestamp='2009-05-28T22:06:38Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5727033' lon='2.470403'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301665' timestamp='2009-05-28T22:06:38Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5720657' lon='2.4694731'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301667' timestamp='2009-05-28T22:06:38Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5718434' lon='2.468961'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301669' timestamp='2009-05-28T22:06:38Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5712879' lon='2.4663727'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301671' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.571961' lon='2.4692816'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301674' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.571876' lon='2.4690728'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301675' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5706596' lon='2.4658016'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301677' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5702731' lon='2.4655394'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301679' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5712659' lon='2.466317'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301680' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5708838' lon='2.4659787'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301683' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5681247' lon='2.4631564'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301685' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.568315' lon='2.4633896'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301686' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5695843' lon='2.4647866'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301689' timestamp='2009-05-28T22:06:39Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5700609' lon='2.4653376'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301692' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5666858' lon='2.4606124'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301693' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5672911' lon='2.4618694'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301694' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5674428' lon='2.4621513'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301696' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5678539' lon='2.4627838'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301698' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.565137' lon='2.4580356'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301701' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.565916' lon='2.4591916'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301703' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5661363' lon='2.4595511'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301704' timestamp='2009-05-28T22:06:40Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5663249' lon='2.4598974'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301709' timestamp='2014-04-17T22:05:32Z' uid='709289' user='Super-Map' visible='true' version='3' changeset='21759029' lat='48.5638215' lon='2.4562841' />
+  <node id='412301711' timestamp='2009-05-28T22:06:41Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5638485' lon='2.4562917'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='412301714' timestamp='2009-05-28T22:06:41Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1346810' lat='48.5648517' lon='2.45763'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736066' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5463917' lon='2.4697011'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736071' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5463531' lon='2.4696861'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736073' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5448262' lon='2.468646'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736076' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5444195' lon='2.4683928'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736079' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5436919' lon='2.467976'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736081' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5436314' lon='2.467922'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736083' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5426345' lon='2.4667492'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736085' timestamp='2009-05-31T23:05:14Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5564037' lon='2.4682265'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736086' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5561899' lon='2.4683463'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736087' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5564819' lon='2.4680926'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736095' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5564314' lon='2.4681927'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736097' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.556059' lon='2.4685724'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736100' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5559841' lon='2.4696268'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736102' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.556157' lon='2.4683754'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736104' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5560796' lon='2.4685099'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736105' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569296' lon='2.4656765'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736106' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569084' lon='2.4659029'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736107' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5568912' lon='2.4652311'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736109' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569276' lon='2.4655894'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736114' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5566505' lon='2.4676086'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736116' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.556572' lon='2.4678681'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736118' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.556753' lon='2.4670615'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736120' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5567088' lon='2.4673388'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736122' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5495502' lon='2.4681334'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736123' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5501915' lon='2.4663195'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736124' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.550207' lon='2.4663058'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736125' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5502355' lon='2.4663213'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736127' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.546469' lon='2.4697019'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736129' timestamp='2009-05-31T23:05:15Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5491365' lon='2.4692419'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736134' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5491697' lon='2.4692225'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736137' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5491858' lon='2.469195'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736139' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5530178' lon='2.4682073'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736141' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5549796' lon='2.4691874'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736143' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5558907' lon='2.4696776'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736145' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5559723' lon='2.4697105'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736146' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5504948' lon='2.4666108'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736147' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5510542' lon='2.4671206'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736148' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5514863' lon='2.4674771'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736153' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5515909' lon='2.4675399'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736155' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5626539' lon='2.4549199'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736158' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5629855' lon='2.4550306'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736161' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5590639' lon='2.4541015'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736163' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5604087' lon='2.4543781'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736165' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5630239' lon='2.4550555'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736166' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5637822' lon='2.4562247'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736167' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5581183' lon='2.4550465'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736169' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5579637' lon='2.455808'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736174' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5578477' lon='2.4563098'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736177' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5573406' lon='2.4583324'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736179' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5589318' lon='2.4540586'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736181' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.558364' lon='2.4538219'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736183' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5583299' lon='2.4538259'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736185' timestamp='2009-05-31T23:05:16Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5583196' lon='2.4538483'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736186' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569491' lon='2.4638303'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736187' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569472' lon='2.4639925'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736188' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569' lon='2.4645943'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736190' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5568856' lon='2.4650247'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736195' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5571033' lon='2.4592158'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736198' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569742' lon='2.4610544'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736200' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569373' lon='2.4620046'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='413736202' timestamp='2009-05-31T23:05:17Z' uid='103769' user='arenevier' visible='true' version='1' changeset='1374208' lat='48.5569235' lon='2.4632204'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </node>
+  <node id='457188715' timestamp='2014-08-10T22:52:14Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5732919' lon='2.5178275'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188716' timestamp='2014-08-10T22:52:14Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.572663' lon='2.5160365'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188718' timestamp='2014-08-10T22:52:14Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5736876' lon='2.5195162'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188720' timestamp='2014-08-10T22:52:14Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5735394' lon='2.5187792'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188722' timestamp='2014-08-10T22:52:14Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5726438' lon='2.5160178'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188723' timestamp='2014-08-10T22:52:14Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5720118' lon='2.5163495'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188728' timestamp='2014-08-10T22:52:14Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5738305' lon='2.5205662'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188730' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5739681' lon='2.522005'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188731' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5750838' lon='2.4803907'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188733' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5753783' lon='2.4802437'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188735' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5739435' lon='2.481295'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188737' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5748897' lon='2.4805118'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188740' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5716997' lon='2.4830665'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188745' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5722302' lon='2.4826025'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188749' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5673333' lon='2.4992427'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188754' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5675973' lon='2.5002469'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188757' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5680702' lon='2.5019345'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188760' timestamp='2014-08-10T22:52:15Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5683154' lon='2.5028716'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188764' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5689907' lon='2.5058023'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188773' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5695095' lon='2.5078947'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188776' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5709723' lon='2.5127367'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188781' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5719839' lon='2.5162923'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188788' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5679775' lon='2.4896169'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188791' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.567771' lon='2.4905958'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188795' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5713074' lon='2.4833603'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188799' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5710708' lon='2.4835989'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188801' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5700758' lon='2.4847959'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188804' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5698606' lon='2.4850816'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188806' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5695344' lon='2.4855786'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188808' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5689961' lon='2.4866884'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188809' timestamp='2014-08-10T22:52:16Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5685993' lon='2.4876316'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188811' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5682613' lon='2.488603'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188813' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5764497' lon='2.4800284'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188815' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5757708' lon='2.4801278'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188817' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5777301' lon='2.4800515'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188819' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5769982' lon='2.4800016'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188821' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5793243' lon='2.480546'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188837' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5786092' lon='2.4802563'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188839' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5782671' lon='2.4801492'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188844' timestamp='2014-08-10T22:52:17Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5672755' lon='2.4989528'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188845' timestamp='2014-08-10T22:52:18Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5672122' lon='2.4983924'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188847' timestamp='2014-08-10T22:52:18Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.567164' lon='2.4977365'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188851' timestamp='2014-08-10T22:52:18Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5671749' lon='2.4967275'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188853' timestamp='2014-08-10T22:52:18Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5674367' lon='2.493313'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457188855' timestamp='2014-08-10T22:52:18Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492' lat='48.5676632' lon='2.4912979'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
+  <node id='457189956' timestamp='2013-01-16T04:19:34Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='14668308' lat='48.5739825' lon='2.5220858'>
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </node>
   <node id='472838398' timestamp='2009-08-24T14:49:52Z' uid='54921' user='treelm' visible='true' version='1' changeset='2244617' lat='48.4906096' lon='2.6730541' />
   <node id='472838399' timestamp='2009-08-24T14:49:52Z' uid='54921' user='treelm' visible='true' version='1' changeset='2244617' lat='48.4916828' lon='2.6760849' />
   <node id='472838401' timestamp='2009-08-24T14:49:52Z' uid='54921' user='treelm' visible='true' version='1' changeset='2244617' lat='48.4904742' lon='2.6770348' />
@@ -1528,6 +2225,7 @@
   <node id='1283408999' timestamp='2011-05-13T22:05:56Z' uid='211154' user='ËdzëronK' visible='true' version='1' changeset='8135555' lat='48.515355' lon='2.634876' />
   <node id='1286409651' timestamp='2011-05-15T14:07:15Z' uid='211154' user='ËdzëronK' visible='true' version='1' changeset='8152225' lat='48.494364' lon='2.685437' />
   <node id='1286421557' timestamp='2011-05-15T14:09:59Z' uid='211154' user='ËdzëronK' visible='true' version='1' changeset='8152225' lat='48.494327' lon='2.685367' />
+  <node id='1465754590' timestamp='2011-10-13T19:51:04Z' uid='103769' user='arenevier' visible='true' version='1' changeset='9550533' lat='48.5717424' lon='2.5308041' />
   <node id='1518734718' timestamp='2011-11-26T22:43:08Z' uid='27454' user='Popolon' visible='true' version='1' changeset='9961956' lat='48.5421139' lon='2.6470818' />
   <node id='1518734916' timestamp='2011-11-26T22:43:12Z' uid='27454' user='Popolon' visible='true' version='1' changeset='9961956' lat='48.5407743' lon='2.6488761' />
   <node id='1554849964' timestamp='2011-12-19T23:07:23Z' uid='27454' user='Popolon' visible='true' version='1' changeset='10160097' lat='48.5512589' lon='2.6360262' />
@@ -1578,9 +2276,14 @@
   <node id='1840993160' timestamp='2012-07-28T09:07:15Z' uid='27454' user='Popolon' visible='true' version='1' changeset='12520533' lat='48.5419052' lon='2.6961957' />
   <node id='1841017743' timestamp='2014-03-14T14:00:31Z' uid='432618' user='max93600' visible='true' version='2' changeset='21099990' lat='48.5412991' lon='2.6784347' />
   <node id='1879920067' timestamp='2013-10-30T23:40:57Z' uid='37548' user='Marcussacapuces91' visible='true' version='2' changeset='18626851' lat='48.5241956' lon='2.6819918' />
+  <node id='1965805901' timestamp='2012-10-14T22:15:03Z' uid='889270' user='Marcussacapuces91 - Cadastre' visible='true' version='1' changeset='13498197' lat='48.5704496' lon='2.4792966'>
+    <tag k='highway' v='crossing' />
+  </node>
+  <node id='2275161987' timestamp='2013-04-21T12:08:58Z' uid='158826' user='cquest' visible='true' version='1' changeset='15809961' lat='48.5750684' lon='2.4726358' />
   <node id='2358336417' timestamp='2013-06-24T09:24:13Z' uid='27454' user='Popolon' visible='true' version='1' changeset='16680778' lat='48.536705' lon='2.6568203'>
     <tag k='highway' v='crossing' />
   </node>
+  <node id='2476784579' timestamp='2013-09-29T17:18:25Z' uid='158826' user='cquest' visible='true' version='1' changeset='18096572' lat='48.574353' lon='2.4723627' />
   <node id='2513093901' timestamp='2013-11-22T19:29:13Z' uid='37548' user='Marcussacapuces91' visible='true' version='2' changeset='19060415' lat='48.5064034' lon='2.6836232' />
   <node id='2513093940' timestamp='2013-10-29T18:10:33Z' uid='158826' user='cquest' visible='true' version='1' changeset='18605762' lat='48.5099457' lon='2.6889979' />
   <node id='2513093944' timestamp='2013-10-29T18:10:33Z' uid='158826' user='cquest' visible='true' version='1' changeset='18605762' lat='48.5100464' lon='2.6892194' />
@@ -1637,6 +2340,18 @@
     <tag k='highway' v='crossing' />
   </node>
   <node id='2575014041' timestamp='2013-12-10T22:05:16Z' uid='37548' user='Marcussacapuces91' visible='true' version='1' changeset='19385073' lat='48.4916136' lon='2.6793286' />
+  <node id='2576648946' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5654804' lon='2.4863616' />
+  <node id='2576648948' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5655178' lon='2.4862773' />
+  <node id='2576648951' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5655602' lon='2.4861819' />
+  <node id='2576648953' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5656738' lon='2.4862963' />
+  <node id='2576648957' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5657048' lon='2.4862265' />
+  <node id='2576648959' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.565743' lon='2.4866264' />
+  <node id='2576648965' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5657642' lon='2.4865787' />
+  <node id='2576648967' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5657653' lon='2.4862875' />
+  <node id='2576648971' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5658106' lon='2.4866254' />
+  <node id='2576648974' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5658398' lon='2.4863627' />
+  <node id='2576648976' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5658794' lon='2.4862716' />
+  <node id='2576648979' timestamp='2013-12-12T07:38:49Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475' lat='48.5659405' lon='2.4863332' />
   <node id='2820176745' timestamp='2014-04-27T08:55:27Z' uid='37548' user='Marcussacapuces91' visible='true' version='1' changeset='21972222' lat='48.4944625' lon='2.6856214' />
   <node id='2820176746' timestamp='2014-04-27T08:55:27Z' uid='37548' user='Marcussacapuces91' visible='true' version='1' changeset='21972222' lat='48.4944708' lon='2.6856005' />
   <node id='2820176749' timestamp='2014-04-27T08:55:27Z' uid='37548' user='Marcussacapuces91' visible='true' version='1' changeset='21972222' lat='48.4947117' lon='2.6860371' />
@@ -1678,6 +2393,41 @@
   <node id='3559049486' timestamp='2015-05-30T16:43:06Z' uid='1238664' user='zerpou' visible='true' version='1' changeset='31588203' lat='48.5429087' lon='2.6580237' />
   <node id='3559049487' timestamp='2015-05-30T16:43:06Z' uid='1238664' user='zerpou' visible='true' version='1' changeset='31588203' lat='48.5429556' lon='2.6589731' />
   <node id='3559049488' timestamp='2015-05-30T16:43:06Z' uid='1238664' user='zerpou' visible='true' version='1' changeset='31588203' lat='48.5431605' lon='2.6583935' />
+  <way id='23088473' timestamp='2014-08-10T22:25:05Z' uid='90780' user='Verdy_p' visible='true' version='5' changeset='24665492'>
+    <nd ref='249227604' />
+    <nd ref='249227653' />
+    <nd ref='249227656' />
+    <nd ref='249227645' />
+    <nd ref='249227646' />
+    <nd ref='249227634' />
+    <nd ref='249227642' />
+    <nd ref='249227626' />
+    <nd ref='249227633' />
+    <nd ref='249227624' />
+    <nd ref='249227622' />
+    <nd ref='249227621' />
+    <nd ref='249227620' />
+    <nd ref='249227619' />
+    <nd ref='249227618' />
+    <nd ref='249227617' />
+    <nd ref='249227616' />
+    <nd ref='1965805901' />
+    <nd ref='249227615' />
+    <nd ref='249227614' />
+    <nd ref='249227613' />
+    <nd ref='249227612' />
+    <nd ref='249227611' />
+    <nd ref='249227610' />
+    <nd ref='249227609' />
+    <nd ref='249350584' />
+    <nd ref='249227608' />
+    <nd ref='249227669' />
+    <nd ref='249227668' />
+    <nd ref='412301653' />
+    <tag k='admin_level' v='8' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </way>
   <way id='25761446' timestamp='2013-06-24T09:24:16Z' uid='27454' user='Popolon' visible='true' version='4' changeset='16680778'>
     <nd ref='280954344' />
     <nd ref='2358336417' />
@@ -1833,6 +2583,19 @@
     <tag k='boundary' v='administrative' />
     <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
   </way>
+  <way id='31320795' timestamp='2014-07-25T07:13:25Z' uid='90780' user='Verdy_p' visible='true' version='13' changeset='24343086'>
+    <nd ref='457189956' />
+    <nd ref='252223727' />
+    <nd ref='348627189' />
+    <nd ref='348627206' />
+    <nd ref='348627217' />
+    <nd ref='348627230' />
+    <nd ref='348060015' />
+    <tag k='admin_level' v='6' />
+    <tag k='border_type' v='departement' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </way>
   <way id='31327955' timestamp='2012-10-09T00:37:53Z' uid='158826' user='cquest' visible='true' version='6' changeset='13420556'>
     <nd ref='348422168' />
     <nd ref='348830905' />
@@ -1984,6 +2747,272 @@
     <nd ref='348422672' />
     <nd ref='348422677' />
     <nd ref='348422680' />
+    <tag k='admin_level' v='8' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </way>
+  <way id='31861201' timestamp='2014-03-03T23:51:56Z' uid='90780' user='Verdy_p' visible='true' version='8' changeset='20900274'>
+    <nd ref='356717379' />
+    <nd ref='356717377' />
+    <nd ref='356717376' />
+    <nd ref='356717375' />
+    <nd ref='356717374' />
+    <nd ref='356717373' />
+    <nd ref='356717371' />
+    <nd ref='356717370' />
+    <nd ref='356717369' />
+    <nd ref='356717368' />
+    <nd ref='356717367' />
+    <tag k='admin_level' v='8' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </way>
+  <way id='31861202' timestamp='2014-03-03T23:51:56Z' uid='90780' user='Verdy_p' visible='true' version='4' changeset='20900274'>
+    <nd ref='252223723' />
+    <nd ref='356720031' />
+    <nd ref='356720028' />
+    <nd ref='356720026' />
+    <nd ref='356720017' />
+    <nd ref='356720009' />
+    <nd ref='356719999' />
+    <nd ref='356719986' />
+    <nd ref='356719982' />
+    <nd ref='356719974' />
+    <nd ref='356719965' />
+    <nd ref='356719955' />
+    <nd ref='356719942' />
+    <nd ref='356719933' />
+    <nd ref='356719924' />
+    <nd ref='356719919' />
+    <nd ref='356719909' />
+    <nd ref='356719899' />
+    <nd ref='356717367' />
+    <tag k='admin_level' v='8' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </way>
+  <way id='31861203' timestamp='2014-07-25T07:13:33Z' uid='90780' user='Verdy_p' visible='true' version='11' changeset='24343086'>
+    <nd ref='348060015' />
+    <nd ref='1465754590' />
+    <nd ref='348060013' />
+    <nd ref='348060011' />
+    <nd ref='348060009' />
+    <nd ref='348060008' />
+    <nd ref='348060006' />
+    <nd ref='348060005' />
+    <nd ref='348060003' />
+    <nd ref='348060001' />
+    <nd ref='252223719' />
+    <nd ref='348059913' />
+    <nd ref='348059915' />
+    <nd ref='348059916' />
+    <nd ref='348059918' />
+    <nd ref='348059919' />
+    <nd ref='348059921' />
+    <nd ref='348059922' />
+    <nd ref='252223733' />
+    <nd ref='348059924' />
+    <nd ref='348059925' />
+    <nd ref='348059927' />
+    <nd ref='348059929' />
+    <nd ref='348059933' />
+    <nd ref='348059931' />
+    <nd ref='347167927' />
+    <nd ref='347167926' />
+    <nd ref='348059936' />
+    <nd ref='348059935' />
+    <nd ref='348059937' />
+    <nd ref='347167924' />
+    <nd ref='347167923' />
+    <nd ref='348059938' />
+    <nd ref='252223734' />
+    <nd ref='348059939' />
+    <nd ref='348059940' />
+    <nd ref='347167922' />
+    <nd ref='348059941' />
+    <nd ref='348059942' />
+    <nd ref='348059943' />
+    <nd ref='347167921' />
+    <nd ref='348059944' />
+    <nd ref='348059945' />
+    <nd ref='348059946' />
+    <nd ref='348059947' />
+    <nd ref='347167919' />
+    <nd ref='348059948' />
+    <nd ref='347167920' />
+    <nd ref='348059949' />
+    <nd ref='252223731' />
+    <nd ref='347167918' />
+    <nd ref='348059950' />
+    <nd ref='348059951' />
+    <nd ref='347167917' />
+    <nd ref='348059952' />
+    <nd ref='252223723' />
+    <tag k='admin_level' v='6' />
+    <tag k='border_type' v='departement' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
+  </way>
+  <way id='35150662' timestamp='2014-03-03T23:51:57Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='20900274'>
+    <nd ref='412301653' />
+    <nd ref='249350554' />
+    <nd ref='249350549' />
+    <nd ref='249350550' />
+    <nd ref='249350555' />
+    <nd ref='249350556' />
+    <nd ref='249350557' />
+    <nd ref='249350558' />
+    <nd ref='2275161987' />
+    <nd ref='249350559' />
+    <nd ref='2476784579' />
+    <nd ref='249350560' />
+    <nd ref='249350562' />
+    <nd ref='246774041' />
+    <nd ref='412301663' />
+    <nd ref='412301665' />
+    <nd ref='412301671' />
+    <nd ref='412301674' />
+    <nd ref='412301667' />
+    <nd ref='412301669' />
+    <nd ref='412301679' />
+    <nd ref='412301680' />
+    <nd ref='412301675' />
+    <nd ref='412301677' />
+    <nd ref='412301689' />
+    <nd ref='412301686' />
+    <nd ref='412301685' />
+    <nd ref='412301683' />
+    <nd ref='412301696' />
+    <nd ref='412301694' />
+    <nd ref='412301693' />
+    <nd ref='412301692' />
+    <nd ref='412301704' />
+    <nd ref='412301703' />
+    <nd ref='412301701' />
+    <nd ref='412301698' />
+    <nd ref='412301714' />
+    <nd ref='412301711' />
+    <nd ref='412301709' />
+    <tag k='admin_level' v='8' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </way>
+  <way id='35305052' timestamp='2014-03-03T23:51:58Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='20900274'>
+    <nd ref='412301709' />
+    <nd ref='413736166' />
+    <nd ref='413736165' />
+    <nd ref='413736158' />
+    <nd ref='413736155' />
+    <nd ref='413736163' />
+    <nd ref='413736161' />
+    <nd ref='413736179' />
+    <nd ref='413736181' />
+    <nd ref='413736183' />
+    <nd ref='413736185' />
+    <nd ref='413736167' />
+    <nd ref='413736169' />
+    <nd ref='413736174' />
+    <nd ref='413736177' />
+    <nd ref='413736195' />
+    <nd ref='413736198' />
+    <nd ref='413736200' />
+    <nd ref='413736202' />
+    <nd ref='413736186' />
+    <nd ref='413736187' />
+    <nd ref='413736188' />
+    <nd ref='413736190' />
+    <nd ref='413736107' />
+    <nd ref='413736109' />
+    <nd ref='413736105' />
+    <nd ref='413736106' />
+    <nd ref='413736118' />
+    <nd ref='413736120' />
+    <nd ref='413736114' />
+    <nd ref='413736116' />
+    <nd ref='413736087' />
+    <nd ref='413736095' />
+    <nd ref='413736085' />
+    <nd ref='413736086' />
+    <nd ref='413736102' />
+    <nd ref='413736104' />
+    <nd ref='413736097' />
+    <nd ref='413736100' />
+    <nd ref='413736145' />
+    <nd ref='413736143' />
+    <nd ref='413736141' />
+    <nd ref='413736139' />
+    <nd ref='413736153' />
+    <nd ref='413736148' />
+    <nd ref='413736147' />
+    <nd ref='413736146' />
+    <nd ref='413736125' />
+    <nd ref='413736124' />
+    <nd ref='413736123' />
+    <nd ref='413736122' />
+    <nd ref='413736137' />
+    <nd ref='413736134' />
+    <nd ref='413736129' />
+    <nd ref='413736127' />
+    <nd ref='413736066' />
+    <nd ref='413736071' />
+    <nd ref='413736073' />
+    <nd ref='413736076' />
+    <nd ref='413736079' />
+    <nd ref='413736081' />
+    <nd ref='413736083' />
+    <nd ref='356717379' />
+    <tag k='admin_level' v='8' />
+    <tag k='boundary' v='administrative' />
+    <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
+  </way>
+  <way id='38625921' timestamp='2014-08-10T22:29:30Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='24665492'>
+    <nd ref='249227604' />
+    <nd ref='457188821' />
+    <nd ref='457188837' />
+    <nd ref='457188839' />
+    <nd ref='457188817' />
+    <nd ref='457188819' />
+    <nd ref='457188813' />
+    <nd ref='457188815' />
+    <nd ref='457188733' />
+    <nd ref='457188731' />
+    <nd ref='457188737' />
+    <nd ref='457188735' />
+    <nd ref='457188745' />
+    <nd ref='457188740' />
+    <nd ref='457188795' />
+    <nd ref='457188799' />
+    <nd ref='457188801' />
+    <nd ref='457188804' />
+    <nd ref='457188806' />
+    <nd ref='457188808' />
+    <nd ref='457188809' />
+    <nd ref='457188811' />
+    <nd ref='457188788' />
+    <nd ref='457188791' />
+    <nd ref='457188855' />
+    <nd ref='457188853' />
+    <nd ref='457188851' />
+    <nd ref='457188847' />
+    <nd ref='457188845' />
+    <nd ref='457188844' />
+    <nd ref='457188749' />
+    <nd ref='457188754' />
+    <nd ref='457188757' />
+    <nd ref='457188760' />
+    <nd ref='457188764' />
+    <nd ref='457188773' />
+    <nd ref='457188776' />
+    <nd ref='457188781' />
+    <nd ref='457188723' />
+    <nd ref='457188722' />
+    <nd ref='457188716' />
+    <nd ref='457188715' />
+    <nd ref='457188720' />
+    <nd ref='457188718' />
+    <nd ref='457188728' />
+    <nd ref='457188730' />
+    <nd ref='457189956' />
     <tag k='admin_level' v='8' />
     <tag k='boundary' v='administrative' />
     <tag k='source' v='cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre. Mise à jour : 2009' />
@@ -2572,6 +3601,29 @@
     <tag k='oneway:bicycle' v='yes' />
     <tag k='surface' v='asphalt' />
   </way>
+  <way id='251448286' timestamp='2013-12-12T07:38:54Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475'>
+    <nd ref='2576648974' />
+    <nd ref='2576648976' />
+    <tag k='highway' v='service' />
+    <tag k='lit' v='yes' />
+    <tag k='service' v='parking_aisle' />
+    <tag k='source' v='Bing' />
+    <tag k='surface' v='asphalt' />
+  </way>
+  <way id='251448293' timestamp='2013-12-12T07:38:55Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475'>
+    <nd ref='2576648974' />
+    <nd ref='2576648967' />
+    <nd ref='2576648957' />
+    <nd ref='2576648953' />
+    <nd ref='2576648951' />
+    <nd ref='2576648948' />
+    <nd ref='2576648946' />
+    <nd ref='2576648959' />
+    <nd ref='2576648965' />
+    <nd ref='2576648971' />
+    <nd ref='2576648979' />
+    <nd ref='2576648976' />
+  </way>
   <way id='264826813' timestamp='2014-03-06T22:01:42Z' uid='432618' user='max93600' visible='true' version='1' changeset='20959578'>
     <nd ref='496094055' />
     <nd ref='496096085' />
@@ -2706,6 +3758,25 @@
     <tag k='source:addr:postcode' v='source of postcode is from osm nodes' />
     <tag k='type' v='boundary' />
     <tag k='wikipedia' v='fr:Vaux-le-Pénil' />
+  </relation>
+  <relation id='190937' timestamp='2014-03-03T23:51:44Z' uid='90780' user='Verdy_p' visible='true' version='9' changeset='20900274'>
+    <member type='node' ref='26696413' role='admin_centre' />
+    <member type='way' ref='31861203' role='outer' />
+    <member type='way' ref='31320795' role='outer' />
+    <member type='way' ref='38625921' role='outer' />
+    <member type='way' ref='23088473' role='outer' />
+    <member type='way' ref='35150662' role='outer' />
+    <member type='way' ref='35305052' role='outer' />
+    <member type='way' ref='31861201' role='outer' />
+    <member type='way' ref='31861202' role='outer' />
+    <tag k='addr:postcode' v='91830' />
+    <tag k='admin_level' v='8' />
+    <tag k='boundary' v='administrative' />
+    <tag k='name' v='Le Coudray-Montceaux' />
+    <tag k='ref:INSEE' v='91179' />
+    <tag k='source:addr:postcode' v='source of postcode is from osm nodes' />
+    <tag k='type' v='boundary' />
+    <tag k='wikipedia' v='fr:Le Coudray-Montceaux' />
   </relation>
   <relation id='215390' timestamp='2014-07-25T07:12:06Z' uid='90780' user='Verdy_p' visible='true' version='8' changeset='24343086'>
     <member type='node' ref='1697664320' role='admin_centre' />
@@ -3654,6 +4725,106 @@
     <tag k='symbol' v='rot_halb_halb' />
     <tag k='type' v='route' />
   </relation>
+  <relation id='3374016' timestamp='2013-12-12T07:38:55Z' uid='709289' user='Super-Map' visible='true' version='1' changeset='19407475'>
+    <member type='way' ref='251448293' role='outer' />
+    <member type='way' ref='251448286' role='outer' />
+    <tag k='access' v='customers' />
+    <tag k='amenity' v='parking' />
+    <tag k='capacity:disabled' v='yes' />
+    <tag k='fee' v='no' />
+    <tag k='parking' v='surface' />
+    <tag k='type' v='multipolygon' />
+    <tag k='name' v='Parking' />
+  </relation>
+  <relation id='3552342' timestamp='2016-08-14T10:47:19Z' uid='512235' user='Pichasso' visible='true' version='6' changeset='41441512'>
+    <member type='node' ref='26691548' role='admin_centre' />
+    <member type='way' ref='44445164' role='outer' />
+    <member type='way' ref='35320992' role='outer' />
+    <member type='way' ref='35320868' role='outer' />
+    <member type='way' ref='44445166' role='outer' />
+    <member type='way' ref='99061382' role='outer' />
+    <member type='way' ref='44447079' role='outer' />
+    <member type='way' ref='99066627' role='outer' />
+    <member type='way' ref='82010225' role='outer' />
+    <member type='way' ref='44372374' role='outer' />
+    <member type='way' ref='138197932' role='outer' />
+    <member type='way' ref='138197929' role='outer' />
+    <member type='way' ref='31838635' role='outer' />
+    <member type='way' ref='31145117' role='outer' />
+    <member type='way' ref='31838628' role='outer' />
+    <member type='way' ref='31829131' role='outer' />
+    <member type='way' ref='31145118' role='outer' />
+    <member type='way' ref='31145116' role='outer' />
+    <member type='way' ref='31829135' role='outer' />
+    <member type='way' ref='31211319' role='outer' />
+    <member type='way' ref='31856577' role='outer' />
+    <member type='way' ref='31861203' role='outer' />
+    <member type='way' ref='31320795' role='outer' />
+    <member type='way' ref='38625921' role='outer' />
+    <member type='way' ref='23088473' role='outer' />
+    <member type='way' ref='23088480' role='outer' />
+    <member type='way' ref='35150664' role='outer' />
+    <member type='way' ref='35176938' role='outer' />
+    <member type='way' ref='255482300' role='outer' />
+    <member type='way' ref='44311377' role='outer' />
+    <member type='way' ref='44369803' role='outer' />
+    <member type='way' ref='45320909' role='outer' />
+    <member type='way' ref='44176881' role='outer' />
+    <member type='way' ref='44093388' role='outer' />
+    <member type='way' ref='45320911' role='outer' />
+    <member type='way' ref='49068287' role='outer' />
+    <member type='way' ref='49055830' role='outer' />
+    <member type='way' ref='49055827' role='outer' />
+    <member type='way' ref='49056073' role='outer' />
+    <member type='way' ref='49016697' role='outer' />
+    <member type='way' ref='49014929' role='outer' />
+    <member type='way' ref='81759466' role='outer' />
+    <member type='way' ref='81624369' role='outer' />
+    <member type='way' ref='49015352' role='outer' />
+    <member type='way' ref='49015353' role='outer' />
+    <member type='way' ref='49015351' role='outer' />
+    <member type='relation' ref='89117' role='subarea' />
+    <member type='relation' ref='319504' role='subarea' />
+    <member type='relation' ref='319514' role='subarea' />
+    <member type='relation' ref='325975' role='subarea' />
+    <member type='relation' ref='397089' role='subarea' />
+    <member type='relation' ref='325993' role='subarea' />
+    <member type='relation' ref='89023' role='subarea' />
+    <member type='relation' ref='89113' role='subarea' />
+    <member type='relation' ref='190937' role='subarea' />
+    <member type='relation' ref='88933' role='subarea' />
+    <member type='relation' ref='396799' role='subarea' />
+    <member type='relation' ref='88932' role='subarea' />
+    <member type='relation' ref='318521' role='subarea' />
+    <member type='relation' ref='319580' role='subarea' />
+    <member type='relation' ref='396728' role='subarea' />
+    <member type='relation' ref='397179' role='subarea' />
+    <member type='relation' ref='324172' role='subarea' />
+    <member type='relation' ref='396717' role='subarea' />
+    <member type='relation' ref='150419' role='subarea' />
+    <member type='relation' ref='325011' role='subarea' />
+    <member type='relation' ref='89134' role='subarea' />
+    <member type='relation' ref='75181' role='subarea' />
+    <member type='relation' ref='89016' role='subarea' />
+    <member type='relation' ref='953223' role='subarea' />
+    <member type='relation' ref='148954' role='subarea' />
+    <member type='relation' ref='396741' role='subarea' />
+    <member type='relation' ref='88859' role='subarea' />
+    <member type='relation' ref='89125' role='subarea' />
+    <member type='way' ref='313043253' role='outer' />
+    <member type='way' ref='313043251' role='outer' />
+    <member type='way' ref='313043254' role='outer' />
+    <member type='way' ref='314364977' role='outer' />
+    <member type='way' ref='314364973' role='outer' />
+    <tag k='boundary' v='political' />
+    <tag k='name' v='Mennecy' />
+    <tag k='political_division' v='canton' />
+    <tag k='ref' v='091-13' />
+    <tag k='source' v='(JORF 2014-02-27) Décret nº 2014-230 du 24 février 2014 portant délimitation des cantons dans le département de l&apos;Essonne' />
+    <tag k='source:url' v='http://www.legifrance.gouv.fr/affichTexte.do?cidTexte=JORFTEXT000028658326' />
+    <tag k='start_date' v='2015-03' />
+    <tag k='type' v='boundary' />
+  </relation>
   <relation id='3559005' timestamp='2016-04-21T13:36:00Z' uid='432618' user='max93600' visible='true' version='13' changeset='38757384'>
     <member type='way' ref='123896962' role='' />
     <member type='way' ref='264826792' role='' />
@@ -3885,5 +5056,92 @@
     <tag k='name' v='Centre de semi-liberté de Melun' />
     <tag k='source' v='Service-Public.fr - 06/2013' />
     <tag k='type' v='multipolygon' />
+  </relation>
+  <relation id='5820399' timestamp='2016-01-02T02:14:12Z' uid='90780' user='Verdy_p' visible='true' version='2' changeset='36309833'>
+    <member type='node' ref='26691550' role='admin_centre' />
+    <member type='way' ref='31320803' role='outer' />
+    <member type='way' ref='31320804' role='outer' />
+    <member type='way' ref='50443583' role='outer' />
+    <member type='way' ref='31319330' role='outer' />
+    <member type='way' ref='31318349' role='outer' />
+    <member type='way' ref='31318352' role='outer' />
+    <member type='way' ref='31314778' role='outer' />
+    <member type='way' ref='31328855' role='outer' />
+    <member type='way' ref='31328856' role='outer' />
+    <member type='way' ref='31344544' role='outer' />
+    <member type='way' ref='31344545' role='outer' />
+    <member type='way' ref='31347141' role='outer' />
+    <member type='way' ref='31689659' role='outer' />
+    <member type='way' ref='31343862' role='outer' />
+    <member type='way' ref='31689648' role='outer' />
+    <member type='way' ref='31343864' role='outer' />
+    <member type='way' ref='44794613' role='outer' />
+    <member type='way' ref='44803480' role='outer' />
+    <member type='way' ref='38594116' role='outer' />
+    <member type='way' ref='44794612' role='outer' />
+    <member type='way' ref='61461184' role='outer' />
+    <member type='way' ref='61460815' role='outer' />
+    <member type='way' ref='61460792' role='outer' />
+    <member type='way' ref='51545739' role='outer' />
+    <member type='way' ref='35312644' role='outer' />
+    <member type='way' ref='32059891' role='outer' />
+    <member type='way' ref='42260795' role='outer' />
+    <member type='way' ref='51830480' role='outer' />
+    <member type='way' ref='47797895' role='outer' />
+    <member type='way' ref='42200785' role='outer' />
+    <member type='way' ref='27171029' role='outer' />
+    <member type='way' ref='26534649' role='outer' />
+    <member type='way' ref='27171017' role='outer' />
+    <member type='way' ref='35311932' role='outer' />
+    <member type='way' ref='35145798' role='outer' />
+    <member type='way' ref='232468662' role='outer' />
+    <member type='way' ref='255482308' role='outer' />
+    <member type='way' ref='314364974' role='outer' />
+    <member type='way' ref='255482300' role='outer' />
+    <member type='way' ref='35176938' role='outer' />
+    <member type='way' ref='35150664' role='outer' />
+    <member type='way' ref='23088480' role='outer' />
+    <member type='way' ref='35150662' role='outer' />
+    <member type='way' ref='35305052' role='outer' />
+    <member type='way' ref='31861201' role='outer' />
+    <member type='way' ref='31861202' role='outer' />
+    <member type='way' ref='31861203' role='outer' />
+    <member type='relation' ref='150521' role='subarea' />
+    <member type='relation' ref='80135' role='subarea' />
+    <member type='relation' ref='80407' role='subarea' />
+    <member type='relation' ref='190937' role='subarea' />
+    <member type='relation' ref='90336' role='subarea' />
+    <member type='relation' ref='149203' role='subarea' />
+    <member type='relation' ref='190664' role='subarea' />
+    <member type='relation' ref='90335' role='subarea' />
+    <member type='relation' ref='29369' role='subarea' />
+    <member type='relation' ref='80395' role='subarea' />
+    <member type='relation' ref='149373' role='subarea' />
+    <member type='relation' ref='80236' role='subarea' />
+    <member type='relation' ref='190662' role='subarea' />
+    <member type='relation' ref='80160' role='subarea' />
+    <member type='relation' ref='80414' role='subarea' />
+    <member type='relation' ref='150543' role='subarea' />
+    <member type='relation' ref='190663' role='subarea' />
+    <member type='relation' ref='190661' role='subarea' />
+    <member type='relation' ref='190665' role='subarea' />
+    <member type='relation' ref='80143' role='subarea' />
+    <member type='relation' ref='1050512' role='subarea' />
+    <member type='relation' ref='190666' role='subarea' />
+    <member type='relation' ref='80225' role='subarea' />
+    <member type='relation' ref='149097' role='subarea' />
+    <tag k='addr:city' v='Courcouronnes' />
+    <tag k='addr:country' v='FR' />
+    <tag k='addr:postcode' v='91080' />
+    <tag k='addr:street' v='Place des Champs-Élysées' />
+    <tag k='boundary' v='local_authority' />
+    <tag k='local_authority:FR' v='CA' />
+    <tag k='name' v='Communauté d&apos;agglomération Grand Paris Sud Seine Essonne Sénart' />
+    <tag k='note' v='Cette nouvelle CA n&apos;est PAS un territoire de la nouvelle Métropole Grand Paris lors de leurs créations simultanées' />
+    <tag k='short_name' v='CAGPSSES' />
+    <tag k='source' v='Arrêté préfectoral n° 955 du 14 décembre 2015 portant création d&apos;un EPCI à fiscalité propre issu de la fusion de 4 CA (Évry Centre Essonne, Seine Essonne, Sénart, Sénart en Essonne) avec extension à la commune de Grigny' />
+    <tag k='source:url' v='http://www.essonne.gouv.fr/content/download/17532/151465/file/RAA+120+du+15+12+2015.pdf' />
+    <tag k='start_date' v='2016-01-01' />
+    <tag k='type' v='boundary' />
   </relation>
 </osm>

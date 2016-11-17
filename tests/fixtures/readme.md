@@ -8,10 +8,12 @@ To add data to the OSM fixture :
 * open the *.osm source file, with JOSM (File > Open)
 * use the "Dowload Object" dialog (File > Dowload Object..) to select existing OSM object
 * save the new source file (File > Save As...)
-* transform the *.osm file into an *.osm.pbf file using osmconvert or osmosis
+* transform the *.osm file into an *.osm.pbf file using osmosis
 
 Example of osmosis command line :
 `osmosis --read-xml file="osm_fixture.osm" --write-pbf file="three_cities.osm.pbf"`
+
+> NB: osmcnvert can be used for the conversion, but some *name* tags disapears on ways and relations
 
 Do not forget to commit the usable *.osm.pbf file and the *.osm source file to ease the updates.
 
@@ -31,12 +33,14 @@ relation | Vaux-le-Pénil
 relation | Livry-sur-Seine  
 relation | Melun
 relation | Melun (not a valid boundary)
+relation | Le Coudray-Montceaux
 
 ### POIs
 The .osm file contains the following Data :
 
 poi type | poi category | name | city
 --- | --- | --- | ---
+relation | amenity=parking | Parking | Le Coudray-Montceaux
 relation | amenity=parking | Parking | no city provided
 relation | amenity=prison | Centre de semi-liberté de Melun | Melun
 way | amenity=townhall | Hôtel de Ville | no city provided
