@@ -10,6 +10,9 @@ To add data to the OSM fixture :
 * save the new source file (File > Save As...)
 * transform the *.osm file into an *.osm.pbf file using osmconvert or osmosis
 
+Example of osmosis command line :
+`osmosis --read-xml file="osm_fixture.osm" --write-pbf file="three_cities.osm.pbf"`
+
 Do not forget to commit the usable *.osm.pbf file and the *.osm source file to ease the updates.
 
 Note that if you modify the OSM data in JOSM you will need te remove the additions of the JOSM file-format in order to get a valid *.osm.pbf file.
