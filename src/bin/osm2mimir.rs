@@ -450,7 +450,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
                 label: format_label(&adms, city_level, name),
                 coord: mimir::Coord::new(node.lat, node.lon),
 				zip_codes: get_zip_codes_from_admins(&adms),
-                administrative_regions: get_node_admin(&admins_geofinder, &node),
+                administrative_regions: adms,
                 weight: 1,
             }
 	    },
