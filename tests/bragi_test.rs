@@ -336,7 +336,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
-    assert_eq!(count, 1);
+    assert_eq!(count, 4);
     assert!(get_labels(&geocodings).contains(&"Melun Rp (Melun)"));
     assert!(get_postcodes(&geocodings).iter().all(|r| *r == "77000"));
 }

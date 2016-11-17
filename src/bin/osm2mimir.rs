@@ -435,12 +435,13 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
 	match *osmobj {
 	    osmpbfreader::OsmObj::Node(ref node) => {
 	        let name = node.tags.get("name").map_or("", |name| name);
+	        let adms = get_node_admin(&admins_geofinder, node);
             mimir::Poi {
                 id: format_id(node.id),
                 name: name.to_string(),
-                label: format_label(&admins, city_level, name),
+                label: format_label(&adms, city_level, name),
                 coord: mimir::Coord::new(node.lat, node.lon),
-				zip_codes: get_zip_codes_from_admins(&admins),
+				zip_codes: get_zip_codes_from_admins(&adms),
                 administrative_regions: get_node_admin(&admins_geofinder, &node),
                 weight: 1,
             }
@@ -478,6 +479,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
 	    },
 	}
 }
+
 
 fn pois(pbf: &mut OsmPbfReader, poi_types: PoiTypes, admins: &AdminsVec, city_level: u32) -> PoisVec {
     let matcher = PoiMatcher::new(poi_types);
