@@ -346,6 +346,11 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(count_types(&types, "poi"), 2);
     assert_eq!(count_types(&types, "city"), 2);
     assert_eq!(count_types(&types, "street"), 6);
+    
+    // search poi: Poi is relation in osm data
+    let geocodings = get_results(bragi_get("/autocomplete?q=Parking (Le Coudray-Montceaux)"));
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, "poi"), 1);
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
