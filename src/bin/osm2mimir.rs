@@ -341,7 +341,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
                                 street_name: way_name.to_string(),
                                 label: format_label(&admin, city_level, way_name),
                                 weight: 1,
-                                zip_codes: get_zip_codes_for_street(&admin),
+                                zip_codes: get_zip_codes_from_admins(&admin),
                                 administrative_regions: admin,
                                 coord: get_way_coord(objs_map, way),
                     }))
@@ -401,7 +401,7 @@ fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> Stree
    	                    street_name: way_name.to_string(),
    	                    label: format_label(&admins, city_level, way_name),
    	                    weight: 1,
-   	                    zip_codes: get_zip_codes_for_street(&admins),
+   	                    zip_codes: get_zip_codes_from_admins(&admins),
    	                    administrative_regions: admins,
    	                    coord: get_way_coord(objs_map, way),
             }))
@@ -457,24 +457,28 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj, obj_map: &BTreeMap<osmpbfreader::Osm
 	    osmpbfreader::OsmObj::Way(ref way) => {
 	        let coord = get_way_coord(obj_map, way);
 	        let name = way.tags.get("name").map_or("", |name| name);
+	        let adms = admins_geofinder.get(&coord);
             mimir::Poi {
                 id: format_poi_id(way.id),
                 name: name.to_string(),
-                label: format_label(&admins, city_level, name),
+                label: format_label(&adms, city_level, name),
                 coord: coord.clone(),
-                administrative_regions: admins_geofinder.get(&coord),
+                zip_codes: get_zip_codes_from_admins(&adms),
+                administrative_regions: adms,
                 weight: 1,
             }
 	    },
 	    osmpbfreader::OsmObj::Relation(ref relation) => {
 	        let name = relation.tags.get("name").map_or("", |name| name);
 			let coord = get_relation_coord(obj_map, relation);
+			let adms = admins_geofinder.get(&coord);
             mimir::Poi {
                 id: format_poi_id(relation.id),
                 name: name.to_string(),
-                label: format_label(&admins, city_level, name),
+                label: format_label(&adms, city_level, name),
                 coord: coord.clone(),
-                administrative_regions: admins_geofinder.get(&coord),
+                zip_codes: get_zip_codes_from_admins(&adms),
+                administrative_regions: adms,
                 weight: 1,
             }
 	    },
