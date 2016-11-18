@@ -34,6 +34,7 @@ extern crate osm_builder;
 
 use std::collections::BTreeMap;
 use geo::{Polygon, MultiPolygon, LineString, Coordinate, Point};
+use geo::algorithm::centroid::Centroid;
 
 #[cfg(test)]
 use osm_builder::named_node;
@@ -216,6 +217,11 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
     } else {
         Some(multipoly)
     }
+}
+
+pub fn make_centroid(boundary: &Option<MultiPolygon>) -> mimir::Coord {
+	boundary.as_ref().and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
+        .unwrap_or(mimir::Coord::new(0., 0.))
 }
 
 #[test]

@@ -56,9 +56,9 @@ pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
 pub type PoisVec = Vec<mimir::Poi>;
 
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use geo::algorithm::centroid::Centroid;
 use std::rc::Rc;
 use std::cell::Cell;
+use mimirsbrunn::boundaries::{build_boundary, make_centroid};
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -187,12 +187,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 .or_else(|| relation.tags.get("postal_code"))
                 .map(|val| &val[..])
                 .unwrap_or("");
-
-            let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &objects);
-            let coord = coord_centre.or_else(|| {
-                    boundary.as_ref().and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
-                })
-                .unwrap_or(mimir::Coord::new(0., 0.));
+			let boundary = build_boundary(&relation, &objects);
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -200,7 +195,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 label: name.to_string(),
                 zip_codes: zip_code.split(';').map(|s| s.to_string()).collect(),
                 weight: Cell::new(0),
-                coord: coord,
+                coord: coord_centre.unwrap_or(make_centroid(&boundary)),
                 boundary: boundary,
             };
             administrative_regions.push(Rc::new(admin));
@@ -216,15 +211,6 @@ fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
         geofinder.insert(a.clone());
     }
     geofinder
-}
-
-fn get_relation_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-                      relation: &osmpbfreader::objects::Relation)
-                      -> mimir::Coord {
-    let boundary = mimirsbrunn::boundaries::build_boundary(&relation, &obj_map);
-    boundary.as_ref()
-        .and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
-        .unwrap_or(mimir::Coord::new(0., 0.))
 }
 
 fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
@@ -263,24 +249,13 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
-fn get_node_admin(admins_geofinder: &AdminGeoFinder,
-                  node: &osmpbfreader::objects::Node)
-                  -> Vec<Rc<mimir::Admin>> {
-    let coord = geo::Coordinate {
-        x: node.lat,
-        y: node.lon,
-    };
-
-    admins_geofinder.get(&coord)
-}
-
-
 fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
     match admins.iter().position(|adm| adm.level == city_level) {
         Some(idx) => format!("{} ({})", name, admins[idx].label),
         None => name.to_string(),
     }
 }
+
 fn get_zip_codes_from_admins(admins: &AdminsVec) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
         if adm.level > level && !adm.zip_codes.is_empty() {
@@ -445,48 +420,26 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              city_level: u32)
              -> mimir::Poi {
     let admins_geofinder = make_admin_geofinder(admins);
-    match *osmobj {
-        osmpbfreader::OsmObj::Node(ref node) => {
-            let name = node.tags.get("name").map_or("", |name| name);
-            let adms = get_node_admin(&admins_geofinder, node);
-            mimir::Poi {
-                id: format_poi_id(node.id),
-                name: name.to_string(),
-                label: format_label(&adms, city_level, name),
-                coord: mimir::Coord::new(node.lat, node.lon),
-                zip_codes: get_zip_codes_from_admins(&adms),
-                administrative_regions: adms,
-                weight: 1,
-            }
-        }
-        osmpbfreader::OsmObj::Way(ref way) => {
-            let coord = get_way_coord(obj_map, way);
-            let name = way.tags.get("name").map_or("", |name| name);
-            let adms = admins_geofinder.get(&coord);
-            mimir::Poi {
-                id: format_poi_id(way.id),
-                name: name.to_string(),
-                label: format_label(&adms, city_level, name),
-                coord: coord.clone(),
-                zip_codes: get_zip_codes_from_admins(&adms),
-                administrative_regions: adms,
-                weight: 1,
-            }
-        }
-        osmpbfreader::OsmObj::Relation(ref relation) => {
-            let name = relation.tags.get("name").map_or("", |name| name);
-            let coord = get_relation_coord(obj_map, relation);
-            let adms = admins_geofinder.get(&coord);
-            mimir::Poi {
-                id: format_poi_id(relation.id),
-                name: name.to_string(),
-                label: format_label(&adms, city_level, name),
-                coord: coord.clone(),
-                zip_codes: get_zip_codes_from_admins(&adms),
-                administrative_regions: adms,
-                weight: 1,
-            }
-        }
+    let coord = match *osmobj {
+        osmpbfreader::OsmObj::Node(ref node) => mimir::Coord::new(node.lat, node.lon),
+        osmpbfreader::OsmObj::Way(ref way) => get_way_coord(obj_map, way),
+        osmpbfreader::OsmObj::Relation(ref relation) => make_centroid(&build_boundary(&relation, &obj_map))
+    };
+    let id = match *osmobj {
+        osmpbfreader::OsmObj::Node(ref node) => node.id,
+        osmpbfreader::OsmObj::Way(ref way) => way.id,
+        osmpbfreader::OsmObj::Relation(ref relation) => relation.id
+    };
+    let name = osmobj.tags().get("name").map_or("", |name| name);
+    let adms = admins_geofinder.get(&coord);
+    mimir::Poi {
+        id: format_poi_id(id),
+        name: name.to_string(),
+        label: format_label(&adms, city_level, name),
+        coord: coord.clone(),
+        zip_codes: get_zip_codes_from_admins(&adms),
+        administrative_regions: adms,
+        weight: 1,
     }
 }
 
