@@ -74,10 +74,10 @@ impl Bano {
             id: street_id,
             street_name: self.street,
             label: street_name.to_string(),
-            administrative_regions: admin.map_or(vec![], |a| vec!(a.clone())),
+            administrative_regions: admin.map_or(vec![], |a| vec![a.clone()]),
             weight: 1,
             zip_codes: vec![self.zip.clone()],
-            coord: mimir::Coord::new(self.lat, self.lon)
+            coord: mimir::Coord::new(self.lat, self.lon),
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
@@ -143,8 +143,8 @@ fn main() {
     info!("importing bano into Mimir");
 
     let args: Args = docopt::Docopt::new(USAGE)
-                         .and_then(|d| d.decode())
-                         .unwrap_or_else(|e| e.exit());
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
 
     let file_path = Path::new(&args.flag_input);
     if file_path.is_dir() {

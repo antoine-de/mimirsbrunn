@@ -220,7 +220,8 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
 }
 
 pub fn make_centroid(boundary: &Option<MultiPolygon>) -> mimir::Coord {
-	boundary.as_ref().and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
+    boundary.as_ref()
+        .and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
         .unwrap_or(mimir::Coord::new(0., 0.))
 }
 

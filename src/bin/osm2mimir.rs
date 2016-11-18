@@ -162,7 +162,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
             };
 
             // admininstrative region without coordinates
-            let coord_centre = relation.refs
+            let coord_center = relation.refs
                 .iter()
                 .find(|rf| rf.role == "admin_centre")
                 .and_then(|r| {
@@ -187,7 +187,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 .or_else(|| relation.tags.get("postal_code"))
                 .map(|val| &val[..])
                 .unwrap_or("");
-			let boundary = build_boundary(&relation, &objects);
+            let boundary = build_boundary(&relation, &objects);
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -195,7 +195,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
                 label: name.to_string(),
                 zip_codes: zip_code.split(';').map(|s| s.to_string()).collect(),
                 weight: Cell::new(0),
-                coord: coord_centre.unwrap_or(make_centroid(&boundary)),
+                coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
             };
             administrative_regions.push(Rc::new(admin));
@@ -422,7 +422,9 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => (node.id, mimir::Coord::new(node.lat, node.lon)),
         osmpbfreader::OsmObj::Way(ref way) => (way.id, get_way_coord(obj_map, way)),
-        osmpbfreader::OsmObj::Relation(ref relation) => (relation.id, make_centroid(&build_boundary(&relation, &obj_map)))
+        osmpbfreader::OsmObj::Relation(ref relation) => {
+            (relation.id, make_centroid(&build_boundary(&relation, &obj_map)))
+        }
     };
 
     let name = osmobj.tags().get("name").map_or("", |name| name);
