@@ -411,7 +411,7 @@ impl PoiMatcher {
 }
 
 fn format_poi_id(id: i64) -> String {
-    format!("poi:osm:{}", id).to_string()
+    format!("poi:osm:{}", id)
 }
 
 fn parse_poi(osmobj: &osmpbfreader::OsmObj,
