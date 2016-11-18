@@ -403,7 +403,6 @@ impl PoiMatcher {
     }
 
     pub fn is_poi(&self, obj: &osmpbfreader::OsmObj) -> bool {
-        (obj.is_node() || obj.is_way() || obj.is_relation()) &&
         self.poi_types.iter().any(|(poi_tag, poi_types)| {
             obj.tags().get(poi_tag).map_or(false, |poi_type| poi_types.contains(poi_type))
         })
@@ -420,16 +419,12 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              city_level: u32)
              -> mimir::Poi {
     let admins_geofinder = make_admin_geofinder(admins);
-    let coord = match *osmobj {
-        osmpbfreader::OsmObj::Node(ref node) => mimir::Coord::new(node.lat, node.lon),
-        osmpbfreader::OsmObj::Way(ref way) => get_way_coord(obj_map, way),
-        osmpbfreader::OsmObj::Relation(ref relation) => make_centroid(&build_boundary(&relation, &obj_map))
+    let (id, coord) = match *osmobj {
+        osmpbfreader::OsmObj::Node(ref node) => (node.id, mimir::Coord::new(node.lat, node.lon)),
+        osmpbfreader::OsmObj::Way(ref way) => (way.id, get_way_coord(obj_map, way)),
+        osmpbfreader::OsmObj::Relation(ref relation) => (relation.id, make_centroid(&build_boundary(&relation, &obj_map)))
     };
-    let id = match *osmobj {
-        osmpbfreader::OsmObj::Node(ref node) => node.id,
-        osmpbfreader::OsmObj::Way(ref way) => way.id,
-        osmpbfreader::OsmObj::Relation(ref relation) => relation.id
-    };
+
     let name = osmobj.tags().get("name").map_or("", |name| name);
     let adms = admins_geofinder.get(&coord);
     mimir::Poi {
