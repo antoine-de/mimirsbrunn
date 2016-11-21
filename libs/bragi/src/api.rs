@@ -145,19 +145,9 @@ impl ApiEndPoint {
 
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = match params.find("q") {
-                            Some(val) => val.as_str().unwrap_or(""),
-                            None => "",
-                        }
-                        .to_string();
-                    let from = match params.find("from") {
-                            Some(val) => val.as_u64().unwrap_or(DEFAULT_FROM),
-                            None => DEFAULT_FROM,			
-                        };
-                    let size = match params.find("size") {
-                            Some(val) => val.as_u64().unwrap_or(DEFAULT_SIZE),
-                            None => DEFAULT_SIZE,			
-                        };
+                    let q = params.find("q").unwrap().as_str().unwrap().to_string();
+                    let from = params.find("from").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_FROM);
+                    let size = params.find("size").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_SIZE);
                     let geometry = params.find_path(&["geometry"]).unwrap();
                     let coordinates =
                         geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
@@ -214,14 +204,8 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").unwrap().as_str().unwrap().to_string();
-                    let from = match params.find("from") {
-                            Some(val) => val.as_u64().unwrap_or(DEFAULT_FROM),
-                            None => DEFAULT_FROM,			
-                        };
-                    let size = match params.find("size") {
-                            Some(val) => val.as_u64().unwrap_or(DEFAULT_SIZE),
-                            None => DEFAULT_SIZE,			
-                        };
+                    let from = params.find("from").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_FROM);
+                    let size = params.find("size").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_SIZE);
                     let lon = params.find("lon").and_then(|p| p.as_f64());
                     let lat = params.find("lat").and_then(|p| p.as_f64());
                     // we have already checked that if there is a lon, lat

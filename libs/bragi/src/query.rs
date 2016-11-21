@@ -156,7 +156,7 @@ fn query(q: &str,
     let query = build_query(q, match_type, coord, shape);
 
     let mut client = build_rs_client(&cnx.to_string());
-	
+
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                              .with_indexes(&["munin"])
                                                              .with_query(&query)
