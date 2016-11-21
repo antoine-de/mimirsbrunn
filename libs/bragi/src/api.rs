@@ -120,6 +120,8 @@ impl ApiEndPoint {
             api.post("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
+                    params.opt_typed("size", json_dsl::u64());
+                    params.opt_typed("from", json_dsl::u64());
                     params.req("geometry", |geometry| {
                         geometry.coerce(json_dsl::object());
                         geometry.nest(|params| {
@@ -146,6 +148,14 @@ impl ApiEndPoint {
                             None => "",
                         }
                         .to_string();
+                    let from = match params.find("from") {
+                            Some(val) => val.as_u64().unwrap_or(0),
+                            None => 0,			
+                        };
+                    let size = match params.find("size") {
+                            Some(val) => val.as_u64().unwrap_or(0),
+                            None => 0,			
+                        };
                     let geometry = params.find_path(&["geometry"]).unwrap();
                     let coordinates =
                         geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
@@ -155,7 +165,7 @@ impl ApiEndPoint {
                         shape.push((ar.as_array().unwrap()[1].as_f64().unwrap(),
                                     ar.as_array().unwrap()[0].as_f64().unwrap()));
                     }
-                    let model_autocomplete = query::autocomplete(&q, None, &cnx, Some(shape));
+                    let model_autocomplete = query::autocomplete(&q, from, size, None, &cnx, Some(shape));
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -164,6 +174,8 @@ impl ApiEndPoint {
             api.get("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.req_typed("q", json_dsl::string());
+                    params.opt_typed("size", json_dsl::u64());
+                    params.opt_typed("from", json_dsl::u64());
                     params.opt("lon", |lon| {
                         lon.coerce(json_dsl::f64());
                         lon.validate_with(|val, path| {
@@ -200,6 +212,14 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").unwrap().as_str().unwrap().to_string();
+                    let from = match params.find("from") {
+                            Some(val) => val.as_u64().unwrap_or(0),
+                            None => 0,			
+                        };
+                    let size = match params.find("size") {
+                            Some(val) => val.as_u64().unwrap_or(0),
+                            None => 0,			
+                        };
                     let lon = params.find("lon").and_then(|p| p.as_f64());
                     let lat = params.find("lat").and_then(|p| p.as_f64());
                     // we have already checked that if there is a lon, lat
@@ -210,7 +230,7 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
-                    let model_autocomplete = query::autocomplete(&q, coord, &cnx, None);
+                    let model_autocomplete = query::autocomplete(&q, from, size, coord, &cnx, None);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
