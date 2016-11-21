@@ -63,6 +63,12 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
             .unwrap()
     };
 
+    let bragi_params_validation = |q| {
+        iron_test::request::get(&format!("http://localhost:3000{}", q),
+                                iron::Headers::new(),
+                                &handler)
+    };
+
     let bragi_post_shape = |q, shape| {
         let mut header = iron::Headers::new();
         let mime: mime::Mime = "application/json".parse().unwrap();
@@ -96,7 +102,6 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
             })
             .collect()
     };
-
     // Call status
     let resp = bragi_get("/status");
     let result_body = iron_test::response::extract_body_to_string(resp);
@@ -336,9 +341,41 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
-    assert_eq!(count, 1);
+    assert_eq!(count, 2);
     assert!(get_labels(&geocodings).contains(&"Melun Rp (Melun)"));
     assert!(get_postcodes(&geocodings).iter().all(|r| *r == "77000"));
+
+    // search by zip code
+    let geocodings = get_results(bragi_get("/autocomplete?q=77000&size=15"));
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, "poi"), 2);
+    assert_eq!(count_types(&types, "city"), 3);
+    assert_eq!(count_types(&types, "street"), 7);
+
+    // search by zip code and size is string type
+    let geocodings = bragi_params_validation("/autocomplete?q=77000&size=ABCD");
+    assert!(geocodings.is_err() , true);
+
+    // search by zip code and size < 0
+    let geocodings = bragi_params_validation("/autocomplete?q=77000&size=-1");
+    assert!(geocodings.is_err() , true);
+
+    // search by zip code and size and from
+    let all_20 = get_results(bragi_get("/autocomplete?q=77000&size=10&from=0"));
+    assert_eq!(all_20.len(), 10);
+
+    let all_20 = get_results(bragi_get("/autocomplete?q=77000&size=10&from=10"));
+    assert_eq!(all_20.len(), 2);
+
+    // search poi: Poi is relation in osm data
+    let geocodings = get_results(bragi_get("/autocomplete?q=Parking (Le Coudray-Montceaux)"));
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, "poi"), 1);
+    
+    // search poi: Poi is way in osm data
+    let geocodings = get_results(bragi_get("/autocomplete?q=77000 Hôtel de Ville (Melun)"));
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, "poi"), 1);
 }
 
 fn get_labels<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {

@@ -148,6 +148,8 @@ fn build_query(q: &str,
 fn query(q: &str,
          cnx: &str,
          match_type: &str,
+         from: u64,
+         size: u64,
          coord: &Option<model::Coord>,
          shape: Option<Vec<rs_es::units::Location>>)
          -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
@@ -158,6 +160,8 @@ fn query(q: &str,
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
                                                              .with_indexes(&["munin"])
                                                              .with_query(&query)
+                                                             .with_from(from)
+                                                             .with_size(size)
                                                              .send());
 
     debug!("{} documents found", result.hits.total);
@@ -174,21 +178,25 @@ fn query(q: &str,
 
 fn query_prefix(q: &str,
                 cnx: &str,
+                from: u64,
+                size: u64,
                 coord: &Option<model::Coord>,
                 shape: Option<Vec<rs_es::units::Location>>)
                 -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    query(&q, cnx, "label.prefix", coord, shape)
+    query(&q, cnx, "label.prefix", from, size, coord, shape)
 }
 
 fn query_ngram(q: &str,
                cnx: &str,
+               from: u64,
+               size: u64,
                coord: &Option<model::Coord>,
                shape: Option<Vec<rs_es::units::Location>>)
                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    query(&q, cnx, "label.ngram", coord, shape)
+    query(&q, cnx, "label.ngram", from, size, coord, shape)
 }
 
-pub fn autocomplete(q: &str,
+pub fn autocomplete(q: &str, from: u64, size: u64,
                     coord: Option<model::Coord>,
                     cnx: &str,
                     shape: Option<Vec<(f64, f64)>>)
@@ -199,9 +207,9 @@ pub fn autocomplete(q: &str,
         shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
     }
 
-    let results = try!(query_prefix(&q, cnx, &coord, make_shape(&shape)));
+    let results = try!(query_prefix(&q, cnx, from, size, &coord, make_shape(&shape)));
     if results.is_empty() {
-        query_ngram(&q, cnx, &coord, make_shape(&shape))
+        query_ngram(&q, cnx, from, size, &coord, make_shape(&shape))
     } else {
         Ok(results)
     }

@@ -34,6 +34,7 @@ extern crate osm_builder;
 
 use std::collections::BTreeMap;
 use geo::{Polygon, MultiPolygon, LineString, Coordinate, Point};
+use geo::algorithm::centroid::Centroid;
 
 #[cfg(test)]
 use osm_builder::named_node;
@@ -58,16 +59,16 @@ fn get_nodes(way: &osmpbfreader::Way,
              objects: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
              -> Vec<osmpbfreader::Node> {
     way.nodes
-       .iter()
-       .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
-       .filter_map(|node_obj| {
-           if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
-               Some(node.clone())
-           } else {
-               None
-           }
-       })
-       .collect()
+        .iter()
+        .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
+        .filter_map(|node_obj| {
+            if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+                Some(node.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 #[test]
@@ -132,27 +133,26 @@ fn test_get_nodes() {
 pub fn build_boundary(relation: &osmpbfreader::Relation,
                       objects: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
                       -> Option<MultiPolygon> {
-    let mut boundary_parts: Vec<BoundaryPart> =
-        relation.refs
-                .iter()
-                .filter(|rf| rf.role == "outer" || rf.role == "" || rf.role == "enclave")
-                .filter_map(|refe| {
-                    objects.get(&refe.member).or_else(|| {
-                        warn!("missing element for relation {}", relation.id);
-                        None
-                    })
-                })
-                .filter_map(|way_obj| {
-                    if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
-                        Some(way)
-                    } else {
-                        None
-                    }
-                })
-                .map(|way| get_nodes(&way, objects))
-                .filter(|nodes| nodes.len() > 1)
-                .map(|nodes| BoundaryPart::new(nodes))
-                .collect();
+    let mut boundary_parts: Vec<BoundaryPart> = relation.refs
+        .iter()
+        .filter(|rf| rf.role == "outer" || rf.role == "" || rf.role == "enclave")
+        .filter_map(|refe| {
+            objects.get(&refe.member).or_else(|| {
+                warn!("missing element for relation {}", relation.id);
+                None
+            })
+        })
+        .filter_map(|way_obj| {
+            if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
+                Some(way)
+            } else {
+                None
+            }
+        })
+        .map(|way| get_nodes(&way, objects))
+        .filter(|nodes| nodes.len() > 1)
+        .map(|nodes| BoundaryPart::new(nodes))
+        .collect();
     let mut multipoly = MultiPolygon(vec![]);
     // we want to try build a polygon for a least each way
     while !boundary_parts.is_empty() {
@@ -197,13 +197,14 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
                 if current == first {
                     // our polygon is closed, we create it and add it to the multipolygon
                     let polygon = Polygon(LineString(outer.iter()
-                                                    .map(|n| {
-                                                        Point(Coordinate {
-                                                            x: n.lat,
-                                                            y: n.lon,
-                                                        })
-                                                    })
-                                                    .collect()), vec![]);
+                                              .map(|n| {
+                                                  Point(Coordinate {
+                                                      x: n.lat,
+                                                      y: n.lon,
+                                                  })
+                                              })
+                                              .collect()),
+                                          vec![]);
                     multipoly.0.push(polygon);
                     break;
                 }
@@ -216,6 +217,12 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
     } else {
         Some(multipoly)
     }
+}
+
+pub fn make_centroid(boundary: &Option<MultiPolygon>) -> mimir::Coord {
+    boundary.as_ref()
+        .and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
+        .unwrap_or(mimir::Coord::new(0., 0.))
 }
 
 #[test]
@@ -249,8 +256,8 @@ fn test_build_bounadry_not_closed() {
         let mut rel = builder.relation();
         rel_id = rel.relation_id;
         rel.outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
-           .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
-           .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "end")]);
+            .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
+            .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "end")]);
     }
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
         assert!(build_boundary(&relation, &builder.objects).is_none());
@@ -267,8 +274,8 @@ fn test_build_bounadry_closed() {
         let mut rel = builder.relation();
         rel_id = rel.relation_id;
         rel.outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
-           .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
-           .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "start")]);
+            .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
+            .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "start")]);
     }
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
         let multipolygon = build_boundary(&relation, &builder.objects);
