@@ -43,6 +43,8 @@ const MIN_LAT: f64 = -180f64;
 
 const MAX_LON: f64 = 90f64;
 const MIN_LON: f64 = -90f64;
+const DEFAULT_SIZE: u64 = 10u64;
+const DEFAULT_FROM: u64 = 0u64;
 
 fn render<T>(mut client: rustless::Client,
              obj: T)
@@ -149,12 +151,12 @@ impl ApiEndPoint {
                         }
                         .to_string();
                     let from = match params.find("from") {
-                            Some(val) => val.as_u64().unwrap_or(0),
-                            None => 0,			
+                            Some(val) => val.as_u64().unwrap_or(DEFAULT_FROM),
+                            None => DEFAULT_FROM,			
                         };
                     let size = match params.find("size") {
-                            Some(val) => val.as_u64().unwrap_or(0),
-                            None => 0,			
+                            Some(val) => val.as_u64().unwrap_or(DEFAULT_SIZE),
+                            None => DEFAULT_SIZE,			
                         };
                     let geometry = params.find_path(&["geometry"]).unwrap();
                     let coordinates =
@@ -213,12 +215,12 @@ impl ApiEndPoint {
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").unwrap().as_str().unwrap().to_string();
                     let from = match params.find("from") {
-                            Some(val) => val.as_u64().unwrap_or(0),
-                            None => 0,			
+                            Some(val) => val.as_u64().unwrap_or(DEFAULT_FROM),
+                            None => DEFAULT_FROM,			
                         };
                     let size = match params.find("size") {
-                            Some(val) => val.as_u64().unwrap_or(0),
-                            None => 0,			
+                            Some(val) => val.as_u64().unwrap_or(DEFAULT_SIZE),
+                            None => DEFAULT_SIZE,			
                         };
                     let lon = params.find("lon").and_then(|p| p.as_f64());
                     let lat = params.find("lat").and_then(|p| p.as_f64());
