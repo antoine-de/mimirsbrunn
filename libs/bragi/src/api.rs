@@ -145,7 +145,7 @@ impl ApiEndPoint {
 
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = params.find("q").unwrap().as_str().unwrap().to_string();
+                    let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let from = params.find("from").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_FROM);
                     let size = params.find("size").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_SIZE);
                     let geometry = params.find_path(&["geometry"]).unwrap();
@@ -203,7 +203,7 @@ impl ApiEndPoint {
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = params.find("q").unwrap().as_str().unwrap().to_string();
+                    let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let from = params.find("from").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_FROM);
                     let size = params.find("size").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_SIZE);
                     let lon = params.find("lon").and_then(|p| p.as_f64());
