@@ -6,9 +6,9 @@ use std::rc::Rc;
 use std::path::Path;
 
 pub mod utils;
-pub mod osm_admin_reader;
-pub mod osm_poi_reader;
-pub mod osm_street_reader;
+pub mod admin;
+pub mod poi;
+pub mod street;
 
 pub type AdminsVec = Vec<Rc<mimir::Admin>>;
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<File>;

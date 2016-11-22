@@ -31,9 +31,10 @@
 extern crate mimir;
 extern crate osmpbfreader;
 
+use ::admin_geofinder::AdminGeoFinder;
 use ::boundaries::{build_boundary, make_centroid};
 use std::collections::{BTreeSet, BTreeMap};
-use super::utils::{make_admin_geofinder, format_label, get_zip_codes_from_admins, get_way_coord};
+use super::utils::*;
 use super::{OsmPbfReader, AdminsVec};
 
 pub type PoiTypes = BTreeMap<String, BTreeSet<String>>;
@@ -82,7 +83,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              admins: &AdminsVec,
              city_level: u32)
              -> mimir::Poi {
-    let admins_geofinder = make_admin_geofinder(admins);
+    let admins_geofinder = admins.into_iter().cloned().collect::<AdminGeoFinder>();
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => {
             (format_poi_id("node", node.id), mimir::Coord::new(node.lat, node.lon))

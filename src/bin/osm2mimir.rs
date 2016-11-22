@@ -36,10 +36,10 @@ extern crate mimirsbrunn;
 extern crate rustc_serialize;
 
 use mimir::rubber::Rubber;
-use mimirsbrunn::osm_reader::osm_admin_reader::administrative_regions;
-use mimirsbrunn::osm_reader::osm_poi_reader::{PoiTypes, pois, default_amenity_types,
+use mimirsbrunn::osm_reader::admin::administrative_regions;
+use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_amenity_types,
                                               default_leisure_types};
-use mimirsbrunn::osm_reader::osm_street_reader::streets;
+use mimirsbrunn::osm_reader::street::streets;
 use mimirsbrunn::osm_reader::parse_osm_pbf;
 
 #[derive(RustcDecodable, Debug)]

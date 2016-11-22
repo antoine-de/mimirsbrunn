@@ -31,18 +31,8 @@
 extern crate mimir;
 extern crate osmpbfreader;
 
-use ::admin_geofinder::AdminGeoFinder;
 use std::collections::BTreeMap;
 use super::AdminsVec;
-
-pub fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
-    let mut geofinder = AdminGeoFinder::new();
-
-    for a in admins {
-        geofinder.insert(a.clone());
-    }
-    geofinder
-}
 
 pub fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
     match admins.iter().position(|adm| adm.level == city_level) {

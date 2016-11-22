@@ -35,7 +35,7 @@ extern crate osmpbfreader;
 use ::admin_geofinder::AdminGeoFinder;
 use std::collections::{BTreeSet, BTreeMap};
 use std::rc::Rc;
-use super::utils::{make_admin_geofinder, format_label, get_zip_codes_from_admins, get_way_coord};
+use super::utils::*;
 use super::{OsmPbfReader, AdminsVec};
 
 pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
@@ -50,7 +50,7 @@ pub struct StreetKey {
 }
 
 pub fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
-    let admins_geofinder = make_admin_geofinder(admins);
+    let admins_geofinder = admins.into_iter().cloned().collect::<AdminGeoFinder>();
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
