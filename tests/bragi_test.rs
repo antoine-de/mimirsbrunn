@@ -346,25 +346,25 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert!(get_postcodes(&geocodings).iter().all(|r| *r == "77000"));
 
     // search by zip code
-    let geocodings = get_results(bragi_get("/autocomplete?q=77000&size=15"));
+    let geocodings = get_results(bragi_get("/autocomplete?q=77000&limit=15"));
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 2);
     assert_eq!(count_types(&types, "city"), 3);
     assert_eq!(count_types(&types, "street"), 7);
 
-    // search by zip code and size is string type
-    let geocodings = bragi_params_validation("/autocomplete?q=77000&size=ABCD");
+    // search by zip code and limit is string type
+    let geocodings = bragi_params_validation("/autocomplete?q=77000&limit=ABCD");
     assert!(geocodings.is_err() , true);
 
-    // search by zip code and size < 0
-    let geocodings = bragi_params_validation("/autocomplete?q=77000&size=-1");
+    // search by zip code and limit < 0
+    let geocodings = bragi_params_validation("/autocomplete?q=77000&limit=-1");
     assert!(geocodings.is_err() , true);
 
-    // search by zip code and size and from
-    let all_20 = get_results(bragi_get("/autocomplete?q=77000&size=10&from=0"));
+    // search by zip code and limit and offset
+    let all_20 = get_results(bragi_get("/autocomplete?q=77000&limit=10&offset=0"));
     assert_eq!(all_20.len(), 10);
 
-    let all_20 = get_results(bragi_get("/autocomplete?q=77000&size=10&from=10"));
+    let all_20 = get_results(bragi_get("/autocomplete?q=77000&limit=10&offset=10"));
     assert_eq!(all_20.len(), 2);
 
     // search poi: Poi is relation in osm data
