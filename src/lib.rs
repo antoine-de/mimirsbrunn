@@ -39,3 +39,7 @@ extern crate geo;
 
 pub mod boundaries;
 pub mod admin_geofinder;
+pub mod osm_reader;
+
+#[macro_use]
+extern crate mdo;
