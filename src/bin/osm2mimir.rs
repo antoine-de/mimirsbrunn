@@ -204,10 +204,6 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
     return administrative_regions;
 }
 
-fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
-    admins.iter().cloned().collect()
-}
-
 fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
                  way: &osmpbfreader::objects::Way)
                  -> mimir::Coord {
@@ -268,7 +264,7 @@ fn get_zip_codes_from_admins(admins: &AdminsVec) -> Vec<String> {
         .collect()
 }
 fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
-    let admins_geofinder = make_admin_geofinder(admins);
+    let admins_geofinder = admins.iter().cloned().collect::<AdminGeoFinder>();
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
@@ -413,7 +409,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              admins: &AdminsVec,
              city_level: u32)
              -> mimir::Poi {
-    let admins_geofinder = make_admin_geofinder(admins);
+    let admins_geofinder = admins.iter().cloned().collect::<AdminGeoFinder>();
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => (format_poi_id("node", node.id), mimir::Coord::new(node.lat, node.lon)),
         osmpbfreader::OsmObj::Way(ref way) => (format_poi_id("way", way.id), get_way_coord(obj_map, way)),
