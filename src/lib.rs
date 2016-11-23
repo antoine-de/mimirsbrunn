@@ -36,6 +36,9 @@ extern crate osm_builder;
 extern crate gst;
 extern crate ordered_float;
 extern crate geo;
+#[macro_use]
+extern crate mdo;
 
 pub mod boundaries;
 pub mod admin_geofinder;
+pub mod osm_reader;
