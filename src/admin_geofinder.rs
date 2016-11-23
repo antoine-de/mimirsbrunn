@@ -30,6 +30,7 @@
 use mimir::Admin;
 use geo::contains::Contains;
 use geo;
+use std::iter::FromIterator;
 use std::rc::Rc;
 use gst::rtree::{RTree, Rect};
 
@@ -83,6 +84,18 @@ impl AdminGeoFinder {
                 b.contains(&geo::Point(coord.clone()))
             })
         }).cloned().collect()
+    }
+}
+
+impl<T> FromIterator<T> for AdminGeoFinder where T: Into<Rc<Admin>> {
+    fn from_iter<I: IntoIterator<Item=T>>(admins: I) -> Self {
+        let mut geofinder = AdminGeoFinder::new();
+
+        for admin in admins {
+            geofinder.insert(admin.into());
+        }
+
+        geofinder
     }
 }
 
