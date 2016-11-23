@@ -30,6 +30,7 @@
 use mimir::Admin;
 use geo::contains::Contains;
 use geo;
+use std::iter::FromIterator;
 use std::rc::Rc;
 use gst::rtree::{RTree, Rect};
 
@@ -85,6 +86,19 @@ impl AdminGeoFinder {
         }).cloned().collect()
     }
 }
+
+impl FromIterator<Rc<Admin>> for AdminGeoFinder {
+    fn from_iter<I: IntoIterator<Item=Rc<Admin>>>(admins: I) -> Self {
+        let mut geofinder = AdminGeoFinder::new();
+
+        for admin in admins {
+            geofinder.insert(admin.clone());
+        }
+
+        geofinder
+    }
+}
+
 
 // the goal is that f in [down(f as f32) as f64, up(f as f32) as f64]
 fn down(f: f32) -> f32 {

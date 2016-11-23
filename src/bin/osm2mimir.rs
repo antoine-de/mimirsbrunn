@@ -205,12 +205,7 @@ fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Admi
 }
 
 fn make_admin_geofinder(admins: &AdminsVec) -> AdminGeoFinder {
-    let mut geofinder = AdminGeoFinder::new();
-
-    for a in admins {
-        geofinder.insert(a.clone());
-    }
-    geofinder
+    admins.iter().cloned().collect()
 }
 
 fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
