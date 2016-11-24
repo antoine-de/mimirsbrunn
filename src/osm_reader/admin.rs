@@ -141,9 +141,9 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
 }
 
 pub fn compute_admin_weight(streets: &mut StreetsVec) {
-	for st in streets {
-	    for admin in &mut st.administrative_regions {
-			admin.weight.set(admin.weight.get() + 1);
-		}
-	}
+    for st in streets {
+        for admin in &mut st.administrative_regions {
+            admin.weight.set(admin.weight.get() + 1);
+        }
+    }
 }

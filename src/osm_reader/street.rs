@@ -49,7 +49,10 @@ pub struct StreetKey {
     pub admins: AdminSet,
 }
 
-pub fn streets(pbf: &mut OsmPbfReader, admins_geofinder: &AdminGeoFinder, city_level: u32) -> StreetsVec {
+pub fn streets(pbf: &mut OsmPbfReader,
+               admins_geofinder: &AdminGeoFinder,
+               city_level: u32)
+               -> StreetsVec {
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
@@ -189,12 +192,12 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
 }
 
 pub fn compute_street_weight(streets: &mut StreetsVec, city_level: u32) {
-	for st in streets {
-	    for admin in &mut st.administrative_regions {
-	        if admin.level == city_level {
-    			st.weight = admin.weight.get();
-    			break;
-	        }
-		}
-	}
+    for st in streets {
+        for admin in &mut st.administrative_regions {
+            if admin.level == city_level {
+                st.weight = admin.weight.get();
+                break;
+            }
+        }
+    }
 }

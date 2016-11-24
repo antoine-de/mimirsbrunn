@@ -37,8 +37,7 @@ extern crate rustc_serialize;
 
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
-use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_amenity_types,
-                                              default_leisure_types};
+use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_amenity_types, default_leisure_types};
 use mimirsbrunn::osm_reader::street::{streets, compute_street_weight};
 use mimirsbrunn::osm_reader::parse_osm_pbf;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -100,16 +99,16 @@ fn main() {
 
     info!("creating adminstrative regions");
     let admins = administrative_regions(&mut parsed_pbf, levels);
-	let admins_geofinder = admins.iter().cloned().collect::<AdminGeoFinder>();
-	{
+    let admins_geofinder = admins.iter().cloned().collect::<AdminGeoFinder>();
+    {
         info!("Extracting streets from osm");
         let mut streets = streets(&mut parsed_pbf, &admins_geofinder, city_level);
 
-    	info!("computing city weight");
-    	compute_admin_weight(&mut streets);
+        info!("computing city weight");
+        compute_admin_weight(&mut streets);
 
-    	info!("computing street weight");
-    	compute_street_weight(&mut streets, city_level);
+        info!("computing street weight");
+        compute_street_weight(&mut streets, city_level);
 
         if args.flag_import_way {
             info!("importing streets into Mimir");
@@ -117,7 +116,7 @@ fn main() {
                 .unwrap();
             info!("Nb of indexed street: {}", nb_streets);
         }
-	}
+    }
     let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
         .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);

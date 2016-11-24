@@ -99,8 +99,8 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
     let name = osmobj.tags().get("name").map_or("", |name| name);
     let adms = admins_geofinder.get(&coord);
     let zip_codes = match osmobj.tags().get("addr:postcode") {
-		Some(val) if ! val.is_empty() => vec![val.clone()],
-		_ => get_zip_codes_from_admins(&adms) 
+        Some(val) if !val.is_empty() => vec![val.clone()],
+        _ => get_zip_codes_from_admins(&adms), 
     };
     mimir::Poi {
         id: id,
