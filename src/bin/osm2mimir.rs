@@ -130,10 +130,10 @@ fn main() {
 
         info!("Extracting pois from osm");
         let mut pois = pois(&mut parsed_pbf, poi_types, &admins, city_level);
-        
+
         info!("computing poi weight");
-		compute_poi_weight(&mut pois, city_level);
-		
+        compute_poi_weight(&mut pois, city_level);
+
         info!("Importing pois into Mimir");
         let nb_pois = rubber.index("poi", &args.flag_dataset, pois.iter())
             .unwrap();
