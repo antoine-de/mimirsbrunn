@@ -129,3 +129,14 @@ pub fn pois(pbf: &mut OsmPbfReader,
         .map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
         .collect()
 }
+
+pub fn compute_poi_weight(pois_vec: &mut PoisVec, city_level: u32) {
+    for poi in pois_vec {
+        for admin in &mut poi.administrative_regions {
+            if admin.level == city_level {
+                poi.weight = admin.weight.get();
+                break;
+            }
+        }
+    }
+}
