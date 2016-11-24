@@ -187,3 +187,14 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
         .next();
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
 }
+
+pub fn compute_street_weight(streets: &mut StreetsVec, city_level: u32) {
+	for st in streets {
+	    for admin in &mut st.administrative_regions {
+	        if admin.level == city_level {
+    			st.weight = admin.weight.get();
+    			break;
+	        }
+		}
+	}
+}

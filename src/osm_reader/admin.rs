@@ -36,6 +36,7 @@ use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::rc::Rc;
 use super::{OsmPbfReader, AdminsVec};
+pub type StreetsVec = Vec<mimir::Street>;
 
 #[derive(Debug)]
 pub struct AdminMatcher {
@@ -137,4 +138,12 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
         }
     }
     return administrative_regions;
+}
+
+pub fn compute_admin_weight(streets: &mut StreetsVec) {
+	for st in streets {
+	    for admin in &mut st.administrative_regions {
+			admin.weight.set(admin.weight.get() + 1);
+		}
+	}
 }
