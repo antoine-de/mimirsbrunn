@@ -35,7 +35,7 @@ use super::ToJson;
 pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     ::launch_and_assert(osm2mimir,
-                        vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
+                        vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-way".into(),
                              "--import-admin".into(),
                              "--import-poi".into(),

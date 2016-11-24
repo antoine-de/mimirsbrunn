@@ -11,7 +11,7 @@ To add data to the OSM fixture :
 * transform the *.osm file into an *.osm.pbf file using osmosis
 
 Example of osmosis command line :
-`osmosis --read-xml file="osm_fixture.osm" --write-pbf file="three_cities.osm.pbf"`
+`osmosis --read-xml file="osm_fixture.osm" --write-pbf file="osm_fixture.osm.pbf"`
 
 > NB: osmcnvert can be used for the conversion, but some *name* tags disapears on ways and relations
 

@@ -183,7 +183,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     info!("Launching {}", osm2mimir);
     ::launch_and_assert(osm2mimir,
-                        vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
+                        vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-way".into(),
                              "--level=8".into(),
                              format!("--connection-string={}", es_wrapper.host())],
@@ -325,7 +325,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     // Test POIs
     ::launch_and_assert(osm2mimir,
-                        vec!["--input=./tests/fixtures/three_cities.osm.pbf".into(),
+                        vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-poi".into(),
                              "--level=8".into(),
                              format!("--connection-string={}", es_wrapper.host())],
@@ -371,7 +371,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let geocodings = get_results(bragi_get("/autocomplete?q=Parking (Le Coudray-Montceaux)"));
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 1);
-    
+
     // search poi: Poi is way in osm data
     let geocodings = get_results(bragi_get("/autocomplete?q=77000 Hôtel de Ville (Melun)"));
     let types = get_types(&geocodings);
