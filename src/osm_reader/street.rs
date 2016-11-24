@@ -36,7 +36,7 @@ use ::admin_geofinder::AdminGeoFinder;
 use std::collections::{BTreeSet, BTreeMap};
 use std::rc::Rc;
 use super::utils::*;
-use super::{OsmPbfReader, AdminsVec};
+use super::OsmPbfReader;
 
 pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
@@ -49,8 +49,10 @@ pub struct StreetKey {
     pub admins: AdminSet,
 }
 
-pub fn streets(pbf: &mut OsmPbfReader, admins: &AdminsVec, city_level: u32) -> StreetsVec {
-    let admins_geofinder = admins.into_iter().cloned().collect::<AdminGeoFinder>();
+pub fn streets(pbf: &mut OsmPbfReader,
+               admins_geofinder: &AdminGeoFinder,
+               city_level: u32)
+               -> StreetsVec {
 
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
@@ -187,4 +189,15 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
         })
         .next();
     coord.map_or(vec![], |c| admins_geofinder.get(&c))
+}
+
+pub fn compute_street_weight(streets: &mut StreetsVec, city_level: u32) {
+    for st in streets {
+        for admin in &mut st.administrative_regions {
+            if admin.level == city_level {
+                st.weight = admin.weight.get();
+                break;
+            }
+        }
+    }
 }

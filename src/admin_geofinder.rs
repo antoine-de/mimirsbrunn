@@ -91,8 +91,10 @@ impl AdminGeoFinder {
     }
 }
 
-impl<T> FromIterator<T> for AdminGeoFinder where T: Into<Rc<Admin>> {
-    fn from_iter<I: IntoIterator<Item=T>>(admins: I) -> Self {
+impl<T> FromIterator<T> for AdminGeoFinder
+    where T: Into<Rc<Admin>>
+{
+    fn from_iter<I: IntoIterator<Item = T>>(admins: I) -> Self {
         let mut geofinder = AdminGeoFinder::new();
 
         for admin in admins {
