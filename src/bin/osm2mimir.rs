@@ -41,6 +41,8 @@ use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_amenity_types,
                                               default_leisure_types};
 use mimirsbrunn::osm_reader::street::streets;
 use mimirsbrunn::osm_reader::parse_osm_pbf;
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -98,32 +100,27 @@ fn main() {
 
     info!("creating adminstrative regions");
     let admins = administrative_regions(&mut parsed_pbf, levels);
-
-    info!("computing city weight");
-    let mut streets = streets(&mut parsed_pbf, &admins, city_level);
-
-    for st in &mut streets {
-        for admin in &mut st.administrative_regions {
-            admin.weight.set(admin.weight.get() + 1)
-        }
-    }
-
-    for st in &mut streets {
-        for admin in &mut st.administrative_regions {
-            if admin.level == city_level {
-                st.weight = admin.weight.get();
-                break;
+	let admins_geofinder = admins.iter().cloned().collect::<AdminGeoFinder>();
+	{
+        info!("computing city weight");
+        let mut streets = streets(&mut parsed_pbf, &admins_geofinder, city_level);
+    
+        for st in &mut streets {
+            for admin in &mut st.administrative_regions {
+                admin.weight.set(admin.weight.get() + 1);
+                if admin.level == city_level {
+                    st.weight = admin.weight.get();
+                }
             }
         }
-    }
-
-    if args.flag_import_way {
-        info!("importing streets into Mimir");
-        let nb_streets = rubber.index("way", &args.flag_dataset, streets.into_iter())
-            .unwrap();
-        info!("Nb of indexed street: {}", nb_streets);
-    }
-
+    
+        if args.flag_import_way {
+            info!("importing streets into Mimir");
+            let nb_streets = rubber.index("way", &args.flag_dataset, streets.into_iter())
+                .unwrap();
+            info!("Nb of indexed street: {}", nb_streets);
+        }
+	}
     let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
         .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
@@ -134,7 +131,7 @@ fn main() {
         poi_types.insert("leisure".to_string(), default_leisure_types());
 
         info!("Extracting pois from osm");
-        let pois = pois(&mut parsed_pbf, poi_types, &admins, city_level);
+        let pois = pois(&mut parsed_pbf, poi_types, &admins_geofinder, city_level);
 
         info!("Importing pois into Mimir");
         let nb_pois = rubber.index("poi", &args.flag_dataset, pois.iter())

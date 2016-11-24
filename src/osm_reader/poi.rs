@@ -35,7 +35,7 @@ use ::admin_geofinder::AdminGeoFinder;
 use ::boundaries::{build_boundary, make_centroid};
 use std::collections::{BTreeSet, BTreeMap};
 use super::utils::*;
-use super::{OsmPbfReader, AdminsVec};
+use super::OsmPbfReader;
 
 pub type PoiTypes = BTreeMap<String, BTreeSet<String>>;
 pub type PoisVec = Vec<mimir::Poi>;
@@ -80,10 +80,9 @@ pub fn default_leisure_types() -> BTreeSet<String> {
 
 fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-             admins: &AdminsVec,
+             admins_geofinder: &AdminGeoFinder,
              city_level: u32)
              -> mimir::Poi {
-    let admins_geofinder = admins.into_iter().cloned().collect::<AdminGeoFinder>();
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => {
             (format_poi_id("node", node.id), mimir::Coord::new(node.lat, node.lon))
@@ -99,12 +98,16 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
 
     let name = osmobj.tags().get("name").map_or("", |name| name);
     let adms = admins_geofinder.get(&coord);
+    let zip_codes = match osmobj.tags().get("addr:postcode") {
+		Some(val) if ! val.is_empty() => vec![val.clone()],
+		_ => get_zip_codes_from_admins(&adms) 
+    };
     mimir::Poi {
         id: id,
         name: name.to_string(),
         label: format_label(&adms, city_level, name),
         coord: coord,
-        zip_codes: get_zip_codes_from_admins(&adms),
+        zip_codes: zip_codes,
         administrative_regions: adms,
         weight: 1,
     }
@@ -116,13 +119,13 @@ fn format_poi_id(_type: &str, id: i64) -> String {
 
 pub fn pois(pbf: &mut OsmPbfReader,
             poi_types: PoiTypes,
-            admins: &AdminsVec,
+            admins_geofinder: &AdminGeoFinder,
             city_level: u32)
             -> PoisVec {
     let matcher = PoiMatcher::new(poi_types);
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_poi(o)).unwrap();
     objects.iter()
         .filter(|&(_, obj)| matcher.is_poi(&obj))
-        .map(|(_, obj)| parse_poi(obj, &objects, admins, city_level))
+        .map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
         .collect()
 }
