@@ -330,6 +330,12 @@ impl Coord {
     pub fn lon(&self) -> f64 {
         self.y
     }
+    pub fn default() -> Coord {
+        Coord(geo::Coordinate {x: 0., y: 0.})
+    }
+    pub fn is_default(&self) -> bool {
+        self.lat() == 0. && self.lon() == 0.
+    }
 }
 
 impl ::std::ops::Deref for Coord {
