@@ -82,7 +82,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
              admins_geofinder: &AdminGeoFinder,
              city_level: u32)
-             -> mimir::Poi {
+             -> Option<mimir::Poi> {
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => {
             (format_poi_id("node", node.id), mimir::Coord::new(node.lat, node.lon))
@@ -102,7 +102,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         Some(val) if !val.is_empty() => vec![val.clone()],
         _ => get_zip_codes_from_admins(&adms), 
     };
-    mimir::Poi {
+    Some(mimir::Poi {
         id: id,
         name: name.to_string(),
         label: format_label(&adms, city_level, name),
@@ -110,7 +110,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         zip_codes: zip_codes,
         administrative_regions: adms,
         weight: 1,
-    }
+    })
 }
 
 fn format_poi_id(_type: &str, id: i64) -> String {
@@ -127,6 +127,8 @@ pub fn pois(pbf: &mut OsmPbfReader,
     objects.iter()
         .filter(|&(_, obj)| matcher.is_poi(&obj))
         .map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
+        .filter(|o| o.is_some())
+        .map(|o| o.unwrap())
         .collect()
 }
 
