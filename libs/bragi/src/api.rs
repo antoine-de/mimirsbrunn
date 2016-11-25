@@ -146,8 +146,11 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
-                    let offset = params.find("offset").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_OFFSET);
-                    let limit = params.find("limit").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_LIMIT);
+                    let offset = params.find("offset")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_OFFSET);
+                    let limit =
+                        params.find("limit").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_LIMIT);
                     let geometry = params.find_path(&["geometry"]).unwrap();
                     let coordinates =
                         geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
@@ -157,7 +160,8 @@ impl ApiEndPoint {
                         shape.push((ar.as_array().unwrap()[1].as_f64().unwrap(),
                                     ar.as_array().unwrap()[0].as_f64().unwrap()));
                     }
-                    let model_autocomplete = query::autocomplete(&q, offset, limit, None, &cnx, Some(shape));
+                    let model_autocomplete =
+                        query::autocomplete(&q, offset, limit, None, &cnx, Some(shape));
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -204,8 +208,11 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
-                    let offset = params.find("offset").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_OFFSET);
-                    let limit = params.find("limit").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_LIMIT);
+                    let offset = params.find("offset")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_OFFSET);
+                    let limit =
+                        params.find("limit").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_LIMIT);
                     let lon = params.find("lon").and_then(|p| p.as_f64());
                     let lat = params.find("lat").and_then(|p| p.as_f64());
                     // we have already checked that if there is a lon, lat
@@ -216,7 +223,8 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
-                    let model_autocomplete = query::autocomplete(&q, offset, limit, coord, &cnx, None);
+                    let model_autocomplete =
+                        query::autocomplete(&q, offset, limit, coord, &cnx, None);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)

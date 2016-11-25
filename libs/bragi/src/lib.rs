@@ -71,26 +71,32 @@ pub struct Args {
     flag_connection_string: String,
 }
 
-static USAGE: &'static str = "
+static USAGE: &'static str =
+    "
 Usage:
     bragi --help
-    bragi [--bind=<address>] [--connection-string=<connection-string>]
+    bragi [--bind=<address>] \
+     [--connection-string=<connection-string>]
 
 Options:
-    -h, --help            Show this message.
+    -h, --help            Show this \
+     message.
     -b, --bind=<addres>   adresse to bind, [default: 127.0.0.1:4000]
-    -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, override BRAGI_ES and default to http://localhost:9200/munin
+    -c, \
+     --connection-string=<connection-string>
+                          Elasticsearch parameters, \
+     override BRAGI_ES and default to http://localhost:9200/munin
 ";
 
 pub fn runserver() {
     let mut args: Args = docopt::Docopt::new(USAGE)
-                         .and_then(|d| d.decode())
-                         .unwrap_or_else(|e| e.exit());
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
     if args.flag_connection_string.is_empty() {
-        args.flag_connection_string = std::env::var("BRAGI_ES").ok().unwrap_or("http://localhost:9200/munin".to_string());
+        args.flag_connection_string =
+            std::env::var("BRAGI_ES").ok().unwrap_or("http://localhost:9200/munin".to_string());
     }
-    let api = api::ApiEndPoint{es_cnx_string: args.flag_connection_string.clone()}.root();
+    let api = api::ApiEndPoint { es_cnx_string: args.flag_connection_string.clone() }.root();
     let app = Application::new(api);
     println!("listening on {}", args.flag_bind);
     Iron::new(app).http(args.flag_bind.as_str()).unwrap();

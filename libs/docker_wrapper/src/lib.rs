@@ -49,12 +49,12 @@ impl DockerWrapper {
     fn setup(&self) -> Result<(), Box<Error>> {
         info!("Launching ES docker");
         let status = try!(Command::new("docker")
-                              .args(&["run",
-                                      &format!("--publish={}:9200", self.port),
-                                      "-d",
-                                      "--name=mimirsbrunn_tests",
-                                      "elasticsearch:2"])
-                              .status());
+            .args(&["run",
+                    &format!("--publish={}:9200", self.port),
+                    "-d",
+                    "--name=mimirsbrunn_tests",
+                    "elasticsearch:2"])
+            .status());
         if !status.success() {
             return Err(format!("`docker run` failed {}", &status).into());
         }
@@ -65,8 +65,8 @@ impl DockerWrapper {
                            || hyper::client::Client::new().get(&self.host()).send(),
                            |response| {
                                response.as_ref()
-                                       .map(|res| res.status == hyper::Ok)
-                                       .unwrap_or(false)
+                                   .map(|res| res.status == hyper::Ok)
+                                   .unwrap_or(false)
                            }) {
             Ok(_) => Ok(()),
             Err(_) => Err("ES is down".into()),

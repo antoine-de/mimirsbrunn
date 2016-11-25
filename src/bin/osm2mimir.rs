@@ -36,10 +36,9 @@ extern crate mimirsbrunn;
 extern crate rustc_serialize;
 
 use mimir::rubber::Rubber;
-use mimirsbrunn::osm_reader::admin::{administrative_regions,compute_admin_weight};
-use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_amenity_types,
-                                              default_leisure_types,
-                                              compute_poi_weight};
+use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
+use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_amenity_types, default_leisure_types,
+                                   compute_poi_weight};
 use mimirsbrunn::osm_reader::street::{streets, compute_street_weight};
 use mimirsbrunn::osm_reader::parse_osm_pbf;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;

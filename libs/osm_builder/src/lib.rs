@@ -46,8 +46,14 @@ pub struct Relation<'a> {
 impl<'a> Relation<'a> {
     pub fn outer(&mut self, coords: Vec<(mimir::Coord, Option<String>)>) -> &'a mut Relation {
         let id = self.builder.way(coords);
-        if let &mut osmpbfreader::OsmObj::Relation(ref mut rel) = self.builder.objects.get_mut(&self.relation_id).unwrap() {
-            rel.refs.push(osmpbfreader::Ref{role: "outer".to_string(), member: id});
+        if let &mut osmpbfreader::OsmObj::Relation(ref mut rel) = self.builder
+            .objects
+            .get_mut(&self.relation_id)
+            .unwrap() {
+            rel.refs.push(osmpbfreader::Ref {
+                role: "outer".to_string(),
+                member: id,
+            });
         }
         self
     }
@@ -75,7 +81,7 @@ impl OsmBuilder {
     pub fn relation(&mut self) -> Relation {
         let r = osmpbfreader::Relation {
             id: self.relation_id,
-            refs: vec!(),
+            refs: vec![],
             tags: osmpbfreader::Tags::new(),
         };
         let id = osmpbfreader::OsmId::Relation(self.relation_id);
@@ -89,13 +95,13 @@ impl OsmBuilder {
 
     pub fn way(&mut self, coords: Vec<(mimir::Coord, Option<String>)>) -> osmpbfreader::OsmId {
         let nodes = coords.into_iter()
-                          .map(|pair| self.node(pair.0, pair.1))
-                          .filter_map(|osm_id| if let osmpbfreader::OsmId::Node(id) = osm_id {
-                              Some(id)
-                          } else {
-                              None
-                          })
-                          .collect::<Vec<_>>();
+            .map(|pair| self.node(pair.0, pair.1))
+            .filter_map(|osm_id| if let osmpbfreader::OsmId::Node(id) = osm_id {
+                Some(id)
+            } else {
+                None
+            })
+            .collect::<Vec<_>>();
         let w = osmpbfreader::Way {
             id: self.way_id,
             nodes: nodes,
@@ -108,8 +114,8 @@ impl OsmBuilder {
     }
 
     pub fn node(&mut self, coord: mimir::Coord, name: Option<String>) -> osmpbfreader::OsmId {
-        if let Some(ref value) = name.clone().and_then(|n| self.named_nodes.get(&n)){
-            return *value.clone()
+        if let Some(ref value) = name.clone().and_then(|n| self.named_nodes.get(&n)) {
+            return *value.clone();
         }
         let n = osmpbfreader::Node {
             id: self.node_id,
