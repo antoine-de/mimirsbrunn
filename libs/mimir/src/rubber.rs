@@ -81,8 +81,8 @@ impl Rubber {
         debug!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
         let result = try!(self.http_client
-                              .get(&url)
-                              .send());
+            .get(&url)
+            .send());
         rs_es::do_req(result)
     }
     fn put(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
@@ -90,9 +90,9 @@ impl Rubber {
         debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
         let result = try!(self.http_client
-                              .put(&url)
-                              .body(body)
-                              .send());
+            .put(&url)
+            .body(body)
+            .send());
         rs_es::do_req(result)
     }
     fn post(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
@@ -100,9 +100,9 @@ impl Rubber {
         debug!("doing a post on {} with {}", path, body);
         let url = self.es_client.full_url(path);
         let result = try!(self.http_client
-                              .post(&url)
-                              .body(body)
-                              .send());
+            .post(&url)
+            .body(body)
+            .send());
         rs_es::do_req(result)
     }
 
@@ -142,15 +142,15 @@ impl Rubber {
                 match res.status {
                     StatusCode::Ok => {
                         let value: serde_json::Value = try!(res.read_response()
-                                                               .map_err(|e| e.to_string()));
+                            .map_err(|e| e.to_string()));
                         Ok(value.as_object()
-                                .and_then(|aliases| Some(aliases.keys().cloned().collect()))
-                                .unwrap_or_else(|| {
-                                    info!("no previous index to delete for type {} and dataset {}",
-                                          doc_type,
-                                          dataset);
-                                    vec![]
-                                }))
+                            .and_then(|aliases| Some(aliases.keys().cloned().collect()))
+                            .unwrap_or_else(|| {
+                                info!("no previous index to delete for type {} and dataset {}",
+                                      doc_type,
+                                      dataset);
+                                vec![]
+                            }))
                     }
                     StatusCode::NotFound => {
                         info!("impossible to find alias {}, no last index to remove",
@@ -213,9 +213,8 @@ impl Rubber {
                 }),
             }
         });
-        let operations = AliasOperations {
-            actions: add_operations.chain(remove_operations).collect(),
-        };
+        let operations =
+            AliasOperations { actions: add_operations.chain(remove_operations).collect() };
         let json = serde_json::to_string(&operations).unwrap();
         self.post("_aliases", &json)
             .map_err(|e| e.to_string())
@@ -234,9 +233,9 @@ impl Rubber {
     pub fn delete_index(&mut self, index: &String) -> Result<(), String> {
         debug!("deleting index {}", &index);
         let res = self.es_client
-                      .delete_index(&index)
-                      .map(|res| res.acknowledged)
-                      .unwrap_or(false);
+            .delete_index(&index)
+            .map(|res| res.acknowledged)
+            .unwrap_or(false);
         if !res {
             Err(format!("Error deleting index {}", &index).into())
         } else {
@@ -254,18 +253,20 @@ impl Rubber {
         use rs_es::operations::bulk::Action;
         let mut nb = 0;
         let chunk_size = 1000;
-        //fold is used for creating the action and optionally set the id of the object
-        let mut actions = iter.map(|v| v.es_id()
-                                        .into_iter()
-                                        .fold(Action::index(v), |action, id| action.with_id(id)));
+        // fold is used for creating the action and optionally set the id of the object
+        let mut actions = iter.map(|v| {
+            v.es_id()
+                .into_iter()
+                .fold(Action::index(v), |action, id| action.with_id(id))
+        });
         loop {
             let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
             nb += chunk.len();
             try!(self.es_client
-                     .bulk(&chunk)
-                     .with_index(&index)
-                     .with_doc_type(T::doc_type())
-                     .send());
+                .bulk(&chunk)
+                .with_index(&index)
+                .with_doc_type(T::doc_type())
+                .send());
 
             if chunk.len() < chunk_size {
                 break;

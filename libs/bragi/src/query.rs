@@ -86,7 +86,10 @@ fn build_query(q: &str,
     use rs_es::query::functions::Function;
     let boost_addr = rs_q::build_term("_type", "addr").with_boost(1000).build();
     let boost_match_query = rs_q::build_multi_match(vec![match_type.to_string(),
-        "zip_codes.prefix".to_string()], q.to_string()).with_boost(100).build();
+                                                         "zip_codes.prefix".to_string()],
+                                                    q.to_string())
+        .with_boost(100)
+        .build();
 
     let mut should_query = vec![boost_addr, boost_match_query];
     if let &Some(ref c) = coord {
@@ -104,22 +107,21 @@ fn build_query(q: &str,
         should_query.push(boost_on_proximity);
     } else {
         // if we don't have coords, we take the field `weight` into account
-        let boost_on_weight =
-            rs_q::build_function_score()
-                .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-                .with_boost(300)
-                .with_query(rs_q::build_match_all().build())
-                .with_function(Function::build_field_value_factor("weight")
-                                   .with_factor(1)
-                                   .with_modifier(rs_es::query::functions::Modifier::Log1p)
-                                   .build())
-                .build();
+        let boost_on_weight = rs_q::build_function_score()
+            .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+            .with_boost(300)
+            .with_query(rs_q::build_match_all().build())
+            .with_function(Function::build_field_value_factor("weight")
+                .with_factor(1)
+                .with_modifier(rs_es::query::functions::Modifier::Log1p)
+                .build())
+            .build();
         should_query.push(boost_on_weight);
     }
 
     let sub_query = rs_q::build_bool()
-                        .with_should(should_query)
-                        .build();
+        .with_should(should_query)
+        .build();
 
     let mut must = vec![rs_q::build_multi_match(vec![match_type.to_string(),
         "zip_codes.prefix".to_string()], q.to_string())
@@ -130,14 +132,15 @@ fn build_query(q: &str,
     }
 
     let filter = rs_q::build_bool()
-                     .with_should(vec![rs_q::build_bool()
-                                           .with_must_not(rs_q::build_exists("house_number")
-                                                              .build())
-                                           .build(),
-                                       rs_q::build_multi_match(vec!["house_number".to_string(),
-                                           "zip_codes".to_string()], q.to_string()).build()])
-                     .with_must(must)
-                     .build();
+        .with_should(vec![rs_q::build_bool()
+                              .with_must_not(rs_q::build_exists("house_number").build())
+                              .build(),
+                          rs_q::build_multi_match(vec!["house_number".to_string(),
+                                                       "zip_codes".to_string()],
+                                                  q.to_string())
+                              .build()])
+        .with_must(must)
+        .build();
 
     rs_q::build_bool()
         .with_must(vec![sub_query])
@@ -158,21 +161,21 @@ fn query(q: &str,
     let mut client = build_rs_client(&cnx.to_string());
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
-                                                             .with_indexes(&["munin"])
-                                                             .with_query(&query)
-                                                             .with_from(offset)
-                                                             .with_size(limit)
-                                                             .send());
+        .with_indexes(&["munin"])
+        .with_query(&query)
+        .with_from(offset)
+        .with_size(limit)
+        .send());
 
     debug!("{} documents found", result.hits.total);
 
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(result.hits
-             .hits
-             .into_iter()
-             .filter_map(|hit| make_place(hit.doc_type, hit.source))
-             .collect())
+        .hits
+        .into_iter()
+        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .collect())
 }
 
 
@@ -196,7 +199,9 @@ fn query_ngram(q: &str,
     query(&q, cnx, "label.ngram", offset, limit, coord, shape)
 }
 
-pub fn autocomplete(q: &str, offset: u64, limit: u64,
+pub fn autocomplete(q: &str,
+                    offset: u64,
+                    limit: u64,
                     coord: Option<model::Coord>,
                     cnx: &str,
                     shape: Option<Vec<(f64, f64)>>)
