@@ -69,5 +69,5 @@ pub fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmOb
                 .map(|node| mimir::Coord::new(node.lat, node.lon))
         })
         .next()
-        .unwrap_or(mimir::Coord::new(0., 0.))
+        .unwrap_or(mimir::Coord::default())
 }
