@@ -377,12 +377,12 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 1);
 
-    //ID : poi:osm:node:663715752, Label : (Saint-Martin-d'Hères) name == ""
+    // we search for a POI (id = 663715752) with a label but an empty name, it should be filtered)
     let geocodings = get_results(bragi_get("/autocomplete?q=(Saint-Martin-d'Hères)"));
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 0);
 
-    //ID : poi:osm:relation:2561223, Label : ENSE3 site Ampère, coord empty
+    // we search for a POI (id = 2561223) with a label but an empty 2561223, it should be filtered)
     let geocodings = get_results(bragi_get("/autocomplete?q=ENSE3 site Ampère"));
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 0);
