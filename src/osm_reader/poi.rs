@@ -99,12 +99,12 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
     let name = osmobj.tags().get("name").map_or("", |name| name);
 
     if coord.is_default() {
-        warn!("The poi {} is rejected, cause: without coordinates.", id);
+        info!("The poi {} is rejected, cause: without coordinates.", id);
         return None;
     }
 
     if name == "" {
-        warn!("The poi {} is rejected, cause: without name.", id);
+        info!("The poi {} is rejected, cause: without name.", id);
         return None;
     }
 
