@@ -159,8 +159,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // Search with shape where house number out shape
     let resp = bragi_post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape);
     let result_body = iron_test::response::extract_body_to_string(resp);
-    let result = concat!(r#"{"type":"FeatureCollection",
-        "geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
+    let result = concat!(r#"{"type":"FeatureCollection","#,
+                         r#""geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
     assert_eq!(result_body, result);
 
     // test with a lon/lat
