@@ -136,11 +136,14 @@ pub fn pois(pbf: &mut OsmPbfReader,
     let matcher = PoiMatcher::new(poi_types);
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_poi(o)).unwrap();
     objects.iter()
-        .filter(|&(_, obj)| matcher.is_poi(&obj))
-        .map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
-        .filter(|o| o.is_some())
-        .map(|o| o.unwrap())
-        .collect()
+    	.filter_map(|(_, obj)| {
+    	        if matcher.is_poi(&obj) { 
+    	        	parse_poi(obj, &objects, admins_geofinder, city_level)
+    	        } else {
+    	            None
+    	        }
+    	})
+    	.collect()
 }
 
 pub fn compute_poi_weight(pois_vec: &mut PoisVec, city_level: u32) {
