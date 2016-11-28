@@ -40,9 +40,9 @@ fn check_has_elt(es: &::ElasticSearchWrapper, fun: Box<Fn(&Value)>) {
     assert_eq!(search.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0),
                1);
     let es_elt = search.lookup("hits.hits")
-                       .and_then(|h| h.as_array())
-                       .and_then(|v| v.first())
-                       .unwrap();
+        .and_then(|h| h.as_array())
+        .and_then(|v| v.first())
+        .unwrap();
     fun(es_elt);
 }
 
@@ -122,11 +122,11 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
                    Some(&to_value("bobette's street")));
         assert_eq!(es_bob.find("label"), Some(&to_value("bobette's name")));
         assert_eq!(es_bob.find("weight"), Some(&Value::U64(24)));
-        
+
         let es_coord = es_bob.find("coord").unwrap();
         assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
         assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
-        
+
     };
     check_has_elt(&es, Box::new(check_is_bobette));
 }
@@ -162,7 +162,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         assert_eq!(es_elt.find("_id"), es_source.find("id"));
         assert_eq!(es_elt.find("_id"), Some(&to_value("admin:bob")));
         assert_eq!(es_source.find("insee"), Some(&to_value("insee:dummy")));
-        
+
         let es_coord = es_source.find("coord").unwrap();
         assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
         assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));

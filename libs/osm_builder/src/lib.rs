@@ -46,10 +46,11 @@ pub struct Relation<'a> {
 impl<'a> Relation<'a> {
     pub fn outer(&mut self, coords: Vec<(mimir::Coord, Option<String>)>) -> &'a mut Relation {
         let id = self.builder.way(coords);
-        if let &mut osmpbfreader::OsmObj::Relation(ref mut rel) = self.builder
-            .objects
-            .get_mut(&self.relation_id)
-            .unwrap() {
+        if let &mut osmpbfreader::OsmObj::Relation(ref mut rel) =
+            self.builder
+                .objects
+                .get_mut(&self.relation_id)
+                .unwrap() {
             rel.refs.push(osmpbfreader::Ref {
                 role: "outer".to_string(),
                 member: id,
