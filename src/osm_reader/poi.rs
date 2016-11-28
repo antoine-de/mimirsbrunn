@@ -136,13 +136,8 @@ pub fn pois(pbf: &mut OsmPbfReader,
     let matcher = PoiMatcher::new(poi_types);
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_poi(o)).unwrap();
     objects.iter()
-    	.filter_map(|(_, obj)| {
-    	        if matcher.is_poi(&obj) { 
-    	        	parse_poi(obj, &objects, admins_geofinder, city_level)
-    	        } else {
-    	            None
-    	        }
-    	})
+    	.filter(|&(_, obj)| matcher.is_poi(&obj))
+    	.filter_map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
     	.collect()
 }
 
