@@ -50,8 +50,8 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // after an import, we should have 1 index, and some aliases to this index
     let client = Client::new();
     let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
-                    .send()
-                    .unwrap();
+        .send()
+        .unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
@@ -67,7 +67,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
          s =<< s.as_object();
          ret ret(s.keys().cloned().collect())
      }
-                      .unwrap_or(vec![]);
+        .unwrap_or(vec![]);
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
 
@@ -80,8 +80,8 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // we should still have only one index (but a different one)
     let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
-                    .send()
-                    .unwrap();
+        .send()
+        .unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
@@ -98,6 +98,6 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         s =<< s.as_object();
         ret ret(s.keys().cloned().collect())
     }
-                      .unwrap_or(vec![]);
+        .unwrap_or(vec![]);
     assert_eq!(aliases, vec!["munin", "munin_addr_fr"]);
 }

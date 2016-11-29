@@ -71,11 +71,11 @@ pub fn streets(pbf: &mut OsmPbfReader,
     info!("reading pbf done.");
     let mut street_rel: StreetWithRelationSet = BTreeSet::new();
     let mut street_list: StreetsVec = vec![];
-    // Sometimes, streets can be devided into several "way"s that still have the same street name.
-    // The reason why a street is devided may be that a part of the street become a bridge/tunne/etc.
-    // In this case, a "relation" tagged with (type = associatedStreet) is used to group all these "way"s.
-    // In order not to have duplicates in autocompleion,
-    // we should tag the osm ways in the relation not to index them twice.
+    // Sometimes, streets can be divided into several "way"s that still have the same street name.
+    // The reason why a street is divided may be that a part of the street become
+    // a bridge/tunne/etc. In this case, a "relation" tagged with (type = associatedStreet) is used
+    // to group all these "way"s. In order not to have duplicates in autocompletion, we should tag
+    // the osm ways in the relation not to index them twice.
 
     for (_, rel_obj) in &objs_map {
         if let &osmpbfreader::OsmObj::Relation(ref rel) = rel_obj {
@@ -132,7 +132,8 @@ pub fn streets(pbf: &mut OsmPbfReader,
         let name_admin_map = &mut name_admin_map;
         mdo! {
             way =<< obj.way();
-            let admins: BTreeSet<Rc<mimir::Admin>> = get_street_admin(admins_geofinder, objs_map, way)
+            let admins: BTreeSet<Rc<mimir::Admin>> = get_street_admin(admins_geofinder,
+                objs_map, way)
             	.into_iter()
             	.filter(|admin| admin.level == city_level)
             	.collect();

@@ -1,5 +1,8 @@
 language: rust
 cache: cargo
+before_script: 
+  - cargo install -f rustfmt
+  - export PATH=$PATH:$HOME/.cargo/bin
 rust:
   - stable
   - beta
@@ -9,6 +12,11 @@ matrix:
     - rust: nightly
 
 script:
+  - cargo fmt -- --write-mode=diff
+  - (cd libs/bragi && cargo fmt -- --write-mode=diff)
+  - (cd libs/docker_wrapper && cargo fmt -- --write-mode=diff)
+  - (cd libs/mimir && cargo fmt -- --write-mode=diff)
+  - (cd libs/osm_builder && cargo fmt -- --write-mode=diff)
   - cargo test
   - test $TRAVIS_RUST_VERSION != nightly || cargo test --no-default-features --features nightly
   - (cd libs/bragi && cargo test)
