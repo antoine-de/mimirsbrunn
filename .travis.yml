@@ -1,7 +1,7 @@
 language: rust
 cache: cargo
 before_script: 
-  - (cargo install rustfmt || true)
+  - cargo install rustfmt
   - export PATH=$PATH:$HOME/.cargo/bin
 rust:
   - stable
