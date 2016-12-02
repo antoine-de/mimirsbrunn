@@ -175,7 +175,7 @@ pub struct Admin {
     pub weight: Cell<u32>,
     pub coord: Coord,
     #[serde(skip_serializing, skip_deserializing)]
-    pub boundary: Option<geo::MultiPolygon>,
+    pub boundary: Option<geo::MultiPolygon<f64>>,
 }
 
 impl Ord for Admin {
@@ -319,7 +319,7 @@ pub struct AliasParameter{
 // we want a custom serialization for coords, and so far the cleanest way
 // to do this that has been found is to wrap the coord in another struct
 #[derive(Debug, Clone)]
-pub struct Coord(pub geo::Coordinate);
+pub struct Coord(pub geo::Coordinate<f64>);
 impl Coord {
     pub fn new(lat: f64, lon: f64) -> Coord {
         Coord(geo::Coordinate {x: lat, y: lon})
@@ -339,7 +339,7 @@ impl Coord {
 }
 
 impl ::std::ops::Deref for Coord {
-    type Target = geo::Coordinate;
+    type Target = geo::Coordinate<f64>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

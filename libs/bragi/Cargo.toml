@@ -21,7 +21,7 @@ serde = "0.8"
 serde_json = "0.8"
 serde_derive = { version = "0.8", optional = true }
 geojson = { version="*", features=["with-serde"] }
-geo = "0.1.1"
+geo = "^0.3"
 
 [features]
 default = ["serde_codegen", "mimir/default"]
