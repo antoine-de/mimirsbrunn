@@ -198,14 +198,14 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
                 if current == first {
                     // our polygon is closed, we create it and add it to the multipolygon
                     let polygon = Polygon::new(LineString(outer.iter()
-                                              .map(|n| {
-                                                  Point(Coordinate {
-                                                      x: n.lat,
-                                                      y: n.lon,
-                                                  })
-                                              })
-                                              .collect()),
-                                          vec![]);
+                                                   .map(|n| {
+                                                       Point(Coordinate {
+                                                           x: n.lat,
+                                                           y: n.lon,
+                                                       })
+                                                   })
+                                                   .collect()),
+                                               vec![]);
                     multipoly.0.push(polygon);
                     break;
                 }
