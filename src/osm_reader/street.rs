@@ -73,7 +73,7 @@ pub fn streets(pbf: &mut OsmPbfReader,
     let mut street_list: StreetsVec = vec![];
     // Sometimes, streets can be divided into several "way"s that still have the same street name.
     // The reason why a street is divided may be that a part of the street become
-    // a bridge/tunne/etc. In this case, a "relation" tagged with (type = associatedStreet) is used
+    // a bridge/tunnel/etc. In this case, a "relation" tagged with (type = associatedStreet) is used
     // to group all these "way"s. In order not to have duplicates in autocompletion, we should tag
     // the osm ways in the relation not to index them twice.
 
