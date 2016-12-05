@@ -57,7 +57,7 @@ impl PoiMatcher {
     }
 }
 
-pub fn default_amenity_types() -> BTreeSet<String> {
+pub fn default_osm_amenity_types_read() -> BTreeSet<String> {
     ["university",
      "hospital",
      "post_office",
@@ -71,7 +71,7 @@ pub fn default_amenity_types() -> BTreeSet<String> {
         .collect()
 }
 
-pub fn default_leisure_types() -> BTreeSet<String> {
+pub fn default_osm_leisure_types_read() -> BTreeSet<String> {
     ["garden", "park"]
         .iter()
         .map(|&k| k.to_string())
@@ -99,12 +99,13 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
     let name = osmobj.tags().get("name").map_or("", |name| name);
 
     if coord.is_default() {
-        info!("The poi {} is rejected, cause: without coordinates.", id);
+        info!("The poi {} is rejected, cause: could not compute coordinates.",
+              id);
         return None;
     }
 
     if name == "" {
-        info!("The poi {} is rejected, cause: without name.", id);
+        info!("The poi {} is rejected, cause: could not compute name.", id);
         return None;
     }
 

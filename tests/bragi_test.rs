@@ -175,11 +175,11 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     // if we give a lon/lat near trifouilli-les-Oies, we'll have another sort
     let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=50.2&lon=2.0"));
-    assert_eq!(get_tags(&all_20, "label"),
+    assert_eq!(get_value(&all_20, "label"),
                vec!["20 Rue Hector Malot (Trifouilli-les-Oies)", "20 Rue Hector Malot (Paris)"]);
     // and when we're in paris, we get paris first
     let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=48&lon=2.4"));
-    assert_eq!(get_tags(&all_20, "label"),
+    assert_eq!(get_value(&all_20, "label"),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
 
 
@@ -194,7 +194,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
     let all_20 = get_results(bragi_get("/autocomplete?q=77000"));
     assert_eq!(all_20.len(), 10);
-    assert!(get_tags(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
@@ -209,7 +209,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // zip_code and name of street
     let all_20 = get_results(bragi_get("/autocomplete?q=77000 Lotissement le Clos de Givry"));
     assert_eq!(all_20.len(), 1);
-    assert!(get_tags(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
@@ -224,7 +224,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // zip_code and name of admin
     let all_20 = get_results(bragi_get("/autocomplete?q=77000 Vaux-le-Pénil"));
     assert_eq!(all_20.len(), 4);
-    assert!(get_tags(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77000"));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 3);
@@ -245,7 +245,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let all_20 = get_results(bragi_get("/autocomplete?q=77255"));
     assert_eq!(all_20.len(), 1);
-    assert!(get_tags(&all_20, "postcode").iter().all(|r| *r == "77255"));
+    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77255"));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);
@@ -259,7 +259,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // zip_code and name of addr
     let all_20 = get_results(bragi_get("/autocomplete?q=77288 Rue de la Reine Blanche"));
     assert_eq!(all_20.len(), 1);
-    assert!(get_tags(&all_20, "postcode").iter().all(|r| *r == "77288"));
+    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77288"));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);
@@ -270,7 +270,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let count = count_types(&types, "house");
     assert_eq!(count, 1);
 
-    assert_eq!(get_tags(&all_20, "label"),
+    assert_eq!(get_value(&all_20, "label"),
                vec!["2 Rue de la Reine Blanche (Melun)"]);
 
     //      A ---------------------D
@@ -285,7 +285,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Rue du Port", shape));
     assert_eq!(geocodings.len(), 1);
-    assert_eq!(get_tags(&geocodings, "label"), vec!["Rue du Port (Melun)"]);
+    assert_eq!(get_value(&geocodings, "label"), vec!["Rue du Port (Melun)"]);
 
     //      A ---------------------D
     //      |                      |
@@ -312,7 +312,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 1);
-    assert_eq!(get_tags(&geocodings, "label"), vec!["Melun"]);
+    assert_eq!(get_value(&geocodings, "label"), vec!["Melun"]);
 
     //      A ---------------------D
     //      |                      |
@@ -338,17 +338,17 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
     assert_eq!(count, 1);
-    assert_eq!(get_tags(&geocodings, "label"),
+    assert_eq!(get_value(&geocodings, "label"),
                vec!["Le-Mée-sur-Seine Courtilleraies"]);
-    assert!(get_tags(&geocodings, "postcode").iter().all(|r| *r == "77350"));
+    assert!(get_value(&geocodings, "postcode").iter().all(|r| *r == "77350"));
 
 
     let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
     assert_eq!(count, 2);
-    assert!(get_tags(&geocodings, "label").contains(&"Melun Rp (Melun)"));
-    assert!(get_tags(&geocodings, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_value(&geocodings, "label").contains(&"Melun Rp (Melun)"));
+    assert!(get_value(&geocodings, "postcode").iter().all(|r| *r == "77000"));
 
     // search by zip code
     let geocodings = get_results(bragi_get("/autocomplete?q=77000&limit=15"));
@@ -394,7 +394,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
 }
 
-fn get_tags<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>, val: &'a str) -> Vec<&'a str> {
+fn get_value<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>, val: &'a str) -> Vec<&'a str> {
     r.iter().map(|e| e.get(val).and_then(|l| l.as_str()).unwrap_or("")).collect()
 }
 

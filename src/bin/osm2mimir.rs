@@ -37,8 +37,8 @@ extern crate rustc_serialize;
 
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
-use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_amenity_types, default_leisure_types,
-                                   compute_poi_weight};
+use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_osm_amenity_types_read,
+                                   default_osm_leisure_types_read, compute_poi_weight};
 use mimirsbrunn::osm_reader::street::{streets, compute_street_weight};
 use mimirsbrunn::osm_reader::parse_osm_pbf;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -124,8 +124,8 @@ fn main() {
 
     if args.flag_import_poi {
         let mut poi_types = PoiTypes::new();
-        poi_types.insert("amenity".to_string(), default_amenity_types());
-        poi_types.insert("leisure".to_string(), default_leisure_types());
+        poi_types.insert("amenity".to_string(), default_osm_amenity_types_read());
+        poi_types.insert("leisure".to_string(), default_osm_leisure_types_read());
 
         info!("Extracting pois from osm");
         let mut pois = pois(&mut parsed_pbf, poi_types, &admins_geofinder, city_level);
