@@ -132,7 +132,7 @@ fn test_get_nodes() {
 
 pub fn build_boundary(relation: &osmpbfreader::Relation,
                       objects: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
-                      -> Option<MultiPolygon> {
+                      -> Option<MultiPolygon<f64>> {
     let roles = vec!["outer".to_string(), "enclave".to_string()];
     let mut boundary_parts: Vec<BoundaryPart> = relation.refs
         .iter()
@@ -197,15 +197,15 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
                 }
                 if current == first {
                     // our polygon is closed, we create it and add it to the multipolygon
-                    let polygon = Polygon(LineString(outer.iter()
-                                              .map(|n| {
-                                                  Point(Coordinate {
-                                                      x: n.lat,
-                                                      y: n.lon,
-                                                  })
-                                              })
-                                              .collect()),
-                                          vec![]);
+                    let polygon = Polygon::new(LineString(outer.iter()
+                                                   .map(|n| {
+                                                       Point(Coordinate {
+                                                           x: n.lat,
+                                                           y: n.lon,
+                                                       })
+                                                   })
+                                                   .collect()),
+                                               vec![]);
                     multipoly.0.push(polygon);
                     break;
                 }
@@ -220,9 +220,9 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
     }
 }
 
-pub fn make_centroid(boundary: &Option<MultiPolygon>) -> mimir::Coord {
+pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> mimir::Coord {
     boundary.as_ref()
-        .and_then(|b| b.centroid().map(|c| mimir::Coord(c.0)))
+        .and_then(|b| b.centroid().map(|c| mimir::Coord::new(c.x(), c.y())))
         .unwrap_or(mimir::Coord::new(0., 0.))
 }
 

@@ -88,7 +88,7 @@ impl ToGeom for mimir::Place {
     }
 }
 
-impl ToGeom for geo::Coordinate {
+impl ToGeom for geo::Coordinate<f64> {
     fn to_geom(&self) -> geojson::Geometry {
         geojson::Geometry::new(geojson::Value::Point(vec![self.y, self.x]))
     }

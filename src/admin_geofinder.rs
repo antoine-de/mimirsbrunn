@@ -54,7 +54,7 @@ impl AdminGeoFinder {
 
         let rect = {
             let mut coords = match admin.boundary {
-                Some(ref b) => b.0.iter().flat_map(|poly| (poly.0).0.iter()),
+                Some(ref b) => (*b).0.iter().flat_map(|poly| (poly.exterior).0.iter()),
                 None => return,
             };
             let first_coord = match coords.next() {
@@ -76,7 +76,7 @@ impl AdminGeoFinder {
     }
 
     /// Get all Admins overlapping the coordinate
-    pub fn get(&self, coord: &geo::Coordinate) -> Vec<Rc<Admin>> {
+    pub fn get(&self, coord: &geo::Coordinate<f64>) -> Vec<Rc<Admin>> {
         let (x, y) = (coord.x as f32, coord.y as f32);
         let search = Rect::from_float(down(x), up(x), down(y), up(y));
         self.admins
@@ -84,7 +84,7 @@ impl AdminGeoFinder {
             .into_iter()
             .map(|(_, a)| a)
             .filter(|a| {
-                a.boundary.as_ref().map_or(false, |b| b.contains(&geo::Point(coord.clone())))
+                a.boundary.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone())))
             })
             .cloned()
             .collect()
@@ -128,22 +128,22 @@ fn test_up_down() {
 mod tests {
     use super::*;
 
-    fn p(x: f64, y: f64) -> ::geo::Point {
+    fn p(x: f64, y: f64) -> ::geo::Point<f64> {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
     }
 
     fn make_admin(offset: f64) -> ::std::rc::Rc<::mimir::Admin> {
         // the boundary is a big octogon
-        let shape = ::geo::Polygon(::geo::LineString(vec![p(3. + offset, 0. + offset),
-                                                          p(6. + offset, 0. + offset),
-                                                          p(9. + offset, 3. + offset),
-                                                          p(9. + offset, 6. + offset),
-                                                          p(6. + offset, 9. + offset),
-                                                          p(3. + offset, 9. + offset),
-                                                          p(0. + offset, 6. + offset),
-                                                          p(0. + offset, 3. + offset),
-                                                          p(3. + offset, 0. + offset)]),
-                                   vec![]);
+        let shape = ::geo::Polygon::new(::geo::LineString(vec![p(3. + offset, 0. + offset),
+                                                               p(6. + offset, 0. + offset),
+                                                               p(9. + offset, 3. + offset),
+                                                               p(9. + offset, 6. + offset),
+                                                               p(6. + offset, 9. + offset),
+                                                               p(3. + offset, 9. + offset),
+                                                               p(0. + offset, 6. + offset),
+                                                               p(0. + offset, 3. + offset),
+                                                               p(3. + offset, 0. + offset)]),
+                                        vec![]);
         let boundary = ::geo::MultiPolygon(vec![shape]);
 
         ::std::rc::Rc::new(::mimir::Admin {
