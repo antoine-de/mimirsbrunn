@@ -382,7 +382,9 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 1);
 
-    // we search for POI with a label but an empty name set with type)
+    // we search for POIs with a type but an empty name, we should have set the name with the type.
+    // for exemple there are parkings without name (but with the tag "anemity" = "Parking"),
+    // we should be able to query them
     let geocodings = get_results(bragi_get("/autocomplete?q=Parking"));
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 5);
