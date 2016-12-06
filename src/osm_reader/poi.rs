@@ -104,10 +104,12 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         return None;
     }
 
-    if name.is_none() {
+    let name = if let Some(s) = name {
+    	s
+    } else {
         info!("The poi {} is rejected, cause: could not compute name.", id);
         return None;
-    }
+    };
 
     let adms = admins_geofinder.get(&coord);
     let zip_codes = match osmobj.tags().get("addr:postcode") {
@@ -116,8 +118,8 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
     };
     Some(mimir::Poi {
         id: id,
-        name: name.unwrap().to_string(),
-        label: format_label(&adms, city_level, name.unwrap()),
+        name: name.to_string(),
+        label: format_label(&adms, city_level, name),
         coord: coord,
         zip_codes: zip_codes,
         administrative_regions: adms,
