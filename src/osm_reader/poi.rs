@@ -96,11 +96,16 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         }
     };
 
-    let name = osmobj.tags().get("name").map_or(osmobj.tags().get("amenity").unwrap(), |name| name );
+    let name = osmobj.tags().get("name").map_or(osmobj.tags().get("amenity"), |name| Some(name) );
 
     if coord.is_default() {
         info!("The poi {} is rejected, cause: could not compute coordinates.",
               id);
+        return None;
+    }
+
+    if name.is_none() {
+        info!("The poi {} is rejected, cause: could not compute name.", id);
         return None;
     }
 
@@ -111,8 +116,8 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
     };
     Some(mimir::Poi {
         id: id,
-        name: name.to_string(),
-        label: format_label(&adms, city_level, name),
+        name: name.unwrap().to_string(),
+        label: format_label(&adms, city_level, name.unwrap()),
         coord: coord,
         zip_codes: zip_codes,
         administrative_regions: adms,
