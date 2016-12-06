@@ -96,16 +96,11 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         }
     };
 
-    let name = osmobj.tags().get("name").map_or("", |name| name);
+    let name = osmobj.tags().get("name").map_or(osmobj.tags().get("amenity").unwrap(), |name| name );
 
     if coord.is_default() {
         info!("The poi {} is rejected, cause: could not compute coordinates.",
               id);
-        return None;
-    }
-
-    if name == "" {
-        info!("The poi {} is rejected, cause: could not compute name.", id);
         return None;
     }
 
