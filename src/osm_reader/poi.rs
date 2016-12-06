@@ -96,7 +96,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         }
     };
 
-    let name = osmobj.tags().get("name").map_or(osmobj.tags().get("amenity"), |name| Some(name) );
+    let name = osmobj.tags().get("name").map_or(osmobj.tags().get("amenity"), |name| Some(name));
 
     if coord.is_default() {
         info!("The poi {} is rejected, cause: could not compute coordinates.",
@@ -105,7 +105,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
     }
 
     let name = if let Some(s) = name {
-    	s
+        s
     } else {
         info!("The poi {} is rejected, cause: could not compute name.", id);
         return None;
