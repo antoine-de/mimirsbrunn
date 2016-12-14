@@ -207,8 +207,18 @@ pub struct Admin {
     //of navitia (jormungandr) and hence deserializing is not necessary
     pub weight: Cell<u32>,
     pub coord: Coord,
-    #[serde(skip_serializing, skip_deserializing)]
+    #[serde(serialize_with="custom_multi_polygon_serialize", skip_deserializing)]
     pub boundary: Option<geo::MultiPolygon<f64>>,
+}
+
+fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPolygon<f64>>, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
+    use geojson::{Value, Geometry, GeoJson};
+    use serde::Serialize;
+
+    match *multi_polygon_option {
+        Some(ref multi_polygon) => GeoJson::Geometry(Geometry::new(Value::from(multi_polygon))).serialize(serializer),
+        None => serializer.serialize_none()
+    }
 }
 
 impl Ord for Admin {

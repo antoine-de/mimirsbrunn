@@ -17,6 +17,7 @@ regex = "*"
 chrono = "0.2"
 hyper = "0.9"
 geo = "^0.3"
+geojson = { version="*", features=["with-serde"] }
 
 [features]
 default = ["serde_codegen"]
