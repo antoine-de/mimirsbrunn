@@ -207,18 +207,46 @@ pub struct Admin {
     //of navitia (jormungandr) and hence deserializing is not necessary
     pub weight: Cell<u32>,
     pub coord: Coord,
-    #[serde(serialize_with="custom_multi_polygon_serialize", skip_deserializing)]
+    #[serde(serialize_with="custom_multi_polygon_serialize", deserialize_with="custom_multi_polygon_deserialize")]
     pub boundary: Option<geo::MultiPolygon<f64>>,
 }
 
-fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPolygon<f64>>, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
+fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPolygon<f64>>,
+                                     serializer: &mut S)
+                                     -> Result<(), S::Error>
+    where S: Serializer
+{
     use geojson::{Value, Geometry, GeoJson};
     use serde::Serialize;
 
     match *multi_polygon_option {
         Some(ref multi_polygon) => GeoJson::Geometry(Geometry::new(Value::from(multi_polygon))).serialize(serializer),
-        None => serializer.serialize_none()
+        None => serializer.serialize_none(),
     }
+}
+
+fn custom_multi_polygon_deserialize<D>(d: &mut D)
+                                       -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
+    where D: serde::de::Deserializer
+{
+    use geojson;
+    use serde::Deserialize;
+    use geojson::conversion::TryInto;
+
+    Option::<geojson::GeoJson>::deserialize(d).map(|option| {
+        option.and_then(|geojson| {
+            match geojson {
+                geojson::GeoJson::Geometry(geojson_geom) => {
+                    let geo_geom: geo::Geometry<f64> = geojson_geom.value.try_into().unwrap();
+                    match geo_geom {
+                        geo::Geometry::MultiPolygon(geo_multi_polygon) => Some(geo_multi_polygon),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        })
+    })
 }
 
 impl Ord for Admin {

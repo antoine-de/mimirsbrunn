@@ -52,21 +52,25 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
         match doc_type.as_ref() {
             "addr" => {
                 serde_json::from_value::<mimir::Addr>(*v)
+                    .map_err(|err| warn!("Impossible to load ES result: {}", err))
                     .ok()
                     .and_then(|o| Some(mimir::Place::Addr(o)))
             }
             "street" => {
                 serde_json::from_value::<mimir::Street>(*v)
+                    .map_err(|err| warn!("Impossible to load ES result: {}", err))
                     .ok()
                     .and_then(|o| Some(mimir::Place::Street(o)))
             }
             "admin" => {
                 serde_json::from_value::<mimir::Admin>(*v)
+                    .map_err(|err| warn!("Impossible to load ES result: {}", err))
                     .ok()
                     .and_then(|o| Some(mimir::Place::Admin(o)))
             }
             "poi" => {
                 serde_json::from_value::<mimir::Poi>(*v)
+                    .map_err(|err| warn!("Impossible to load ES result: {}", err))
                     .ok()
                     .and_then(|o| Some(mimir::Place::Poi(o)))
             }
