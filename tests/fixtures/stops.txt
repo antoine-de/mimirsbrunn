@@ -1,0 +1,26 @@
+stop_id,visible,stop_name,stop_lat,stop_lon,zone_id,location_type,parent_station,stop_timezone,equipment_id,contributor_id,geometry_id,frame_id
+OLS:SA:OCTOB,0,"11 OCTOBRE",47.90975,1.881545,,1,,Europe/Paris,,OLS,,OLS:12
+BGT:SA:bou14ju,,"14 Juillet",47.123966,2.402522,,1,,Europe/Paris,,BGT,,BGT:19
+OLS:SA:8mai,1,"8 MAI",47.907523,1.934401,,1,,Europe/Paris,,OLS,,OLS:12
+BGT:SA:bouabb2,1,"Abbé Moreux",47.072693,2.407252,,1,,Europe/Paris,,BGT,,BGT:19
+BGT:SA:bouabb,1,"Abbé Moreux",47.072643,2.407153,,1,,Europe/Paris,,BGT,,BGT:19
+BGT:SA:ursacac,1,"Acacias",47.061657,2.318652,,1,,Europe/Paris,,BGT,,BGT:19
+BGT:SA:ursacac2,1,"Acacias",47.061569,2.318652,,1,,Europe/Paris,,BGT,,BGT:19
+OLS:SA:ACA,1,"ACACIAS",47.916859,1.904304,,1,,Europe/Paris,,OLS,,OLS:12
+OLS:SA:AFR,1,"AFORPROBA",47.917441,1.929716,,1,,Europe/Paris,,OLS,,OLS:12
+BGT:SA:bouairv,1,"Airville",47.065166,2.366258,,1,,Europe/Paris,,BGT,,BGT:19
+OLS:SA:savary,1,"ALAIN SAVARY",47.889451,1.908544,,1,,Europe/Paris,,OLS,,OLS:12
+BGT:SA:bouherv2,1,"Albert Hervet",47.073502,2.398576,,1,,Europe/Paris,,BGT,,BGT:19
+BGT:SA:bouherv,1,"Albert Hervet",47.073502,2.398497,,1,,Europe/Paris,,BGT,,BGT:19
+OLS:SA:lemesl,1,"ALICE LEMESLE",47.916142,1.93278,,1,,Europe/Paris,,OLS,,OLS:12
+OLS:SA:ADK,1,"ALLEE DU KIOSQUE",47.950537,1.868697,,1,,Europe/Paris,,OLS,,OLS:12
+BGT:SA:boualle2,1,"Allende",47.064377,2.402752,,1,,Europe/Paris,,BGT,,BGT:19
+OLS:SA:violet,1,"ALLÉE DES VIOLETTES",47.86975,1.898117,,1,,Europe/Paris,,OLS,,OLS:12
+OLS:SA:alouet,1,"ALOUETTE",47.80345,1.929476,,1,,Europe/Paris,,OLS,,OLS:12
+BGT:SA:boualou2,1,"Alouettes",47.117836,,,1,,Europe/Paris,,BGT,,BGT:19
+OLS:SA:daudet,1,"ALPHONSE DAUDET",,1.829052,,1,,Europe/Paris,,OLS,,OLS:12
+BGT:SA:gpualsa3,1,"Alsace",47.099758,2.491858,,1,,Europe/Paris,,BGT,,BGT:19
+BGT:SA:bouaman2,1,"Amandines",47.101738,2.4253,,1,,Europe/Paris,,BGT,,BGT:19
+BGT:SP:bouaman2,1,"Amandines",47.101738,2.4253,,0,BGT:SA:bouaman2,Europe/Paris,,BGT,,BGT:19
+BGT:SP:gpualsa3,1,"Alsace",47.099758,2.491858,,,BGT:SA:gpualsa3,Europe/Paris,,BGT,,BGT:19
+
