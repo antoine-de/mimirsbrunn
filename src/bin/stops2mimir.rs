@@ -174,7 +174,6 @@ fn main() {
 
     info!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
-
     let mut rdr = csv::Reader::from_file(args.flag_input)
         .unwrap()
         .double_quote(true);
@@ -193,4 +192,32 @@ fn main() {
 
     info!("Nb of indexed stops: {}", nb_stops);
 
+}
+
+#[test]
+fn test_load_stops() {
+    /*
+    stops.txt:
+    BGT:SP:gpualsa3 : StopPoint object
+    BGT:SA:gpualsa3: StopArea valid
+    BGT:SA:bou14ju: StopArea valid with visible is empty
+    OLS:SA:OCTOB: invisible StopArea
+    OLS:SA:daudet: StopArea object without X coord
+    BGT:SA:boualou2: StopArea object without X coord
+    */
+    let mut rdr = csv::Reader::from_file("./tests/fixtures/stops.txt".to_string())
+    .unwrap()
+    .double_quote(true);
+    
+    let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
+        .expect("Can't find needed fields in the header.")
+        .filter_map(|rc| {
+            rc.map_err(|e| println!("error at csv line decoding : {}", e))
+                .ok()
+        })
+        .collect();
+	assert_eq!(stops.len(), 2);
+	let mut ids: Vec<_> = stops.iter().map(|s| s.id.clone()).collect();
+	assert_eq!(ids.sort(), vec!["BGT:SA:gpualsa3", "BGT:SA:bou14ju"].sort());
+	
 }
