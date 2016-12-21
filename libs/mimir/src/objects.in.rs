@@ -163,6 +163,29 @@ impl Members for Poi {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Stop {
+    pub id: String,
+    pub label: String,
+    pub name: String,
+    pub coord: Coord,
+    pub administrative_regions: Vec<Rc<Admin>>,
+    pub weight: u32,
+    pub zip_codes: Vec<String>,
+}
+
+impl EsId for Stop {
+    fn es_id(&self) -> Option<String> {
+        Some(self.id.clone())
+    }
+}
+
+impl DocType for Stop {
+    fn doc_type() -> &'static str {
+        "stop"
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Admin {
     pub id: String,
     pub insee: String,
