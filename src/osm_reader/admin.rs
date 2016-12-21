@@ -34,7 +34,7 @@ extern crate mimir;
 use ::boundaries::{build_boundary, make_centroid};
 use std::cell::Cell;
 use std::collections::BTreeSet;
-use super::{OsmPbfReader};
+use super::OsmPbfReader;
 pub type StreetsVec = Vec<mimir::Street>;
 
 #[derive(Debug)]

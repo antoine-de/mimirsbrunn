@@ -97,9 +97,7 @@ impl AdminGeoFinder {
             .get(&search)
             .into_iter()
             .map(|(_, a)| a)
-            .filter(|a| {
-                a.1.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone())))
-            })
+            .filter(|a| a.1.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone()))))
             .map(|admin_and_boundary| admin_and_boundary.0.clone())
             .collect()
     }
