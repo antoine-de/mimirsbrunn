@@ -133,7 +133,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
             s.parse()
                 .map_err(|_| csv::Error::Decode(format!("Failed converting '{}' from str.", s)))
         }
-        fn is_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<bool> {
+        fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<bool> {
             if (*location_type == Some(1)) && (*visible != Some(0)) {
                 Ok(true)
             } else {
@@ -150,7 +150,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
                 let stop_name = try!(get(&r, self.stop_name_pos));
                 let location_type = self.get_location_type(&r);
                 let visible = self.get_visible(&r);
-                try!(is_stop_area(&location_type, &visible));
+                try!(is_valid_stop_area(&location_type, &visible));
                 Ok(mimir::Stop {
                     id: stop_id.to_string(),
                     coord: mimir::Coord::new(stop_lat, stop_lon),
