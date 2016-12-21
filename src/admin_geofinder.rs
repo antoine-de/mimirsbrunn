@@ -33,23 +33,23 @@ use geo;
 use std::iter::FromIterator;
 use std::rc::Rc;
 use gst::rtree::{RTree, Rect};
+use std;
 
 /// We want to strip the admin's boundary for the objects referencing it (for performance purpose)
 /// thus in the AdminGeoFinder we store an Admin without the boundary (the option is emptied)
 /// and we store the boundary aside
-struct AdminAndBoundary(Rc<Admin>, Option<geo::MultiPolygon<f64>>);
+struct BoundaryAndAdmin(Option<geo::MultiPolygon<f64>>, Rc<Admin>);
 
-impl AdminAndBoundary {
-    fn new(mut admin: Admin) -> AdminAndBoundary {
-        let b = admin.boundary.clone();
-        admin.boundary = None;
+impl BoundaryAndAdmin {
+    fn new(mut admin: Admin) -> BoundaryAndAdmin {
+        let b = std::mem::replace(&mut admin.boundary, None);
         let minimal_admin = Rc::new(admin);
-        AdminAndBoundary(minimal_admin, b)
+        BoundaryAndAdmin(b, minimal_admin)
     }
 }
 
 pub struct AdminGeoFinder {
-    admins: RTree<AdminAndBoundary>,
+    admins: RTree<BoundaryAndAdmin>,
 }
 
 impl AdminGeoFinder {
@@ -86,7 +86,7 @@ impl AdminGeoFinder {
                                  max(accu.ymax, p.y()))
             })
         };
-        self.admins.insert(rect, AdminAndBoundary::new(admin));
+        self.admins.insert(rect, BoundaryAndAdmin::new(admin));
     }
 
     /// Get all Admins overlapping the coordinate
@@ -97,8 +97,8 @@ impl AdminGeoFinder {
             .get(&search)
             .into_iter()
             .map(|(_, a)| a)
-            .filter(|a| a.1.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone()))))
-            .map(|admin_and_boundary| admin_and_boundary.0.clone())
+            .filter(|a| a.0.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone()))))
+            .map(|admin_and_boundary| admin_and_boundary.1.clone())
             .collect()
     }
 }

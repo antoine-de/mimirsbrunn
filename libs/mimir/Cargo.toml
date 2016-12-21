@@ -17,7 +17,7 @@ regex = "*"
 chrono = "0.2"
 hyper = "0.9"
 geo = "^0.3"
-# we temporarily use our own git while gojson hasn't merged our PR on deserialization
+# we temporarily use our own git while geojson hasn't merged our PR on deserialization
 geojson = { version="*", features=["with-serde"], git = "https://github.com/CanalTP/rust-geojson.git", rev = "conversion-geojson-geo"}
 
 
