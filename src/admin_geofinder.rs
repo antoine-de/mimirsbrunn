@@ -34,8 +34,22 @@ use std::iter::FromIterator;
 use std::rc::Rc;
 use gst::rtree::{RTree, Rect};
 
+/// We want to strip the admin's boundary for the objects referencing it (for performance purpose)
+/// thus in the AdminGeoFinder we store an Admin without the boundary (the option is emptied)
+/// and we store the boundary aside
+struct AdminAndBoundary(Rc<Admin>, Option<geo::MultiPolygon<f64>>);
+
+impl AdminAndBoundary {
+    fn new(mut admin: Admin) -> AdminAndBoundary {
+        let b = admin.boundary.clone();
+        admin.boundary = None;
+        let minimal_admin = Rc::new(admin);
+        AdminAndBoundary(minimal_admin, b)
+    }
+}
+
 pub struct AdminGeoFinder {
-    admins: RTree<Rc<Admin>>,
+    admins: RTree<AdminAndBoundary>,
 }
 
 impl AdminGeoFinder {
@@ -43,7 +57,7 @@ impl AdminGeoFinder {
         AdminGeoFinder { admins: RTree::new() }
     }
 
-    pub fn insert(&mut self, admin: Rc<Admin>) {
+    pub fn insert(&mut self, admin: Admin) {
         use ::ordered_float::OrderedFloat;
         fn min(a: OrderedFloat<f32>, b: f64) -> f32 {
             a.0.min(down(b as f32))
@@ -72,7 +86,7 @@ impl AdminGeoFinder {
                                  max(accu.ymax, p.y()))
             })
         };
-        self.admins.insert(rect, admin);
+        self.admins.insert(rect, AdminAndBoundary::new(admin));
     }
 
     /// Get all Admins overlapping the coordinate
@@ -84,21 +98,19 @@ impl AdminGeoFinder {
             .into_iter()
             .map(|(_, a)| a)
             .filter(|a| {
-                a.boundary.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone())))
+                a.1.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone())))
             })
-            .cloned()
+            .map(|admin_and_boundary| admin_and_boundary.0.clone())
             .collect()
     }
 }
 
-impl<T> FromIterator<T> for AdminGeoFinder
-    where T: Into<Rc<Admin>>
-{
-    fn from_iter<I: IntoIterator<Item = T>>(admins: I) -> Self {
+impl FromIterator<Admin> for AdminGeoFinder {
+    fn from_iter<I: IntoIterator<Item = Admin>>(admins: I) -> Self {
         let mut geofinder = AdminGeoFinder::new();
 
         for admin in admins {
-            geofinder.insert(admin.into());
+            geofinder.insert(admin);
         }
 
         geofinder
@@ -132,7 +144,7 @@ mod tests {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
     }
 
-    fn make_admin(offset: f64) -> ::std::rc::Rc<::mimir::Admin> {
+    fn make_admin(offset: f64) -> ::mimir::Admin {
         // the boundary is a big octogon
         let shape = ::geo::Polygon::new(::geo::LineString(vec![p(3. + offset, 0. + offset),
                                                                p(6. + offset, 0. + offset),
@@ -146,7 +158,7 @@ mod tests {
                                         vec![]);
         let boundary = ::geo::MultiPolygon(vec![shape]);
 
-        ::std::rc::Rc::new(::mimir::Admin {
+        ::mimir::Admin {
             id: format!("admin:offset:{}", offset),
             level: 8,
             label: format!("city {}", offset),
@@ -155,7 +167,7 @@ mod tests {
             coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
-        })
+        }
     }
 
     #[test]

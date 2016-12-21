@@ -34,8 +34,7 @@ extern crate mimir;
 use ::boundaries::{build_boundary, make_centroid};
 use std::cell::Cell;
 use std::collections::BTreeSet;
-use std::rc::Rc;
-use super::{OsmPbfReader, AdminsVec};
+use super::{OsmPbfReader};
 pub type StreetsVec = Vec<mimir::Street>;
 
 #[derive(Debug)]
@@ -61,8 +60,8 @@ impl AdminMatcher {
     }
 }
 
-pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> AdminsVec {
-    let mut administrative_regions = AdminsVec::new();
+pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Vec<mimir::Admin> {
+    let mut administrative_regions = Vec::<mimir::Admin>::new();
     let matcher = AdminMatcher::new(levels);
     info!("reading pbf...");
     let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_admin(o)).unwrap();
@@ -134,7 +133,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
             };
-            administrative_regions.push(Rc::new(admin));
+            administrative_regions.push(admin);
         }
     }
     return administrative_regions;
