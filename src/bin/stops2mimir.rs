@@ -133,7 +133,9 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
             s.parse()
                 .map_err(|_| csv::Error::Decode(format!("Failed converting '{}' from str.", s)))
         }
-        fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<bool> {
+        fn is_valid_stop_area(location_type: &Option<u8>,
+                              visible: &Option<u8>)
+                              -> csv::Result<bool> {
             if (*location_type == Some(1)) && (*visible != Some(0)) {
                 Ok(true)
             } else {
@@ -196,19 +198,18 @@ fn main() {
 
 #[test]
 fn test_load_stops() {
-    /*
-    stops.txt:
-    BGT:SP:gpualsa3 : StopPoint object
-    BGT:SA:gpualsa3: StopArea valid
-    BGT:SA:bou14ju: StopArea valid with visible is empty
-    OLS:SA:OCTOB: invisible StopArea
-    OLS:SA:daudet: StopArea object without X coord
-    BGT:SA:boualou2: StopArea object without X coord
-    */
+    // stops.txt:
+    // BGT:SP:gpualsa3 : StopPoint object
+    // BGT:SA:gpualsa3: StopArea valid
+    // BGT:SA:bou14ju: StopArea valid with visible is empty
+    // OLS:SA:OCTOB: invisible StopArea
+    // OLS:SA:daudet: StopArea object without X coord
+    // BGT:SA:boualou2: StopArea object without X coord
+    //
     let mut rdr = csv::Reader::from_file("./tests/fixtures/stops.txt".to_string())
-    .unwrap()
-    .double_quote(true);
-    
+        .unwrap()
+        .double_quote(true);
+
     let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
         .expect("Can't find needed fields in the header.")
         .filter_map(|rc| {
@@ -216,8 +217,8 @@ fn test_load_stops() {
                 .ok()
         })
         .collect();
-	assert_eq!(stops.len(), 2);
-	let mut ids: Vec<_> = stops.iter().map(|s| s.id.clone()).collect();
-	assert_eq!(ids.sort(), vec!["BGT:SA:gpualsa3", "BGT:SA:bou14ju"].sort());
-	
+    assert_eq!(stops.len(), 2);
+    let mut ids: Vec<_> = stops.iter().map(|s| s.id.clone()).collect();
+    assert_eq!(ids.sort(), vec!["BGT:SA:gpualsa3", "BGT:SA:bou14ju"].sort());
+
 }
