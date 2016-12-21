@@ -227,6 +227,76 @@
                     }
                 }
             }
+        },
+        "stop": {
+          "properties": {
+            "id": {
+              "type": "string",
+              "index": "no"
+            },
+            "name": {
+              "type": "string"
+            },
+            "coord": {
+              "type": "geo_point",
+              "lat_lon": true,
+              "geohash_prefix": true,
+              "geohash_precision": "1m"
+            },
+            "label": {
+              "type": "string",
+              "index_options": "docs",
+              "analyzer": "word",
+              "fields": {
+                "prefix": {
+                  "type": "string",
+                  "index_options": "docs",
+                  "analyzer": "prefix",
+                  "search_analyzer": "word"
+                },
+                "ngram": {
+                  "type": "string",
+                  "index_options": "docs",
+                  "analyzer": "ngram"
+                }
+              }
+            },
+            "administrative_region": {
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "index": "no"
+                },
+                "level": {
+                  "type": "long",
+                  "index": "no"
+                },
+                "zip_codes": {
+                  "type": "string",
+                  "index": "not_analyzed"
+                },
+                "weight": {
+                  "type": "long"
+                }
+              }
+            },
+            "weight": {
+              "type": "long"
+            },
+            "zip_codes": {
+              "type": "string",
+              "index_options": "docs",
+              "analyzer": "word",
+              "fields": {
+                "prefix": {
+                  "type": "string",
+                  "index_options": "docs",
+                  "analyzer": "prefix",
+                  "search_analyzer": "word"
+                }
+              }
+            }
+          }
         }
     }
 }

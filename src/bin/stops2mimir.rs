@@ -1,3 +1,33 @@
+// Copyright © 2016, Canal TP and/or its affiliates. All rights reserved.
+//
+// This file is part of Navitia,
+//     the software to build cool stuff with public transport.
+//
+// Hope you'll enjoy and contribute to this project,
+//     powered by Canal TP (www.canaltp.fr).
+// Help us simplify mobility and open public transport:
+//     a non ending quest to the responsive locomotion way of traveling!
+//
+// LICENCE: This program is free software; you can redistribute it
+// and/or modify it under the terms of the GNU Affero General Public
+// License as published by the Free Software Foundation, either
+// version 3 of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with this program. If not, see
+// <http://www.gnu.org/licenses/>.
+//
+// Stay tuned using
+// twitter @navitia
+// IRC #navitia on freenode
+// https://groups.google.com/d/forum/navitia
+// www.navitia.io
+
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate csv;
@@ -42,6 +72,7 @@ struct StopPointIter<'a, R: std::io::Read + 'a> {
     location_type_pos: Option<usize>,
     stop_visible_pos: Option<usize>,
 }
+
 impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
     fn new(r: &'a mut csv::Reader<R>) -> Option<Self> {
         let headers = if let Ok(hs) = r.headers() {
@@ -88,6 +119,7 @@ impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
         self.stop_visible_pos.and_then(|pos| record.get(pos).and_then(|s| s.parse().ok()))
     }
 }
+
 impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
     type Item = csv::Result<mimir::Stop>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -102,7 +134,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
                 .map_err(|_| csv::Error::Decode(format!("Failed converting '{}' from str.", s)))
         }
         fn is_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<bool> {
-            if (*location_type == Some(1)) && (*visible == Some(0)) {
+            if (*location_type == Some(1)) && (*visible != Some(0)) {
                 Ok(true)
             } else {
                 Err(csv::Error::Decode("Not stop_area.".to_string()))
@@ -134,13 +166,13 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
 }
 
 fn main() {
-    println!("Launching stops2mimir...");
+    info!("Launching stops2mimir...");
 
     let args: Args = Docopt::new(USAGE)
         .and_then(|dopt| dopt.decode())
         .unwrap_or_else(|e| e.exit());
-	println!("args: {:?}", args);
-    println!("creation of indexes");
+
+    info!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
 
     let mut rdr = csv::Reader::from_file(args.flag_input)
@@ -155,10 +187,10 @@ fn main() {
         })
         .collect();
 
-    println!("Importing stops into Mimir");
+    info!("Importing stops into Mimir");
     let nb_stops = rubber.index("stops", &args.flag_dataset, stops.iter())
         .unwrap();
 
-    println!("Nb of indexed stops: {}", nb_stops);
+    info!("Nb of indexed stops: {}", nb_stops);
 
 }

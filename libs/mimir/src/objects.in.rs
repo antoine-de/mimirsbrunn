@@ -77,6 +77,7 @@ impl Place{
             _ => false
         }
     }
+
     pub fn label(&self) -> &str {
         match *self {
             Place::Admin(ref o) => o.label(),
@@ -182,6 +183,15 @@ impl EsId for Stop {
 impl DocType for Stop {
     fn doc_type() -> &'static str {
         "stop"
+    }
+}
+
+impl Members for Stop {
+    fn label(&self) -> &str {
+        &self.label
+    }
+    fn admins(&self) -> Vec<Rc<Admin>> {
+        self.administrative_regions.clone()
     }
 }
 
