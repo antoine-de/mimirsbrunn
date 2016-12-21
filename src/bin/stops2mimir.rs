@@ -46,14 +46,11 @@ Usage:
      [--connection-string=<connection-string>] [--dataset=<dataset>]
 
 Options:
-    -h, --help              \
-     Show this message.
-    -i, --input=<file>      NTFS stops.txt file.
-    -c, \
-     --connection-string=<connection-string>
-                            Elasticsearch \
-     parameters, [default: http://localhost:9200/munin]
-    -d, --dataset=<dataset>
+    -h, --help               Show this message.
+    -i, --input=<file>       NTFS stops.txt file.
+    -c, --connection-string=<connection-string>   \
+                             Elasticsearch parameters [default: http://localhost:9200/munin].
+    -d, --dataset=<dataset>  Name of the dataset [default: fr].
 ";
 
 #[derive(Debug, RustcDecodable)]
@@ -74,42 +71,23 @@ struct StopPointIter<'a, R: std::io::Read + 'a> {
 }
 
 impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
-    fn new(r: &'a mut csv::Reader<R>) -> Option<Self> {
-        let headers = if let Ok(hs) = r.headers() {
-            hs
-        } else {
-            return None;
-        };
-        let get = |name| headers.iter().position(|s| s == name);
-        let stop_id_pos = if let Some(pos) = get("stop_id") {
-            pos
-        } else {
-            return None;
-        };
-        let stop_lat_pos = if let Some(pos) = get("stop_lat") {
-            pos
-        } else {
-            return None;
-        };
-        let stop_lon_pos = if let Some(pos) = get("stop_lon") {
-            pos
-        } else {
-            return None;
-        };
-        let stop_name_pos = if let Some(pos) = get("stop_name") {
-            pos
-        } else {
-            return None;
+    fn new(r: &'a mut csv::Reader<R>) -> csv::Result<Self> {
+        let headers = try!(r.headers());
+        let get_optional_pos = |name| headers.iter().position(|s| s == name);
+
+        let get_pos = |field| {
+            get_optional_pos(field)
+                .ok_or(csv::Error::Decode(format!("Invalid file, cannot find column '{}'", field)))
         };
 
-        Some(StopPointIter {
+        Ok(StopPointIter {
             iter: r.records(),
-            stop_id_pos: stop_id_pos,
-            stop_lat_pos: stop_lat_pos,
-            stop_lon_pos: stop_lon_pos,
-            stop_name_pos: stop_name_pos,
-            location_type_pos: get("location_type"),
-            stop_visible_pos: get("visible"),
+            stop_id_pos: try!(get_pos("stop_id")),
+            stop_lat_pos: try!(get_pos("stop_lat")),
+            stop_lon_pos: try!(get_pos("stop_lon")),
+            stop_name_pos: try!(get_pos("stop_name")),
+            location_type_pos: get_optional_pos("location_type"),
+            stop_visible_pos: get_optional_pos("visible"),
         })
     }
     fn get_location_type(&self, record: &[String]) -> Option<u8> {
@@ -124,35 +102,34 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
     type Item = csv::Result<mimir::Stop>;
     fn next(&mut self) -> Option<Self::Item> {
         fn get(record: &[String], pos: usize) -> csv::Result<&str> {
-            match record.get(pos) {
-                Some(s) => Ok(&s),
-                None => Err(csv::Error::Decode(format!("Failed accessing record '{}'.", pos))),
-            }
+            record.get(pos)
+                .map(|s| s.as_str())
+                .ok_or_else(|| csv::Error::Decode(format!("Failed accessing record '{}'.", pos)))
         }
         fn parse_f64(s: &str) -> csv::Result<f64> {
             s.parse()
                 .map_err(|_| csv::Error::Decode(format!("Failed converting '{}' from str.", s)))
         }
-        fn is_valid_stop_area(location_type: &Option<u8>,
-                              visible: &Option<u8>)
-                              -> csv::Result<bool> {
-            if (*location_type == Some(1)) && (*visible != Some(0)) {
-                Ok(true)
+
+        fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<()> {
+            if *location_type == Some(1) && *visible != Some(0) {
+                Ok(())
             } else {
                 Err(csv::Error::Decode("Not stop_area.".to_string()))
             }
         }
         self.iter.next().map(|r| {
             r.and_then(|r| {
+                let location_type = self.get_location_type(&r);
+                let visible = self.get_visible(&r);
+                try!(is_valid_stop_area(&location_type, &visible));
+
                 let stop_id = try!(get(&r, self.stop_id_pos));
                 let stop_lat = try!(get(&r, self.stop_lat_pos));
                 let stop_lat = try!(parse_f64(stop_lat));
                 let stop_lon = try!(get(&r, self.stop_lon_pos));
                 let stop_lon = try!(parse_f64(stop_lon));
                 let stop_name = try!(get(&r, self.stop_name_pos));
-                let location_type = self.get_location_type(&r);
-                let visible = self.get_visible(&r);
-                try!(is_valid_stop_area(&location_type, &visible));
                 Ok(mimir::Stop {
                     id: stop_id.to_string(),
                     coord: mimir::Coord::new(stop_lat, stop_lon),
@@ -181,9 +158,9 @@ fn main() {
         .double_quote(true);
 
     let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
-        .expect("Can't find needed fields in the header.")
+        .unwrap()
         .filter_map(|rc| {
-            rc.map_err(|e| println!("error at csv line decoding : {}", e))
+            rc.map_err(|e| error!("error at csv line decoding : {}", e))
                 .ok()
         })
         .collect();
@@ -211,7 +188,7 @@ fn test_load_stops() {
         .double_quote(true);
 
     let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
-        .expect("Can't find needed fields in the header.")
+        .unwrap()
         .filter_map(|rc| {
             rc.map_err(|e| println!("error at csv line decoding : {}", e))
                 .ok()

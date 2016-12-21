@@ -149,6 +149,8 @@ To import all those data into Mimir, you only have to do:
 
 The `--connection-string` argument refers to the ElasticSearch url
 
+The stops input file needs to match the NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
+
 ### Bragi
 
 Bragi is the webservice build around ElasticSearch.
