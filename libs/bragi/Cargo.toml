@@ -20,7 +20,8 @@ rs-es = "0.5"
 serde = "0.8"
 serde_json = "0.8"
 serde_derive = { version = "0.8", optional = true }
-geojson = { version="*", features=["with-serde"] }
+# we temporarily use our own git while geojson hasn't merged our PR on deserialization
+geojson = { version="*", features=["with-serde"], git = "https://github.com/CanalTP/rust-geojson.git", rev = "conversion-geojson-geo"}
 geo = "^0.3"
 
 [features]

@@ -44,6 +44,7 @@ extern crate hyper;
 extern crate rs_es;
 extern crate regex;
 extern crate geo;
+extern crate geojson;
 
 pub mod objects;
 pub mod rubber;

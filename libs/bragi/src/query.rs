@@ -35,6 +35,7 @@ use rs_es::operations::search::SearchResult;
 use rs_es::units as rs_u;
 use mimir;
 use serde_json;
+use serde;
 
 fn build_rs_client(cnx: &String) -> rs_es::Client {
     let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
@@ -49,27 +50,19 @@ fn build_rs_client(cnx: &String) -> rs_es::Client {
 /// it uses the _type field of ES to know which type of the Place enum to fill
 pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<mimir::Place> {
     value.and_then(|v| {
+        fn convert<T: serde::Deserialize>(v: serde_json::Value,
+                                          f: fn(T) -> mimir::Place)
+                                          -> Option<mimir::Place> {
+            serde_json::from_value::<T>(v)
+                .map_err(|err| warn!("Impossible to load ES result: {}", err))
+                .ok()
+                .map(f)
+        }
         match doc_type.as_ref() {
-            "addr" => {
-                serde_json::from_value::<mimir::Addr>(*v)
-                    .ok()
-                    .and_then(|o| Some(mimir::Place::Addr(o)))
-            }
-            "street" => {
-                serde_json::from_value::<mimir::Street>(*v)
-                    .ok()
-                    .and_then(|o| Some(mimir::Place::Street(o)))
-            }
-            "admin" => {
-                serde_json::from_value::<mimir::Admin>(*v)
-                    .ok()
-                    .and_then(|o| Some(mimir::Place::Admin(o)))
-            }
-            "poi" => {
-                serde_json::from_value::<mimir::Poi>(*v)
-                    .ok()
-                    .and_then(|o| Some(mimir::Place::Poi(o)))
-            }
+            "addr" => convert(*v, mimir::Place::Addr),
+            "street" => convert(*v, mimir::Place::Street),
+            "admin" => convert(*v, mimir::Place::Admin),
+            "poi" => convert(*v, mimir::Place::Poi),
             _ => {
                 warn!("unknown ES return value, _type field = {}", doc_type);
                 None
