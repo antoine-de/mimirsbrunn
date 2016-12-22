@@ -237,10 +237,14 @@ fn custom_multi_polygon_deserialize<D>(d: &mut D)
         option.and_then(|geojson| {
             match geojson {
                 geojson::GeoJson::Geometry(geojson_geom) => {
-                    let geo_geom: geo::Geometry<f64> = geojson_geom.value.try_into().unwrap();
+                    let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
                     match geo_geom {
-                        geo::Geometry::MultiPolygon(geo_multi_polygon) => Some(geo_multi_polygon),
-                        _ => None,
+                        Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => Some(geo_multi_polygon),
+                        Ok(_) => None,
+                        Err(e) => {
+                            warn!("Error deserializing geometry: {}", e);
+                            None
+                        }
                     }
                 }
                 _ => None,
