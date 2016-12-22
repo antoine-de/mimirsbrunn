@@ -77,6 +77,7 @@ impl Place{
             _ => false
         }
     }
+
     pub fn label(&self) -> &str {
         match *self {
             Place::Admin(ref o) => o.label(),
@@ -154,6 +155,38 @@ impl EsId for Poi {
 }
 
 impl Members for Poi {
+    fn label(&self) -> &str {
+        &self.label
+    }
+    fn admins(&self) -> Vec<Rc<Admin>> {
+        self.administrative_regions.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Stop {
+    pub id: String,
+    pub label: String,
+    pub name: String,
+    pub coord: Coord,
+    pub administrative_regions: Vec<Rc<Admin>>,
+    pub weight: u32,
+    pub zip_codes: Vec<String>,
+}
+
+impl EsId for Stop {
+    fn es_id(&self) -> Option<String> {
+        Some(self.id.clone())
+    }
+}
+
+impl DocType for Stop {
+    fn doc_type() -> &'static str {
+        "stop"
+    }
+}
+
+impl Members for Stop {
     fn label(&self) -> &str {
         &self.label
     }

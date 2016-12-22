@@ -135,6 +135,22 @@ To import all those data into Mimir, you only have to do:
 
 The `--connection-string` argument refers to the ElasticSearch url
 
+
+### stops2mimir
+
+This component imports stops into Mimir.
+It is recommanded to run stops integration after osm integration so that stops are attached to admins.
+
+To import all those data into Mimir, you only have to do:
+
+```shell
+./target/release/stops2mimir -i stops.txt --dataset=idf --connection-string=http://localhost:9200/
+```
+
+The `--connection-string` argument refers to the ElasticSearch url
+
+The stops input file needs to match the NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
+
 ### Bragi
 
 Bragi is the webservice build around ElasticSearch.
