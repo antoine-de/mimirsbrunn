@@ -60,7 +60,9 @@ pub struct GeocodingResponse {
     pub place_type: String, /* TODO enum cf https://github.com/geocoders/geocodejson-spec/blob/master/draft/README.md#feature-object */
     pub label: Option<String>,
     pub name: Option<String>,
+    #[serde(skip_serializing_if="Option::is_none")]
     pub housenumber: Option<String>,
+    #[serde(skip_serializing_if="Option::is_none")]
     pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
@@ -84,6 +86,7 @@ impl ToGeom for mimir::Place {
             &mimir::Place::Street(ref street) => street.coord.to_geom(),
             &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
             &mimir::Place::Poi(ref poi) => poi.coord.to_geom(),
+            &mimir::Place::Stop(ref stop) => stop.coord.to_geom(),
         }
     }
 }
@@ -102,6 +105,7 @@ impl From<mimir::Place> for Feature {
             mimir::Place::Street(street) => GeocodingResponse::from(street),
             mimir::Place::Addr(addr) => GeocodingResponse::from(addr),
             mimir::Place::Poi(poi) => GeocodingResponse::from(poi),
+            mimir::Place::Stop(poi) => GeocodingResponse::from(poi),
         };
         Feature {
             feature_type: "Feature".to_string(),
@@ -192,6 +196,29 @@ impl From<mimir::Addr> for GeocodingResponse {
 impl From<mimir::Poi> for GeocodingResponse {
     fn from(other: mimir::Poi) -> GeocodingResponse {
         let type_ = "poi".to_string();
+        let label = Some(other.label);
+        let name = Some(other.name);
+        let admins = other.administrative_regions;
+        let city = get_city_name(&admins);
+        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
+
+        GeocodingResponse {
+            id: other.id,
+            place_type: type_,
+            name: name,
+            postcode: postcode,
+            label: label,
+            housenumber: None,
+            street: None,
+            city: city,
+            administrative_regions: admins
+        }
+    }
+}
+
+impl From<mimir::Stop> for GeocodingResponse {
+    fn from(other: mimir::Stop) -> GeocodingResponse {
+        let type_ = "public_transport:stop_area".to_string();
         let label = Some(other.label);
         let name = Some(other.name);
         let admins = other.administrative_regions;
