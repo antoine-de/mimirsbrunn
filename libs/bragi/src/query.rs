@@ -50,7 +50,9 @@ fn build_rs_client(cnx: &String) -> rs_es::Client {
 /// it uses the _type field of ES to know which type of the Place enum to fill
 pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<mimir::Place> {
     value.and_then(|v| {
-        fn convert<T: serde::Deserialize>(v: serde_json::Value, f: fn(T) -> mimir::Place) -> Option<mimir::Place> {
+        fn convert<T: serde::Deserialize>(v: serde_json::Value,
+                                          f: fn(T) -> mimir::Place)
+                                          -> Option<mimir::Place> {
             serde_json::from_value::<T>(v)
                 .map_err(|err| warn!("Impossible to load ES result: {}", err))
                 .ok()
