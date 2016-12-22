@@ -48,6 +48,19 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper.search_and_filter("label:Livry-sur-Seine", |_| true).collect();
     assert_eq!(res.len(), 5);
+
+    let has_boundary = |res: &Vec<mimir::Place>, is_admin: bool| {
+        res.iter()
+            .filter(|place| place.is_admin() == is_admin)
+            .flat_map(|a| a.admins())
+            .all(|a| a.boundary.clone().map_or(false, |b| !b.0.is_empty()))
+    };
+    // Admins have boundaries
+    assert!(has_boundary(&res, true));
+
+    // Others places than Admin don't
+    assert!(!has_boundary(&res, false));
+
     assert!(res.iter().any(|r| r.is_admin()));
 
     // Test: search for "Rue des Près"

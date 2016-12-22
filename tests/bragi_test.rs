@@ -211,6 +211,9 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(all_20.len(), 1);
     assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
+    let boundary = all_20[0].get("administrative_regions").unwrap().pointer("/0/boundary").unwrap();
+    assert!(boundary.is_null());
+
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 1);
