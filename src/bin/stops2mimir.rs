@@ -131,7 +131,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
                 let stop_lon = try!(parse_f64(stop_lon));
                 let stop_name = try!(get(&r, self.stop_name_pos));
                 Ok(mimir::Stop {
-                    id: stop_id.to_string(),
+                    id: format!("stop_area:{}", stop_id),
                     coord: mimir::Coord::new(stop_lat, stop_lon),
                     label: stop_name.to_string(),
                     weight: 1,
@@ -199,6 +199,7 @@ fn test_load_stops() {
     let mut ids: Vec<_> = stops.iter().map(|s| s.id.clone()).collect();
     ids.sort();
     assert_eq!(ids,
-               vec!["SA:main_station", "SA:second_station", "SA:station_no_city"]);
-
+               vec!["stop_area:SA:main_station",
+                    "stop_area:SA:second_station",
+                    "stop_area:SA:station_no_city"]);
 }
