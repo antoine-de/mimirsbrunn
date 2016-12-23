@@ -412,7 +412,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
     assert_eq!(get_value(stop, "label"), "14 Juillet");
     assert_eq!(get_value(stop, "name"), "14 Juillet");
-    assert_eq!(get_value(stop, "id"), "SA:second_station");
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
     assert!(stop.get("administrative_regions").map_or(false, |v| v.is_array()));
 }
 

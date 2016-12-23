@@ -139,7 +139,7 @@ The `--connection-string` argument refers to the ElasticSearch url
 ### stops2mimir
 
 This component imports stops into Mimir.
-It is recommanded to run stops integration after osm integration so that stops are attached to admins.
+It is recommended to run stops integration after osm integration so that stops are attached to admins.
 
 To import all those data into Mimir, you only have to do:
 
@@ -149,11 +149,12 @@ To import all those data into Mimir, you only have to do:
 
 The `--connection-string` argument refers to the ElasticSearch url
 
-The stops input file needs to match the NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
+The stops input file needs to match the either the GTFS specification (https://developers.google.com/transit/gtfs/reference/)
+ or NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
 
 ### Bragi
 
-Bragi is the webservice build around ElasticSearch.
+Bragi is the webservice built around ElasticSearch.
 It has been done to hide the ElasticSearch complexity and to return consistent formated response.
 
 Its responses format follow the [geocodejson-spec](https://github.com/geocoders/geocodejson-spec).
