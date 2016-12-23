@@ -50,6 +50,7 @@ pub enum Place {
     Street(Street),
     Addr(Addr),
     Poi(Poi),
+    Stop(Stop),
 }
 
 impl Place{
@@ -77,6 +78,12 @@ impl Place{
             _ => false
         }
     }
+    pub fn is_stop(&self) -> bool {
+        match *self {
+            Place::Stop(_) => true,
+            _ => false
+        }
+    }
 
     pub fn label(&self) -> &str {
         match *self {
@@ -84,6 +91,7 @@ impl Place{
             Place::Street(ref o) => o.label(),
             Place::Addr(ref o) => o.label(),
             Place::Poi(ref o) => o.label(),
+            Place::Stop(ref o) => o.label(),
         }
     }
 
@@ -93,6 +101,7 @@ impl Place{
             Place::Street(ref o) => o.admins(),
             Place::Addr(ref o) => o.admins(),
             Place::Poi(ref o) => o.admins(),
+            Place::Stop(ref o) => o.admins(),
         }
     }
 }

@@ -63,6 +63,7 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
             "street" => convert(*v, mimir::Place::Street),
             "admin" => convert(*v, mimir::Place::Admin),
             "poi" => convert(*v, mimir::Place::Poi),
+            "stop" => convert(*v, mimir::Place::Stop),
             _ => {
                 warn!("unknown ES return value, _type field = {}", doc_type);
                 None

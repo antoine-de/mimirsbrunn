@@ -33,9 +33,9 @@ extern crate rustless;
 extern crate iron;
 extern crate iron_test;
 extern crate serde_json;
-use std::process::Command;
 extern crate mime;
 use std::collections::BTreeMap;
+use serde_json::Value;
 
 fn get_handler(url: String) -> rustless::Application {
     let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
@@ -46,13 +46,11 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
-    let status = Command::new(bano2mimir)
-        .args(&["--input=./tests/fixtures/sample-bano.csv".into(),
-                format!("--connection-string={}", es_wrapper.host())])
-        .status()
-        .unwrap();
-    assert!(status.success(), "`bano2mimir` failed {}", &status);
-    es_wrapper.refresh();
+
+    ::launch_and_assert(bano2mimir,
+                        vec!["--input=./tests/fixtures/sample-bano.csv".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
 
     let handler = get_handler(format!("{}/munin", es_wrapper.host()));
 
@@ -81,7 +79,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
             .unwrap()
     };
 
-    let to_json = |r| -> serde_json::Value {
+    let to_json = |r| -> Value {
         let s = iron_test::response::extract_body_to_string(r);
         serde_json::from_str(&s).unwrap()
     };
@@ -175,11 +173,11 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     // if we give a lon/lat near trifouilli-les-Oies, we'll have another sort
     let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=50.2&lon=2.0"));
-    assert_eq!(get_value(&all_20, "label"),
+    assert_eq!(get_values(&all_20, "label"),
                vec!["20 Rue Hector Malot (Trifouilli-les-Oies)", "20 Rue Hector Malot (Paris)"]);
     // and when we're in paris, we get paris first
     let all_20 = get_results(bragi_get("/autocomplete?q=20 rue hector malot&lat=48&lon=2.4"));
-    assert_eq!(get_value(&all_20, "label"),
+    assert_eq!(get_values(&all_20, "label"),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
 
 
@@ -194,7 +192,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
     let all_20 = get_results(bragi_get("/autocomplete?q=77000"));
     assert_eq!(all_20.len(), 10);
-    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
@@ -209,7 +207,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // zip_code and name of street
     let all_20 = get_results(bragi_get("/autocomplete?q=77000 Lotissement le Clos de Givry"));
     assert_eq!(all_20.len(), 1);
-    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
     let boundary = all_20[0].get("administrative_regions").unwrap().pointer("/0/boundary").unwrap();
     assert!(boundary.is_null());
@@ -227,7 +225,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // zip_code and name of admin
     let all_20 = get_results(bragi_get("/autocomplete?q=77000 Vaux-le-Pénil"));
     assert_eq!(all_20.len(), 4);
-    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 3);
@@ -248,7 +246,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let all_20 = get_results(bragi_get("/autocomplete?q=77255"));
     assert_eq!(all_20.len(), 1);
-    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77255"));
+    assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77255"));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);
@@ -262,7 +260,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // zip_code and name of addr
     let all_20 = get_results(bragi_get("/autocomplete?q=77288 Rue de la Reine Blanche"));
     assert_eq!(all_20.len(), 1);
-    assert!(get_value(&all_20, "postcode").iter().all(|r| *r == "77288"));
+    assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77288"));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);
@@ -273,7 +271,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let count = count_types(&types, "house");
     assert_eq!(count, 1);
 
-    assert_eq!(get_value(&all_20, "label"),
+    assert_eq!(get_values(&all_20, "label"),
                vec!["2 Rue de la Reine Blanche (Melun)"]);
 
     //      A ---------------------D
@@ -288,7 +286,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Rue du Port", shape));
     assert_eq!(geocodings.len(), 1);
-    assert_eq!(get_value(&geocodings, "label"), vec!["Rue du Port (Melun)"]);
+    assert_eq!(get_values(&geocodings, "label"),
+               vec!["Rue du Port (Melun)"]);
 
     //      A ---------------------D
     //      |                      |
@@ -315,7 +314,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 1);
-    assert_eq!(get_value(&geocodings, "label"), vec!["Melun"]);
+    assert_eq!(get_values(&geocodings, "label"), vec!["Melun"]);
 
     //      A ---------------------D
     //      |                      |
@@ -341,17 +340,17 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
     assert_eq!(count, 1);
-    assert_eq!(get_value(&geocodings, "label"),
+    assert_eq!(get_values(&geocodings, "label"),
                vec!["Le-Mée-sur-Seine Courtilleraies"]);
-    assert!(get_value(&geocodings, "postcode").iter().all(|r| *r == "77350"));
+    assert!(get_values(&geocodings, "postcode").iter().all(|r| *r == "77350"));
 
 
     let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
     assert_eq!(count, 2);
-    assert!(get_value(&geocodings, "label").contains(&"Melun Rp (Melun)"));
-    assert!(get_value(&geocodings, "postcode").iter().all(|r| *r == "77000"));
+    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
+    assert!(get_values(&geocodings, "postcode").iter().all(|r| *r == "77000"));
 
     // search by zip code
     let geocodings = get_results(bragi_get("/autocomplete?q=77000&limit=15"));
@@ -397,13 +396,35 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 0);
 
+    // we then load a stop file
+    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    info!("Launching {}", stops2mimir);
+    ::launch_and_assert(stops2mimir,
+                        vec!["--input=./tests/fixtures/stops.txt".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
+
+    // with this query we should find only one response, a stop
+    let response = get_results(bragi_get("/autocomplete?q=14 juillet"));
+    assert_eq!(response.len(), 1);
+    let stop = response.first().unwrap();
+
+    assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
+    assert_eq!(get_value(stop, "label"), "14 Juillet");
+    assert_eq!(get_value(stop, "name"), "14 Juillet");
+    assert_eq!(get_value(stop, "id"), "SA:second_station");
+    assert!(stop.get("administrative_regions").map_or(false, |v| v.is_array()));
 }
 
-fn get_value<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>, val: &'a str) -> Vec<&'a str> {
-    r.iter().map(|e| e.get(val).and_then(|l| l.as_str()).unwrap_or("")).collect()
+fn get_values<'a>(r: &'a Vec<BTreeMap<String, Value>>, val: &'a str) -> Vec<&'a str> {
+    r.iter().map(|e| get_value(e, val)).collect()
 }
 
-fn get_types<'a>(r: &'a Vec<BTreeMap<String, serde_json::Value>>) -> Vec<&'a str> {
+fn get_value<'a>(e: &'a BTreeMap<String, Value>, val: &'a str) -> &'a str {
+    e.get(val).and_then(|l| l.as_str()).unwrap_or("")
+}
+
+fn get_types<'a>(r: &'a Vec<BTreeMap<String, Value>>) -> Vec<&'a str> {
     r.iter().map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("")).collect()
 }
 

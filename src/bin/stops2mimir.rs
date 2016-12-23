@@ -145,6 +145,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
 }
 
 fn main() {
+    mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
 
     let args: Args = Docopt::new(USAGE)
@@ -176,13 +177,13 @@ fn main() {
 #[test]
 fn test_load_stops() {
     // stops.txt:
-    // BGT:SP:gpualsa3 : StopPoint object
-    // BGT:SA:gpualsa3: StopArea valid
-    // BGT:SA:bou14ju: StopArea valid with visible is empty
-    // OLS:SA:OCTOB: invisible StopArea
-    // OLS:SA:daudet: StopArea object without X coord
-    // BGT:SA:boualou2: StopArea object without X coord
-    //
+    // SP:main_station : StopPoint object
+    // SA:main_station: StopArea valid
+    // SA:second_station: StopArea valid with visible is empty
+    // SA:invisible_station: invisible StopArea
+    // SA:without_lat: StopArea object without lattitude coord
+    // SA:witout_lon: StopArea object without longitude coord
+    // SA:station_no_city: StopArea far away, we won't be able to attach it to a city
     let mut rdr = csv::Reader::from_file("./tests/fixtures/stops.txt".to_string())
         .unwrap()
         .double_quote(true);
@@ -194,8 +195,10 @@ fn test_load_stops() {
                 .ok()
         })
         .collect();
-    assert_eq!(stops.len(), 2);
+    assert_eq!(stops.len(), 3);
     let mut ids: Vec<_> = stops.iter().map(|s| s.id.clone()).collect();
-    assert_eq!(ids.sort(), vec!["BGT:SA:gpualsa3", "BGT:SA:bou14ju"].sort());
+    ids.sort();
+    assert_eq!(ids,
+               vec!["SA:main_station", "SA:second_station", "SA:station_no_city"]);
 
 }
