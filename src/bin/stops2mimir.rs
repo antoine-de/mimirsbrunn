@@ -131,7 +131,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
                 let stop_lon = try!(parse_f64(stop_lon));
                 let stop_name = try!(get(&r, self.stop_name_pos));
                 Ok(mimir::Stop {
-                    id: format!("stop_area:{}", stop_id),
+                    id: format!("stop_area:{}", stop_id), // prefix to match navitia's id
                     coord: mimir::Coord::new(stop_lat, stop_lon),
                     label: stop_name.to_string(),
                     weight: 1,
