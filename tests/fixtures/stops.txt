@@ -5,5 +5,5 @@ SA:station_no_city,,"Far west station",47.123966,2.402522,,1,,Europe/Paris,,BGT,
 SA:invisible_station:,0,"11 OCTOBRE",47.90975,1.881545,,1,,Europe/Paris,,OLS,,OLS:12
 SA:witout_lon,1,"Alouettes",47.117836,,,1,,Europe/Paris,,BGT,,BGT:19
 SA:witout_lat,1,"ALPHONSE DAUDET",,1.829052,,1,,Europe/Paris,,OLS,,OLS:12
-SP:main_station,1,"République",47.099758,2.491858,,,BGT:SA:gpualsa3,Europe/Paris,,BGT,,BGT:19
+SP:main_station,1,"République",47.099758,2.491858,,,SA:main_station,Europe/Paris,,BGT,,BGT:19
 

@@ -182,7 +182,7 @@ fn test_load_stops() {
     // SA:second_station: StopArea valid with visible is empty
     // SA:invisible_station: invisible StopArea
     // SA:without_lat: StopArea object without lattitude coord
-    // SA:witout_lon: StopArea object without logitude coord
+    // SA:witout_lon: StopArea object without longitude coord
     // SA:station_no_city: StopArea far away, we won't be able to attach it to a city
     let mut rdr = csv::Reader::from_file("./tests/fixtures/stops.txt".to_string())
         .unwrap()
@@ -198,6 +198,7 @@ fn test_load_stops() {
     assert_eq!(stops.len(), 3);
     let mut ids: Vec<_> = stops.iter().map(|s| s.id.clone()).collect();
     ids.sort();
-    assert_eq!(ids, vec!["SA:main_station", "SA:second_station", "SA:station_no_city"]);
+    assert_eq!(ids,
+               vec!["SA:main_station", "SA:second_station", "SA:station_no_city"]);
 
 }

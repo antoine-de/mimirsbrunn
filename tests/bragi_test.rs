@@ -283,7 +283,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Rue du Port", shape));
     assert_eq!(geocodings.len(), 1);
-    assert_eq!(get_values(&geocodings, "label"), vec!["Rue du Port (Melun)"]);
+    assert_eq!(get_values(&geocodings, "label"),
+               vec!["Rue du Port (Melun)"]);
 
     //      A ---------------------D
     //      |                      |
@@ -402,14 +403,14 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     // with this query we should find only one response, a stop
     let response = get_results(bragi_get("/autocomplete?q=14 juillet"));
-    assert_eq(response.size(), 1);
+    assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
 
     assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
     assert_eq!(get_value(stop, "label"), "14 Juillet");
     assert_eq!(get_value(stop, "name"), "14 Juillet");
     assert_eq!(get_value(stop, "id"), "SA:second_station");
-    assert!(stop.get("administrative_regions").unwrap_or(&Value::Null).is_array()); 
+    assert!(stop.get("administrative_regions").map_or(false, |v| v.is_array()));
 }
 
 fn get_values<'a>(r: &'a Vec<BTreeMap<String, Value>>, val: &'a str) -> Vec<&'a str> {
