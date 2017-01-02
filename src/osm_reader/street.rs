@@ -67,7 +67,7 @@ pub fn streets(pbf: &mut OsmPbfReader,
         }
     };
     info!("reading pbf...");
-    let objs_map = osmpbfreader::get_objs_and_deps(pbf, is_valid_obj).unwrap();
+    let objs_map = pbf.get_objs_and_deps(is_valid_obj).unwrap();
     info!("reading pbf done.");
     let mut street_rel: StreetWithRelationSet = BTreeSet::new();
     let mut street_list: StreetsVec = vec![];
@@ -181,8 +181,8 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
         .filter_map(|node_obj| {
             if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
                 Some(geo::Coordinate {
-                    x: node.lat,
-                    y: node.lon,
+                    x: node.lat(),
+                    y: node.lon(),
                 })
             } else {
                 None

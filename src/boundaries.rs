@@ -83,40 +83,40 @@ fn test_get_nodes() {
                    osmpbfreader::OsmObj::Way(way.clone()));
     let node_12 = osmpbfreader::Node {
         id: 12,
-        lat: 1.2,
-        lon: 3.7,
+        decimicro_lat: 12000000,
+        decimicro_lon: 37000000,
         tags: osmpbfreader::Tags::new(),
     };
     objects.insert(osmpbfreader::OsmId::Node(12),
                    osmpbfreader::OsmObj::Node(node_12));
     let node_13 = osmpbfreader::Node {
         id: 13,
-        lat: 1.5,
-        lon: 3.5,
+        decimicro_lat: 15000000,
+        decimicro_lon: 35000000,
         tags: osmpbfreader::Tags::new(),
     };
     objects.insert(osmpbfreader::OsmId::Node(13),
                    osmpbfreader::OsmObj::Node(node_13));
     let node_15 = osmpbfreader::Node {
         id: 15,
-        lat: 7.5,
-        lon: 13.5,
+        decimicro_lat: 75000000,
+        decimicro_lon: 135000000,
         tags: osmpbfreader::Tags::new(),
     };
     objects.insert(osmpbfreader::OsmId::Node(15),
                    osmpbfreader::OsmObj::Node(node_15));
     let node_8 = osmpbfreader::Node {
         id: 8,
-        lat: 5.5,
-        lon: 63.5,
+        decimicro_lat: 55000000,
+        decimicro_lon: 635000000,
         tags: osmpbfreader::Tags::new(),
     };
     objects.insert(osmpbfreader::OsmId::Node(8),
                    osmpbfreader::OsmObj::Node(node_8));
     let node_68 = osmpbfreader::Node {
         id: 68,
-        lat: 45.5,
-        lon: 53.5,
+        decimicro_lat: 455000000,
+        decimicro_lon: 535000000,
         tags: osmpbfreader::Tags::new(),
     };
     objects.insert(osmpbfreader::OsmId::Node(68),
@@ -200,8 +200,8 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
                     let polygon = Polygon::new(LineString(outer.iter()
                                                    .map(|n| {
                                                        Point(Coordinate {
-                                                           x: n.lat,
-                                                           y: n.lon,
+                                                           x: n.lat(),
+                                                           y: n.lon(),
                                                        })
                                                    })
                                                    .collect()),
