@@ -64,7 +64,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
     let mut administrative_regions = Vec::<mimir::Admin>::new();
     let matcher = AdminMatcher::new(levels);
     info!("reading pbf...");
-    let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_admin(o)).unwrap();
+    let objects = pbf.get_objs_and_deps(|o| matcher.is_admin(o)).unwrap();
     info!("reading pbf done.");
     // load administratives regions
     for (_, obj) in &objects {
@@ -104,7 +104,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                     objects.get(&r.member).and_then(|value| {
                         match value {
                             &osmpbfreader::OsmObj::Node(ref node) => {
-                                Some(mimir::Coord::new(node.lat, node.lon))
+                                Some(mimir::Coord::new(node.lat(), node.lon()))
                             }
                             _ => None,
                         }

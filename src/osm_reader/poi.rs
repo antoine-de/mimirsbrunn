@@ -85,7 +85,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              -> Option<mimir::Poi> {
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => {
-            (format_poi_id("node", node.id), mimir::Coord::new(node.lat, node.lon))
+            (format_poi_id("node", node.id), mimir::Coord::new(node.lat(), node.lon()))
         }
         osmpbfreader::OsmObj::Way(ref way) => {
             (format_poi_id("way", way.id), get_way_coord(obj_map, way))
@@ -137,7 +137,7 @@ pub fn pois(pbf: &mut OsmPbfReader,
             city_level: u32)
             -> PoisVec {
     let matcher = PoiMatcher::new(poi_types);
-    let objects = osmpbfreader::get_objs_and_deps(pbf, |o| matcher.is_poi(o)).unwrap();
+    let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o)).unwrap();
     objects.iter()
         .filter(|&(_, obj)| matcher.is_poi(&obj))
         .filter_map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))

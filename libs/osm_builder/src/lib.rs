@@ -120,8 +120,8 @@ impl OsmBuilder {
         }
         let n = osmpbfreader::Node {
             id: self.node_id,
-            lat: coord.lat(),
-            lon: coord.lon(),
+            decimicro_lat: (coord.lat() * 1e7) as i32,
+            decimicro_lon: (coord.lon() * 1e7) as i32,
             tags: osmpbfreader::Tags::new(),
         };
         let id = osmpbfreader::OsmId::Node(self.node_id);
