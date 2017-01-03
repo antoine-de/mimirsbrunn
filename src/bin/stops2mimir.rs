@@ -112,10 +112,12 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
         }
 
         fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<()> {
-            if *location_type == Some(1) && *visible != Some(0) {
-                Ok(())
+            if *location_type != Some(1) {
+                Err(csv::Error::Decode("not a stop_area.".to_string()))
+            } else if *visible == Some(0) {
+                Err(csv::Error::Decode("stop_area invisible.".to_string()))
             } else {
-                Err(csv::Error::Decode("Not stop_area.".to_string()))
+                Ok(())
             }
         }
         self.iter.next().map(|r| {
@@ -161,7 +163,7 @@ fn main() {
     let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
         .unwrap()
         .filter_map(|rc| {
-            rc.map_err(|e| error!("error at csv line decoding : {}", e))
+            rc.map_err(|e| debug!("skip csv line because: {}", e))
                 .ok()
         })
         .collect();
