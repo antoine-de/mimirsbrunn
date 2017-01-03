@@ -112,7 +112,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
         }
 
         fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<()> {
-            if *location_type == Some(0) {
+            if *location_type != Some(1) {
                 Err(csv::Error::Decode("not a stop_area.".to_string()))
             } else if *visible == Some(0) {
                 Err(csv::Error::Decode("stop_area invisible.".to_string()))
