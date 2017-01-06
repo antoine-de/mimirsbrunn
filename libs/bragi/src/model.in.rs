@@ -66,6 +66,8 @@ pub struct GeocodingResponse {
     pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
+    pub city_code: Option<String>,
+    pub level: Option<u32>,
     //pub accuracy: Option<i32>,
     //pub district: Option<String>,
     //pub county: Option<String>,
@@ -119,10 +121,14 @@ impl From<mimir::Admin> for GeocodingResponse {
     fn from(other: mimir::Admin) -> GeocodingResponse {
         let type_ = "city".to_string(); //to be improved: it can be something else
         let name = Some(other.label);
+        let insee = Some(other.insee);
+        let level = Some(other.level); //might be used for type_ and become useless
         let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
         let label = name.clone();
         GeocodingResponse {
             id: other.id,
+            city_code: insee,
+            level: level,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -156,6 +162,8 @@ impl From<mimir::Street> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -181,6 +189,8 @@ impl From<mimir::Addr> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -204,6 +214,8 @@ impl From<mimir::Poi> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -227,6 +239,8 @@ impl From<mimir::Stop> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
