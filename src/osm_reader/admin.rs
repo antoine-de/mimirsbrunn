@@ -99,9 +99,9 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             // admininstrative region without coordinates
             let coord_center = relation.refs
                 .iter()
-                .find(|rf| rf.role == "admin_centre")
+                .find(|r| r.role == "admin_centre")
                 .and_then(|r| objects.get(&r.member))
-                .and_then(osmpbfreader::OsmObj::node)
+                .and_then(|o| o.node())
                 .map(|node| mimir::Coord::new(node.lat(), node.lon()));
             let (admin_id, insee_id) = match relation.tags.get("ref:INSEE") {
                 Some(val) => {

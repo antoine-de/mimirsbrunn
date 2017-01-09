@@ -154,13 +154,13 @@ pub fn streets(pbf: &mut OsmPbfReader,
             way_name =<< way.tags.get("name");
             let admins = get_street_admin(admins_geofinder, objs_map, way);
             ret ret(street_list.push(mimir::Street {
-   	        id: way.id.0.to_string(),
+                id: way.id.0.to_string(),
                 street_name: way_name.to_string(),
-   	        label: format_label(&admins, city_level, way_name),
-   	        weight: 1,
-   	        zip_codes: get_zip_codes_from_admins(&admins),
-   	        administrative_regions: admins,
-   	        coord: get_way_coord(objs_map, way),
+                label: format_label(&admins, city_level, way_name),
+                weight: 1,
+                zip_codes: get_zip_codes_from_admins(&admins),
+                administrative_regions: admins,
+                coord: get_way_coord(objs_map, way),
             }))
         };
     }
@@ -177,7 +177,12 @@ fn get_street_admin(admins_geofinder: &AdminGeoFinder,
         .iter()
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|node_obj| node_obj.node())
-        .map(|node| geo::Coordinate { x: node.lat(), y: node.lon() })
+        .map(|node| {
+            geo::Coordinate {
+                x: node.lat(),
+                y: node.lon(),
+            }
+        })
         .next()
         .map_or(vec![], |c| admins_geofinder.get(&c))
 }

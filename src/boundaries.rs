@@ -127,23 +127,20 @@ fn test_get_nodes() {
 pub fn build_boundary(relation: &osmpbfreader::Relation,
                       objects: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
                       -> Option<MultiPolygon<f64>> {
-    let roles = vec!["outer".to_string(), "enclave".to_string()];
+    let roles = ["outer", "enclave"];
     let mut boundary_parts: Vec<BoundaryPart> = relation.refs
         .iter()
-        .filter(|rf| roles.contains(&rf.role))
-        .filter_map(|refe| {
-            objects.get(&refe.member).or_else(|| {
-                warn!("missing element for relation {}", relation.id.0);
-                None
-            })
-        })
-        .filter_map(|way_obj| {
-            if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
-                Some(way)
-            } else {
-                None
+        .filter(|r| roles.contains(&r.role.as_str()))
+        .filter_map(|r| {
+            let obj = objects.get(&r.member);
+            if obj.is_none() {
+                warn!("missing element {:?} for relation {}",
+                      r.member,
+                      relation.id.0);
             }
+            obj
         })
+        .filter_map(|way_obj| way_obj.way())
         .map(|way| get_nodes(&way, objects))
         .filter(|nodes| nodes.len() > 1)
         .map(|nodes| BoundaryPart::new(nodes))
@@ -151,27 +148,19 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
     let mut multipoly = MultiPolygon(vec![]);
     // we want to try build a polygon for a least each way
     while !boundary_parts.is_empty() {
-        let mut first = boundary_parts[0].first();
-        let mut current = boundary_parts[0].last();
-        let mut nb_try = 0;
+        let first_part = boundary_parts.remove(0);
+        let first = first_part.first();
+        let mut current = first_part.last();
+        let mut outer = first_part.nodes;
 
-        let mut outer: Vec<osmpbfreader::Node> = Vec::new();
         // we try to close the polygon, if we can't we want to at least have tried one time per
         // way. We could improve that latter by trying to attach the way to both side of the
         // polygon
+        let mut nb_try = 0;
         let max_try = boundary_parts.len();
         while current != first && nb_try < max_try {
             let mut i = 0;
             while i < boundary_parts.len() {
-                if outer.is_empty() {
-                    // our polygon is empty, we initialise it with the current way
-                    first = boundary_parts[i].first();
-                    current = boundary_parts[i].last();
-                    outer.append(&mut boundary_parts[i].nodes);
-                    // this way has been used, we remove it from the pool
-                    boundary_parts.remove(i);
-                    continue;
-                }
                 if current == boundary_parts[i].first() {
                     // the start of current way touch the polygon, we add it and remove it from the
                     // pool
@@ -250,7 +239,8 @@ fn test_build_bounadry_not_closed() {
         .outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
         .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
         .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "end")])
-        .relation_id.into();
+        .relation_id
+        .into();
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
         assert!(build_boundary(&relation, &builder.objects).is_none());
     } else {
@@ -265,7 +255,8 @@ fn test_build_bounadry_closed() {
         .outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
         .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
         .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "start")])
-        .relation_id.into();
+        .relation_id
+        .into();
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
         let multipolygon = build_boundary(&relation, &builder.objects);
         assert!(multipolygon.is_some());
