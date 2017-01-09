@@ -40,8 +40,8 @@ use serde;
 fn build_rs_client(cnx: &String) -> rs_es::Client {
     let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
     let cap = re.captures(&cnx).unwrap();
-    let host = cap.name("host").unwrap();
-    let port = cap.name("port").unwrap().parse::<u32>().unwrap();
+    let host = cap.name("host").unwrap().as_str();
+    let port = cap.name("port").unwrap().as_str().parse::<u32>().unwrap();
 
     rs_es::Client::new(&host, port)
 }

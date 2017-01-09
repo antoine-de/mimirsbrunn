@@ -66,8 +66,8 @@ impl Rubber {
     pub fn new(cnx: &str) -> Rubber {
         let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
         let cap = re.captures(cnx).unwrap();
-        let host = cap.name("host").unwrap();
-        let port = cap.name("port").unwrap().parse::<u32>().unwrap();
+        let host = cap.name("host").unwrap().as_str();
+        let port = cap.name("port").unwrap().as_str().parse::<u32>().unwrap();
         info!("elastic search host {:?} port {:?}", host, port);
 
         Rubber {
