@@ -3,7 +3,7 @@ name = "osm_builder"
 version = "1.2.0"
 dependencies = [
  "mimir 1.2.0",
- "osmpbfreader 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "osmpbfreader 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -436,7 +436,7 @@ dependencies = [
  "mimir 1.2.0",
  "ordered-float 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "osm_builder 1.2.0",
- "osmpbfreader 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "osmpbfreader 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.77 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -599,7 +599,7 @@ dependencies = [
 
 [[package]]
 name = "osmpbfreader"
-version = "0.6.3"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1141,7 +1141,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum openssl-sys-extras 0.7.14 (registry+https://github.com/rust-lang/crates.io-index)" = "11c5e1dba7d3d03d80f045bf0d60111dc69213b67651e7c889527a3badabb9fa"
 "checksum openssl-verify 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3ed86cce894f6b0ed4572e21eb34026f1dc8869cb9ee3869029131bc8c3feb2d"
 "checksum ordered-float 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e19e312d9bf410688e9c292d9e7da4567143c0ad18df8fceb6ce99156f40cef2"
-"checksum osmpbfreader 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ac03d46b1264250d7089fe714d33d5697053e11cf7094dc8fd33936bcb3117e2"
+"checksum osmpbfreader 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6387681dfab2a3f2891871d785d980809612bd201146ac7d8c71f3c99aae11c4"
 "checksum persistent 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ebaf2f9f9881f73e82ba23164a40d3500112d8e7ad056cdde451874f1814a4d9"
 "checksum phf 0.7.17 (registry+https://github.com/rust-lang/crates.io-index)" = "f02853ab706e88121d7ad33ed06bedce0a7cdb96136be7c20ff0dce7b4adb9ef"
 "checksum phf_codegen 0.7.17 (registry+https://github.com/rust-lang/crates.io-index)" = "563b670811792d49bff142e7bb9787530d9b689fb4c55c6c309822d8d956a242"

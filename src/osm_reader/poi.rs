@@ -85,18 +85,18 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              -> Option<mimir::Poi> {
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => {
-            (format_poi_id("node", node.id), mimir::Coord::new(node.lat(), node.lon()))
+            (format_poi_id("node", node.id.0), mimir::Coord::new(node.lat(), node.lon()))
         }
         osmpbfreader::OsmObj::Way(ref way) => {
-            (format_poi_id("way", way.id), get_way_coord(obj_map, way))
+            (format_poi_id("way", way.id.0), get_way_coord(obj_map, way))
         }
         osmpbfreader::OsmObj::Relation(ref relation) => {
-            (format_poi_id("relation", relation.id),
+            (format_poi_id("relation", relation.id.0),
              make_centroid(&build_boundary(&relation, &obj_map)))
         }
     };
 
-    let name = osmobj.tags().get("name").map_or(osmobj.tags().get("amenity"), |name| Some(name));
+    let name = osmobj.tags().get("name").or(osmobj.tags().get("amenity"));
 
     if coord.is_default() {
         info!("The poi {} is rejected, cause: could not compute coordinates.",

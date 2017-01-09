@@ -63,11 +63,9 @@ pub fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmOb
                      -> mimir::Coord {
     way.nodes
         .iter()
-        .filter_map(|node_id| {
-            obj_map.get(&osmpbfreader::OsmId::Node(*node_id))
-                .and_then(|obj| obj.node())
-                .map(|node| mimir::Coord::new(node.lat(), node.lon()))
-        })
+        .filter_map(|node_id| obj_map.get(&(*node_id).into()))
+        .filter_map(|obj| obj.node())
+        .map(|node| mimir::Coord::new(node.lat(), node.lon()))
         .next()
         .unwrap_or(mimir::Coord::default())
 }

@@ -78,7 +78,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             let level = match level {
                 None => {
                     info!("invalid admin_level for relation {}: admin_level {:?}",
-                          relation.id,
+                          relation.id.0,
                           relation.tags.get("admin_level"));
                     continue;
                 }
@@ -90,7 +90,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 None => {
                     warn!("adminstrative region without name for relation {}:  admin_level {} \
                            ignored.",
-                          relation.id,
+                          relation.id.0,
                           level);
                     continue;
                 }
@@ -100,21 +100,14 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             let coord_center = relation.refs
                 .iter()
                 .find(|rf| rf.role == "admin_centre")
-                .and_then(|r| {
-                    objects.get(&r.member).and_then(|value| {
-                        match value {
-                            &osmpbfreader::OsmObj::Node(ref node) => {
-                                Some(mimir::Coord::new(node.lat(), node.lon()))
-                            }
-                            _ => None,
-                        }
-                    })
-                });
+                .and_then(|r| objects.get(&r.member))
+                .and_then(osmpbfreader::OsmObj::node)
+                .map(|node| mimir::Coord::new(node.lat(), node.lon()));
             let (admin_id, insee_id) = match relation.tags.get("ref:INSEE") {
                 Some(val) => {
                     (format!("admin:fr:{}", val.trim_left_matches('0')), val.trim_left_matches('0'))
                 }
-                None => (format!("admin:osm:{}", relation.id), ""),
+                None => (format!("admin:osm:{}", relation.id.0), ""),
             };
 
             let zip_code = relation.tags
