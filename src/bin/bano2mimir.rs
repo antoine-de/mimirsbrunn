@@ -100,16 +100,18 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
     let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
 
-    let mut admins_by_insee = AdminFromInsee::new();
-    rubber.get_admins_from_dataset(dataset)
-                        .map(|admins| {
-                            for a in admins {
-                                admins_by_insee.insert(a.id.to_string(), Rc::new(a));
-                            }
-                        })
-                        .map_err(|err| {
-        info!("Administratives regions not found in elasticsearch db for dataset {}. (error: {})", dataset, err)
-    });
+    let admins_by_insee = rubber.get_admins_from_dataset(dataset)
+        .unwrap_or_else(|err| {
+            info!("Administratives regions not found in es db for dataset {}. (error: {})",
+                  dataset,
+                  err);
+            vec![]
+        })
+        .into_iter()
+        .fold(AdminFromInsee::new(), |mut a_by_insee, a| {
+            a_by_insee.insert(a.id.to_string(), Rc::new(a));
+            a_by_insee
+        });
 
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
     info!("Add data in elasticsearch db.");
