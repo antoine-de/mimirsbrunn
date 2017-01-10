@@ -47,10 +47,10 @@ impl BoundaryPart {
     pub fn new(nodes: Vec<osmpbfreader::Node>) -> BoundaryPart {
         BoundaryPart { nodes: nodes }
     }
-    pub fn first(&self) -> i64 {
+    pub fn first(&self) -> osmpbfreader::NodeId {
         self.nodes.first().unwrap().id
     }
-    pub fn last(&self) -> i64 {
+    pub fn last(&self) -> osmpbfreader::NodeId {
         self.nodes.last().unwrap().id
     }
 }
@@ -75,81 +75,72 @@ fn get_nodes(way: &osmpbfreader::Way,
 fn test_get_nodes() {
     let mut objects = BTreeMap::new();
     let way = osmpbfreader::Way {
-        id: 12,
-        nodes: vec![12, 15, 8, 68],
+        id: osmpbfreader::WayId(12),
+        nodes: [12, 15, 8, 68].iter().map(|&id| osmpbfreader::NodeId(id)).collect(),
         tags: osmpbfreader::Tags::new(),
     };
-    objects.insert(osmpbfreader::OsmId::Way(12),
-                   osmpbfreader::OsmObj::Way(way.clone()));
+    objects.insert(way.id.into(), way.clone().into());
     let node_12 = osmpbfreader::Node {
-        id: 12,
+        id: osmpbfreader::NodeId(12),
         decimicro_lat: 12000000,
         decimicro_lon: 37000000,
         tags: osmpbfreader::Tags::new(),
     };
-    objects.insert(osmpbfreader::OsmId::Node(12),
-                   osmpbfreader::OsmObj::Node(node_12));
+    objects.insert(node_12.id.into(), node_12.into());
     let node_13 = osmpbfreader::Node {
-        id: 13,
+        id: osmpbfreader::NodeId(13),
         decimicro_lat: 15000000,
         decimicro_lon: 35000000,
         tags: osmpbfreader::Tags::new(),
     };
-    objects.insert(osmpbfreader::OsmId::Node(13),
-                   osmpbfreader::OsmObj::Node(node_13));
+    objects.insert(node_13.id.into(), node_13.into());
     let node_15 = osmpbfreader::Node {
-        id: 15,
+        id: osmpbfreader::NodeId(15),
         decimicro_lat: 75000000,
         decimicro_lon: 135000000,
         tags: osmpbfreader::Tags::new(),
     };
-    objects.insert(osmpbfreader::OsmId::Node(15),
-                   osmpbfreader::OsmObj::Node(node_15));
+    objects.insert(node_15.id.into(), node_15.into());
     let node_8 = osmpbfreader::Node {
-        id: 8,
+        id: osmpbfreader::NodeId(8),
         decimicro_lat: 55000000,
         decimicro_lon: 635000000,
         tags: osmpbfreader::Tags::new(),
     };
-    objects.insert(osmpbfreader::OsmId::Node(8),
-                   osmpbfreader::OsmObj::Node(node_8));
+    objects.insert(node_8.id.into(), node_8.into());
     let node_68 = osmpbfreader::Node {
-        id: 68,
+        id: osmpbfreader::NodeId(68),
         decimicro_lat: 455000000,
         decimicro_lon: 535000000,
         tags: osmpbfreader::Tags::new(),
     };
-    objects.insert(osmpbfreader::OsmId::Node(68),
-                   osmpbfreader::OsmObj::Node(node_68));
+    objects.insert(node_68.id.into(), node_68.into());
 
     let nodes = get_nodes(&way, &objects);
     assert_eq!(nodes.len(), 4);
-    assert_eq!(nodes[0].id, 12);
-    assert_eq!(nodes[1].id, 15);
-    assert_eq!(nodes[2].id, 8);
-    assert_eq!(nodes[3].id, 68);
+    assert_eq!(nodes[0].id.0, 12);
+    assert_eq!(nodes[1].id.0, 15);
+    assert_eq!(nodes[2].id.0, 8);
+    assert_eq!(nodes[3].id.0, 68);
 }
 
 pub fn build_boundary(relation: &osmpbfreader::Relation,
                       objects: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>)
                       -> Option<MultiPolygon<f64>> {
-    let roles = vec!["outer".to_string(), "enclave".to_string()];
+    let roles = ["outer", "enclave"];
     let mut boundary_parts: Vec<BoundaryPart> = relation.refs
         .iter()
-        .filter(|rf| roles.contains(&rf.role))
-        .filter_map(|refe| {
-            objects.get(&refe.member).or_else(|| {
-                warn!("missing element for relation {}", relation.id);
-                None
-            })
-        })
-        .filter_map(|way_obj| {
-            if let &osmpbfreader::OsmObj::Way(ref way) = way_obj {
-                Some(way)
-            } else {
-                None
+        .filter(|r| roles.contains(&r.role.as_str()))
+        .filter_map(|r| {
+            let obj = objects.get(&r.member);
+            if obj.is_none() {
+                warn!("missing element {:?} for relation {}",
+                      r.member,
+                      relation.id.0);
             }
+            obj
         })
+        .filter_map(|way_obj| way_obj.way())
         .map(|way| get_nodes(&way, objects))
         .filter(|nodes| nodes.len() > 1)
         .map(|nodes| BoundaryPart::new(nodes))
@@ -157,27 +148,19 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
     let mut multipoly = MultiPolygon(vec![]);
     // we want to try build a polygon for a least each way
     while !boundary_parts.is_empty() {
-        let mut current = -1;
-        let mut first = -2;
-        let mut nb_try = 0;
+        let first_part = boundary_parts.remove(0);
+        let first = first_part.first();
+        let mut current = first_part.last();
+        let mut outer = first_part.nodes;
 
-        let mut outer: Vec<osmpbfreader::Node> = Vec::new();
         // we try to close the polygon, if we can't we want to at least have tried one time per
         // way. We could improve that latter by trying to attach the way to both side of the
         // polygon
+        let mut nb_try = 0;
         let max_try = boundary_parts.len();
         while current != first && nb_try < max_try {
             let mut i = 0;
             while i < boundary_parts.len() {
-                if outer.is_empty() {
-                    // our polygon is empty, we initialise it with the current way
-                    first = boundary_parts[i].first();
-                    current = boundary_parts[i].last();
-                    outer.append(&mut boundary_parts[i].nodes);
-                    // this way has been used, we remove it from the pool
-                    boundary_parts.remove(i);
-                    continue;
-                }
                 if current == boundary_parts[i].first() {
                     // the start of current way touch the polygon, we add it and remove it from the
                     // pool
@@ -230,20 +213,20 @@ pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> mimir::Coord {
 fn test_build_bounadry_empty() {
     let objects = BTreeMap::new();
     let mut relation = osmpbfreader::Relation {
-        id: 12,
+        id: osmpbfreader::RelationId(12),
         refs: vec![],
         tags: osmpbfreader::Tags::new(),
     };
     relation.refs.push(osmpbfreader::Ref {
-        member: osmpbfreader::OsmId::Way(4),
+        member: osmpbfreader::WayId(4).into(),
         role: "outer".to_string(),
     });
     relation.refs.push(osmpbfreader::Ref {
-        member: osmpbfreader::OsmId::Way(65),
+        member: osmpbfreader::WayId(65).into(),
         role: "outer".to_string(),
     });
     relation.refs.push(osmpbfreader::Ref {
-        member: osmpbfreader::OsmId::Way(22),
+        member: osmpbfreader::WayId(22).into(),
         role: "".to_string(),
     });
     assert!(build_boundary(&relation, &objects).is_none());
@@ -252,14 +235,12 @@ fn test_build_bounadry_empty() {
 #[test]
 fn test_build_bounadry_not_closed() {
     let mut builder = osm_builder::OsmBuilder::new();
-    let rel_id: osmpbfreader::OsmId;
-    {
-        let mut rel = builder.relation();
-        rel_id = rel.relation_id;
-        rel.outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
-            .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
-            .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "end")]);
-    }
+    let rel_id = builder.relation()
+        .outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
+        .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
+        .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "end")])
+        .relation_id
+        .into();
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
         assert!(build_boundary(&relation, &builder.objects).is_none());
     } else {
@@ -270,20 +251,17 @@ fn test_build_bounadry_not_closed() {
 #[test]
 fn test_build_bounadry_closed() {
     let mut builder = osm_builder::OsmBuilder::new();
-    let rel_id: osmpbfreader::OsmId;
-    {
-        let mut rel = builder.relation();
-        rel_id = rel.relation_id;
-        rel.outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
-            .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
-            .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "start")]);
-    }
+    let rel_id = builder.relation()
+        .outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1")])
+        .outer(vec![named_node(5.4, 5.1, "1"), named_node(2.4, 3.1, "2")])
+        .outer(vec![named_node(2.4, 3.2, "2"), named_node(6.4, 6.1, "start")])
+        .relation_id
+        .into();
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
         let multipolygon = build_boundary(&relation, &builder.objects);
         assert!(multipolygon.is_some());
         let multipolygon = multipolygon.unwrap();
         assert_eq!(multipolygon.0.len(), 1);
-
     } else {
         assert!(false);//this should not happen
     }
