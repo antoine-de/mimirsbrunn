@@ -36,7 +36,7 @@ use super::AdminsVec;
 
 pub fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
     match admins.iter().position(|adm| adm.level == city_level) {
-        Some(idx) => format!("{} ({})", name, admins[idx].label),
+        Some(idx) => format!("{} ({})", name, admins[idx].name),
         None => name.to_string(),
     }
 }

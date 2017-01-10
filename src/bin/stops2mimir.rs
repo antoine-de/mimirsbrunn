@@ -32,6 +32,7 @@ extern crate rustc_serialize;
 extern crate docopt;
 extern crate csv;
 extern crate mimir;
+extern crate itertools;
 use mimir::rubber::Rubber;
 #[macro_use]
 extern crate log;
@@ -178,6 +179,7 @@ fn main() {
 
 #[test]
 fn test_load_stops() {
+    use itertools::Itertools;
     // stops.txt:
     // SP:main_station : StopPoint object
     // SA:main_station: StopArea valid
@@ -198,8 +200,7 @@ fn test_load_stops() {
         })
         .collect();
     assert_eq!(stops.len(), 3);
-    let mut ids: Vec<_> = stops.iter().map(|s| s.id.clone()).collect();
-    ids.sort();
+    let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(ids,
                vec!["stop_area:SA:main_station",
                     "stop_area:SA:second_station",

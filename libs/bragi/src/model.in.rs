@@ -120,11 +120,15 @@ impl From<mimir::Place> for Feature {
 impl From<mimir::Admin> for GeocodingResponse {
     fn from(other: mimir::Admin) -> GeocodingResponse {
         let type_ = "city".to_string(); //to be improved: it can be something else
-        let name = Some(other.label);
+        let name = Some(other.name);
         let insee = Some(other.insee);
         let level = Some(other.level); //might be used for type_ and become useless
-        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
-        let label = name.clone();
+        let postcode = if other.zip_codes.is_empty() {
+            None
+        } else {
+            Some(other.zip_codes.join(";"))
+        };
+        let label = Some(other.label);
         GeocodingResponse {
             id: other.id,
             city_code: insee,

@@ -210,6 +210,7 @@ pub struct Admin {
     pub insee: String,
     pub level: u32,
     pub label: String,
+    pub name: String,
     pub zip_codes: Vec<String>,
     #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
     //Attribut weight is used in elastic search to sort the result. It is absent in the response

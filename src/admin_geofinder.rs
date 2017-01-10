@@ -159,6 +159,7 @@ mod tests {
         ::mimir::Admin {
             id: format!("admin:offset:{}", offset),
             level: 8,
+            name: "city".to_string(),
             label: format!("city {}", offset),
             zip_codes: vec!["421337".to_string()],
             weight: ::std::cell::Cell::new(1),

@@ -110,8 +110,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // Call autocomplete
     let resp = bragi_get("/autocomplete?q=15 Rue Hector Malot, (Paris)");
     let result_body = iron_test::response::extract_body_to_string(resp);
-    let result =
-        concat!(r#"{"type":"FeatureCollection","#,
+    let result = concat!(r#"{"type":"FeatureCollection","#,
                 r#""geocoding":{"version":"0.1.0","query":""},"#,
                 r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
                 r#"[2.376379,48.846495],"type":"Point"},"#,
@@ -144,8 +143,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let resp = bragi_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape);
 
     let result_body = iron_test::response::extract_body_to_string(resp);
-    let result =
-        concat!(r#"{"type":"FeatureCollection","#,
+    let result = concat!(r#"{"type":"FeatureCollection","#,
                 r#""geocoding":{"version":"0.1.0","query":""},"#,
                 r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
                 r#"[2.376379,48.846495],"type":"Point"},"#,
@@ -316,7 +314,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 1);
-    assert_eq!(get_values(&geocodings, "label"), vec!["Melun"]);
+    assert_eq!(get_values(&geocodings, "name"), vec!["Melun"]);
 
     //      A ---------------------D
     //      |                      |
