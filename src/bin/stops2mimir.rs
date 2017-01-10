@@ -33,11 +33,13 @@ extern crate docopt;
 extern crate csv;
 extern crate mimir;
 extern crate itertools;
-use mimir::rubber::Rubber;
+extern crate mimirsbrunn;
 #[macro_use]
 extern crate log;
 
+use mimir::rubber::Rubber;
 use docopt::Docopt;
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
 const USAGE: &'static str =
     "
@@ -147,6 +149,37 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
     }
 }
 
+/// Attach the stops to administrative regions
+/// 
+/// The admins are loaded from Elasticsearch and stored in a quadtree.bano
+/// We attach a stop with all the admins that have a boundary containing 
+/// the coordinate of the stop
+fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: It, rubber: &mut Rubber) {
+    
+    let admins = rubber.get_all_admins().unwrap_or_else(|_| {
+        info!("Administratives regions not found in elasticsearch db");
+        vec!()
+    });
+
+    let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
+
+    let mut nb_unmatched = 0u32;
+    let mut nb_matched = 0u32;
+    for stop in stops {
+        let admins = admins_geofinder.get(&stop.coord);
+
+        if admins.is_empty() {
+            nb_unmatched += 1;
+        } else {
+            nb_matched += 1;
+        }
+
+        stop.administrative_regions = admins;
+    }
+
+    info!("there is {}/{} stops without any admin", nb_unmatched, nb_matched + nb_unmatched);
+}
+
 fn main() {
     mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
@@ -161,13 +194,15 @@ fn main() {
         .unwrap()
         .double_quote(true);
 
-    let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
+    let mut stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
         .unwrap()
         .filter_map(|rc| {
             rc.map_err(|e| debug!("skip csv line because: {}", e))
                 .ok()
         })
         .collect();
+
+    attach_stops_to_admins(stops.iter_mut(), &mut rubber);
 
     info!("Importing stops into Mimir");
     let nb_stops = rubber.index("stops", &args.flag_dataset, stops.iter())

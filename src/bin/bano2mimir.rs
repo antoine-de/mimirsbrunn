@@ -38,9 +38,12 @@ extern crate geo;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
+use mimir::objects::Admin;
 use std::fs;
+use std::rc::Rc;
 use std::collections::BTreeMap;
-use mimir::rubber::AdminFromInsee;
+
+type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
 
 #[derive(RustcDecodable, RustcEncodable)]
 pub struct Bano {
@@ -97,10 +100,15 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
     let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
 
-    let admins = rubber.get_admins(dataset).unwrap_or_else(|_| {
-        info!("Administratives regions not found in elasticsearch db for dataset {}.",
-              dataset);
-        BTreeMap::new()
+    let mut admins_by_insee = AdminFromInsee::new();
+    rubber.get_admins_from_dataset(dataset)
+                        .map(|admins| {
+                            for a in admins {
+                                admins_by_insee.insert(a.id.to_string(), Rc::new(a));
+                            }
+                        })
+                        .map_err(|err| {
+        info!("Administratives regions not found in elasticsearch db for dataset {}. (error: {})", dataset, err)
     });
 
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
@@ -111,7 +119,7 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
 
         let iter = rdr.decode().map(|r| {
             let b: Bano = r.unwrap();
-            b.into_addr(&admins)
+            b.into_addr(&admins_by_insee)
         });
         match rubber.bulk_index(&addr_index, iter) {
             Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),

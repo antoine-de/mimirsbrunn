@@ -46,8 +46,6 @@ use rs_es::units::Duration;
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-pub type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
-
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
     es_client: rs_es::Client,
@@ -291,10 +289,17 @@ impl Rubber {
         try!(self.publish_index(doc_type, dataset, index));
         Ok(nb_elements)
     }
+    
+    pub fn get_admins_from_dataset(&mut self, dataset: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
+        self.get_admins_from_index(&get_main_index("admin", dataset))
+    }
 
-    pub fn get_admins(&mut self, dataset: &str) -> Result<AdminFromInsee, rs_es::error::EsError> {
-        let mut result: AdminFromInsee = BTreeMap::new();
-        let index = get_main_index("admin", dataset);
+    pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
+        self.get_admins_from_index("munin_admin")
+    }
+
+    fn get_admins_from_index(&mut self, index: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
+        let mut result: Vec<Admin> = vec![];
         let mut scan: ScanResult<Admin> = try!(self.es_client
             .search_query()
             .with_indexes(&[&index])
@@ -306,9 +311,7 @@ impl Rubber {
             if page.hits.hits.len() == 0 {
                 break;
             }
-            for ad in page.hits.hits.into_iter().filter_map(|hit| hit.source) {
-                result.insert(ad.id.to_string(), Rc::new(*ad));
-            }
+            result.extend(page.hits.hits.into_iter().filter_map(|hit| hit.source).map(|ad| *ad));
         }
         try!(scan.close(&mut self.es_client));
         Ok(result)
