@@ -66,13 +66,15 @@ pub struct GeocodingResponse {
     pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
-    //pub accuracy: Option<i32>,
-    //pub district: Option<String>,
-    //pub county: Option<String>,
-    //pub state: Option<String>,
-    //pub country: Option<String>,
+    pub city_code: Option<String>,
+    pub level: Option<u32>,
+    // pub accuracy: Option<i32>,
+    // pub district: Option<String>,
+    // pub county: Option<String>,
+    // pub state: Option<String>,
+    // pub country: Option<String>,
+    // pub geohash: Option<String>,
     pub administrative_regions: Vec<Rc<mimir::Admin>>,
-    //pub geohash: Option<String>
 }
 
 trait ToGeom {
@@ -118,11 +120,19 @@ impl From<mimir::Place> for Feature {
 impl From<mimir::Admin> for GeocodingResponse {
     fn from(other: mimir::Admin) -> GeocodingResponse {
         let type_ = "city".to_string(); //to be improved: it can be something else
-        let name = Some(other.label);
-        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
-        let label = name.clone();
+        let name = Some(other.name);
+        let insee = Some(other.insee);
+        let level = Some(other.level); //might be used for type_ and become useless
+        let postcode = if other.zip_codes.is_empty() {
+            None
+        } else {
+            Some(other.zip_codes.join(";"))
+        };
+        let label = Some(other.label);
         GeocodingResponse {
             id: other.id,
+            city_code: insee,
+            level: level,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -130,7 +140,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: None,
-            administrative_regions: vec![]
+            administrative_regions: vec![],
         }
     }
 }
@@ -140,9 +150,9 @@ fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
     // that has a postcode
     // TODO: change this (with a 'city tag in the admin ?')
     admins.iter()
-          .find(|a| ! a.zip_codes.is_empty())
-          .or_else(|| admins.iter().next())
-          .map(|admin| admin.label.clone())
+        .find(|a| !a.zip_codes.is_empty())
+        .or_else(|| admins.iter().next())
+        .map(|admin| admin.label.clone())
 }
 
 impl From<mimir::Street> for GeocodingResponse {
@@ -152,10 +162,16 @@ impl From<mimir::Street> for GeocodingResponse {
         let label = Some(other.label);
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
-        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
+        let postcode = if other.zip_codes.is_empty() {
+            None
+        } else {
+            Some(other.zip_codes.join(";"))
+        };
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -163,7 +179,7 @@ impl From<mimir::Street> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: city,
-            administrative_regions: admins
+            administrative_regions: admins,
         }
     }
 }
@@ -177,10 +193,16 @@ impl From<mimir::Addr> for GeocodingResponse {
         let name = Some(format!("{} {}", other.house_number, other.street.street_name));
         let admins = other.street.administrative_regions;
         let city = get_city_name(&admins);
-        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
+        let postcode = if other.zip_codes.is_empty() {
+            None
+        } else {
+            Some(other.zip_codes.join(";"))
+        };
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -188,7 +210,7 @@ impl From<mimir::Addr> for GeocodingResponse {
             housenumber: housenumber,
             street: street_name,
             city: city,
-            administrative_regions: admins
+            administrative_regions: admins,
         }
     }
 }
@@ -200,10 +222,16 @@ impl From<mimir::Poi> for GeocodingResponse {
         let name = Some(other.name);
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
-        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
+        let postcode = if other.zip_codes.is_empty() {
+            None
+        } else {
+            Some(other.zip_codes.join(";"))
+        };
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -211,7 +239,7 @@ impl From<mimir::Poi> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: city,
-            administrative_regions: admins
+            administrative_regions: admins,
         }
     }
 }
@@ -223,10 +251,16 @@ impl From<mimir::Stop> for GeocodingResponse {
         let name = Some(other.name);
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
-        let postcode = if other.zip_codes.is_empty() { None } else { Some(other.zip_codes.join(";")) };
+        let postcode = if other.zip_codes.is_empty() {
+            None
+        } else {
+            Some(other.zip_codes.join(";"))
+        };
 
         GeocodingResponse {
             id: other.id,
+            city_code: None,
+            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -234,7 +268,7 @@ impl From<mimir::Stop> for GeocodingResponse {
             housenumber: None,
             street: None,
             city: city,
-            administrative_regions: admins
+            administrative_regions: admins,
         }
     }
 }
@@ -296,9 +330,7 @@ pub mod v1 {
     #[derive(Serialize, Deserialize, Debug)]
     pub enum V1Reponse {
         Error(CustomError),
-        Response {
-            description: String,
-        },
+        Response { description: String },
     }
     #[derive(Debug)]
     pub enum AutocompleteResponse {
@@ -309,10 +341,12 @@ pub mod v1 {
 
     use serde;
     impl serde::Serialize for AutocompleteResponse {
-        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error> where S: serde::Serializer{
+        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+            where S: serde::Serializer
+        {
             match self {
                 &AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
-                &AutocompleteResponse::Error(ref e) => serializer.serialize_some(e)
+                &AutocompleteResponse::Error(ref e) => serializer.serialize_some(e),
             }
         }
     }

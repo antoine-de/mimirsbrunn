@@ -36,6 +36,7 @@ extern crate osm_builder;
 extern crate gst;
 extern crate ordered_float;
 extern crate geo;
+extern crate itertools;
 #[macro_use]
 extern crate mdo;
 

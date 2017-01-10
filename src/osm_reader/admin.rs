@@ -34,6 +34,7 @@ extern crate mimir;
 use ::boundaries::{build_boundary, make_centroid};
 use std::cell::Cell;
 use std::collections::BTreeSet;
+use itertools::Itertools;
 use super::OsmPbfReader;
 pub type StreetsVec = Vec<mimir::Street>;
 
@@ -113,15 +114,16 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             let zip_code = relation.tags
                 .get("addr:postcode")
                 .or_else(|| relation.tags.get("postal_code"))
-                .map(|val| &val[..])
-                .unwrap_or("");
+                .map_or("", |val| &val[..]);
+            let zip_codes = zip_code.split(';').map(|s| s.to_string()).sorted();
             let boundary = build_boundary(&relation, &objects);
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
                 level: level,
-                label: name.to_string(),
-                zip_codes: zip_code.split(';').map(|s| s.to_string()).collect(),
+                name: name.to_string(),
+                label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
+                zip_codes: zip_codes,
                 weight: Cell::new(0),
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
@@ -136,6 +138,18 @@ pub fn compute_admin_weight(streets: &mut StreetsVec) {
     for st in streets {
         for admin in &mut st.administrative_regions {
             admin.weight.set(admin.weight.get() + 1);
+        }
+    }
+}
+
+fn format_zip_codes(zip_codes: &[String]) -> String {
+    match zip_codes.len() {
+        0 => "".to_string(),
+        1 => format!(" ({})", zip_codes.first().unwrap()),
+        _ => {
+            format!(" ({}-{})",
+                    zip_codes.first().unwrap(),
+                    zip_codes.last().unwrap())
         }
     }
 }

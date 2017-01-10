@@ -53,35 +53,35 @@ pub enum Place {
     Stop(Stop),
 }
 
-impl Place{
+impl Place {
     pub fn is_admin(&self) -> bool {
         match *self {
             Place::Admin(_) => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_street(&self) -> bool {
         match *self {
             Place::Street(_) => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_addr(&self) -> bool {
         match *self {
             Place::Addr(_) => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_poi(&self) -> bool {
         match *self {
             Place::Poi(_) => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_stop(&self) -> bool {
         match *self {
             Place::Stop(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -114,7 +114,7 @@ pub trait EsId {
     fn es_id(&self) -> Option<String>; // provides the elasticsearch id
 }
 
-pub trait Members{
+pub trait Members {
     fn label(&self) -> &str;
     fn admins(&self) -> Vec<Rc<Admin>>;
 }
@@ -210,10 +210,11 @@ pub struct Admin {
     pub insee: String,
     pub level: u32,
     pub label: String,
+    pub name: String,
     pub zip_codes: Vec<String>,
+    // Attribut weight is used in elastic search to sort the result. It is absent in the response
+    // of navitia (jormungandr) and hence deserializing is not necessary
     #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
-    //Attribut weight is used in elastic search to sort the result. It is absent in the response
-    //of navitia (jormungandr) and hence deserializing is not necessary
     pub weight: Cell<u32>,
     pub coord: Coord,
     #[serde(serialize_with="custom_multi_polygon_serialize", deserialize_with="custom_multi_polygon_deserialize")]
@@ -229,7 +230,9 @@ fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPol
     use serde::Serialize;
 
     match *multi_polygon_option {
-        Some(ref multi_polygon) => GeoJson::Geometry(Geometry::new(Value::from(multi_polygon))).serialize(serializer),
+        Some(ref multi_polygon) => {
+            GeoJson::Geometry(Geometry::new(Value::from(multi_polygon))).serialize(serializer)
+        }
         None => serializer.serialize_none(),
     }
 }
@@ -248,7 +251,9 @@ fn custom_multi_polygon_deserialize<D>(d: &mut D)
                 geojson::GeoJson::Geometry(geojson_geom) => {
                     let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
                     match geo_geom {
-                        Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => Some(geo_multi_polygon),
+                        Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => {
+                            Some(geo_multi_polygon)
+                        }
                         Ok(_) => None,
                         Err(e) => {
                             warn!("Error deserializing geometry: {}", e);
@@ -291,10 +296,12 @@ impl Members for Admin {
 
 impl Eq for Admin {}
 
-fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error> where S: Serializer {
-	// we can serialize the cell as a u32, since the reference is important only while loading the data
-	// in ES but not in bragi
-	serializer.serialize_u32(cell.get())
+fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error>
+    where S: Serializer
+{
+    // we can serialize the cell as a u32, since the reference is important only while loading the data
+    // in ES but not in bragi
+    serializer.serialize_u32(cell.get())
 }
 
 impl EsId for Admin {
@@ -394,10 +401,9 @@ pub struct AliasOperation {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct AliasParameter{
+pub struct AliasParameter {
     pub index: String,
     pub alias: String,
-
 }
 
 // we want a custom serialization for coords, and so far the cleanest way
@@ -406,7 +412,7 @@ pub struct AliasParameter{
 pub struct Coord(pub geo::Coordinate<f64>);
 impl Coord {
     pub fn new(lat: f64, lon: f64) -> Coord {
-        Coord(geo::Coordinate {x: lat, y: lon})
+        Coord(geo::Coordinate { x: lat, y: lon })
     }
     pub fn lat(&self) -> f64 {
         self.x
@@ -415,7 +421,7 @@ impl Coord {
         self.y
     }
     pub fn default() -> Coord {
-        Coord(geo::Coordinate {x: 0., y: 0.})
+        Coord(geo::Coordinate { x: 0., y: 0. })
     }
     pub fn is_default(&self) -> bool {
         self.lat() == 0. && self.lon() == 0.
@@ -430,13 +436,14 @@ impl ::std::ops::Deref for Coord {
 }
 
 impl serde::Serialize for Coord {
-  fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-        where S: serde::Serializer {
-      let mut state = try!(serializer.serialize_struct("Coord", 2));
-      try!(serializer.serialize_struct_elt(&mut state, "lat", &self.0.x));
-      try!(serializer.serialize_struct_elt(&mut state, "lon", &self.0.y));
-      serializer.serialize_struct_end(state)
-  }
+    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        where S: serde::Serializer
+    {
+        let mut state = try!(serializer.serialize_struct("Coord", 2));
+        try!(serializer.serialize_struct_elt(&mut state, "lat", &self.0.x));
+        try!(serializer.serialize_struct_elt(&mut state, "lon", &self.0.y));
+        serializer.serialize_struct_end(state)
+    }
 }
 
 enum GeoCoordField {
@@ -469,12 +476,12 @@ impl serde::Deserialize for GeoCoordField {
 }
 
 impl serde::Deserialize for Coord {
-  fn deserialize<D>(deserializer: &mut D) -> Result<Coord, D::Error>
-      where D: serde::de::Deserializer
-  {
-      static FIELDS: &'static [&'static str] = &["lat", "lon"];
-      deserializer.deserialize_struct("Coord", FIELDS, GeoCoordDeserializerVisitor)
-  }
+    fn deserialize<D>(deserializer: &mut D) -> Result<Coord, D::Error>
+        where D: serde::de::Deserializer
+    {
+        static FIELDS: &'static [&'static str] = &["lat", "lon"];
+        deserializer.deserialize_struct("Coord", FIELDS, GeoCoordDeserializerVisitor)
+    }
 }
 struct GeoCoordDeserializerVisitor;
 
@@ -489,9 +496,15 @@ impl serde::de::Visitor for GeoCoordDeserializerVisitor {
 
         loop {
             match try!(visitor.visit_key()) {
-                Some(GeoCoordField::X) => { x = Some(try!(visitor.visit_value())); }
-                Some(GeoCoordField::Y) => { y = Some(try!(visitor.visit_value())); }
-                None => { break; }
+                Some(GeoCoordField::X) => {
+                    x = Some(try!(visitor.visit_value()));
+                }
+                Some(GeoCoordField::Y) => {
+                    y = Some(try!(visitor.visit_value()));
+                }
+                None => {
+                    break;
+                }
             }
         }
 
@@ -507,6 +520,6 @@ impl serde::de::Visitor for GeoCoordDeserializerVisitor {
 
         try!(visitor.end());
 
-        Ok(Coord(geo::Coordinate{ x: x, y: y }))
+        Ok(Coord(geo::Coordinate { x: x, y: y }))
     }
 }

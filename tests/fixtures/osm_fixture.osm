@@ -5414,7 +5414,7 @@
     <member type='way' ref='31327959' role='outer' />
     <member type='way' ref='31328606' role='outer' />
     <member type='way' ref='31328600' role='outer' />
-    <tag k='addr:postcode' v='77000' />
+    <tag k='addr:postcode' v='CP77001;77000;77008;77003' />
     <tag k='admin_level' v='8' />
     <tag k='boundary' v='administrative' />
     <tag k='name' v='Melun' />

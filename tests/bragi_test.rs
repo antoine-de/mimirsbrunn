@@ -111,14 +111,14 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let resp = bragi_get("/autocomplete?q=15 Rue Hector Malot, (Paris)");
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
-                         r#""geocoding":{"version":"0.1.0","query":""},"#,
-                         r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-                         r#"[2.376379,48.846495],"type":"Point"},"#,
-                         r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
-                         r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
-                         r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-                         r#""street":"Rue Hector Malot","postcode":"75012","#,
-                         r#""city":null,"administrative_regions":[]}}}]}"#);
+                r#""geocoding":{"version":"0.1.0","query":""},"#,
+                r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
+                r#"[2.376379,48.846495],"type":"Point"},"#,
+                r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
+                r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
+                r#""name":"15 Rue Hector Malot","housenumber":"15","#,
+                r#""street":"Rue Hector Malot","postcode":"75012","#,
+                r#""city":null,"city_code":null,"level":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 
     // A(48.846431 2.376488)
@@ -144,14 +144,14 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
-                         r#""geocoding":{"version":"0.1.0","query":""},"#,
-                         r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-                         r#"[2.376379,48.846495],"type":"Point"},"#,
-                         r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
-                         r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
-                         r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-                         r#""street":"Rue Hector Malot","postcode":"75012","#,
-                         r#""city":null,"administrative_regions":[]}}}]}"#);
+                r#""geocoding":{"version":"0.1.0","query":""},"#,
+                r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
+                r#"[2.376379,48.846495],"type":"Point"},"#,
+                r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
+                r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
+                r#""name":"15 Rue Hector Malot","housenumber":"15","#,
+                r#""street":"Rue Hector Malot","postcode":"75012","#,
+                r#""city":null,"city_code":null,"level":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 
     // Search with shape where house number out shape
@@ -192,7 +192,10 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
     let all_20 = get_results(bragi_get("/autocomplete?q=77000"));
     assert_eq!(all_20.len(), 10);
-    assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    for postcodes in get_values(&all_20, "postcode") {
+        assert!(postcodes.split(';').any(|p| p == "77000"));
+    }
+    assert!(get_values(&all_20, "postcode").iter().any(|r| *r == "77000;77003;77008;CP77001"));
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
@@ -314,7 +317,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
 
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 1);
-    assert_eq!(get_values(&geocodings, "label"), vec!["Melun"]);
+    assert_eq!(get_values(&geocodings, "name"), vec!["Melun"]);
 
     //      A ---------------------D
     //      |                      |
@@ -350,7 +353,10 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let count = count_types(&types, "poi");
     assert_eq!(count, 2);
     assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
-    assert!(get_values(&geocodings, "postcode").iter().all(|r| *r == "77000"));
+    for postcodes in get_values(&geocodings, "postcode") {
+        assert!(postcodes.split(';').any(|p| p == "77000"));
+    }
+    assert!(get_values(&geocodings, "postcode").iter().any(|r| *r == "77000;77003;77008;CP77001"));
 
     // search by zip code
     let geocodings = get_results(bragi_get("/autocomplete?q=77000&limit=15"));

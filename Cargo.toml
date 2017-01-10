@@ -20,6 +20,7 @@ geo = "^0.3"
 gst = "0.1"
 ordered-float = "0.0.2"
 mdo = "*"
+itertools = "*"
 
 [dev-dependencies]
 serde_json = "*"
