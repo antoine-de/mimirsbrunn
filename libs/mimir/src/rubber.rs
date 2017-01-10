@@ -43,8 +43,6 @@ use rs_es::operations::search::ScanResult;
 
 use super::objects::{AliasOperations, AliasOperation, AliasParameter};
 use rs_es::units::Duration;
-use std::collections::BTreeMap;
-use std::rc::Rc;
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
@@ -55,8 +53,14 @@ pub struct Rubber {
 
 /// return the index associated to the given type and dataset
 /// this will be an alias over another real index
-fn get_main_index(doc_type: &str, dataset: &str) -> String {
+fn get_main_type_and_dataset_index(doc_type: &str, dataset: &str) -> String {
     format!("munin_{}_{}", doc_type, dataset)
+}
+
+/// return the index associated to the given type
+/// this will be an alias over another real index
+fn get_main_type_index(doc_type: &str) -> String {
+    format!("munin_{}", doc_type)
 }
 
 impl Rubber {
@@ -131,10 +135,8 @@ impl Rubber {
     }
 
     fn get_last_index(&self, doc_type: &str, dataset: &str) -> Result<Vec<String>, String> {
-        debug!("get last index: {base_index}/_aliases",
-               base_index = get_main_index(doc_type, dataset));
-        self.get(&format!("{base_index}/_aliases",
-                          base_index = get_main_index(doc_type, dataset)))
+        let base_index = get_main_type_and_dataset_index(doc_type, dataset);
+        self.get(&format!("{}/_aliases", base_index))
             .map_err(|e| e.to_string())
             .and_then(|res| {
                 match res.status {
@@ -152,7 +154,7 @@ impl Rubber {
                     }
                     StatusCode::NotFound => {
                         info!("impossible to find alias {}, no last index to remove",
-                              get_main_index(doc_type, dataset));
+                              base_index);
                         Ok(vec![])
                     }
                     _ => Err(format!("invalid elasticsearch response: {:?}", res)),
@@ -171,9 +173,14 @@ impl Rubber {
                          -> Result<(), String> {
         debug!("publishing index");
         let last_indexes = try!(self.get_last_index(doc_type, dataset));
-        let main_index = get_main_index(doc_type, dataset);
-        try!(self.alias(&main_index, &vec![index.clone()], &last_indexes));
-        try!(self.alias("munin", &vec![main_index.to_string()], &vec![]));
+
+        let dataset_index = get_main_type_and_dataset_index(doc_type, dataset);
+        try!(self.alias(&dataset_index, &vec![index.clone()], &last_indexes));
+
+        let type_index = get_main_type_index(doc_type);
+        try!(self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes));
+
+        try!(self.alias("munin", &vec![type_index.to_string()], &vec![]));
         for i in last_indexes {
             try!(self.delete_index(&i));
         }
@@ -289,13 +296,15 @@ impl Rubber {
         try!(self.publish_index(doc_type, dataset, index));
         Ok(nb_elements)
     }
-    
-    pub fn get_admins_from_dataset(&mut self, dataset: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index(&get_main_index("admin", dataset))
+
+    pub fn get_admins_from_dataset(&mut self,
+                                   dataset: &str)
+                                   -> Result<Vec<Admin>, rs_es::error::EsError> {
+        self.get_admins_from_index(&get_main_type_and_dataset_index("admin", dataset))
     }
 
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index("munin_admin")
+        self.get_admins_from_index(&get_main_type_index("admin"))
     }
 
     fn get_admins_from_index(&mut self, index: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
