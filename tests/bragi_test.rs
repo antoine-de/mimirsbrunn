@@ -192,7 +192,10 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
     let all_20 = get_results(bragi_get("/autocomplete?q=77000"));
     assert_eq!(all_20.len(), 10);
-    assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
+    for postcodes in get_values(&all_20, "postcode") {
+        assert!(postcodes.split(';').any(|p| p == "77000"));
+    }
+    assert!(get_values(&all_20, "postcode").iter().any(|r| *r == "77000;77003;77008;CP77001"));
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
@@ -350,7 +353,10 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let count = count_types(&types, "poi");
     assert_eq!(count, 2);
     assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
-    assert!(get_values(&geocodings, "postcode").iter().all(|r| *r == "77000"));
+    for postcodes in get_values(&geocodings, "postcode") {
+        assert!(postcodes.split(';').any(|p| p == "77000"));
+    }
+    assert!(get_values(&geocodings, "postcode").iter().any(|r| *r == "77000;77003;77008;CP77001"));
 
     // search by zip code
     let geocodings = get_results(bragi_get("/autocomplete?q=77000&limit=15"));

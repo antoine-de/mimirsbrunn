@@ -96,7 +96,10 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
         place.is_street() && place.label() == "Rue du Port (Melun)" &&
-        place.admins().first().map(|admin| admin.label() == "Melun (77000)").unwrap_or(false)
+        place.admins()
+            .first()
+            .map(|admin| admin.label() == "Melun (77000-CP77001)")
+            .unwrap_or(false)
     };
     let nb = es_wrapper.search_and_filter("label:Rue du Port (Melun)", place_filter).count();
     assert_eq!(nb, 1);

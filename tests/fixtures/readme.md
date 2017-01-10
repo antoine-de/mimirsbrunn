@@ -31,9 +31,11 @@ type | name
 --- | ---
 relation | Vaux-le-Pénil
 relation | Livry-sur-Seine  
-relation | Melun
+relation | Melun*
 relation | Melun (not a valid boundary)
 relation | Le Coudray-Montceaux
+
+> *: Melun is modified to bear multiple postcodes, including numbers and letters (CP77001;77000;77008;77003).
 
 ### POIs
 The .osm file contains the following Data :
