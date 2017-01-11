@@ -108,10 +108,8 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
             vec![]
         })
         .into_iter()
-        .fold(AdminFromInsee::new(), |mut a_by_insee, a| {
-            a_by_insee.insert(a.id.to_string(), Rc::new(a));
-            a_by_insee
-        });
+        .map(|a| (a.id.to_string(), Rc::new(a)))
+        .collect();
 
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
     info!("Add data in elasticsearch db.");
