@@ -150,16 +150,18 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
 }
 
 /// Attach the stops to administrative regions
-/// 
-/// The admins are loaded from Elasticsearch and stored in a quadtree.bano
-/// We attach a stop with all the admins that have a boundary containing 
+///
+/// The admins are loaded from Elasticsearch and stored in a quadtree
+/// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
-fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: It, rubber: &mut Rubber) {
-    
+fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: It,
+                                                                        rubber: &mut Rubber) {
     let admins = rubber.get_all_admins().unwrap_or_else(|_| {
         info!("Administratives regions not found in elasticsearch db");
-        vec!()
+        vec![]
     });
+
+    info!("{} administrative regions loaded from mimir", admins.len());
 
     let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
 
@@ -177,7 +179,9 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: I
         stop.administrative_regions = admins;
     }
 
-    info!("there is {}/{} stops without any admin", nb_unmatched, nb_matched + nb_unmatched);
+    info!("there is {}/{} stops without any admin",
+          nb_unmatched,
+          nb_matched + nb_unmatched);
 }
 
 fn main() {

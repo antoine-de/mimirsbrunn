@@ -354,7 +354,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // the current dataset are thus:
     // - sample-bano
     // - bano-three_cities
-    // - osm_fixture.osm.pbf + pois
+    // - osm_fixture.osm.pbf (including pois)
     // ******************************************
     ::launch_and_assert(osm2mimir,
                         vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -430,8 +430,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     // the current dataset are thus:
     // - sample-bano
     // - bano-three_cities
-    // - osm_fixture.osm.pbf + pois
-    // stops.txt
+    // - osm_fixture.osm.pbf (including pois)
+    // - stops.txt
     // ******************************************
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
     info!("Launching {}", stops2mimir);
@@ -449,7 +449,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_value(stop, "label"), "14 Juillet");
     assert_eq!(get_value(stop, "name"), "14 Juillet");
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
-    // this stop area is in the boundary of the admin 'Vaux-le-Pénil', it should have been associated to it
+    // this stop area is in the boundary of the admin 'Vaux-le-Pénil',
+    // it should have been associated to it
     assert_eq!(get_value(stop, "city"), "Vaux-le-Pénil (77000)");
     let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 1);
@@ -459,7 +460,6 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let response = get_results(bragi_get("/autocomplete?q=Far west station"));
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
-    info!("stop = {:?}", stop);
 
     assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
     assert_eq!(get_value(stop, "label"), "Far west station");
