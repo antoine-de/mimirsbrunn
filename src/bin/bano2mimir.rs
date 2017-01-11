@@ -108,7 +108,10 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
             vec![]
         })
         .into_iter()
-        .map(|a| (a.id.to_string(), Rc::new(a)))
+        .map(|mut a| {
+            a.boundary = None; // to save some space we remove the admin boundary
+            (a.id.to_string(), Rc::new(a))
+        })
         .collect();
 
     let addr_index = rubber.make_index(doc_type, dataset).unwrap();
