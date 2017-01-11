@@ -1,6 +1,6 @@
 stop_id,visible,stop_name,stop_lat,stop_lon,zone_id,location_type,parent_station,stop_timezone,equipment_id,contributor_id,geometry_id,frame_id
 SA:main_station,1,"République",47.099758,2.491858,,1,,Europe/Paris,,BGT,,BGT:19
-SA:second_station,,"14 Juillet",47.123966,2.402522,,1,,Europe/Paris,,BGT,,BGT:19
+SA:second_station,,"14 Juillet",48.527463,2.6796462,,1,,Europe/Paris,,BGT,,BGT:19
 SA:station_no_city,,"Far west station",47.123966,2.402522,,1,,Europe/Paris,,BGT,,BGT:19
 SA:invisible_station:,0,"11 OCTOBRE",47.90975,1.881545,,1,,Europe/Paris,,OLS,,OLS:12
 SA:witout_lon,1,"Alouettes",47.117836,,,1,,Europe/Paris,,BGT,,BGT:19

@@ -47,6 +47,9 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
 
+    // *********************************
+    // We load bano files
+    // *********************************
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/sample-bano.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
@@ -180,8 +183,12 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_values(&all_20, "label"),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
 
-
-    // Search by zip_codes
+    // *********************************
+    // We then load the OSM dataset
+    // the current dataset are thus:
+    // - sample-bano
+    // - osm_fixture.osm.pbf
+    // *********************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     info!("Launching {}", osm2mimir);
     ::launch_and_assert(osm2mimir,
@@ -190,6 +197,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                              "--level=8".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
+
+    // Search by zip_codes
     let all_20 = get_results(bragi_get("/autocomplete?q=77000"));
     assert_eq!(all_20.len(), 10);
     for postcodes in get_values(&all_20, "postcode") {
@@ -240,6 +249,14 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(count, 0);
 
     // zip_code on addr
+
+    // *********************************
+    // We then load another bano dataset
+    // the current dataset are thus:
+    // - sample-bano
+    // - bano-three_cities
+    // - osm_fixture.osm.pbf
+    // *********************************
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
@@ -332,7 +349,13 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let geocodings = get_results(bragi_post_shape("/autocomplete?q=Melun", shape));
     assert_eq!(geocodings.len(), 0);
 
-    // Test POIs
+    // ******************************************
+    // We then load the OSM dataset with the POIs
+    // the current dataset are thus:
+    // - sample-bano
+    // - bano-three_cities
+    // - osm_fixture.osm.pbf (including pois)
+    // ******************************************
     ::launch_and_assert(osm2mimir,
                         vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-poi".into(),
@@ -402,7 +425,14 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 0);
 
+    // ******************************************
     // we then load a stop file
+    // the current dataset are thus:
+    // - sample-bano
+    // - bano-three_cities
+    // - osm_fixture.osm.pbf (including pois)
+    // - stops.txt
+    // ******************************************
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
     info!("Launching {}", stops2mimir);
     ::launch_and_assert(stops2mimir,
@@ -419,7 +449,25 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_value(stop, "label"), "14 Juillet");
     assert_eq!(get_value(stop, "name"), "14 Juillet");
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
-    assert!(stop.get("administrative_regions").map_or(false, |v| v.is_array()));
+    // this stop area is in the boundary of the admin 'Vaux-le-Pénil',
+    // it should have been associated to it
+    assert_eq!(get_value(stop, "city"), "Vaux-le-Pénil (77000)");
+    let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
+    assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 1);
+
+    // we query another stop, but this one is outside the range of an admin,
+    // we should get the stop, but with no admin attached to it
+    let response = get_results(bragi_get("/autocomplete?q=Far west station"));
+    assert_eq!(response.len(), 1);
+    let stop = response.first().unwrap();
+
+    assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
+    assert_eq!(get_value(stop, "label"), "Far west station");
+    assert_eq!(get_value(stop, "name"), "Far west station");
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:station_no_city");
+    assert_eq!(get_value(stop, "city"), "");
+    let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
+    assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
 }
 
 fn get_values<'a>(r: &'a Vec<BTreeMap<String, Value>>, val: &'a str) -> Vec<&'a str> {
