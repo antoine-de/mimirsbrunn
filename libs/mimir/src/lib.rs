@@ -54,19 +54,14 @@ use chrono::Local;
 pub fn logger_init() -> Result<(), log::SetLoggerError> {
     let mut builder = env_logger::LogBuilder::new();
 
-    if let Ok(s) = std::env::var("LOG_TIME") {
-        if s == "1" {
-            builder.format(|record| {
-                format!("[{time}]{lvl}:{loc}: {msg}",
-                        time = Local::now(),
-                        lvl = record.level(),
-                        loc = record.location().module_path(),
-                        msg = record.args())
-            });
-        }
-    }
-
-    builder.filter(None, log::LogLevelFilter::Info);
+    builder.filter(None, log::LogLevelFilter::Info)
+        .format(|record| {
+            format!("[{time}]{lvl}:{loc}: {msg}",
+                    time = Local::now(),
+                    lvl = record.level(),
+                    loc = record.location().module_path(),
+                    msg = record.args())
+        });
     if let Ok(s) = std::env::var("RUST_LOG") {
         builder.parse(&s);
     }
