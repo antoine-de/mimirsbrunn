@@ -451,7 +451,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
     // this stop area is in the boundary of the admin 'Vaux-le-Pénil',
     // it should have been associated to it
-    assert_eq!(get_value(stop, "city"), "Vaux-le-Pénil (77000)");
+    assert_eq!(get_value(stop, "city"), "Vaux-le-Pénil");
     let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 1);
 
