@@ -152,7 +152,7 @@ fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
     admins.iter()
         .find(|a| !a.zip_codes.is_empty())
         .or_else(|| admins.iter().next())
-        .map(|admin| admin.label.clone())
+        .map(|admin| admin.name.clone())
 }
 
 impl From<mimir::Street> for GeocodingResponse {
