@@ -121,7 +121,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                 r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                 r#""name":"15 Rue Hector Malot","housenumber":"15","#,
                 r#""street":"Rue Hector Malot","postcode":"75012","#,
-                r#""city":null,"city_code":null,"level":null,"administrative_regions":[]}}}]}"#);
+                r#""city":null,"citycode":null,"level":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 
     // A(48.846431 2.376488)
@@ -154,7 +154,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                 r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                 r#""name":"15 Rue Hector Malot","housenumber":"15","#,
                 r#""street":"Rue Hector Malot","postcode":"75012","#,
-                r#""city":null,"city_code":null,"level":null,"administrative_regions":[]}}}]}"#);
+                r#""city":null,"citycode":null,"level":null,"administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 
     // Search with shape where house number out shape
