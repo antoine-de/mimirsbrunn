@@ -66,6 +66,7 @@ pub struct GeocodingResponse {
     pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
+    pub city_code: Option<String>, /* deprecated */
     pub citycode: Option<String>,
     pub level: Option<u32>,
     // pub accuracy: Option<i32>,
@@ -131,6 +132,7 @@ impl From<mimir::Admin> for GeocodingResponse {
         let label = Some(other.label);
         GeocodingResponse {
             id: other.id,
+            city_code: insee.clone(),
             citycode: insee,
             level: level,
             place_type: type_,
@@ -178,6 +180,7 @@ impl From<mimir::Street> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: citycode.clone(),
             citycode: citycode,
             level: None,
             place_type: type_,
@@ -210,6 +213,7 @@ impl From<mimir::Addr> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: citycode.clone(),
             citycode: citycode,
             level: None,
             place_type: type_,
@@ -240,6 +244,7 @@ impl From<mimir::Poi> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: citycode.clone(),
             citycode: citycode,
             level: None,
             place_type: type_,
@@ -270,6 +275,7 @@ impl From<mimir::Stop> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
+            city_code: citycode.clone(),
             citycode: citycode,
             level: None,
             place_type: type_,
