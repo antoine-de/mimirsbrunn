@@ -157,7 +157,7 @@ fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
         .map(|admin| admin.name.clone())
 }
 
-fn get_city_code(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
     admins.iter()
         .find(|a| !a.zip_codes.is_empty())
         .or_else(|| admins.iter().next())
@@ -176,7 +176,7 @@ impl From<mimir::Street> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
-        let citycode = get_city_code(&admins);
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
@@ -209,7 +209,7 @@ impl From<mimir::Addr> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
-        let citycode = get_city_code(&admins);
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
@@ -240,7 +240,7 @@ impl From<mimir::Poi> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
-        let citycode = get_city_code(&admins);
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
@@ -271,7 +271,7 @@ impl From<mimir::Stop> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
-        let citycode = get_city_code(&admins);
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
