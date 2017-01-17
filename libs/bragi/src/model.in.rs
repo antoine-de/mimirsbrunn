@@ -66,7 +66,8 @@ pub struct GeocodingResponse {
     pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
-    pub city_code: Option<String>,
+    pub city_code: Option<String>, /* deprecated */
+    pub citycode: Option<String>,
     pub level: Option<u32>,
     // pub accuracy: Option<i32>,
     // pub district: Option<String>,
@@ -131,7 +132,8 @@ impl From<mimir::Admin> for GeocodingResponse {
         let label = Some(other.label);
         GeocodingResponse {
             id: other.id,
-            city_code: insee,
+            city_code: insee.clone(),
+            citycode: insee,
             level: level,
             place_type: type_,
             name: name,
@@ -155,6 +157,13 @@ fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
         .map(|admin| admin.name.clone())
 }
 
+fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+    admins.iter()
+        .find(|a| !a.zip_codes.is_empty())
+        .or_else(|| admins.iter().next())
+        .map(|admin| admin.insee.clone())
+}
+
 impl From<mimir::Street> for GeocodingResponse {
     fn from(other: mimir::Street) -> GeocodingResponse {
         let type_ = "street".to_string();
@@ -167,10 +176,12 @@ impl From<mimir::Street> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
-            city_code: None,
+            city_code: citycode.clone(),
+            citycode: citycode,
             level: None,
             place_type: type_,
             name: name,
@@ -198,10 +209,12 @@ impl From<mimir::Addr> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
-            city_code: None,
+            city_code: citycode.clone(),
+            citycode: citycode,
             level: None,
             place_type: type_,
             name: name,
@@ -227,10 +240,12 @@ impl From<mimir::Poi> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
-            city_code: None,
+            city_code: citycode.clone(),
+            citycode: citycode,
             level: None,
             place_type: type_,
             name: name,
@@ -256,10 +271,12 @@ impl From<mimir::Stop> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
+        let citycode = get_citycode(&admins);
 
         GeocodingResponse {
             id: other.id,
-            city_code: None,
+            city_code: citycode.clone(),
+            citycode: citycode,
             level: None,
             place_type: type_,
             name: name,
