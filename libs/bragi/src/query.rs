@@ -117,9 +117,22 @@ fn build_query(q: &str,
         .with_should(should_query)
         .build();
 
-    let mut must = vec![rs_q::build_multi_match(vec![match_type.to_string(),
-        "zip_codes.prefix".to_string()], q.to_string())
-             .with_minimum_should_match(rs_es::query::MinimumShouldMatch::from(90f64)).build()];
+    use rs_es::query::{CombinationMinimumShouldMatch, MinimumShouldMatch};
+    let min_should_match = |min, threshold| {
+        CombinationMinimumShouldMatch::new(MinimumShouldMatch::from(min),
+                                           MinimumShouldMatch::from(threshold))
+    };
+
+    let mut must = vec![rs_q::build_multi_match(
+        vec![match_type.to_string(),"zip_codes.prefix".to_string()],
+         q.to_string())
+             .with_minimum_should_match(MinimumShouldMatch::from(
+                 // when we search [0, 4] fields, we need to match 90% of them
+                 // when we search [5, +] fields, we only need to match 70% on them
+                 // this way if the input has more fields than the documents (additional information like the country, the region, ...)
+                 // they can be ignored
+                 vec![min_should_match(0, 90f64), min_should_match(4, 70f64)]
+                 )).build()];
 
     if let Some(s) = shape {
         must.push(rs_q::build_geo_polygon("coord", s).build());
