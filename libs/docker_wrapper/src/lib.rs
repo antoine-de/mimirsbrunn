@@ -95,6 +95,12 @@ fn docker_command(args: &[&'static str]) {
 
 impl Drop for DockerWrapper {
     fn drop(&mut self) {
+        if std::env::var("DONT_KILL_THE_WHALE") == Ok("1".to_string()) {
+            warn!("the docker won't be stoped at the end, you can debug it.
+            Note: ES has been mapped to the port 9242 in you localhost
+            manually stop and rm the container mimirsbrunn_tests after debug");
+            return;
+        }
         docker_command(&["stop", "mimirsbrunn_tests"]);
         docker_command(&["rm", "mimirsbrunn_tests"]);
     }

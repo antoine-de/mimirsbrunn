@@ -270,7 +270,9 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
-    let all_20 = get_results(bragi_get("/autocomplete?q=77255"));
+    // we search for a house number with a postcode, we should be able to find
+    // the house number with this number in this city
+    let all_20 = get_results(bragi_get("/autocomplete?q=3 rue 77255"));
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77255"));
     let types = get_types(&all_20);
@@ -284,9 +286,20 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(count, 1);
     let first_house = all_20.iter().find(|e| get_value(e, "type") == "house");
     assert_eq!(get_value(first_house.unwrap(), "citycode"), "77255");
+    assert_eq!(get_value(first_house.unwrap(), "label"),
+               "3 Rue du Four à Chaux (Livry-sur-Seine)");
+
+    // we query with only a zip code, we should be able to find admins,
+    // and some street of it (and all on this admin)
+    let res = get_results(bragi_get("/autocomplete?q=77000"));
+    assert_eq!(res.len(), 10);
+    assert!(get_values(&res, "postcode").iter().all(|r| r.contains("77000")));
+    let types = get_types(&res);
+    // since we did not ask for an house number, we should get none
+    assert_eq!(count_types(&types, "house"), 0);
 
     // zip_code and name of addr
-    let all_20 = get_results(bragi_get("/autocomplete?q=77288 Rue de la Reine Blanche"));
+    let all_20 = get_results(bragi_get("/autocomplete?q=77288 2 Rue de la Reine Blanche"));
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77288"));
     let types = get_types(&all_20);

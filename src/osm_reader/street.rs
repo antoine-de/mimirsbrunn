@@ -32,7 +32,7 @@ extern crate geo;
 extern crate mimir;
 extern crate osmpbfreader;
 
-use ::admin_geofinder::AdminGeoFinder;
+use admin_geofinder::AdminGeoFinder;
 use std::collections::{BTreeSet, BTreeMap};
 use std::rc::Rc;
 use super::utils::*;

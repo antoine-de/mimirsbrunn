@@ -125,12 +125,10 @@ impl Rubber {
                 info!("Error while creating new index {}", name);
                 e.to_string()
             })
-            .and_then(|res| {
-                if res.status == StatusCode::Ok {
-                    Ok(())
-                } else {
-                    Err(format!("cannot create index: {:?}", res))
-                }
+            .and_then(|res| if res.status == StatusCode::Ok {
+                Ok(())
+            } else {
+                Err(format!("cannot create index: {:?}", res))
             })
     }
 
@@ -138,28 +136,25 @@ impl Rubber {
         let base_index = get_main_type_and_dataset_index(doc_type, dataset);
         self.get(&format!("{}/_aliases", base_index))
             .map_err(|e| e.to_string())
-            .and_then(|res| {
-                match res.status {
-                    StatusCode::Ok => {
-                        let value: serde_json::Value = try!(res.read_response()
-                            .map_err(|e| e.to_string()));
-                        Ok(value.as_object()
-                            .and_then(|aliases| Some(aliases.keys().cloned().collect()))
-                            .unwrap_or_else(|| {
-                                info!("no previous index to delete for type {} and dataset {}",
-                                      doc_type,
-                                      dataset);
-                                vec![]
-                            }))
-                    }
-                    StatusCode::NotFound => {
-                        info!("impossible to find alias {}, no last index to remove",
-                              base_index);
-                        Ok(vec![])
-                    }
-                    _ => Err(format!("invalid elasticsearch response: {:?}", res)),
+            .and_then(|res| match res.status {
+                StatusCode::Ok => {
+                    let value: serde_json::Value = try!(res.read_response()
+                        .map_err(|e| e.to_string()));
+                    Ok(value.as_object()
+                        .and_then(|aliases| Some(aliases.keys().cloned().collect()))
+                        .unwrap_or_else(|| {
+                            info!("no previous index to delete for type {} and dataset {}",
+                                  doc_type,
+                                  dataset);
+                            vec![]
+                        }))
                 }
-
+                StatusCode::NotFound => {
+                    info!("impossible to find alias {}, no last index to remove",
+                          base_index);
+                    Ok(vec![])
+                }
+                _ => Err(format!("invalid elasticsearch response: {:?}", res)),
             })
     }
 
@@ -223,15 +218,13 @@ impl Rubber {
         let json = serde_json::to_string(&operations).unwrap();
         self.post("_aliases", &json)
             .map_err(|e| e.to_string())
-            .and_then(|res| {
-                if res.status == StatusCode::Ok {
-                    Ok(())
-                } else {
-                    error!("failed to change aliases for {}, es response: {:?}",
-                           alias,
-                           res);
-                    Err(format!("failed to post aliases for {}: {:?}", alias, res).to_string())
-                }
+            .and_then(|res| if res.status == StatusCode::Ok {
+                Ok(())
+            } else {
+                error!("failed to change aliases for {}, es response: {:?}",
+                       alias,
+                       res);
+                Err(format!("failed to post aliases for {}: {:?}", alias, res).to_string())
             })
     }
 

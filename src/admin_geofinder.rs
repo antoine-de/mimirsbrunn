@@ -58,7 +58,7 @@ impl AdminGeoFinder {
     }
 
     pub fn insert(&mut self, admin: Admin) {
-        use ::ordered_float::OrderedFloat;
+        use ordered_float::OrderedFloat;
         fn min(a: OrderedFloat<f32>, b: f64) -> f32 {
             a.0.min(down(b as f32))
         }
