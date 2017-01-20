@@ -36,7 +36,7 @@ use gst::rtree::{RTree, Rect};
 use std;
 
 /// We want to strip the admin's boundary for the objects referencing it (for performance purpose)
-/// thus in the AdminGeoFinder we store an Admin without the boundary (the option is emptied)
+/// thus in the `AdminGeoFinder` we store an Admin without the boundary (the option is emptied)
 /// and we store the boundary aside
 struct BoundaryAndAdmin(Option<geo::MultiPolygon<f64>>, Rc<Admin>);
 
@@ -48,15 +48,12 @@ impl BoundaryAndAdmin {
     }
 }
 
+
 pub struct AdminGeoFinder {
     admins: RTree<BoundaryAndAdmin>,
 }
 
 impl AdminGeoFinder {
-    pub fn new() -> AdminGeoFinder {
-        AdminGeoFinder { admins: RTree::new() }
-    }
-
     pub fn insert(&mut self, admin: Admin) {
         use ordered_float::OrderedFloat;
         fn min(a: OrderedFloat<f32>, b: f64) -> f32 {
@@ -97,15 +94,21 @@ impl AdminGeoFinder {
             .get(&search)
             .into_iter()
             .map(|(_, a)| a)
-            .filter(|a| a.0.as_ref().map_or(false, |b| (*b).contains(&geo::Point(coord.clone()))))
+            .filter(|a| a.0.as_ref().map_or(false, |b| (*b).contains(&geo::Point(*coord))))
             .map(|admin_and_boundary| admin_and_boundary.1.clone())
             .collect()
     }
 }
 
+impl Default for AdminGeoFinder {
+    fn default() -> Self {
+        AdminGeoFinder { admins: RTree::new() }
+    }
+}
+
 impl FromIterator<Admin> for AdminGeoFinder {
     fn from_iter<I: IntoIterator<Item = Admin>>(admins: I) -> Self {
-        let mut geofinder = AdminGeoFinder::new();
+        let mut geofinder = AdminGeoFinder::default();
 
         for admin in admins {
             geofinder.insert(admin);
@@ -171,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_two_fake_admins() {
-        let mut finder = AdminGeoFinder::new();
+        let mut finder = AdminGeoFinder::default();
         finder.insert(make_admin(40.));
         finder.insert(make_admin(43.));
 

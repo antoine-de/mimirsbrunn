@@ -143,7 +143,7 @@ pub fn streets(pbf: &mut OsmPbfReader,
     }
 
     // Create a street for each way with osmid present in in objs_map
-    for (_, way_ids) in name_admin_map {
+    for way_ids in name_admin_map.values() {
         use mdo::option::*;
         let objs_map = &objs_map;
         let street_list = &mut street_list;

@@ -92,7 +92,7 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         }
         osmpbfreader::OsmObj::Relation(ref relation) => {
             (format_poi_id("relation", relation.id.0),
-             make_centroid(&build_boundary(&relation, &obj_map)))
+             make_centroid(&build_boundary(relation, obj_map)))
         }
     };
 
@@ -139,7 +139,7 @@ pub fn pois(pbf: &mut OsmPbfReader,
     let matcher = PoiMatcher::new(poi_types);
     let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o)).unwrap();
     objects.iter()
-        .filter(|&(_, obj)| matcher.is_poi(&obj))
+        .filter(|&(_, obj)| matcher.is_poi(obj))
         .filter_map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
         .collect()
 }

@@ -176,7 +176,7 @@ fn launch_and_assert(cmd: &'static str,
 /// Main test method (regroups all tests)
 /// All tests are done sequentially,
 /// and use the same docker in order to avoid multiple inits
-/// (ES cleanup is handled by es_wrapper)
+/// (ES cleanup is handled by `es_wrapper`)
 #[test]
 fn all_tests() {
     mimir::logger_init().unwrap();

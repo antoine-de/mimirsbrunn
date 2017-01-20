@@ -79,8 +79,9 @@ impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
         let get_optional_pos = |name| headers.iter().position(|s| s == name);
 
         let get_pos = |field| {
-            get_optional_pos(field)
-                .ok_or(csv::Error::Decode(format!("Invalid file, cannot find column '{}'", field)))
+            get_optional_pos(field).ok_or_else(|| {
+                csv::Error::Decode(format!("Invalid file, cannot find column '{}'", field))
+            })
         };
 
         Ok(StopPointIter {

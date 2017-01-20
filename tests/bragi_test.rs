@@ -221,7 +221,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
-    let boundary = all_20[0].get("administrative_regions").unwrap().pointer("/0/boundary").unwrap();
+    let boundary = all_20[0]["administrative_regions"].pointer("/0/boundary").unwrap();
     assert!(boundary.is_null());
 
     let types = get_types(&all_20);
@@ -508,7 +508,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
 }
 
-fn get_values<'a>(r: &'a Vec<BTreeMap<String, Value>>, val: &'a str) -> Vec<&'a str> {
+fn get_values<'a>(r: &'a [BTreeMap<String, Value>], val: &'a str) -> Vec<&'a str> {
     r.iter().map(|e| get_value(e, val)).collect()
 }
 
@@ -516,11 +516,11 @@ fn get_value<'a>(e: &'a BTreeMap<String, Value>, val: &'a str) -> &'a str {
     e.get(val).and_then(|l| l.as_str()).unwrap_or("")
 }
 
-fn get_types<'a>(r: &'a Vec<BTreeMap<String, Value>>) -> Vec<&'a str> {
+fn get_types(r: &[BTreeMap<String, Value>]) -> Vec<&str> {
     r.iter().map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("")).collect()
 }
 
-fn filter_by_type<'a>(r: &'a Vec<BTreeMap<String, Value>>,
+fn filter_by_type<'a>(r: &'a [BTreeMap<String, Value>],
                       t: &'a str)
                       -> Vec<BTreeMap<String, Value>> {
     r.iter()
@@ -529,6 +529,6 @@ fn filter_by_type<'a>(r: &'a Vec<BTreeMap<String, Value>>,
         .collect()
 }
 
-fn count_types(types: &Vec<&str>, value: &str) -> usize {
+fn count_types(types: &[&str], value: &str) -> usize {
     types.iter().filter(|&t| *t == value).count()
 }
