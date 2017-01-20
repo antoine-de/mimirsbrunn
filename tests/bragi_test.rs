@@ -270,7 +270,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
-    // we search for a house number with a postcode, we should be able to find the house number with this number in this city
+    // we search for a house number with a postcode, we should be able to find
+    // the house number with this number in this city
     let all_20 = get_results(bragi_get("/autocomplete?q=3 rue 77255"));
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77255"));
@@ -288,7 +289,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_value(first_house.unwrap(), "label"),
                "3 Rue du Four à Chaux (Livry-sur-Seine)");
 
-    // we query with only a zip code, we should be able to find admins, and some street of it (and all on this admin)
+    // we query with only a zip code, we should be able to find admins,
+    // and some street of it (and all on this admin)
     let res = get_results(bragi_get("/autocomplete?q=77000"));
     assert_eq!(res.len(), 10);
     assert!(get_values(&res, "postcode").iter().all(|r| r.contains("77000")));
