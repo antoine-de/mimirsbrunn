@@ -125,14 +125,15 @@ fn build_query(q: &str,
         must.push(rs_q::build_geo_polygon("coord", s).build());
     }
 
+    // filter to handle house number
+    // we either want:
+    // * to exactly match the document house_number
+    // * or that the document has no house_number
     let filter = rs_q::build_bool()
         .with_should(vec![rs_q::build_bool()
                               .with_must_not(rs_q::build_exists("house_number").build())
                               .build(),
-                          rs_q::build_multi_match(vec!["house_number".to_string(),
-                                                       "zip_codes".to_string()],
-                                                  q.to_string())
-                              .build()])
+                          rs_q::build_match("house_number", q.to_string()).build()])
         .with_must(must)
         .build();
 
