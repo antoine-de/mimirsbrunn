@@ -31,8 +31,8 @@
 extern crate mimir;
 extern crate osmpbfreader;
 
-use ::admin_geofinder::AdminGeoFinder;
-use ::boundaries::{build_boundary, make_centroid};
+use admin_geofinder::AdminGeoFinder;
+use boundaries::{build_boundary, make_centroid};
 use std::collections::{BTreeSet, BTreeMap};
 use super::utils::*;
 use super::OsmPbfReader;

@@ -125,11 +125,9 @@ impl<'a> ElasticSearchWrapper<'a> {
             }
         }
         fn get(json: Value, key: &str) -> Option<Value> {
-            into_object(json).and_then(|mut json| {
-                match json.entry(key.into()) {
-                    btree_map::Entry::Occupied(o) => Some(o.remove()),
-                    _ => None,
-                }
+            into_object(json).and_then(|mut json| match json.entry(key.into()) {
+                btree_map::Entry::Occupied(o) => Some(o.remove()),
+                _ => None,
             })
         }
         let json = self.search(word);
@@ -137,25 +135,26 @@ impl<'a> ElasticSearchWrapper<'a> {
             .and_then(|json| get(json, "hits"))
             .and_then(|hits| {
                 match hits {
-                    Value::Array(v) =>
-                    Some(Box::new(v.into_iter().filter_map(|json|
-                    	    into_object(json).and_then(|obj| {
-                                let doc_type = obj.get("_type").
-                                    and_then(|doc_type| doc_type.as_str())
-                    	  	        .map(|doc_type| doc_type.into());
+                    Value::Array(v) => {
+                        Some(Box::new(v.into_iter()
+                            .filter_map(|json| {
+                                into_object(json).and_then(|obj| {
+                                    let doc_type = obj.get("_type")
+                                        .and_then(|doc_type| doc_type.as_str())
+                                        .map(|doc_type| doc_type.into());
 
-                    	  	    doc_type.and_then(|doc_type| {
-                                    // The real object is contained in the _source section.
-                                    obj.get("_source").and_then(|src|{
-                                        bragi::query::make_place(
-                                            doc_type,
-                                            Some(Box::new(src.clone()))
-                                        )
+                                    doc_type.and_then(|doc_type| {
+                                        // The real object is contained in the _source section.
+                                        obj.get("_source").and_then(|src| {
+                                            bragi::query::make_place(doc_type,
+                                                                     Some(Box::new(src.clone())))
+                                        })
                                     })
                                 })
-                    	    })
-                    	).filter(predicate)) as Box<Iterator<Item = mimir::Place>>
-                    ),
+                            })
+                            .filter(predicate)) as
+                             Box<Iterator<Item = mimir::Place>>)
+                    }
                     _ => None,
                 }
             })

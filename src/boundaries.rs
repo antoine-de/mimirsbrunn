@@ -61,12 +61,10 @@ fn get_nodes(way: &osmpbfreader::Way,
     way.nodes
         .iter()
         .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
-        .filter_map(|node_obj| {
-            if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
-                Some(node.clone())
-            } else {
-                None
-            }
+        .filter_map(|node_obj| if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+            Some(node.clone())
+        } else {
+            None
         })
         .collect()
 }
@@ -244,7 +242,7 @@ fn test_build_bounadry_not_closed() {
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
         assert!(build_boundary(&relation, &builder.objects).is_none());
     } else {
-        assert!(false);//this should not happen
+        assert!(false); //this should not happen
     }
 }
 
@@ -263,6 +261,6 @@ fn test_build_bounadry_closed() {
         let multipolygon = multipolygon.unwrap();
         assert_eq!(multipolygon.0.len(), 1);
     } else {
-        assert!(false);//this should not happen
+        assert!(false); //this should not happen
     }
 }
