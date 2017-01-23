@@ -72,14 +72,25 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
     })
 }
 
+enum MatchType {
+    Prefix,
+    Fuzzy,
+}
+
 fn build_query(q: &str,
-               match_type: &str,
+               match_type: MatchType,
                coord: &Option<model::Coord>,
                shape: Option<Vec<rs_es::units::Location>>)
                -> rs_es::query::Query {
     use rs_es::query::functions::Function;
     let boost_addr = rs_q::build_term("_type", "addr").with_boost(1000).build();
-    let boost_match_query = rs_q::build_multi_match(vec![match_type.to_string(),
+
+    let main_match_type = match match_type {
+        MatchType::Prefix => "label.prefix",
+        MatchType::Fuzzy => "label.ngram",
+    };
+
+    let boost_match_query = rs_q::build_multi_match(vec![main_match_type.to_string(),
                                                          "zip_codes.prefix".to_string()],
                                                     q.to_string())
         .with_boost(100)
@@ -118,21 +129,30 @@ fn build_query(q: &str,
         .build();
 
     use rs_es::query::{CombinationMinimumShouldMatch, MinimumShouldMatch};
-    let min_should_match = |min, threshold| {
+    let min_match = |min, threshold| {
         CombinationMinimumShouldMatch::new(MinimumShouldMatch::from(min),
                                            MinimumShouldMatch::from(threshold))
     };
 
-    let mut must = vec![rs_q::build_multi_match(
-        vec![match_type.to_string(),"zip_codes.prefix".to_string()],
-         q.to_string())
-             .with_minimum_should_match(MinimumShouldMatch::from(
-                 // when we search [0, 4] fields, we need to match 90% of them
-                 // when we search [5, +] fields, we only need to match 70% on them
-                 // this way if the input has more fields than the documents (additional information like the country, the region, ...)
-                 // they can be ignored
-                 vec![min_should_match(0, 90f64), min_should_match(4, 70f64)]
-                 )).build()];
+    let minimum_should_match = match match_type {
+        MatchType::Prefix => {
+            // when we search [0, 2] fields, we need to match 100% of them
+            // when we search [3, 4] fields, we need to match 90% of them
+            // when we search [5, +] fields, we only need to match 70% on them
+            // this way if the input has more fields than the documents
+            // (additional information like the country, the region, ...)
+            // they can be ignored
+            MinimumShouldMatch::from(vec![min_match(0, 90f64), min_match(4, 70f64)])
+        }
+        // for fuzzy search we lower our expectation and we accept 50% of token match
+        MatchType::Fuzzy => MinimumShouldMatch::from(50f64),
+    };
+
+    let mut must = vec![rs_q::build_multi_match(vec![main_match_type.to_string(),
+                                                     "zip_codes.prefix".to_string()],
+                                                q.to_string())
+                            .with_minimum_should_match(minimum_should_match)
+                            .build()];
 
     if let Some(s) = shape {
         must.push(rs_q::build_geo_polygon("coord", s).build());
@@ -158,7 +178,7 @@ fn build_query(q: &str,
 
 fn query(q: &str,
          cnx: &str,
-         match_type: &str,
+         match_type: MatchType,
          offset: u64,
          limit: u64,
          coord: &Option<model::Coord>,
@@ -186,27 +206,6 @@ fn query(q: &str,
         .collect())
 }
 
-
-fn query_prefix(q: &str,
-                cnx: &str,
-                offset: u64,
-                limit: u64,
-                coord: &Option<model::Coord>,
-                shape: Option<Vec<rs_es::units::Location>>)
-                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    query(&q, cnx, "label.prefix", offset, limit, coord, shape)
-}
-
-fn query_ngram(q: &str,
-               cnx: &str,
-               offset: u64,
-               limit: u64,
-               coord: &Option<model::Coord>,
-               shape: Option<Vec<rs_es::units::Location>>)
-               -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    query(&q, cnx, "label.ngram", offset, limit, coord, shape)
-}
-
 pub fn autocomplete(q: &str,
                     offset: u64,
                     limit: u64,
@@ -214,15 +213,27 @@ pub fn autocomplete(q: &str,
                     cnx: &str,
                     shape: Option<Vec<(f64, f64)>>)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    // First search with match = "name.prefix".
-    // If no result then another search with match = "name.ngram"
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
     }
 
-    let results = try!(query_prefix(&q, cnx, offset, limit, &coord, make_shape(&shape)));
+    // First we try a prety exact match on the prefix.
+    // If there are no results then we do a new fuzzy search (matching ngrams)
+    let results = try!(query(&q,
+                             cnx,
+                             MatchType::Prefix,
+                             offset,
+                             limit,
+                             &coord,
+                             make_shape(&shape)));
     if results.is_empty() {
-        query_ngram(&q, cnx, offset, limit, &coord, make_shape(&shape))
+        query(&q,
+              cnx,
+              MatchType::Fuzzy,
+              offset,
+              limit,
+              &coord,
+              make_shape(&shape))
     } else {
         Ok(results)
     }
