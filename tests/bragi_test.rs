@@ -393,15 +393,26 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(get_value(poi, "label"), "Le-Mée-sur-Seine Courtilleraies");
     assert_eq!(get_value(poi, "postcode"), "77350");
 
+    // with this search we should be able to find a poi called Melun Rp
     let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
-    assert_eq!(count, 2);
+    assert!(count >= 1);
+
     assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
+
+    // when we search for just 'Melun', we should find some places in melun
+    let geocodings = get_results(bragi_get("/autocomplete?q=Melun"));
     for postcodes in get_values(&geocodings, "postcode") {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
-    assert!(get_values(&geocodings, "postcode").iter().any(|r| *r == "77000;77003;77008;CP77001"));
+    // we should also be able to find the city of melun which will carry more postcodes
+    let cities = filter_by_type(&geocodings, "city");
+    assert_eq!(cities.len(), 1);
+    let melun = &cities.first().unwrap();
+    assert_eq!(get_value(melun, "name"), "Melun");
+    assert_eq!(get_value(melun, "postcode"), "77000;77003;77008;CP77001");
+    assert_eq!(get_value(melun, "label"), "Melun (77000-CP77001)");
 
     // search by zip code
     let geocodings = get_results(bragi_get("/autocomplete?q=77000&limit=15"));
@@ -509,6 +520,15 @@ fn get_value<'a>(e: &'a BTreeMap<String, Value>, val: &'a str) -> &'a str {
 
 fn get_types<'a>(r: &'a Vec<BTreeMap<String, Value>>) -> Vec<&'a str> {
     r.iter().map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("")).collect()
+}
+
+fn filter_by_type<'a>(r: &'a Vec<BTreeMap<String, Value>>,
+                      t: &'a str)
+                      -> Vec<BTreeMap<String, Value>> {
+    r.iter()
+        .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
+        .cloned()
+        .collect()
 }
 
 fn count_types(types: &Vec<&str>, value: &str) -> usize {
