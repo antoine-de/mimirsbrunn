@@ -102,7 +102,9 @@ fn build_query(q: &str,
     // for fuzzy search we also search by the prefix index (with a greater boost than ngram)
     // to have better results
     if match_type == MatchType::Fuzzy {
-        should_query.push(rs_q::build_match("label.prefix", q.to_string()).with_boost(1000).build());
+        should_query.push(rs_q::build_match("label.prefix", q.to_string())
+            .with_boost(1000)
+            .build());
     }
 
     if let &Some(ref c) = coord {
