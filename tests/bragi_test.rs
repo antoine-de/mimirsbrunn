@@ -385,12 +385,13 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
     let geocodings = get_results(bragi_get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies"));
     let types = get_types(&geocodings);
-    let count = count_types(&types, "poi");
-    assert_eq!(count, 1);
-    assert_eq!(get_values(&geocodings, "label"),
-               vec!["Le-Mée-sur-Seine Courtilleraies"]);
-    assert!(get_values(&geocodings, "postcode").iter().all(|r| *r == "77350"));
+    assert_eq!(count_types(&types, "poi"), 1);
 
+    // the first element returned should be the poi 'Le-Mée-sur-Seine Courtilleraies'
+    let poi = geocodings.first().unwrap();
+    assert_eq!(get_value(poi, "type"), "poi");
+    assert_eq!(get_value(poi, "label"), "Le-Mée-sur-Seine Courtilleraies");
+    assert_eq!(get_value(poi, "postcode"), "77350");
 
     let geocodings = get_results(bragi_get("/autocomplete?q=Melun Rp"));
     let types = get_types(&geocodings);
@@ -424,17 +425,21 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let all_20 = get_results(bragi_get("/autocomplete?q=77000&limit=10&offset=10"));
     assert_eq!(all_20.len(), 2);
 
-    // search poi: Poi is relation in osm data
+    // search poi: Poi as a relation in osm data
     let geocodings = get_results(bragi_get("/autocomplete?q=Parking (Le Coudray-Montceaux)"));
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 1);
     let first_poi = geocodings.iter().find(|e| get_value(e, "type") == "poi");
     assert_eq!(get_value(first_poi.unwrap(), "citycode"), "91179");
 
-    // search poi: Poi is way in osm data
+    // search poi: Poi as a way in osm data
     let geocodings = get_results(bragi_get("/autocomplete?q=77000 Hôtel de Ville (Melun)"));
     let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, "poi"), 1);
+    assert!(count_types(&types, "poi") >= 1);
+    let poi = geocodings.first().unwrap();
+    assert_eq!(get_value(poi, "type"), "poi");
+    assert_eq!(get_value(poi, "id"), "poi:osm:way:112361498");
+    assert_eq!(get_value(poi, "label"), "Hôtel de Ville (Melun)");
 
     // we search for POIs with a type but an empty name, we should have set the name with the type.
     // for exemple there are parkings without name (but with the tag "anemity" = "Parking"),
@@ -443,10 +448,10 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 5);
 
-    // we search for a POI (id = 2561223) with a label but an empty 2561223, it should be filtered)
+    // we search for a POI (id = 2561223) with a label but an empty ?, it should be filtered)
     let geocodings = get_results(bragi_get("/autocomplete?q=ENSE3 site Ampère"));
-    let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, "poi"), 0);
+    // we can find other results (due to the fuzzy search, but we can't find the 'site Ampère')
+    assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère"));
 
     // ******************************************
     // we then load a stop file
