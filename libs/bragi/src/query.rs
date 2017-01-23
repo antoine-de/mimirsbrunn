@@ -142,7 +142,7 @@ fn build_query(q: &str,
             // this way if the input has more fields than the documents
             // (additional information like the country, the region, ...)
             // they can be ignored
-            MinimumShouldMatch::from(vec![min_match(0, 90f64), min_match(4, 70f64)])
+            MinimumShouldMatch::from(vec![min_match(2, 90f64), min_match(4, 70f64)])
         }
         // for fuzzy search we lower our expectation and we accept 50% of token match
         MatchType::Fuzzy => MinimumShouldMatch::from(50f64),
