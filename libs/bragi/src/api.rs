@@ -30,7 +30,7 @@
 use rustless;
 use serde;
 use serde_json;
-use rustless::server::status;
+use rustless::server::{status, header};
 use rustless::{Api, Nesting};
 use valico::json_dsl;
 use valico::common::error as valico_error;
@@ -52,6 +52,7 @@ fn render<T>(mut client: rustless::Client,
     where T: serde::Serialize
 {
     client.set_json_content_type();
+    client.set_header(header::AccessControlAllowOrigin::Any);
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
