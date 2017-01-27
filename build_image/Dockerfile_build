@@ -13,6 +13,3 @@ FROM jimmycuadra/rust:latest
     gem install --no-ri --no-rdoc fpm &&\
 # we cleanup the cache to reduce the image size
     rm -rf /var/lib/apt/lists/*
-
-# we add a jenkins user in the docker group to be able to call jenkins
-RUN groupadd docker -g 999 && useradd jenkins -u 1000 -g 999
