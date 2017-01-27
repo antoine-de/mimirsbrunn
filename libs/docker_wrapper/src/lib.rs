@@ -38,26 +38,33 @@ use std::error::Error;
 /// This struct wraps a docker (for the moment explicitly ElasticSearch)
 /// Allowing to setup a docker, tear it down and to provide its address and port
 pub struct DockerWrapper {
-    port: u16,
+    ip: String,
 }
 
 impl DockerWrapper {
     pub fn host(&self) -> String {
-        format!("http://localhost:{}", self.port)
+        format!("http://{}:9200", self.ip)
     }
 
-    fn setup(&self) -> Result<(), Box<Error>> {
+    fn setup(&mut self) -> Result<(), Box<Error>> {
         info!("Launching ES docker");
         let status = try!(Command::new("docker")
-            .args(&["run",
-                    &format!("--publish={}:9200", self.port),
-                    "-d",
-                    "--name=mimirsbrunn_tests",
-                    "elasticsearch:2"])
+            .args(&["run", "-d", "--name=mimirsbrunn_tests", "elasticsearch:2"])
             .status());
         if !status.success() {
             return Err(format!("`docker run` failed {}", &status).into());
         }
+
+        // we need to get the ip of the container if the container has been run on another machine
+        let container_ip_cmd = try!(Command::new("docker")
+            .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", "mimirsbrunn_tests"])
+            .output());
+
+        let container_ip =
+            std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.replace("\n", "");
+
+        warn!("container ip = {:?}", container_ip);
+        self.ip = container_ip;
 
         info!("Waiting for ES in docker to be up and running...");
         match retry::retry(200,
@@ -74,7 +81,7 @@ impl DockerWrapper {
     }
 
     pub fn new() -> Result<DockerWrapper, Box<Error>> {
-        let wrapper = DockerWrapper { port: 9242 };
+        let mut wrapper = DockerWrapper { ip: "".to_string() };
         try!(wrapper.setup());
         Ok(wrapper)
     }
