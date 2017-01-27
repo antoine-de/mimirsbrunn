@@ -16,12 +16,11 @@ node ('docker') {
         }
         
         stage('Build & tests') {
-            sh "export CARGO_HOME=`pwd`/.cargo "
-            sh "cargo build --release --verbose"
+            sh "CARGO_HOME=`pwd`/.cargo cargo build --release --verbose"
         }
 
         stage('packages & docker') {
-            sh "./build_packages.sh"
+            sh "CARGO_HOME=`pwd`/.cargo ./build_packages.sh"
 
             // we add the debian packages in the stash
             stash includes: '*.deb', name: 'debian_packages'
@@ -35,14 +34,20 @@ node ('docker') {
     }
 }
 
+def deploy_with_fabric { env ->
+    git url: 'https://github.com/CanalTP/fab_mimir.git', branch: 'master'
+
+    unstash 'debian_packages'
+    sh 'ls -lha'
+
+    docker.image('python:2.7').inside {
+        sh 'pip install -r requirements.txt'
+        sh "fab ${env} deploy"
+    }
+}
+
 node ('docker') {
-    
     stage('deploy on dev') {
-        git url: 'https://github.com/CanalTP/fab_mimir.git', branch: 'master'
-
-        unstash 'debian_packages'
-        sh 'ls -lha'
-
-        sh 'pip install -r '
+        deploy_with_fabric 'dev'
     }
 }
