@@ -180,8 +180,6 @@ fn zip_code_admin_test(bragi: &BragiHandler) {
     assert_eq!(count, 0);
 }
 
-// zip_code on addr
-
 fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
     // we search for a house number with a postcode, we should be able to find
     // the house number with this number in this city
@@ -372,7 +370,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 5);
 
-    // we search for a POI (id = 2561223) with a label but an empty ?, it should be filtered)
+    // we search for a POI (id = 2561223) with a label but an empty <?????>, it should be filtered)
     let geocodings = get_results(bragi.get("/autocomplete?q=ENSE3 site Ampère"));
     // we can find other results (due to the fuzzy search, but we can't find the 'site Ampère')
     assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère"));
@@ -451,6 +449,7 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     zip_code_test(&bragi);
     zip_code_street_test(&bragi);
     zip_code_admin_test(&bragi);
+    // zip_code on addr
 
     // *********************************
     // We then load another bano dataset
