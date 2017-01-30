@@ -67,7 +67,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
          s =<< s.as_object();
          ret ret(s.keys().cloned().collect())
      }
-        .unwrap_or_else(|| vec![]);
+        .unwrap_or_else(Vec::new);
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(aliases, vec!["munin", "munin_addr", "munin_addr_fr"]);
 

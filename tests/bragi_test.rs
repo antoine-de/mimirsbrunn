@@ -38,13 +38,13 @@ use std::collections::BTreeMap;
 use serde_json::Value;
 
 fn status_test(bragi: &BragiHandler) {
-    let resp = bragi.get("/status");
+    let resp = bragi.raw_get("/status").unwrap();
     assert_eq!(to_json(resp).find("status"),
                Some(&Value::String("good".to_string())));
 }
 
 fn simple_bano_autocomplete_test(bragi: &BragiHandler) {
-    let resp = bragi.get("/autocomplete?q=15 Rue Hector Malot, (Paris)");
+    let resp = bragi.raw_get("/autocomplete?q=15 Rue Hector Malot, (Paris)").unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
                          r#""geocoding":{"version":"0.1.0","query":""},"#,
@@ -78,7 +78,7 @@ fn simple_bano_shape_filter_test(bragi: &BragiHandler) {
     // Search with shape where house number in shape
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],
         [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#;
-    let resp = bragi.post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape);
+    let resp = bragi.raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape).unwrap();
 
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
@@ -94,7 +94,7 @@ fn simple_bano_shape_filter_test(bragi: &BragiHandler) {
     assert_eq!(result_body, result);
 
     // Search with shape where house number out of shape
-    let resp = bragi.post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape);
+    let resp = bragi.raw_post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape).unwrap();
     let result_body = iron_test::response::extract_body_to_string(resp);
     let result = concat!(r#"{"type":"FeatureCollection","#,
                          r#""geocoding":{"version":"0.1.0","query":""},"features":[]}"#);
@@ -103,9 +103,10 @@ fn simple_bano_shape_filter_test(bragi: &BragiHandler) {
 
 fn simple_bano_lon_lat_test(bragi: &BragiHandler) {
     // test with a lon/lat priorisation
-    // in the dataset there are two '20 rue hector malot', one in paris and one in trifouilli-les-Oies
-    // in the mean time we time our prefix search_query
-    let all_20 = get_results(bragi.get("/autocomplete?q=20 rue hect mal"));
+    // in the dataset there are two '20 rue hector malot',
+    // one in paris and one in trifouilli-les-Oies
+    // in the mean time we test our prefix search_query
+    let all_20 = bragi.get("/autocomplete?q=20 rue hect mal");
     assert_eq!(all_20.len(), 2);
     // the first one is paris (since Paris has more streets, it is prioritized first)
     // TODO uncomment this test, for the moment since osm is not loaded, the order is random
@@ -113,18 +114,18 @@ fn simple_bano_lon_lat_test(bragi: &BragiHandler) {
     //            vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
 
     // if we give a lon/lat near trifouilli-les-Oies, we'll have another sort
-    let all_20 = get_results(bragi.get("/autocomplete?q=20 rue hector malot&lat=50.2&lon=2.0"));
+    let all_20 = bragi.get("/autocomplete?q=20 rue hector malot&lat=50.2&lon=2.0");
     assert_eq!(get_values(&all_20, "label"),
                vec!["20 Rue Hector Malot (Trifouilli-les-Oies)", "20 Rue Hector Malot (Paris)"]);
     // and when we're in paris, we get paris first
-    let all_20 = get_results(bragi.get("/autocomplete?q=20 rue hector malot&lat=48&lon=2.4"));
+    let all_20 = bragi.get("/autocomplete?q=20 rue hector malot&lat=48&lon=2.4");
     assert_eq!(get_values(&all_20, "label"),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
 }
 
 
 fn zip_code_test(bragi: &BragiHandler) {
-    let all_20 = get_results(bragi.get("/autocomplete?q=77000"));
+    let all_20 = bragi.get("/autocomplete?q=77000");
     assert_eq!(all_20.len(), 10);
     for postcodes in get_values(&all_20, "postcode") {
         assert!(postcodes.split(';').any(|p| p == "77000"));
@@ -143,7 +144,7 @@ fn zip_code_test(bragi: &BragiHandler) {
 }
 
 fn zip_code_street_test(bragi: &BragiHandler) {
-    let all_20 = get_results(bragi.get("/autocomplete?q=77000 Lotissement le Clos de Givry"));
+    let all_20 = bragi.get("/autocomplete?q=77000 Lotissement le Clos de Givry");
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
@@ -164,7 +165,7 @@ fn zip_code_street_test(bragi: &BragiHandler) {
 }
 
 fn zip_code_admin_test(bragi: &BragiHandler) {
-    let all_20 = get_results(bragi.get("/autocomplete?q=77000 Vaux-le-Pénil"));
+    let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
     assert_eq!(all_20.len(), 4);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
     let types = get_types(&all_20);
@@ -183,7 +184,7 @@ fn zip_code_admin_test(bragi: &BragiHandler) {
 fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
     // we search for a house number with a postcode, we should be able to find
     // the house number with this number in this city
-    let all_20 = get_results(bragi.get("/autocomplete?q=3 rue 77255"));
+    let all_20 = bragi.get("/autocomplete?q=3 rue 77255");
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77255"));
     let types = get_types(&all_20);
@@ -204,7 +205,7 @@ fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
 fn three_cities_zip_code_test(bragi: &BragiHandler) {
     // we query with only a zip code, we should be able to find admins,
     // and some street of it (and all on this admin)
-    let res = get_results(bragi.get("/autocomplete?q=77000"));
+    let res = bragi.get("/autocomplete?q=77000");
     assert_eq!(res.len(), 10);
     assert!(get_values(&res, "postcode").iter().all(|r| r.contains("77000")));
     let types = get_types(&res);
@@ -213,7 +214,7 @@ fn three_cities_zip_code_test(bragi: &BragiHandler) {
 }
 
 fn three_cities_zip_code_address_test(bragi: &BragiHandler) {
-    let all_20 = get_results(bragi.get("/autocomplete?q=77288 2 Rue de la Reine Blanche"));
+    let all_20 = bragi.get("/autocomplete?q=77288 2 Rue de la Reine Blanche");
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77288"));
     let types = get_types(&all_20);
@@ -241,7 +242,7 @@ fn three_cities_shape_test(bragi: &BragiHandler) {
     let shape = r#"{"geometry":{"type":"Polygon", "coordinates": [[[2.656546, 48.537227],
         [2.657608, 48.537244],[2.656476, 48.536545],[2.657340, 48.536602]]]}}"#;
 
-    let geocodings = get_results(bragi.post_shape("/autocomplete?q=Rue du Port", shape));
+    let geocodings = bragi.post_shape("/autocomplete?q=Rue du Port", shape);
     assert_eq!(geocodings.len(), 1);
     assert_eq!(get_values(&geocodings, "label"),
                vec!["Rue du Port (Melun)"]);
@@ -256,7 +257,7 @@ fn three_cities_shape_test(bragi: &BragiHandler) {
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.656546, 68.537227],
         [2.657608, 68.537244],[2.656476, 68.536545],[2.657340, 68.536602]]]}}"#;
 
-    let geocodings = get_results(bragi.post_shape("/autocomplete?q=Rue du Port", shape));
+    let geocodings = bragi.post_shape("/autocomplete?q=Rue du Port", shape);
     assert_eq!(geocodings.len(), 0);
 
     //      A ---------------------D
@@ -269,7 +270,7 @@ fn three_cities_shape_test(bragi: &BragiHandler) {
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.656546, 48.538927]
         ,[2.670816, 48.538927],[2.676476, 48.546545],[2.656546, 48.546545]]]}}"#;
 
-    let geocodings = get_results(bragi.post_shape("/autocomplete?q=Melun", shape));
+    let geocodings = bragi.post_shape("/autocomplete?q=Melun", shape);
     assert_eq!(geocodings.len(), 1);
     assert_eq!(get_values(&geocodings, "name"), vec!["Melun"]);
 
@@ -283,12 +284,12 @@ fn three_cities_shape_test(bragi: &BragiHandler) {
     let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.656546, 66.538927],
         [2.670816, 68.538927],[2.676476, 68.546545],[2.656546, 68.546545]]]}}"#;
 
-    let geocodings = get_results(bragi.post_shape("/autocomplete?q=Melun", shape));
+    let geocodings = bragi.post_shape("/autocomplete?q=Melun", shape);
     assert_eq!(geocodings.len(), 0);
 }
 
 fn poi_admin_address_test(bragi: &BragiHandler) {
-    let geocodings = get_results(bragi.get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies"));
+    let geocodings = bragi.get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 1);
 
@@ -301,7 +302,7 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
 
 fn poi_admin_test(bragi: &BragiHandler) {
     // with this search we should be able to find a poi called Melun Rp
-    let geocodings = get_results(bragi.get("/autocomplete?q=Melun Rp"));
+    let geocodings = bragi.get("/autocomplete?q=Melun Rp");
     let types = get_types(&geocodings);
     let count = count_types(&types, "poi");
     assert!(count >= 1);
@@ -309,7 +310,7 @@ fn poi_admin_test(bragi: &BragiHandler) {
     assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
 
     // when we search for just 'Melun', we should find some places in melun
-    let geocodings = get_results(bragi.get("/autocomplete?q=Melun"));
+    let geocodings = bragi.get("/autocomplete?q=Melun");
     for postcodes in get_values(&geocodings, "postcode") {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
@@ -324,38 +325,38 @@ fn poi_admin_test(bragi: &BragiHandler) {
 
 fn poi_zip_code_test(bragi: &BragiHandler) {
     // search by zip code
-    let geocodings = get_results(bragi.get("/autocomplete?q=77000&limit=15"));
+    let geocodings = bragi.get("/autocomplete?q=77000&limit=15");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 2);
     assert_eq!(count_types(&types, "city"), 3);
     assert_eq!(count_types(&types, "street"), 7);
 
     // search by zip code and limit is string type
-    let geocodings = bragi.params_validation("/autocomplete?q=77000&limit=ABCD");
+    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=ABCD");
     assert!(geocodings.is_err(), true);
 
     // search by zip code and limit < 0
-    let geocodings = bragi.params_validation("/autocomplete?q=77000&limit=-1");
+    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=-1");
     assert!(geocodings.is_err(), true);
 
     // search by zip code and limit and offset
-    let all_20 = get_results(bragi.get("/autocomplete?q=77000&limit=10&offset=0"));
+    let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=0");
     assert_eq!(all_20.len(), 10);
 
-    let all_20 = get_results(bragi.get("/autocomplete?q=77000&limit=10&offset=10"));
+    let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=10");
     assert_eq!(all_20.len(), 2);
 }
 
 fn poi_from_osm_test(bragi: &BragiHandler) {
     // search poi: Poi as a relation in osm data
-    let geocodings = get_results(bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)"));
+    let geocodings = bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 1);
     let first_poi = geocodings.iter().find(|e| get_value(e, "type") == "poi");
     assert_eq!(get_value(first_poi.unwrap(), "citycode"), "91179");
 
     // search poi: Poi as a way in osm data
-    let geocodings = get_results(bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)"));
+    let geocodings = bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)");
     let types = get_types(&geocodings);
     assert!(count_types(&types, "poi") >= 1);
     let poi = geocodings.first().unwrap();
@@ -366,19 +367,20 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     // we search for POIs with a type but an empty name, we should have set the name with the type.
     // for exemple there are parkings without name (but with the tag "anemity" = "Parking"),
     // we should be able to query them
-    let geocodings = get_results(bragi.get("/autocomplete?q=Parking"));
+    let geocodings = bragi.get("/autocomplete?q=Parking");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, "poi"), 5);
 
-    // we search for a POI (id = 2561223) with a label but an empty <?????>, it should be filtered)
-    let geocodings = get_results(bragi.get("/autocomplete?q=ENSE3 site Ampère"));
+    // we search for a POI (id = 2561223) with a label but an empty coord
+    // (barycenter not computed so far), it should be filtered.
+    let geocodings = bragi.get("/autocomplete?q=ENSE3 site Ampère");
     // we can find other results (due to the fuzzy search, but we can't find the 'site Ampère')
     assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère"));
 }
 
 fn stop_attached_to_admin_test(bragi: &BragiHandler) {
     // with this query we should find only one response, a stop
-    let response = get_results(bragi.get("/autocomplete?q=14 juillet"));
+    let response = bragi.get("/autocomplete?q=14 juillet");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
 
@@ -398,7 +400,7 @@ fn stop_attached_to_admin_test(bragi: &BragiHandler) {
 fn stop_no_admin_test(bragi: &BragiHandler) {
     // we query another stop, but this one is outside the range of an admin,
     // we should get the stop, but with no admin attached to it
-    let response = get_results(bragi.get("/autocomplete?q=Far west station"));
+    let response = bragi.get("/autocomplete?q=Far west station");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
 
@@ -449,7 +451,6 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     zip_code_test(&bragi);
     zip_code_street_test(&bragi);
     zip_code_admin_test(&bragi);
-    // zip_code on addr
 
     // *********************************
     // We then load another bano dataset
@@ -518,17 +519,17 @@ impl BragiHandler {
         BragiHandler { app: rustless::Application::new(api) }
     }
 
-    pub fn params_validation(&self, q: &str) -> iron::IronResult<iron::Response> {
+    pub fn raw_get(&self, q: &str) -> iron::IronResult<iron::Response> {
         iron_test::request::get(&format!("http://localhost:3000{}", q),
                                 iron::Headers::new(),
                                 &self.app)
     }
 
-    pub fn get(&self, q: &str) -> iron::Response {
-        self.params_validation(q).unwrap()
+    pub fn get(&self, q: &str) -> Vec<BTreeMap<String, Value>> {
+        get_results(self.raw_get(q).unwrap())
     }
 
-    pub fn post_shape(&self, q: &str, shape: &str) -> iron::Response {
+    pub fn raw_post_shape(&self, q: &str, shape: &str) -> iron::IronResult<iron::Response> {
         let mut header = iron::Headers::new();
         let mime: mime::Mime = "application/json".parse().unwrap();
         header.set(iron::headers::ContentType(mime));
@@ -537,7 +538,10 @@ impl BragiHandler {
                                  header,
                                  shape,
                                  &self.app)
-            .unwrap()
+    }
+
+    pub fn post_shape(&self, q: &str, shape: &str) -> Vec<BTreeMap<String, Value>> {
+        get_results(self.raw_post_shape(q, shape).unwrap())
     }
 }
 

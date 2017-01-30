@@ -55,7 +55,6 @@ extern crate rs_es;
 use iron::Iron;
 use rustless::Application;
 
-extern crate mdo;
 #[macro_use]
 extern crate log;
 
