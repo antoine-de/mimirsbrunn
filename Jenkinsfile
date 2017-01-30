@@ -49,7 +49,7 @@ node ('debian8') { // a docker tag would be better
 node ('debian8') {
     //docker.image('python:2.7').inside { // TODO I didn't make this work, there is ssh key problems
         stage('setup deploy dependencies') {
-            git url: 'git@github.com:CanalTP/fab_mimir.git', branch: 'req' //TODO use master
+            git url: 'git@github.com:CanalTP/fab_mimir.git', branch: 'master'
 
             unstash 'debian_packages'
 
