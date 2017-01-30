@@ -10,18 +10,26 @@ node ('debian8') { // a docker tag would be better
         version = version.replace('\n', '')
         echo "version is ${version}"
         echo "branch name is ${env.BRANCH_NAME}"
+
+        // we need to set the docker tcp socket
+        docker_addr = sh script: 'hostname --long', returnStdout: true
+        docker_addr = docker_addr.replace('\n', '') + ':2375'
     }
     stage('Build & tests') {
-        def rust = docker.build('mimir_rust_build', "-f build_image/Dockerfile_build .") // should we add --pull ?
-        docker.withServer('par-vm241.srv.canaltp.fr:2375') { //TODO get it dynamicly
+        def rust = docker.build('mimir_rust_build', "-f build_image/Dockerfile .") // should we add --pull ?
+        docker.withServer(docker_addr) {
             rust.inside() {
                 sh "CARGO_HOME=`pwd`/.cargo cargo build --release"
                 sh "CARGO_HOME=`pwd`/.cargo cargo test --release"
             }
         }
+        if (env.BRANCH_NAME != 'master' && env.BRANCH_NAME != 'release') {
+            echo "we don't want to deploy this branch, we stop at the build"
+            return;
+        }
     }
     stage('docker & packages') {
-        docker.withServer('par-vm241.srv.canaltp.fr:2375') {
+        docker.withServer(docker_addr) {
             docker.image('mimir_rust_build').inside() {
                 sh "rm -f *deb" // cleanup old debian packages
                 sh "CARGO_HOME=`pwd`/.cargo sh -x ./build_packages.sh"
