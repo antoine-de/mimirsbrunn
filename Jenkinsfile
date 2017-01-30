@@ -2,8 +2,7 @@
 
 node ('debian8') { // a docker tag would be better
     stage('checkout') {
-        //checkout scm
-        git 'git@github.com:CanalTP/mimirsbrunn.git'
+        checkout scm
         version = sh script: 'git describe --tags', returnStdout: true
         version = version.replace('\n', '')
         echo "version is ${version}"
