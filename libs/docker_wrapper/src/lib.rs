@@ -60,11 +60,10 @@ impl DockerWrapper {
             .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", "mimirsbrunn_tests"])
             .output());
 
-        let container_ip =
-            std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.replace("\n", "");
+        let container_ip = std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
 
         warn!("container ip = {:?}", container_ip);
-        self.ip = container_ip;
+        self.ip = container_ip.to_string();
 
         info!("Waiting for ES in docker to be up and running...");
         match retry::retry(200,
