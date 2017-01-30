@@ -3,9 +3,7 @@
 node ('debian8') { // a docker tag would be better
     stage('checkout') {
         //checkout scm
-        //git 'git@github.com:CanalTP/mimirsbrunn.git'
-        //git url: 'https://github.com/CanalTP/mimirsbrunn.git', branch: 'master' // use checkout scm when using jenkinsfile 
-        git url: 'https://github.com/antoine-de/mimirsbrunn.git', branch: 'jenkinsfile' // tmp
+        git 'git@github.com:CanalTP/mimirsbrunn.git'
         version = sh script: 'git describe --tags', returnStdout: true
         version = version.replace('\n', '')
         echo "version is ${version}"
