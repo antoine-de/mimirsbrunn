@@ -92,11 +92,11 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         }
         osmpbfreader::OsmObj::Relation(ref relation) => {
             (format_poi_id("relation", relation.id.0),
-             make_centroid(&build_boundary(&relation, &obj_map)))
+             make_centroid(&build_boundary(relation, obj_map)))
         }
     };
 
-    let name = osmobj.tags().get("name").or(osmobj.tags().get("amenity"));
+    let name = osmobj.tags().get("name").or_else(|| osmobj.tags().get("amenity"));
 
     if coord.is_default() {
         info!("The poi {} is rejected, cause: could not compute coordinates.",
@@ -139,7 +139,7 @@ pub fn pois(pbf: &mut OsmPbfReader,
     let matcher = PoiMatcher::new(poi_types);
     let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o)).unwrap();
     objects.iter()
-        .filter(|&(_, obj)| matcher.is_poi(&obj))
+        .filter(|&(_, obj)| matcher.is_poi(obj))
         .filter_map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
         .collect()
 }

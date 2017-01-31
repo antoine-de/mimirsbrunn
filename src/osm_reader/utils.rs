@@ -32,16 +32,16 @@ extern crate mimir;
 extern crate osmpbfreader;
 
 use std::collections::BTreeMap;
-use super::AdminsVec;
+use super::AdminsSlice;
 
-pub fn format_label(admins: &AdminsVec, city_level: u32, name: &str) -> String {
+pub fn format_label(admins: &AdminsSlice, city_level: u32, name: &str) -> String {
     match admins.iter().position(|adm| adm.level == city_level) {
         Some(idx) => format!("{} ({})", name, admins[idx].name),
         None => name.to_string(),
     }
 }
 
-pub fn get_zip_codes_from_admins(admins: &AdminsVec) -> Vec<String> {
+pub fn get_zip_codes_from_admins(admins: &AdminsSlice) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| if adm.level > level &&
                                                    !adm.zip_codes.is_empty() {
         adm.level
@@ -66,5 +66,5 @@ pub fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmOb
         .filter_map(|obj| obj.node())
         .map(|node| mimir::Coord::new(node.lat(), node.lon()))
         .next()
-        .unwrap_or(mimir::Coord::default())
+        .unwrap_or_else(mimir::Coord::default)
 }

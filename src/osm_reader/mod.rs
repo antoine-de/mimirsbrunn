@@ -10,7 +10,7 @@ pub mod admin;
 pub mod poi;
 pub mod street;
 
-pub type AdminsVec = Vec<Rc<mimir::Admin>>;
+pub type AdminsSlice = [Rc<mimir::Admin>];
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<File>;
 
 pub fn parse_osm_pbf(path: &str) -> OsmPbfReader {

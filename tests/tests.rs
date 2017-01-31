@@ -32,6 +32,10 @@ extern crate mimir;
 extern crate docker_wrapper;
 extern crate hyper;
 extern crate rs_es;
+extern crate rustless;
+extern crate iron;
+extern crate iron_test;
+extern crate mime;
 extern crate serde_json;
 extern crate bragi;
 #[macro_use]
@@ -39,14 +43,19 @@ extern crate log;
 #[macro_use]
 extern crate mdo;
 
-use docker_wrapper::*;
-
 mod bano2mimir_test;
 mod osm2mimir_test;
 mod stops2mimir_test;
 mod osm2mimir_bano2mimir_test;
 mod rubber_test;
-mod bragi_test;
+mod bragi_bano_test;
+mod bragi_osm_test;
+mod bragi_three_cities_test;
+mod bragi_poi_test;
+mod bragi_stops_test;
+
+use docker_wrapper::*;
+use std::collections::BTreeMap;
 use serde_json::value::Value;
 use hyper::client::response::Response;
 use std::process::Command;
@@ -173,10 +182,93 @@ fn launch_and_assert(cmd: &'static str,
     es_wrapper.refresh();
 }
 
+pub struct BragiHandler {
+    app: rustless::Application,
+}
+
+impl BragiHandler {
+    pub fn new(url: String) -> BragiHandler {
+        let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
+        BragiHandler { app: rustless::Application::new(api) }
+    }
+
+    pub fn raw_get(&self, q: &str) -> iron::IronResult<iron::Response> {
+        iron_test::request::get(&format!("http://localhost:3000{}", q),
+                                iron::Headers::new(),
+                                &self.app)
+    }
+
+    pub fn get(&self, q: &str) -> Vec<BTreeMap<String, Value>> {
+        get_results(self.raw_get(q).unwrap())
+    }
+
+    pub fn raw_post_shape(&self, q: &str, shape: &str) -> iron::IronResult<iron::Response> {
+        let mut header = iron::Headers::new();
+        let mime: mime::Mime = "application/json".parse().unwrap();
+        header.set(iron::headers::ContentType(mime));
+
+        iron_test::request::post(&format!("http://localhost:3000{}", q),
+                                 header,
+                                 shape,
+                                 &self.app)
+    }
+
+    pub fn post_shape(&self, q: &str, shape: &str) -> Vec<BTreeMap<String, Value>> {
+        get_results(self.raw_post_shape(q, shape).unwrap())
+    }
+}
+
+pub fn to_json(r: iron::Response) -> Value {
+    let s = iron_test::response::extract_body_to_string(r);
+    serde_json::from_str(&s).unwrap()
+}
+
+pub fn get_results(r: iron::Response) -> Vec<BTreeMap<String, Value>> {
+    to_json(r)
+        .find("features")
+        .expect("wrongly formated bragi response")
+        .as_array()
+        .expect("features must be array")
+        .iter()
+        .map(|f| {
+            f.pointer("/properties/geocoding")
+                .expect("no geocoding object in bragi response")
+                .as_object()
+                .unwrap()
+                .clone()
+        })
+        .collect()
+}
+
+pub fn get_values<'a>(r: &'a [BTreeMap<String, Value>], val: &'a str) -> Vec<&'a str> {
+    r.iter().map(|e| get_value(e, val)).collect()
+}
+
+pub fn get_value<'a>(e: &'a BTreeMap<String, Value>, val: &'a str) -> &'a str {
+    e.get(val).and_then(|l| l.as_str()).unwrap_or("")
+}
+
+pub fn get_types(r: &[BTreeMap<String, Value>]) -> Vec<&str> {
+    r.iter().map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("")).collect()
+}
+
+pub fn filter_by_type<'a>(r: &'a [BTreeMap<String, Value>],
+                          t: &'a str)
+                          -> Vec<BTreeMap<String, Value>> {
+    r.iter()
+        .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
+        .cloned()
+        .collect()
+}
+
+pub fn count_types(types: &[&str], value: &str) -> usize {
+    types.iter().filter(|&t| *t == value).count()
+}
+
 /// Main test method (regroups all tests)
 /// All tests are done sequentially,
 /// and use the same docker in order to avoid multiple inits
-/// (ES cleanup is handled by es_wrapper)
+/// (ES cleanup is handled by `es_wrapper`)
 #[test]
 fn all_tests() {
     mimir::logger_init().unwrap();
@@ -191,5 +283,9 @@ fn all_tests() {
     );
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
-    bragi_test::bragi_tests(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_bano_test::bragi_bano_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_osm_test::bragi_osm_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_three_cities_test::bragi_three_cities_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_poi_test::bragi_poi_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_stops_test::bragi_stops_test(ElasticSearchWrapper::new(&docker_wrapper));
 }

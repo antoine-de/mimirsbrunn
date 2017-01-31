@@ -61,7 +61,7 @@ fn get_nodes(way: &osmpbfreader::Way,
     way.nodes
         .iter()
         .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
-        .filter_map(|node_obj| if let &osmpbfreader::OsmObj::Node(ref node) = node_obj {
+        .filter_map(|node_obj| if let osmpbfreader::OsmObj::Node(ref node) = *node_obj {
             Some(node.clone())
         } else {
             None
@@ -139,9 +139,9 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
             obj
         })
         .filter_map(|way_obj| way_obj.way())
-        .map(|way| get_nodes(&way, objects))
+        .map(|way| get_nodes(way, objects))
         .filter(|nodes| nodes.len() > 1)
-        .map(|nodes| BoundaryPart::new(nodes))
+        .map(BoundaryPart::new)
         .collect();
     let mut multipoly = MultiPolygon(vec![]);
     // we want to try build a polygon for a least each way
@@ -204,7 +204,7 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
 pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> mimir::Coord {
     boundary.as_ref()
         .and_then(|b| b.centroid().map(|c| mimir::Coord::new(c.x(), c.y())))
-        .unwrap_or(mimir::Coord::new(0., 0.))
+        .unwrap_or_else(|| mimir::Coord::new(0., 0.))
 }
 
 #[test]

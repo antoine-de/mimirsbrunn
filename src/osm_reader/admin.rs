@@ -68,11 +68,11 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
     let objects = pbf.get_objs_and_deps(|o| matcher.is_admin(o)).unwrap();
     info!("reading pbf done.");
     // load administratives regions
-    for (_, obj) in &objects {
-        if !matcher.is_admin(&obj) {
+    for obj in objects.values() {
+        if !matcher.is_admin(obj) {
             continue;
         }
-        if let &osmpbfreader::OsmObj::Relation(ref relation) = obj {
+        if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
             let level = relation.tags
                 .get("admin_level")
                 .and_then(|s| s.parse().ok());
@@ -116,7 +116,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 .or_else(|| relation.tags.get("postal_code"))
                 .map_or("", |val| &val[..]);
             let zip_codes = zip_code.split(';').map(|s| s.to_string()).sorted();
-            let boundary = build_boundary(&relation, &objects);
+            let boundary = build_boundary(relation, &objects);
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -131,7 +131,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             administrative_regions.push(admin);
         }
     }
-    return administrative_regions;
+    administrative_regions
 }
 
 pub fn compute_admin_weight(streets: &mut StreetsVec) {
