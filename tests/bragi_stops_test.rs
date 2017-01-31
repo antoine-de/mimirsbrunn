@@ -70,6 +70,16 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
 
     stop_attached_to_admin_test(&bragi);
     stop_no_admin_test(&bragi);
+
+    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    info!("Launching {}", stops2mimir);
+    ::launch_and_assert(stops2mimir,
+                        vec!["--input=./tests/fixtures/stops_dataset2.txt".into(),
+                             "--dataset=dataset2".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
+    
+    stop_filtred_by_dataset_test(&bragi);
 }
 
 
@@ -106,4 +116,32 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "city"), "");
     let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
+}
+
+fn stop_filtred_by_dataset_test(bragi: &BragiHandler) {
+    // All stops
+    let response = bragi.get("/autocomplete?q=14 juillet");
+    
+    assert_eq!(response.len(), 2);
+    
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
+    
+    let stop = response.last().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station:dataset2");
+    
+    // filter by dataset1
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1");
+    
+    assert_eq!(response.len(), 1);
+    
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
+    // filter by dataset2
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset2");
+    
+    assert_eq!(response.len(), 1);
+    
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station:dataset2");
 }
