@@ -105,10 +105,8 @@ pub fn bragi_tests(es_wrapper: ::ElasticSearchWrapper) {
     };
     // Call status
     let resp = bragi_get("/status");
-    let result_body = iron_test::response::extract_body_to_string(resp);
-
-    assert_eq!(result_body,
-               r#"{"version":"1.2.0","es":"http://localhost:9242/munin","status":"good"}"#);
+    assert_eq!(to_json(resp).find("status"),
+               Some(&Value::String("good".to_string())));
 
     // Call autocomplete
     let resp = bragi_get("/autocomplete?q=15 Rue Hector Malot, (Paris)");
