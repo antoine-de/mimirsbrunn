@@ -198,7 +198,37 @@ fn build_query(q: &str,
         .build()
 }
 
+fn make_stops_index(pt_dataset: &str) -> String {
+    if pt_dataset.is_empty() {
+        "munin_stops".to_string()
+    } else {
+        format!("munin_stops_{}", pt_dataset)
+    }
+}
+
+fn index_exists(client: &mut rs_es::Client, stops_index: &String) -> bool {
+    match client.open_index(stops_index) {
+        Ok(_) => true,
+        Err(_) => {
+            debug!("{} index not found", stops_index);
+            false
+        }
+    }
+}
+
+fn make_indexes<'a>(stops_index: &'a str, client: &mut rs_es::Client) -> Vec<&'a str> {
+    let mut result = vec![];
+    if index_exists(client, &stops_index.to_string()) {
+        result.push(stops_index);
+    }
+    if index_exists(client, &"munin_street_network".to_string()) {
+        result.push("munin_street_network");
+    }
+    return result;
+}
+
 fn query(q: &str,
+         pt_dataset: &str,
          cnx: &str,
          match_type: MatchType,
          offset: u64,
@@ -210,8 +240,11 @@ fn query(q: &str,
 
     let mut client = build_rs_client(&cnx.to_string());
 
+    let stops_index = make_stops_index(pt_dataset);
+    let indexes = make_indexes(&stops_index, &mut client);
+
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
-        .with_indexes(&["munin"])
+        .with_indexes(&indexes)
         .with_query(&query)
         .with_from(offset)
         .with_size(limit)
@@ -229,6 +262,7 @@ fn query(q: &str,
 }
 
 pub fn autocomplete(q: &str,
+                    pt_dataset: &str,
                     offset: u64,
                     limit: u64,
                     coord: Option<model::Coord>,
@@ -242,6 +276,7 @@ pub fn autocomplete(q: &str,
     // First we try a prety exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = try!(query(&q,
+                             &pt_dataset,
                              cnx,
                              MatchType::Prefix,
                              offset,
@@ -250,6 +285,7 @@ pub fn autocomplete(q: &str,
                              make_shape(&shape)));
     if results.is_empty() {
         query(&q,
+              &pt_dataset,
               cnx,
               MatchType::Fuzzy,
               offset,
