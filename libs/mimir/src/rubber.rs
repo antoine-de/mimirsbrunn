@@ -166,7 +166,7 @@ impl Rubber {
                          dataset: &str,
                          index: String)
                          -> Result<(), String> {
-        let v = vec!["addr", "street", "poi", "admin", "way"];
+        let v = vec!["addr", "poi", "admin", "way"];
         debug!("publishing index");
         let last_indexes = try!(self.get_last_index(doc_type, dataset));
 
