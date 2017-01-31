@@ -84,20 +84,32 @@ fn build_query(q: &str,
                shape: Option<Vec<rs_es::units::Location>>)
                -> rs_es::query::Query {
     use rs_es::query::functions::Function;
-    let boost_addr = rs_q::build_term("_type", "addr").with_boost(10000).build();
+    // we order the type of object we want
+    // Note: the addresses are boosted more because even if we don't want them first
+    // because they are more severely filtered
+    let boost_addr = rs_q::build_term("_type", "addr").with_boost(5000).build();
+    let boost_admin = rs_q::build_term("_type", "admin").with_boost(3000).build();
+    let boost_stop = rs_q::build_term("_type", "stop").with_boost(2000).build();
 
     let main_match_type = match match_type {
         MatchType::Prefix => "label.prefix",
         MatchType::Fuzzy => "label.ngram",
     };
 
-    let boost_match_query = rs_q::build_multi_match(vec![main_match_type.to_string(),
-                                                         "zip_codes.prefix".to_string()],
-                                                    q.to_string())
+    let boost_main_match_query = rs_q::build_multi_match(vec![main_match_type.to_string()],
+                                                         q.to_string())
         .with_boost(100)
         .build();
+    let boost_zipcode_match_query = rs_q::build_multi_match(vec!["zip_codes.prefix".to_string()],
+                                                            q.to_string())
+        .with_boost(500)
+        .build();
 
-    let mut should_query = vec![boost_addr, boost_match_query];
+    let mut should_query = vec![boost_addr,
+                                boost_admin,
+                                boost_stop,
+                                boost_main_match_query,
+                                boost_zipcode_match_query];
 
     // for fuzzy search we also search by the prefix index (with a greater boost than ngram)
     // to have better results
