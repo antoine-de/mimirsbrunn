@@ -64,6 +64,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     info!("Launching {}", stops2mimir);
     ::launch_and_assert(stops2mimir,
                         vec!["--input=./tests/fixtures/stops.txt".into(),
+                             "--dataset=dataset1".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
