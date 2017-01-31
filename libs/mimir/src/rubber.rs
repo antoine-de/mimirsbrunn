@@ -166,6 +166,7 @@ impl Rubber {
                          dataset: &str,
                          index: String)
                          -> Result<(), String> {
+        let v = vec!["addr", "street", "poi", "admin", "way"];
         debug!("publishing index");
         let last_indexes = try!(self.get_last_index(doc_type, dataset));
 
@@ -175,7 +176,14 @@ impl Rubber {
         let type_index = get_main_type_index(doc_type);
         try!(self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes));
 
-        try!(self.alias("munin", &vec![type_index.to_string()], &vec![]));
+        if v.contains(&doc_type) {
+            try!(self.alias("munin_street_network",
+                            &vec![type_index.to_string()],
+                            &vec![]));
+            try!(self.alias("munin", &vec!["munin_street_network".to_string()], &vec![]));
+        } else {
+            try!(self.alias("munin", &vec![type_index.to_string()], &vec![]));
+        }
         for i in last_indexes {
             try!(self.delete_index(&i));
         }
