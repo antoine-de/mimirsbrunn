@@ -206,7 +206,7 @@ fn make_stops_index(pt_dataset: &str) -> String {
     }
 }
 
-fn index_exists(client: &mut rs_es::Client, stops_index: &String) -> bool {
+fn is_existing_index(client: &mut rs_es::Client, stops_index: &String) -> bool {
     match client.open_index(stops_index) {
         Ok(_) => true,
         Err(_) => {
@@ -218,10 +218,10 @@ fn index_exists(client: &mut rs_es::Client, stops_index: &String) -> bool {
 
 fn make_indexes<'a>(stops_index: &'a str, client: &mut rs_es::Client) -> Vec<&'a str> {
     let mut result = vec![];
-    if index_exists(client, &stops_index.to_string()) {
+    if is_existing_index(client, &stops_index.to_string()) {
         result.push(stops_index);
     }
-    if index_exists(client, &"munin_street_network".to_string()) {
+    if is_existing_index(client, &"munin_street_network".to_string()) {
         result.push("munin_street_network");
     }
     return result;
