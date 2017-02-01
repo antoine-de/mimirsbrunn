@@ -79,7 +79,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
-    stop_filtred_by_dataset_test(&bragi);
+    stop_filtered_by_dataset_test(&bragi);
 }
 
 
