@@ -67,6 +67,7 @@ pub struct GeocodingResponse {
     pub postcode: Option<String>,
     pub city: Option<String>,
     pub citycode: Option<String>,
+    #[serde(skip_serializing_if="Option::is_none")]
     pub level: Option<u32>,
     // pub accuracy: Option<i32>,
     // pub district: Option<String>,
