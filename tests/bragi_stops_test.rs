@@ -121,27 +121,28 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
 fn stop_filtred_by_dataset_test(bragi: &BragiHandler) {
     // All stops
     let response = bragi.get("/autocomplete?q=14 juillet");
-    
     assert_eq!(response.len(), 2);
-    
+
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
-    
+
     let stop = response.last().unwrap();
-    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station:dataset2");
-    
+    assert_eq!(get_value(stop, "id"),
+        "stop_area:SA:second_station:dataset2");
+
     // filter by dataset1
     let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1");
-    
+
     assert_eq!(response.len(), 1);
-    
+
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
     // filter by dataset2
     let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset2");
-    
+
     assert_eq!(response.len(), 1);
-    
+
     let stop = response.first().unwrap();
-    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station:dataset2");
+    assert_eq!(get_value(stop, "id"),
+        "stop_area:SA:second_station:dataset2");
 }
