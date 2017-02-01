@@ -70,7 +70,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         .unwrap_or_else(Vec::new);
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(aliases,
-        vec!["munin", "munin_addr", "munin_addr_fr", "munin_street_network"]);
+               vec!["munin", "munin_addr", "munin_addr_fr", "munin_street_network"]);
 
     // then we import again the bano file:
     info!("importing again {}", bano2mimir);
@@ -101,5 +101,5 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     }
         .unwrap_or_else(Vec::new);
     assert_eq!(aliases,
-        vec!["munin", "munin_addr", "munin_addr_fr", "munin_street_network"]);
+               vec!["munin", "munin_addr", "munin_addr_fr", "munin_street_network"]);
 }

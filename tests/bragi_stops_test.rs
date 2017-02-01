@@ -78,7 +78,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
                              "--dataset=dataset2".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
-    
+
     stop_filtred_by_dataset_test(&bragi);
 }
 
@@ -128,7 +128,7 @@ fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
 
     let stop = response.last().unwrap();
     assert_eq!(get_value(stop, "id"),
-        "stop_area:SA:second_station:dataset2");
+               "stop_area:SA:second_station:dataset2");
 
     // filter by dataset1
     let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1");
@@ -144,5 +144,5 @@ fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
 
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"),
-        "stop_area:SA:second_station:dataset2");
+               "stop_area:SA:second_station:dataset2");
 }
