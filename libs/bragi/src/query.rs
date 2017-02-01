@@ -198,37 +198,35 @@ fn build_query(q: &str,
         .build()
 }
 
-fn make_stops_index(pt_dataset: &str) -> String {
-    if pt_dataset.is_empty() {
-        "munin_stops".to_string()
-    } else {
-        format!("munin_stops_{}", pt_dataset)
-    }
-}
-
-fn is_existing_index(client: &mut rs_es::Client, stops_index: &String) -> bool {
-    match client.open_index(stops_index) {
+fn is_existing_index(client: &mut rs_es::Client, index: &String) -> bool {
+    match client.open_index(index) {
         Ok(_) => true,
         Err(_) => {
-            debug!("{} index not found", stops_index);
+            debug!("{} index not found", index);
             false
         }
     }
 }
 
-fn make_indexes<'a>(stops_index: &'a str, client: &mut rs_es::Client) -> Vec<&'a str> {
-    let mut result = vec![];
-    if is_existing_index(client, &stops_index.to_string()) {
-        result.push(stops_index);
+fn make_indexes<'a>(pt_dataset_index: &'a Option<String>, client: &mut rs_es::Client) -> Vec<&'a str> {
+    match *pt_dataset_index {
+        Some(ref dataset) if ! dataset.is_empty() => {
+            let mut result:Vec<&str> = vec![];
+            if is_existing_index(client, &dataset) {
+                result.push(dataset);
+            }
+            if is_existing_index(client, &"munin_street_network".to_string()) {
+                result.push("munin_street_network");
+            }
+            result
+        },
+        _ => vec!["munin"]
     }
-    if is_existing_index(client, &"munin_street_network".to_string()) {
-        result.push("munin_street_network");
-    }
-    return result;
+    
 }
 
 fn query(q: &str,
-         pt_dataset: &str,
+         pt_dataset: &Option<&str>,
          cnx: &str,
          match_type: MatchType,
          offset: u64,
@@ -239,9 +237,9 @@ fn query(q: &str,
     let query = build_query(q, match_type, coord, shape);
 
     let mut client = build_rs_client(&cnx.to_string());
-
-    let stops_index = make_stops_index(pt_dataset);
-    let indexes = make_indexes(&stops_index, &mut client);
+    
+	let pt_dataset_index = pt_dataset.map(|d| format!("munin_stops_{}", d));
+    let indexes = make_indexes(&pt_dataset_index, &mut client);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
         .with_indexes(&indexes)
@@ -262,7 +260,7 @@ fn query(q: &str,
 }
 
 pub fn autocomplete(q: &str,
-                    pt_dataset: &str,
+                    pt_dataset: &Option<&str>,
                     offset: u64,
                     limit: u64,
                     coord: Option<model::Coord>,

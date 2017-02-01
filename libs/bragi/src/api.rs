@@ -149,9 +149,7 @@ impl ApiEndPoint {
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let pt_dataset = params.find("pt_dataset")
-                        .and_then(|val| val.as_str())
-                        .unwrap_or("")
-                        .to_string();
+                        .and_then(|val| val.as_str());
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
@@ -221,9 +219,7 @@ impl ApiEndPoint {
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let pt_dataset = params.find("pt_dataset")
-                        .and_then(|val| val.as_str())
-                        .unwrap_or("")
-                        .to_string();
+                        .and_then(|val| val.as_str());
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
