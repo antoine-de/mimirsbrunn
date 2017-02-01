@@ -34,7 +34,8 @@ extern crate osmpbfreader;
 use admin_geofinder::AdminGeoFinder;
 use boundaries::{build_boundary, make_centroid};
 use std::collections::{BTreeSet, BTreeMap};
-use super::utils::*;
+use utils::{format_label, get_zip_codes_from_admins};
+use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 
 pub type PoiTypes = BTreeMap<String, BTreeSet<String>>;
