@@ -119,7 +119,7 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
 }
 
 fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
-    // All stops
+    // Search stops on all aliases
     let response = bragi.get("/autocomplete?q=14 juillet");
     assert_eq!(response.len(), 2);
 
