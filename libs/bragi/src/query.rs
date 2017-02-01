@@ -217,8 +217,8 @@ fn make_indexes<'a>(pt_dataset_index: &'a Option<String>,
             if is_existing_index(client, &dataset) {
                 result.push(dataset);
             }
-            if is_existing_index(client, &"munin_street_network".to_string()) {
-                result.push("munin_street_network");
+            if is_existing_index(client, &"munin_geo_data".to_string()) {
+                result.push("munin_geo_data");
             }
             result
         }

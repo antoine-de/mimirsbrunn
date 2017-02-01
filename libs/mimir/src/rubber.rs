@@ -177,10 +177,10 @@ impl Rubber {
         try!(self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes));
 
         if v.contains(&doc_type) {
-            try!(self.alias("munin_street_network",
+            try!(self.alias("munin_geo_data",
                             &vec![type_index.to_string()],
                             &vec![]));
-            try!(self.alias("munin", &vec!["munin_street_network".to_string()], &vec![]));
+            try!(self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![]));
         } else {
             try!(self.alias("munin", &vec![type_index.to_string()], &vec![]));
         }
