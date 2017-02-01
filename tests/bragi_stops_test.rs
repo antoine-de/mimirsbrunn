@@ -118,7 +118,7 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
 }
 
-fn stop_filtred_by_dataset_test(bragi: &BragiHandler) {
+fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
     // All stops
     let response = bragi.get("/autocomplete?q=14 juillet");
     assert_eq!(response.len(), 2);
