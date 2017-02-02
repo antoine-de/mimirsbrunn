@@ -208,27 +208,29 @@ fn is_existing_index(client: &mut rs_es::Client, index: &String) -> bool {
     }
 }
 
-fn make_indexes<'a>(pt_dataset_index: &'a Option<String>,
+fn make_indexes<'a>(all_data: &Option<bool>, pt_dataset_index: &'a String,
                     client: &mut rs_es::Client)
                     -> Vec<&'a str> {
-    match *pt_dataset_index {
-        Some(ref dataset) if !dataset.is_empty() => {
-            let mut result: Vec<&str> = vec![];
-            if is_existing_index(client, &dataset) {
-                result.push(dataset);
-            }
-            if is_existing_index(client, &"munin_geo_data".to_string()) {
-                result.push("munin_geo_data");
-            }
-            result
+	if *all_data == Some(true) {
+	    return vec!["munin"];
+	}
+	
+	let mut result: Vec<&str> = vec![];
+	
+	if !pt_dataset_index.is_empty() {
+        if is_existing_index(client, &pt_dataset_index) {
+            result.push(pt_dataset_index);
         }
-        _ => vec!["munin"],
+	}
+    if is_existing_index(client, &"munin_geo_data".to_string()) {
+        result.push("munin_geo_data");
     }
-
+    return result;
 }
 
 fn query(q: &str,
          pt_dataset: &Option<&str>,
+         all_data: &Option<bool>,
          cnx: &str,
          match_type: MatchType,
          offset: u64,
@@ -240,8 +242,8 @@ fn query(q: &str,
 
     let mut client = build_rs_client(&cnx.to_string());
 
-    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
-    let indexes = make_indexes(&pt_dataset_index, &mut client);
+    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d)).unwrap_or("".to_string());
+    let indexes = make_indexes(&all_data, &pt_dataset_index, &mut client);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
         .with_indexes(&indexes)
@@ -263,6 +265,7 @@ fn query(q: &str,
 
 pub fn autocomplete(q: &str,
                     pt_dataset: &Option<&str>,
+                    all_data: &Option<bool>,
                     offset: u64,
                     limit: u64,
                     coord: Option<model::Coord>,
@@ -277,6 +280,7 @@ pub fn autocomplete(q: &str,
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = try!(query(&q,
                              &pt_dataset,
+                             &all_data,
                              cnx,
                              MatchType::Prefix,
                              offset,
@@ -286,6 +290,7 @@ pub fn autocomplete(q: &str,
     if results.is_empty() {
         query(&q,
               &pt_dataset,
+              &all_data,
               cnx,
               MatchType::Fuzzy,
               offset,

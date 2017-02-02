@@ -348,7 +348,7 @@ impl DocType for Admin {
 
 impl IsGeoData for Admin {
     fn is_geo_data() -> bool {
-        false
+        true
     }
 }
 
@@ -378,7 +378,7 @@ impl DocType for Street {
 
 impl IsGeoData for Street {
     fn is_geo_data() -> bool {
-        false
+        true
     }
 }
 
@@ -416,7 +416,7 @@ impl DocType for Addr {
 
 impl IsGeoData for Addr {
     fn is_geo_data() -> bool {
-        false
+        true
     }
 }
 
