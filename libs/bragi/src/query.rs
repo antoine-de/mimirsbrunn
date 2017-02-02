@@ -198,11 +198,11 @@ fn build_query(q: &str,
         .build()
 }
 
-fn make_indexes<'a>(all_data: &Option<bool>,
+fn make_indexes<'a>(all_data: bool,
                     pt_dataset_index: &'a String,
                     client: &mut rs_es::Client)
                     -> Vec<&'a str> {
-    if *all_data == Some(true) {
+    if all_data {
         return vec!["munin"];
     }
 
@@ -221,7 +221,7 @@ fn make_indexes<'a>(all_data: &Option<bool>,
 
 fn query(q: &str,
          pt_dataset: &Option<&str>,
-         all_data: &Option<bool>,
+         all_data: bool,
          cnx: &str,
          match_type: MatchType,
          offset: u64,
@@ -235,7 +235,7 @@ fn query(q: &str,
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d))
         .unwrap_or("".to_string());
-    let indexes = make_indexes(&all_data, &pt_dataset_index, &mut client);
+    let indexes = make_indexes(all_data, &pt_dataset_index, &mut client);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
         .with_indexes(&indexes)
@@ -257,7 +257,7 @@ fn query(q: &str,
 
 pub fn autocomplete(q: &str,
                     pt_dataset: &Option<&str>,
-                    all_data: &Option<bool>,
+                    all_data: bool,
                     offset: u64,
                     limit: u64,
                     coord: Option<model::Coord>,
@@ -272,7 +272,7 @@ pub fn autocomplete(q: &str,
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = try!(query(&q,
                              &pt_dataset,
-                             &all_data,
+                             all_data,
                              cnx,
                              MatchType::Prefix,
                              offset,
@@ -282,7 +282,7 @@ pub fn autocomplete(q: &str,
     if results.is_empty() {
         query(&q,
               &pt_dataset,
-              &all_data,
+              all_data,
               cnx,
               MatchType::Fuzzy,
               offset,
