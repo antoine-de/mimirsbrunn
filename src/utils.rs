@@ -28,19 +28,28 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate log;
-extern crate osmpbfreader;
-extern crate mimir;
-extern crate osm_builder;
-extern crate gst;
-extern crate ordered_float;
-extern crate geo;
-extern crate itertools;
-#[macro_use]
-extern crate mdo;
+use mimir;
+use std::rc::Rc;
 
-pub mod boundaries;
-pub mod admin_geofinder;
-pub mod osm_reader;
-pub mod utils;
+pub fn format_label(admins: &[Rc<mimir::Admin>], city_level: u32, name: &str) -> String {
+    match admins.iter().position(|adm| adm.level == city_level) {
+        Some(idx) => format!("{} ({})", name, admins[idx].name),
+        None => name.to_string(),
+    }
+}
+
+pub fn get_zip_codes_from_admins(admins: &[Rc<mimir::Admin>]) -> Vec<String> {
+    let level = admins.iter().fold(0, |level, adm| if adm.level > level &&
+                                                   !adm.zip_codes.is_empty() {
+        adm.level
+    } else {
+        level
+    });
+    if level == 0 {
+        return vec![];
+    }
+    admins.into_iter()
+        .filter(|adm| adm.level == level)
+        .flat_map(|adm| adm.zip_codes.iter().cloned())
+        .collect()
+}

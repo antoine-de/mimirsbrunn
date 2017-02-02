@@ -35,7 +35,8 @@ extern crate osmpbfreader;
 use admin_geofinder::AdminGeoFinder;
 use std::collections::{BTreeSet, BTreeMap};
 use std::rc::Rc;
-use super::utils::*;
+use utils::{format_label, get_zip_codes_from_admins};
+use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 
 pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;

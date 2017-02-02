@@ -79,10 +79,11 @@ fn stop_attached_to_admin_test(bragi: &BragiHandler) {
     let stop = response.first().unwrap();
 
     assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
-    assert_eq!(get_value(stop, "label"), "14 Juillet");
+    assert_eq!(get_value(stop, "label"), "14 Juillet (Vaux-le-Pénil)");
     assert_eq!(get_value(stop, "name"), "14 Juillet");
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
     assert_eq!(get_value(stop, "citycode"), "77487");
+    assert_eq!(get_value(stop, "postcode"), "77000");
 
     // this stop area is in the boundary of the admin 'Vaux-le-Pénil',
     // it should have been associated to it

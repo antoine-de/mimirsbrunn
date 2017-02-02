@@ -37,8 +37,10 @@ extern crate mimirsbrunn;
 #[macro_use]
 extern crate log;
 
+use std::rc::Rc;
 use mimir::rubber::Rubber;
 use docopt::Docopt;
+use mimirsbrunn::utils::{format_label, get_zip_codes_from_admins};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
 const USAGE: &'static str =
@@ -46,14 +48,15 @@ const USAGE: &'static str =
 Usage:
     stops2mimir --help
     stops2mimir --input=<file> \
-     [--connection-string=<connection-string>] [--dataset=<dataset>]
+     [--connection-string=<connection-string>] [--dataset=<dataset>] [--city-level=<level>]
 
 Options:
-    -h, --help               Show this message.
-    -i, --input=<file>       NTFS stops.txt file.
+    -h, --help                Show this message.
+    -i, --input=<file>        NTFS stops.txt file.
     -c, --connection-string=<connection-string>   \
-                             Elasticsearch parameters [default: http://localhost:9200/munin].
-    -d, --dataset=<dataset>  Name of the dataset [default: fr].
+                              Elasticsearch parameters [default: http://localhost:9200/munin].
+    -d, --dataset=<dataset>   Name of the dataset [default: fr].
+    -C, --city-level=<level>  City level to calculate weight [default: 8]
 ";
 
 #[derive(Debug, RustcDecodable)]
@@ -61,6 +64,7 @@ struct Args {
     flag_input: String,
     flag_dataset: String,
     flag_connection_string: String,
+    flag_city_level: u32,
 }
 
 struct StopPointIter<'a, R: std::io::Read + 'a> {
@@ -150,13 +154,20 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
     }
 }
 
+fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>, city_level: u32) {
+    stop.administrative_regions = admins;
+    stop.label = format_label(&stop.administrative_regions, city_level, &stop.name);
+    stop.zip_codes = get_zip_codes_from_admins(&stop.administrative_regions);
+}
+
 /// Attach the stops to administrative regions
 ///
 /// The admins are loaded from Elasticsearch and stored in a quadtree
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
 fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: It,
-                                                                        rubber: &mut Rubber) {
+                                                                        rubber: &mut Rubber,
+                                                                        city_level: u32) {
     let admins = rubber.get_all_admins().unwrap_or_else(|_| {
         info!("Administratives regions not found in elasticsearch db");
         vec![]
@@ -168,7 +179,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: I
 
     let mut nb_unmatched = 0u32;
     let mut nb_matched = 0u32;
-    for stop in stops {
+    for mut stop in stops {
         let admins = admins_geofinder.get(&stop.coord);
 
         if admins.is_empty() {
@@ -177,7 +188,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: I
             nb_matched += 1;
         }
 
-        stop.administrative_regions = admins;
+        attach_stop(&mut stop, admins, city_level);
     }
 
     info!("there is {}/{} stops without any admin",
@@ -207,7 +218,7 @@ fn main() {
         })
         .collect();
 
-    attach_stops_to_admins(stops.iter_mut(), &mut rubber);
+    attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.flag_city_level);
 
     info!("Importing stops into Mimir");
     let nb_stops = rubber.index("stops", &args.flag_dataset, stops.iter())

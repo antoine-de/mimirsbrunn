@@ -74,7 +74,7 @@ fn simple_bano_autocomplete_test(bragi: &BragiHandler) {
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
                          r#""street":"Rue Hector Malot","postcode":"75012","#,
-                         r#""city":null,"citycode":null,"level":null,"#,
+                         r#""city":null,"citycode":null,"#,
                          r#""administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 }
@@ -109,7 +109,7 @@ fn simple_bano_shape_filter_test(bragi: &BragiHandler) {
                          r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
                          r#""name":"15 Rue Hector Malot","housenumber":"15","#,
                          r#""street":"Rue Hector Malot","postcode":"75012","#,
-                         r#""city":null,"citycode":null,"level":null,"#,
+                         r#""city":null,"citycode":null,"#,
                          r#""administrative_regions":[]}}}]}"#);
     assert_eq!(result_body, result);
 

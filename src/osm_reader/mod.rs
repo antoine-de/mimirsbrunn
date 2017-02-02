@@ -2,15 +2,13 @@ extern crate osmpbfreader;
 extern crate mimir;
 
 use std::fs::File;
-use std::rc::Rc;
 use std::path::Path;
 
-pub mod utils;
+pub mod osm_utils;
 pub mod admin;
 pub mod poi;
 pub mod street;
 
-pub type AdminsSlice = [Rc<mimir::Admin>];
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<File>;
 
 pub fn parse_osm_pbf(path: &str) -> OsmPbfReader {
