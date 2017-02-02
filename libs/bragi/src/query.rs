@@ -240,7 +240,7 @@ fn query(q: &str,
 
     let mut client = build_rs_client(&cnx.to_string());
 
-    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stops_{}", d));
+    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
     let indexes = make_indexes(&pt_dataset_index, &mut client);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()

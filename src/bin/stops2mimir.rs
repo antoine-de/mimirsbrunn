@@ -210,7 +210,7 @@ fn main() {
     attach_stops_to_admins(stops.iter_mut(), &mut rubber);
 
     info!("Importing stops into Mimir");
-    let nb_stops = rubber.index("stops", &args.flag_dataset, stops.iter())
+    let nb_stops = rubber.index(&args.flag_dataset, stops.iter())
         .unwrap();
 
     info!("Nb of indexed stops: {}", nb_stops);

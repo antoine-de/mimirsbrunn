@@ -64,7 +64,6 @@ fn check_has_bob(es: &::ElasticSearchWrapper) {
 /// during the second batch we should be able to query Elasticsearch and find the first batch
 pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     info!("running rubber_zero_downtime_test");
-    let doc_type = "street";
     let dataset = "my_dataset";
 
     let bob = Street {
@@ -78,7 +77,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     };
 
     // we index our bob
-    let result = es.rubber.index(doc_type, dataset, std::iter::once(bob));
+    let result = es.rubber.index(dataset, std::iter::once(bob));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -104,7 +103,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         es.refresh(); // we send a refresh to be sure to be up to date
         check_has_bob(&es);
     });
-    let result = rubber.index(doc_type, dataset, checker_iter);
+    let result = rubber.index(dataset, checker_iter);
     assert!(result.is_ok(),
             "impossible to index bobette, res: {:?}",
             result);
@@ -133,7 +132,6 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
 
 pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     info!("running rubber_custom_id");
-    let doc_type = "admin";
     let dataset = "my_dataset";
 
     let admin = Admin {
@@ -149,7 +147,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     };
 
     // we index our admin
-    let result = es.rubber.index(doc_type, dataset, std::iter::once(admin));
+    let result = es.rubber.index(dataset, std::iter::once(admin));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
