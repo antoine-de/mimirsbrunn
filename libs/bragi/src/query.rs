@@ -199,8 +199,9 @@ fn build_query(q: &str,
 }
 
 fn is_existing_index(client: &mut rs_es::Client, index: &String) -> bool {
-    !index.is_empty() && client.open_index(&index).is_ok()    
+    !index.is_empty() && client.open_index(&index).is_ok()
 }
+
 fn make_indexes<'a>(all_data: bool,
                     pt_dataset_index: &'a Option<String>,
                     client: &mut rs_es::Client)
@@ -208,7 +209,7 @@ fn make_indexes<'a>(all_data: bool,
     if all_data {
         return vec!["munin"];
     }
-	
+
     let mut result: Vec<&str> = vec![];
     if is_existing_index(client, &"munin_geo_data".to_string()) {
         result.push("munin_geo_data");
@@ -218,11 +219,11 @@ fn make_indexes<'a>(all_data: bool,
             if is_existing_index(client, dataset) {
                 result.push(dataset);
             }
-                result
-        },
-        _ => result
+            result
+        }
+        _ => result,
     }
-    
+
 }
 
 fn query(q: &str,

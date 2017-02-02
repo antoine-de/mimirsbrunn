@@ -151,7 +151,8 @@ impl ApiEndPoint {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
-                    let all_data = params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
+                    let all_data =
+                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
@@ -224,7 +225,8 @@ impl ApiEndPoint {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
-                    let all_data = params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
+                    let all_data =
+                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
