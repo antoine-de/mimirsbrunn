@@ -208,20 +208,21 @@ fn is_existing_index(client: &mut rs_es::Client, index: &String) -> bool {
     }
 }
 
-fn make_indexes<'a>(all_data: &Option<bool>, pt_dataset_index: &'a String,
+fn make_indexes<'a>(all_data: &Option<bool>,
+                    pt_dataset_index: &'a String,
                     client: &mut rs_es::Client)
                     -> Vec<&'a str> {
-	if *all_data == Some(true) {
-	    return vec!["munin"];
-	}
-	
-	let mut result: Vec<&str> = vec![];
-	
-	if !pt_dataset_index.is_empty() {
+    if *all_data == Some(true) {
+        return vec!["munin"];
+    }
+
+    let mut result: Vec<&str> = vec![];
+
+    if !pt_dataset_index.is_empty() {
         if is_existing_index(client, &pt_dataset_index) {
             result.push(pt_dataset_index);
         }
-	}
+    }
     if is_existing_index(client, &"munin_geo_data".to_string()) {
         result.push("munin_geo_data");
     }
@@ -242,7 +243,8 @@ fn query(q: &str,
 
     let mut client = build_rs_client(&cnx.to_string());
 
-    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d)).unwrap_or("".to_string());
+    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d))
+        .unwrap_or("".to_string());
     let indexes = make_indexes(&all_data, &pt_dataset_index, &mut client);
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()

@@ -240,8 +240,14 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
-                    let model_autocomplete =
-                        query::autocomplete(&q, &pt_dataset, &all_data, offset, limit, coord, &cnx, None);
+                    let model_autocomplete = query::autocomplete(&q,
+                                                                 &pt_dataset,
+                                                                 &all_data,
+                                                                 offset,
+                                                                 limit,
+                                                                 coord,
+                                                                 &cnx,
+                                                                 None);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
