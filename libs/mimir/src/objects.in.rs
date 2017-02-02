@@ -110,6 +110,10 @@ pub trait DocType {
     fn doc_type() -> &'static str; // provides the elasticsearch type name
 }
 
+pub trait IsGeoData {
+    fn is_geo_data() -> bool;
+}
+
 pub trait EsId {
     fn es_id(&self) -> Option<String>; // provides the elasticsearch id
 }
@@ -124,6 +128,13 @@ impl<'a, T: DocType> DocType for &'a T {
         T::doc_type()
     }
 }
+
+impl<'a, T: IsGeoData> IsGeoData for &'a T {
+    fn is_geo_data() -> bool {
+        T::is_geo_data()
+    }
+}
+
 impl<'a, T: EsId> EsId for &'a T {
     fn es_id(&self) -> Option<String> {
         T::es_id(self)
@@ -134,6 +145,13 @@ impl<'a, T: DocType> DocType for Rc<T> {
         T::doc_type()
     }
 }
+
+impl<'a, T: IsGeoData> IsGeoData for Rc<T> {
+    fn is_geo_data() -> bool {
+        T::is_geo_data()
+    }
+}
+
 impl<'a, T: EsId> EsId for Rc<T> {
     fn es_id(&self) -> Option<String> {
         T::es_id(self)
@@ -154,6 +172,12 @@ pub struct Poi {
 impl DocType for Poi {
     fn doc_type() -> &'static str {
         "poi"
+    }
+}
+
+impl IsGeoData for Poi {
+    fn is_geo_data() -> bool {
+        true
     }
 }
 
@@ -192,6 +216,12 @@ impl EsId for Stop {
 impl DocType for Stop {
     fn doc_type() -> &'static str {
         "stop"
+    }
+}
+
+impl IsGeoData for Stop {
+    fn is_geo_data() -> bool {
+        false
     }
 }
 
@@ -316,6 +346,12 @@ impl DocType for Admin {
     }
 }
 
+impl IsGeoData for Admin {
+    fn is_geo_data() -> bool {
+        false
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Street {
     pub id: String,
@@ -337,6 +373,12 @@ impl Incr for Street {
 impl DocType for Street {
     fn doc_type() -> &'static str {
         "street"
+    }
+}
+
+impl IsGeoData for Street {
+    fn is_geo_data() -> bool {
+        false
     }
 }
 
@@ -369,6 +411,12 @@ pub struct Addr {
 impl DocType for Addr {
     fn doc_type() -> &'static str {
         "addr"
+    }
+}
+
+impl IsGeoData for Addr {
+    fn is_geo_data() -> bool {
+        false
     }
 }
 
