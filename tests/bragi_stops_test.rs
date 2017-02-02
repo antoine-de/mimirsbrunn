@@ -156,7 +156,7 @@ fn stop_all_data_test(bragi: &BragiHandler) {
     // search wiht _all_data = false
     let response = bragi.get("/autocomplete?q=14 juillet&_all_data=false");
     assert_eq!(response.len(), 0);
-    
+
     // search wiht _all_data = true
     let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
     assert_eq!(response.len(), 2);
