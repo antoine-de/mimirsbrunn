@@ -29,7 +29,7 @@
 // www.navitia.io
 
 
-use super::objects::{DocType, EsId, Admin};
+use super::objects::{DocType, IsGeoData, EsId, Admin};
 use chrono;
 use regex;
 use hyper;
@@ -164,9 +164,9 @@ impl Rubber {
     pub fn publish_index(&mut self,
                          doc_type: &str,
                          dataset: &str,
-                         index: String)
+                         index: String,
+                         is_geo_data: bool)
                          -> Result<(), String> {
-        let v = vec!["addr", "poi", "admin", "way"];
         debug!("publishing index");
         let last_indexes = try!(self.get_last_index(doc_type, dataset));
 
@@ -176,7 +176,7 @@ impl Rubber {
         let type_index = get_main_type_index(doc_type);
         try!(self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes));
 
-        if v.contains(&doc_type) {
+        if is_geo_data {
             try!(self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![]));
             try!(self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![]));
         } else {
@@ -285,14 +285,14 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<usize, String>
-        where T: serde::Serialize + DocType + EsId,
+    pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, String>
+        where T: serde::Serialize + DocType + IsGeoData + EsId,
               I: Iterator<Item = T>
     {
         // TODO better error handling
-        let index = try!(self.make_index(doc_type, dataset));
+        let index = try!(self.make_index(T::doc_type(), dataset));
         let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
-        try!(self.publish_index(doc_type, dataset, index));
+        try!(self.publish_index(T::doc_type(), dataset, index, T::is_geo_data()));
         Ok(nb_elements)
     }
 

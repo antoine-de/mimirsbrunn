@@ -129,7 +129,7 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
             Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
         }
     }
-    rubber.publish_index(doc_type, dataset, addr_index).unwrap();
+    rubber.publish_index(doc_type, dataset, addr_index, true).unwrap();
 }
 
 #[derive(RustcDecodable, Debug)]
