@@ -84,7 +84,6 @@ fn stop_attached_to_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
     assert_eq!(get_value(stop, "citycode"), "77487");
     assert_eq!(get_value(stop, "postcode"), "77000");
-    assert!(false);
 
     // this stop area is in the boundary of the admin 'Vaux-le-Pénil',
     // it should have been associated to it
