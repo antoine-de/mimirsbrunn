@@ -207,24 +207,23 @@ fn make_indexes<'a>(all_data: bool,
                     pt_dataset_index: &'a Option<String>,
                     client: &mut rs_es::Client)
                     -> Vec<&'a str> {
+	let mut result: Vec<&str> = vec![];
     if all_data {
-        return vec!["munin"];
-    }
-
-    let mut result: Vec<&str> = vec![];
-    if is_existing_index(client, &"munin_geo_data".to_string()) {
-        result.push("munin_geo_data");
-    }
-    match *pt_dataset_index {
-        Some(ref dataset) => {
-            if is_existing_index(client, dataset) {
-                result.push(dataset);
-            }
-            result
+        result.push("munin");
+    } else {
+        if is_existing_index(client, &"munin_geo_data".to_string()) {
+            result.push("munin_geo_data");
         }
-        _ => result,
+        match *pt_dataset_index {
+            Some(ref dataset) => {
+                if is_existing_index(client, dataset) {
+                    result.push(dataset);
+                }
+            },
+            _ => {} 
+        };
     }
-
+	return result;
 }
 
 fn query(q: &str,
