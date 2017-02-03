@@ -36,6 +36,7 @@ use rs_es::units as rs_u;
 use mimir;
 use serde_json;
 use serde;
+use mimir::objects::{MimirObject, Admin, Addr, Stop};
 
 fn build_rs_client(cnx: &String) -> rs_es::Client {
     let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
@@ -87,9 +88,9 @@ fn build_query(q: &str,
     // we order the type of object we want
     // Note: the addresses are boosted more because even if we don't want them first
     // because they are more severely filtered
-    let boost_addr = rs_q::build_term("_type", "addr").with_boost(5000).build();
-    let boost_admin = rs_q::build_term("_type", "admin").with_boost(3000).build();
-    let boost_stop = rs_q::build_term("_type", "stop").with_boost(2000).build();
+    let boost_addr = rs_q::build_term("_type", Addr::doc_type()).with_boost(5000).build();
+    let boost_admin = rs_q::build_term("_type", Admin::doc_type()).with_boost(3000).build();
+    let boost_stop = rs_q::build_term("_type", Stop::doc_type()).with_boost(2000).build();
 
     let main_match_type = match match_type {
         MatchType::Prefix => "label.prefix",

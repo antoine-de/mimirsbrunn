@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use serde_json::value::{to_value, Value};
-use mimir::{Street, Admin, Coord};
+use mimir::{Street, Admin, Coord, MimirObject};
 use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
@@ -156,7 +156,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
 
     let check_admin = |es_elt: &Value| {
         assert_eq!(es_elt.find("_type").and_then(|t| t.as_str()).unwrap(),
-                   "admin");
+                   Admin::doc_type());
         let es_source = es_elt.find("_source").unwrap();
         assert_eq!(es_elt.find("_id"), es_source.find("id"));
         assert_eq!(es_elt.find("_id"), Some(&to_value("admin:bob")));

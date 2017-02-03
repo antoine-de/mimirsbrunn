@@ -29,7 +29,7 @@
 // www.navitia.io
 
 
-use super::objects::{DocType, IsGeoData, EsId, Admin};
+use super::objects::{MimirObject, Admin};
 use chrono;
 use regex;
 use hyper;
@@ -251,7 +251,7 @@ impl Rubber {
                             index: &String,
                             iter: I)
                             -> Result<usize, rs_es::error::EsError>
-        where T: serde::Serialize + DocType + EsId,
+        where T: serde::Serialize + MimirObject,
               I: Iterator<Item = T>
     {
         use rs_es::operations::bulk::Action;
@@ -286,7 +286,7 @@ impl Rubber {
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
     pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, String>
-        where T: serde::Serialize + DocType + IsGeoData + EsId,
+        where T: serde::Serialize + MimirObject,
               I: Iterator<Item = T>
     {
         // TODO better error handling
@@ -299,11 +299,11 @@ impl Rubber {
     pub fn get_admins_from_dataset(&mut self,
                                    dataset: &str)
                                    -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index(&get_main_type_and_dataset_index("admin", dataset))
+        self.get_admins_from_index(&get_main_type_and_dataset_index(Admin::doc_type(), dataset))
     }
 
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index(&get_main_type_index("admin"))
+        self.get_admins_from_index(&get_main_type_index(Admin::doc_type()))
     }
 
     fn get_admins_from_index(&mut self, index: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
@@ -312,7 +312,7 @@ impl Rubber {
             .search_query()
             .with_indexes(&[&index])
             .with_size(1000)
-            .with_types(&[&"admin"])
+            .with_types(&[&Admin::doc_type()])
             .scan(&Duration::minutes(1)));
         loop {
             let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));

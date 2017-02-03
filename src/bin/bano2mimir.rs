@@ -38,7 +38,7 @@ extern crate geo;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
-use mimir::objects::{Admin, Addr, DocType, IsGeoData};
+use mimir::objects::{Admin, Addr, MimirObject};
 use std::fs;
 use std::rc::Rc;
 use std::collections::BTreeMap;
