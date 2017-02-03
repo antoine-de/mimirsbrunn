@@ -207,7 +207,7 @@ fn make_indexes<'a>(all_data: bool,
                     pt_dataset_index: &'a Option<String>,
                     client: &mut rs_es::Client)
                     -> Vec<&'a str> {
-	let mut result: Vec<&str> = vec![];
+    let mut result: Vec<&str> = vec![];
     if all_data {
         result.push("munin");
     } else {
@@ -219,11 +219,11 @@ fn make_indexes<'a>(all_data: bool,
                 if is_existing_index(client, dataset) {
                     result.push(dataset);
                 }
-            },
+            }
             _ => {} 
         };
     }
-	return result;
+    return result;
 }
 
 fn query(q: &str,
