@@ -113,12 +113,12 @@ fn main() {
 
         if args.flag_import_way {
             info!("importing streets into Mimir");
-            let nb_streets = rubber.index("way", &args.flag_dataset, streets.into_iter())
+            let nb_streets = rubber.index(&args.flag_dataset, streets.into_iter())
                 .unwrap();
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
-    let nb_admins = rubber.index("admin", &args.flag_dataset, admins.iter())
+    let nb_admins = rubber.index(&args.flag_dataset, admins.iter())
         .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
@@ -134,7 +134,7 @@ fn main() {
         compute_poi_weight(&mut pois, city_level);
 
         info!("Importing pois into Mimir");
-        let nb_pois = rubber.index("poi", &args.flag_dataset, pois.iter())
+        let nb_pois = rubber.index(&args.flag_dataset, pois.iter())
             .unwrap();
 
         info!("Nb of indexed pois: {}", nb_pois);

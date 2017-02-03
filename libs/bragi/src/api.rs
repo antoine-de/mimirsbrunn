@@ -123,8 +123,10 @@ impl ApiEndPoint {
             api.post("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
+                    params.opt_typed("pt_dataset", json_dsl::string());
                     params.opt_typed("limit", json_dsl::u64());
                     params.opt_typed("offset", json_dsl::u64());
+                    params.opt_typed("_all_data", json_dsl::boolean());
                     params.req("geometry", |geometry| {
                         geometry.coerce(json_dsl::object());
                         geometry.nest(|params| {
@@ -147,6 +149,10 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
+                    let pt_dataset = params.find("pt_dataset")
+                        .and_then(|val| val.as_str());
+                    let all_data =
+                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
@@ -161,8 +167,14 @@ impl ApiEndPoint {
                         shape.push((ar.as_array().unwrap()[1].as_f64().unwrap(),
                                     ar.as_array().unwrap()[0].as_f64().unwrap()));
                     }
-                    let model_autocomplete =
-                        query::autocomplete(&q, offset, limit, None, &cnx, Some(shape));
+                    let model_autocomplete = query::autocomplete(&q,
+                                                                 &pt_dataset,
+                                                                 all_data,
+                                                                 offset,
+                                                                 limit,
+                                                                 None,
+                                                                 &cnx,
+                                                                 Some(shape));
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -171,8 +183,10 @@ impl ApiEndPoint {
             api.get("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.req_typed("q", json_dsl::string());
+                    params.opt_typed("pt_dataset", json_dsl::string());
                     params.opt_typed("limit", json_dsl::u64());
                     params.opt_typed("offset", json_dsl::u64());
+                    params.opt_typed("_all_data", json_dsl::boolean());
                     params.opt("lon", |lon| {
                         lon.coerce(json_dsl::f64());
                         lon.validate_with(|val, path| {
@@ -209,6 +223,10 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
+                    let pt_dataset = params.find("pt_dataset")
+                        .and_then(|val| val.as_str());
+                    let all_data =
+                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
@@ -224,8 +242,14 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
-                    let model_autocomplete =
-                        query::autocomplete(&q, offset, limit, coord, &cnx, None);
+                    let model_autocomplete = query::autocomplete(&q,
+                                                                 &pt_dataset,
+                                                                 all_data,
+                                                                 offset,
+                                                                 limit,
+                                                                 coord,
+                                                                 &cnx,
+                                                                 None);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)

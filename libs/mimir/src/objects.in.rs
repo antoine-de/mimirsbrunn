@@ -106,11 +106,9 @@ impl Place {
     }
 }
 
-pub trait DocType {
+pub trait MimirObject: serde::Serialize {
+    fn is_geo_data() -> bool;
     fn doc_type() -> &'static str; // provides the elasticsearch type name
-}
-
-pub trait EsId {
     fn es_id(&self) -> Option<String>; // provides the elasticsearch id
 }
 
@@ -119,22 +117,25 @@ pub trait Members {
     fn admins(&self) -> Vec<Rc<Admin>>;
 }
 
-impl<'a, T: DocType> DocType for &'a T {
+impl<'a, T: MimirObject> MimirObject for &'a T {
+    fn is_geo_data() -> bool {
+        T::is_geo_data()
+    }
     fn doc_type() -> &'static str {
         T::doc_type()
     }
-}
-impl<'a, T: EsId> EsId for &'a T {
     fn es_id(&self) -> Option<String> {
         T::es_id(self)
     }
 }
-impl<'a, T: DocType> DocType for Rc<T> {
+
+impl<'a, T: MimirObject> MimirObject for &'a  Rc<T> {
+    fn is_geo_data() -> bool {
+        T::is_geo_data()
+    }
     fn doc_type() -> &'static str {
         T::doc_type()
     }
-}
-impl<'a, T: EsId> EsId for Rc<T> {
     fn es_id(&self) -> Option<String> {
         T::es_id(self)
     }
@@ -151,13 +152,13 @@ pub struct Poi {
     pub zip_codes: Vec<String>,
 }
 
-impl DocType for Poi {
+impl MimirObject for Poi {
+    fn is_geo_data() -> bool {
+        true
+    }
     fn doc_type() -> &'static str {
         "poi"
     }
-}
-
-impl EsId for Poi {
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
     }
@@ -183,18 +184,17 @@ pub struct Stop {
     pub zip_codes: Vec<String>,
 }
 
-impl EsId for Stop {
+impl MimirObject for Stop {
+    fn is_geo_data() -> bool {
+        false
+    }
+    fn doc_type() -> &'static str {
+        "stop"
+    }
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
     }
 }
-
-impl DocType for Stop {
-    fn doc_type() -> &'static str {
-        "stop"
-    }
-}
-
 impl Members for Stop {
     fn label(&self) -> &str {
         &self.label
@@ -304,18 +304,17 @@ fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), 
     serializer.serialize_u32(cell.get())
 }
 
-impl EsId for Admin {
+impl MimirObject for Admin {
+    fn is_geo_data() -> bool {
+        true
+    }
+    fn doc_type() -> &'static str {
+        "admin"
+    }
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
     }
 }
-
-impl DocType for Admin {
-    fn doc_type() -> &'static str {
-        "admin"
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Street {
     pub id: String,
@@ -334,13 +333,14 @@ impl Incr for Street {
         self.weight += 1;
     }
 }
-impl DocType for Street {
+
+impl MimirObject for Street {
+    fn is_geo_data() -> bool {
+        true
+    }
     fn doc_type() -> &'static str {
         "street"
     }
-}
-
-impl EsId for Street {
     fn es_id(&self) -> Option<String> {
         None
     }
@@ -366,13 +366,13 @@ pub struct Addr {
     pub zip_codes: Vec<String>,
 }
 
-impl DocType for Addr {
+impl MimirObject for Addr {
+    fn is_geo_data() -> bool {
+        true
+    }
     fn doc_type() -> &'static str {
         "addr"
     }
-}
-
-impl EsId for Addr {
     fn es_id(&self) -> Option<String> {
         None
     }

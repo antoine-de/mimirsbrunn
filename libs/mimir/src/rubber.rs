@@ -29,7 +29,7 @@
 // www.navitia.io
 
 
-use super::objects::{DocType, EsId, Admin};
+use super::objects::{MimirObject, Admin};
 use chrono;
 use regex;
 use hyper;
@@ -37,7 +37,6 @@ use hyper::status::StatusCode;
 use rs_es::error::EsError;
 use rs_es;
 use rs_es::EsResponse;
-use serde;
 use serde_json;
 use rs_es::operations::search::ScanResult;
 
@@ -164,7 +163,8 @@ impl Rubber {
     pub fn publish_index(&mut self,
                          doc_type: &str,
                          dataset: &str,
-                         index: String)
+                         index: String,
+                         is_geo_data: bool)
                          -> Result<(), String> {
         debug!("publishing index");
         let last_indexes = try!(self.get_last_index(doc_type, dataset));
@@ -175,7 +175,12 @@ impl Rubber {
         let type_index = get_main_type_index(doc_type);
         try!(self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes));
 
-        try!(self.alias("munin", &vec![type_index.to_string()], &vec![]));
+        if is_geo_data {
+            try!(self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![]));
+            try!(self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![]));
+        } else {
+            try!(self.alias("munin", &vec![type_index.to_string()], &vec![]));
+        }
         for i in last_indexes {
             try!(self.delete_index(&i));
         }
@@ -245,7 +250,7 @@ impl Rubber {
                             index: &String,
                             iter: I)
                             -> Result<usize, rs_es::error::EsError>
-        where T: serde::Serialize + DocType + EsId,
+        where T: MimirObject,
               I: Iterator<Item = T>
     {
         use rs_es::operations::bulk::Action;
@@ -279,25 +284,25 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<usize, String>
-        where T: serde::Serialize + DocType + EsId,
+    pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, String>
+        where T: MimirObject,
               I: Iterator<Item = T>
     {
         // TODO better error handling
-        let index = try!(self.make_index(doc_type, dataset));
+        let index = try!(self.make_index(T::doc_type(), dataset));
         let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
-        try!(self.publish_index(doc_type, dataset, index));
+        try!(self.publish_index(T::doc_type(), dataset, index, T::is_geo_data()));
         Ok(nb_elements)
     }
 
     pub fn get_admins_from_dataset(&mut self,
                                    dataset: &str)
                                    -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index(&get_main_type_and_dataset_index("admin", dataset))
+        self.get_admins_from_index(&get_main_type_and_dataset_index(Admin::doc_type(), dataset))
     }
 
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index(&get_main_type_index("admin"))
+        self.get_admins_from_index(&get_main_type_index(Admin::doc_type()))
     }
 
     fn get_admins_from_index(&mut self, index: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
@@ -306,7 +311,7 @@ impl Rubber {
             .search_query()
             .with_indexes(&[&index])
             .with_size(1000)
-            .with_types(&[&"admin"])
+            .with_types(&[&Admin::doc_type()])
             .scan(&Duration::minutes(1)));
         loop {
             let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));

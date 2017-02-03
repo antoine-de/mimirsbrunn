@@ -38,7 +38,7 @@ extern crate geo;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
-use mimir::objects::Admin;
+use mimir::objects::{Admin, Addr, MimirObject};
 use std::fs;
 use std::rc::Rc;
 use std::collections::BTreeMap;
@@ -97,7 +97,6 @@ impl Bano {
 fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
     where I: Iterator<Item = std::path::PathBuf>
 {
-    let doc_type = "addr";
     let mut rubber = Rubber::new(cnx_string);
 
     let admins_by_insee = rubber.get_admins_from_dataset(dataset)
@@ -114,7 +113,7 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
         })
         .collect();
 
-    let addr_index = rubber.make_index(doc_type, dataset).unwrap();
+    let addr_index = rubber.make_index(Addr::doc_type(), dataset).unwrap();
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -129,7 +128,7 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
             Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
         }
     }
-    rubber.publish_index(doc_type, dataset, addr_index).unwrap();
+    rubber.publish_index(Addr::doc_type(), dataset, addr_index, Addr::is_geo_data()).unwrap();
 }
 
 #[derive(RustcDecodable, Debug)]

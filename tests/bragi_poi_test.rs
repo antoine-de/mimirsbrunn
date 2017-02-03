@@ -37,6 +37,7 @@ use super::get_value;
 use super::get_types;
 use super::count_types;
 use super::filter_by_type;
+use mimir::{Poi, MimirObject};
 
 
 pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
@@ -75,11 +76,11 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
 fn poi_admin_address_test(bragi: &BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies");
     let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, "poi"), 1);
+    assert_eq!(count_types(&types, Poi::doc_type()), 1);
 
     // the first element returned should be the poi 'Le-Mée-sur-Seine Courtilleraies'
     let poi = geocodings.first().unwrap();
-    assert_eq!(get_value(poi, "type"), "poi");
+    assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "label"), "Le-Mée-sur-Seine Courtilleraies");
     assert_eq!(get_value(poi, "postcode"), "77350");
 }
@@ -88,7 +89,7 @@ fn poi_admin_test(bragi: &BragiHandler) {
     // with this search we should be able to find a poi called Melun Rp
     let geocodings = bragi.get("/autocomplete?q=Melun Rp");
     let types = get_types(&geocodings);
-    let count = count_types(&types, "poi");
+    let count = count_types(&types, Poi::doc_type());
     assert!(count >= 1);
 
     assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
@@ -111,7 +112,7 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     // search by zip code
     let geocodings = bragi.get("/autocomplete?q=77000&limit=15");
     let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, "poi"), 2);
+    assert_eq!(count_types(&types, Poi::doc_type()), 2);
     assert_eq!(count_types(&types, "city"), 3);
     assert_eq!(count_types(&types, "street"), 7);
 
@@ -135,16 +136,16 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     // search poi: Poi as a relation in osm data
     let geocodings = bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)");
     let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, "poi"), 1);
-    let first_poi = geocodings.iter().find(|e| get_value(e, "type") == "poi");
+    assert_eq!(count_types(&types, Poi::doc_type()), 1);
+    let first_poi = geocodings.iter().find(|e| get_value(e, "type") == Poi::doc_type());
     assert_eq!(get_value(first_poi.unwrap(), "citycode"), "91179");
 
     // search poi: Poi as a way in osm data
     let geocodings = bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)");
     let types = get_types(&geocodings);
-    assert!(count_types(&types, "poi") >= 1);
+    assert!(count_types(&types, Poi::doc_type()) >= 1);
     let poi = geocodings.first().unwrap();
-    assert_eq!(get_value(poi, "type"), "poi");
+    assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "id"), "poi:osm:way:112361498");
     assert_eq!(get_value(poi, "label"), "Hôtel de Ville (Melun)");
 
@@ -153,7 +154,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     // we should be able to query them
     let geocodings = bragi.get("/autocomplete?q=Parking");
     let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, "poi"), 5);
+    assert_eq!(count_types(&types, Poi::doc_type()), 5);
 
     // we search for a POI (id = 2561223) with a label but an empty coord
     // (barycenter not computed so far), it should be filtered.

@@ -36,6 +36,7 @@ use rs_es::units as rs_u;
 use mimir;
 use serde_json;
 use serde;
+use mimir::objects::{MimirObject, Admin, Addr, Stop};
 
 fn build_rs_client(cnx: &String) -> rs_es::Client {
     let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
@@ -87,9 +88,9 @@ fn build_query(q: &str,
     // we order the type of object we want
     // Note: the addresses are boosted more because even if we don't want them first
     // because they are more severely filtered
-    let boost_addr = rs_q::build_term("_type", "addr").with_boost(5000).build();
-    let boost_admin = rs_q::build_term("_type", "admin").with_boost(3000).build();
-    let boost_stop = rs_q::build_term("_type", "stop").with_boost(2000).build();
+    let boost_addr = rs_q::build_term("_type", Addr::doc_type()).with_boost(5000).build();
+    let boost_admin = rs_q::build_term("_type", Admin::doc_type()).with_boost(3000).build();
+    let boost_stop = rs_q::build_term("_type", Stop::doc_type()).with_boost(2000).build();
 
     let main_match_type = match match_type {
         MatchType::Prefix => "label.prefix",
@@ -198,7 +199,32 @@ fn build_query(q: &str,
         .build()
 }
 
+fn is_existing_index(client: &mut rs_es::Client, index: &String) -> bool {
+    !index.is_empty() && client.open_index(&index).is_ok()
+}
+
+fn make_indexes<'a>(all_data: bool,
+                    pt_dataset_index: &'a Option<String>,
+                    client: &mut rs_es::Client)
+                    -> Vec<&'a str> {
+    if all_data {
+        return vec!["munin"];
+    }
+    let mut result: Vec<&str> = vec![];
+    if is_existing_index(client, &"munin_geo_data".to_string()) {
+        result.push("munin_geo_data");
+    }
+    if let Some(ref dataset) = *pt_dataset_index {
+        if is_existing_index(client, dataset) {
+            result.push(dataset);
+        }
+    }
+    result
+}
+
 fn query(q: &str,
+         pt_dataset: &Option<&str>,
+         all_data: bool,
          cnx: &str,
          match_type: MatchType,
          offset: u64,
@@ -210,8 +236,11 @@ fn query(q: &str,
 
     let mut client = build_rs_client(&cnx.to_string());
 
+    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
+    let indexes = make_indexes(all_data, &pt_dataset_index, &mut client);
+
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
-        .with_indexes(&["munin"])
+        .with_indexes(&indexes)
         .with_query(&query)
         .with_from(offset)
         .with_size(limit)
@@ -229,6 +258,8 @@ fn query(q: &str,
 }
 
 pub fn autocomplete(q: &str,
+                    pt_dataset: &Option<&str>,
+                    all_data: bool,
                     offset: u64,
                     limit: u64,
                     coord: Option<model::Coord>,
@@ -242,6 +273,8 @@ pub fn autocomplete(q: &str,
     // First we try a prety exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = try!(query(&q,
+                             &pt_dataset,
+                             all_data,
                              cnx,
                              MatchType::Prefix,
                              offset,
@@ -250,6 +283,8 @@ pub fn autocomplete(q: &str,
                              make_shape(&shape)));
     if results.is_empty() {
         query(&q,
+              &pt_dataset,
+              all_data,
               cnx,
               MatchType::Fuzzy,
               offset,

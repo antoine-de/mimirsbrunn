@@ -64,17 +64,29 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     info!("Launching {}", stops2mimir);
     ::launch_and_assert(stops2mimir,
                         vec!["--input=./tests/fixtures/stops.txt".into(),
+                             "--dataset=dataset1".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
     stop_attached_to_admin_test(&bragi);
     stop_no_admin_test(&bragi);
+
+    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    info!("Launching {}", stops2mimir);
+    ::launch_and_assert(stops2mimir,
+                        vec!["--input=./tests/fixtures/stops_dataset2.txt".into(),
+                             "--dataset=dataset2".into(),
+                             format!("--connection-string={}", es_wrapper.host())],
+                        &es_wrapper);
+
+    stop_filtered_by_dataset_test(&bragi);
+    stop_all_data_test(&bragi);
 }
 
 
 fn stop_attached_to_admin_test(bragi: &BragiHandler) {
     // with this query we should find only one response, a stop
-    let response = bragi.get("/autocomplete?q=14 juillet");
+    let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
 
@@ -95,7 +107,7 @@ fn stop_attached_to_admin_test(bragi: &BragiHandler) {
 fn stop_no_admin_test(bragi: &BragiHandler) {
     // we query another stop, but this one is outside the range of an admin,
     // we should get the stop, but with no admin attached to it
-    let response = bragi.get("/autocomplete?q=Far west station");
+    let response = bragi.get("/autocomplete?q=Far west station&_all_data=true");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
 
@@ -106,4 +118,47 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "city"), "");
     let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
+}
+
+fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
+    // Search stops on all aliases
+    let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
+    assert_eq!(response.len(), 2);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
+
+    let stop = response.last().unwrap();
+    assert_eq!(get_value(stop, "id"),
+               "stop_area:SA:second_station:dataset2");
+
+    // filter by dataset1
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1");
+
+    assert_eq!(response.len(), 1);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
+    // filter by dataset2
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset2");
+
+    assert_eq!(response.len(), 1);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"),
+               "stop_area:SA:second_station:dataset2");
+}
+
+fn stop_all_data_test(bragi: &BragiHandler) {
+    // search without _all_data, default value : _all_data = false
+    let response = bragi.get("/autocomplete?q=14 juillet");
+    assert_eq!(response.len(), 0);
+
+    // search wiht _all_data = false
+    let response = bragi.get("/autocomplete?q=14 juillet&_all_data=false");
+    assert_eq!(response.len(), 0);
+
+    // search wiht _all_data = true
+    let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
+    assert_eq!(response.len(), 2);
 }
