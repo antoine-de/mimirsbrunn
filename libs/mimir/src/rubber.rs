@@ -37,7 +37,6 @@ use hyper::status::StatusCode;
 use rs_es::error::EsError;
 use rs_es;
 use rs_es::EsResponse;
-use serde;
 use serde_json;
 use rs_es::operations::search::ScanResult;
 
@@ -251,7 +250,7 @@ impl Rubber {
                             index: &String,
                             iter: I)
                             -> Result<usize, rs_es::error::EsError>
-        where T: serde::Serialize + MimirObject,
+        where T: MimirObject,
               I: Iterator<Item = T>
     {
         use rs_es::operations::bulk::Action;
@@ -286,7 +285,7 @@ impl Rubber {
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
     pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, String>
-        where T: serde::Serialize + MimirObject,
+        where T: MimirObject,
               I: Iterator<Item = T>
     {
         // TODO better error handling
