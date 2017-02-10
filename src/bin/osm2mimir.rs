@@ -37,8 +37,7 @@ extern crate rustc_serialize;
 
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
-use mimirsbrunn::osm_reader::poi::{PoiTypes, pois, default_osm_amenity_types_read,
-                                   default_osm_leisure_types_read, compute_poi_weight};
+use mimirsbrunn::osm_reader::poi::{pois, compute_poi_weight, PoiConfig};
 use mimirsbrunn::osm_reader::street::{streets, compute_street_weight};
 use mimirsbrunn::osm_reader::parse_osm_pbf;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -54,37 +53,26 @@ struct Args {
     flag_import_admin: bool,
     flag_import_poi: bool,
     flag_dataset: String,
+    flag_poi_config: Option<String>,
 }
 
-static USAGE: &'static str =
-    "
-Usage:
+static USAGE: &'static str = r#"Usage:
     osm2mimir --help
-    osm2mimir --input=<file> \
-     [--connection-string=<connection-string>] [--import-way] [--import-admin] [--import-poi] \
-     [--dataset=<dataset>] [--city-level=<level>] --level=<level> ...
+    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--import-poi] [--dataset=<dataset>] [--city-level=<level>] --level=<level> ...
 
 Options:
-    -h, --help              \
-     Show this message.
-    -i, --input=<file>      OSM PBF file.
-    -l, --level=<level>     \
-     Admin levels to keep.
-    -C, --city-level=<level>
-                            City level to \
-     calculate weight, [default: 8]
-    -w, --import-way        Import ways
-    -a, \
-     --import-admin      Import admins
-    -p, --import-poi        Import POIs
-    -c, \
-     --connection-string=<connection-string>
-                            Elasticsearch \
-     parameters, [default: http://localhost:9200/munin]
-    -d, --dataset=<dataset>
-                            \
-     Name of the dataset, [default: fr]
-";
+    -h, --help                Show this message.
+    -i, --input=<file>        OSM PBF file.
+    -l, --level=<level>       Admin levels to keep.
+    -C, --city-level=<level>  City level to  calculate weight, [default: 8]
+    -w, --import-way          Import ways
+    -a, --import-admin        Import admins
+    -p, --import-poi          Import POIs
+    -c, --connection-string=<connection-string>
+                              Elasticsearch parameters, [default: http://localhost:9200/munin]
+    -d, --dataset=<dataset>   Name of the dataset, [default: fr]
+    -j, --poi-config=<json>   POI configuration
+"#;
 
 fn main() {
     mimir::logger_init().unwrap();
@@ -123,12 +111,16 @@ fn main() {
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.flag_import_poi {
-        let mut poi_types = PoiTypes::new();
-        poi_types.insert("amenity".to_string(), default_osm_amenity_types_read());
-        poi_types.insert("leisure".to_string(), default_osm_leisure_types_read());
-
+        let matcher = match args.flag_poi_config {
+            None => PoiConfig::default(),
+            Some(filename) => {
+                let path = std::path::Path::new(&filename);
+                let r = std::fs::File::open(&path).unwrap();
+                PoiConfig::from_reader(r).unwrap()
+            }
+        };
         info!("Extracting pois from osm");
-        let mut pois = pois(&mut parsed_pbf, poi_types, &admins_geofinder, city_level);
+        let mut pois = pois(&mut parsed_pbf, &matcher, &admins_geofinder, city_level);
 
         info!("computing poi weight");
         compute_poi_weight(&mut pois, city_level);

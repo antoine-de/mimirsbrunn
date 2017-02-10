@@ -39,6 +39,10 @@ extern crate geo;
 extern crate itertools;
 #[macro_use]
 extern crate mdo;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 
 pub mod boundaries;
 pub mod admin_geofinder;
