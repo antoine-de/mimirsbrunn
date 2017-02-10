@@ -58,7 +58,7 @@ struct Args {
 
 static USAGE: &'static str = r#"Usage:
     osm2mimir --help
-    osm2mimir --input=<file> [--connection-string=<connection-string>] [--import-way] [--import-admin] [--import-poi] [--dataset=<dataset>] [--city-level=<level>] --level=<level> ...
+    osm2mimir [options] --input=<file> --level=<level> ...
 
 Options:
     -h, --help                Show this message.
