@@ -132,7 +132,9 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
         .filter_map(|r| {
             let obj = objects.get(&r.member);
             if obj.is_none() {
-                debug!("missing element {:?} for relation {}", r.member, relation.id.0);
+                debug!("missing element {:?} for relation {}",
+                       r.member,
+                       relation.id.0);
             }
             obj
         })

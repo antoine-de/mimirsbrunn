@@ -76,9 +76,13 @@ impl PoiConfig {
         Ok(res)
     }
     pub fn get_poi_id(&self, tags: &osmpbfreader::Tags) -> Option<&str> {
-        self.rules.iter()
-            .find(|rule| rule.osm_tags_filters.iter()
-                  .all(|f| tags.get(&f.key).map_or(false, |v| v == &f.value)))
+        self.rules
+            .iter()
+            .find(|rule| {
+                rule.osm_tags_filters
+                    .iter()
+                    .all(|f| tags.get(&f.key).map_or(false, |v| v == &f.value))
+            })
             .map(|rule| rule.poi_type_id.as_str())
     }
     pub fn check(&self) -> Result<(), Box<Error>> {
@@ -257,12 +261,21 @@ mod tests {
     fn default_test() {
         let c = PoiConfig::default();
         assert!(c.get_poi_id(&tags(&[])).is_none());
-        for s in &["college", "university", "theatre", "hospital", "post_office",
-                   "bicycle_rental", "bicycle_parking", "parking", "police"] {
-            assert_eq!(format!("amenity:{}", s), c.get_poi_id(&tags(&[("amenity", s)])).unwrap());
+        for s in &["college",
+                   "university",
+                   "theatre",
+                   "hospital",
+                   "post_office",
+                   "bicycle_rental",
+                   "bicycle_parking",
+                   "parking",
+                   "police"] {
+            assert_eq!(format!("amenity:{}", s),
+                       c.get_poi_id(&tags(&[("amenity", s)])).unwrap());
         }
         for s in &["garden", "park"] {
-            assert_eq!(format!("leisure:{}", s), c.get_poi_id(&tags(&[("leisure", s)])).unwrap());
+            assert_eq!(format!("leisure:{}", s),
+                       c.get_poi_id(&tags(&[("leisure", s)])).unwrap());
         }
     }
     #[test]
@@ -286,7 +299,8 @@ mod tests {
                 {"id": "bob", "name": "Bobitto"}
             ],
             "rules": []
-        }"#).unwrap_err();
+        }"#)
+            .unwrap_err();
         from_str(r#"{
             "poi_types": [{"id": "bob", "name": "Bob"}],
             "rules": [
@@ -295,7 +309,8 @@ mod tests {
                     "poi_type_id": "bobette"
                 }
             ]
-        }"#).unwrap_err();
+        }"#)
+            .unwrap_err();
     }
     #[test]
     fn check_with_colon() {
