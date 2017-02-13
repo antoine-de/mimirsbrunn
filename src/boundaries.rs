@@ -179,10 +179,14 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
             }
             if current == first {
                 // our polygon is closed, we create it and add it to the multipolygon
-                let outer = outer.iter().map(|n| Point(Coordinate {
-                    x: n.lat(),
-                    y: n.lon(),
-                })).collect();
+                let outer = outer.iter()
+                    .map(|n| {
+                        Point(Coordinate {
+                            x: n.lat(),
+                            y: n.lon(),
+                        })
+                    })
+                    .collect();
                 multipoly.0.push(Polygon::new(LineString(outer), vec![]));
                 break;
             }
@@ -283,8 +287,10 @@ fn test_build_bounadry_closed_reverse() {
 fn test_build_one_boundary_closed() {
     let mut builder = osm_builder::OsmBuilder::new();
     let rel_id = builder.relation()
-        .outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1"),
-                    named_node(2.4, 3.1, "2"), named_node(6.4, 6.1, "start")])
+        .outer(vec![named_node(3.4, 5.2, "start"),
+                    named_node(5.4, 5.1, "1"),
+                    named_node(2.4, 3.1, "2"),
+                    named_node(6.4, 6.1, "start")])
         .relation_id
         .into();
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
@@ -301,10 +307,14 @@ fn test_build_one_boundary_closed() {
 fn test_build_two_boundary_closed() {
     let mut builder = osm_builder::OsmBuilder::new();
     let rel_id = builder.relation()
-        .outer(vec![named_node(3.4, 5.2, "start"), named_node(5.4, 5.1, "1"),
-                    named_node(2.4, 3.1, "2"), named_node(6.4, 6.1, "start")])
-        .outer(vec![named_node(13.4, 15.2, "1start"), named_node(15.4, 15.1, "11"),
-                    named_node(12.4, 13.1, "12"), named_node(16.4, 16.1, "1start")])
+        .outer(vec![named_node(3.4, 5.2, "start"),
+                    named_node(5.4, 5.1, "1"),
+                    named_node(2.4, 3.1, "2"),
+                    named_node(6.4, 6.1, "start")])
+        .outer(vec![named_node(13.4, 15.2, "1start"),
+                    named_node(15.4, 15.1, "11"),
+                    named_node(12.4, 13.1, "12"),
+                    named_node(16.4, 16.1, "1start")])
         .relation_id
         .into();
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
