@@ -19,7 +19,8 @@ rs-es = "0.5"
 serde = "0.8"
 serde_json = "0.8"
 serde_derive = "0.8"
-geojson = { version="*", features=["with-serde"]}
+rs-es = "^0.8"
+geojson = "*"
 geo = "^0.3"
 
 [dependencies.mimir]

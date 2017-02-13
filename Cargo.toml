@@ -2,7 +2,6 @@
 name = "mimirsbrunn"
 version = "1.2.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
-build = "build.rs"
 
 [workspace]
 
