@@ -154,7 +154,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     // we should be able to query them
     let geocodings = bragi.get("/autocomplete?q=Parking");
     let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, Poi::doc_type()), 5);
+    assert_eq!(count_types(&types, Poi::doc_type()), 8);
 
     // we search for a POI (id = 2561223) with a label but an empty coord
     // (barycenter not computed so far), it should be filtered.

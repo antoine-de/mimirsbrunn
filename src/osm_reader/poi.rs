@@ -195,20 +195,13 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         }
     };
 
-    let name = osmobj.tags().get("name").or_else(|| osmobj.tags().get("amenity"));
+    let name = osmobj.tags().get("name").unwrap_or(&poi_type.name);
 
     if coord.is_default() {
         info!("The poi {} is rejected, cause: could not compute coordinates.",
               id);
         return None;
     }
-
-    let name = if let Some(s) = name {
-        s
-    } else {
-        info!("The poi {} is rejected, cause: could not compute name.", id);
-        return None;
-    };
 
     let adms = admins_geofinder.get(&coord);
     let zip_codes = match osmobj.tags().get("addr:postcode") {
