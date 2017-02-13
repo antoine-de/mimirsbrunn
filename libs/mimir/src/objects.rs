@@ -135,7 +135,7 @@ impl<'a, T: MimirObject> MimirObject for &'a T {
     }
 }
 
-impl<'a, T: MimirObject> MimirObject for &'a  Rc<T> {
+impl<'a, T: MimirObject> MimirObject for &'a Rc<T> {
     fn is_geo_data() -> bool {
         T::is_geo_data()
     }
@@ -230,7 +230,8 @@ pub struct Admin {
     #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
     pub weight: Cell<u32>,
     pub coord: Coord,
-    #[serde(serialize_with="custom_multi_polygon_serialize", deserialize_with="custom_multi_polygon_deserialize")]
+    #[serde(serialize_with="custom_multi_polygon_serialize",
+            deserialize_with="custom_multi_polygon_deserialize")]
     pub boundary: Option<geo::MultiPolygon<f64>>,
 }
 
@@ -259,23 +260,19 @@ fn custom_multi_polygon_deserialize<D>(d: &mut D)
     use geojson::conversion::TryInto;
 
     Option::<geojson::GeoJson>::deserialize(d).map(|option| {
-        option.and_then(|geojson| {
-            match geojson {
-                geojson::GeoJson::Geometry(geojson_geom) => {
-                    let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
-                    match geo_geom {
-                        Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => {
-                            Some(geo_multi_polygon)
-                        }
-                        Ok(_) => None,
-                        Err(e) => {
-                            warn!("Error deserializing geometry: {}", e);
-                            None
-                        }
+        option.and_then(|geojson| match geojson {
+            geojson::GeoJson::Geometry(geojson_geom) => {
+                let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
+                match geo_geom {
+                    Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => Some(geo_multi_polygon),
+                    Ok(_) => None,
+                    Err(e) => {
+                        warn!("Error deserializing geometry: {}", e);
+                        None
                     }
                 }
-                _ => None,
             }
+            _ => None,
         })
     })
 }
@@ -312,8 +309,8 @@ impl Eq for Admin {}
 fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error>
     where S: Serializer
 {
-    // we can serialize the cell as a u32, since the reference is important only while loading the data
-    // in ES but not in bragi
+    // we can serialize the cell as a u32, since the reference is
+    // important only while loading the data in ES but not in bragi
     serializer.serialize_u32(cell.get())
 }
 

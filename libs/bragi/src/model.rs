@@ -57,7 +57,7 @@ pub struct Properties {
 pub struct GeocodingResponse {
     pub id: String,
     #[serde(rename="type")]
-    pub place_type: String, /* TODO enum cf https://github.com/geocoders/geocodejson-spec/blob/master/draft/README.md#feature-object */
+    pub place_type: String, // FIXME: use an enum?
     pub label: Option<String>,
     pub name: Option<String>,
     #[serde(skip_serializing_if="Option::is_none")]
