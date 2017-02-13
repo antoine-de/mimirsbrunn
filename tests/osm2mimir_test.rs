@@ -108,9 +108,11 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let res: Vec<_> =
         es_wrapper.search_and_filter("label:Le-Mée-sur-Seine Courtilleraies", |_| true).collect();
     assert!(res.len() != 0);
-    assert!(res.iter().any(|r| r.is_poi()));
+    assert!(res.iter()
+        .any(|r| r.poi().map_or(false, |poi| poi.poi_type.id == "amenity:post_office")));
 
     let res: Vec<_> = es_wrapper.search_and_filter("label:Melun Rp", |_| true).collect();
     assert!(res.len() != 0);
-    assert!(res.iter().any(|r| r.is_poi()));
+    assert!(res.iter()
+        .any(|r| r.poi().map_or(false, |poi| poi.poi_type.id == "amenity:post_office")));
 }

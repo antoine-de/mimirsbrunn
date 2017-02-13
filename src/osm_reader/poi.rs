@@ -40,13 +40,8 @@ use boundaries::{build_boundary, make_centroid};
 use utils::{format_label, get_zip_codes_from_admins};
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
-use mimir::Poi;
+use mimir::{Poi, PoiType};
 
-#[derive(Serialize, Deserialize, Debug)]
-struct PoiType {
-    id: String,
-    name: String,
-}
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {
     key: String,
@@ -76,6 +71,9 @@ impl PoiConfig {
         Ok(res)
     }
     pub fn get_poi_id(&self, tags: &osmpbfreader::Tags) -> Option<&str> {
+        self.get_poi_type(tags).map(|poi_type| poi_type.id.as_str())
+    }
+    pub fn get_poi_type(&self, tags: &osmpbfreader::Tags) -> Option<&PoiType> {
         self.rules
             .iter()
             .find(|rule| {
@@ -83,7 +81,7 @@ impl PoiConfig {
                     .iter()
                     .all(|f| tags.get(&f.key).map_or(false, |v| v == &f.value))
             })
-            .map(|rule| rule.poi_type_id.as_str())
+            .and_then(|rule| self.poi_types.iter().find(|poi_type| poi_type.id == rule.poi_type_id))
     }
     pub fn check(&self) -> Result<(), Box<Error>> {
         use std::collections::BTreeSet;
@@ -172,9 +170,18 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 
 fn parse_poi(osmobj: &osmpbfreader::OsmObj,
              obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+             matcher: &PoiConfig,
              admins_geofinder: &AdminGeoFinder,
              city_level: u32)
              -> Option<mimir::Poi> {
+    let poi_type = match matcher.get_poi_type(osmobj.tags()) {
+        Some(poi_type) => poi_type,
+        None => {
+            warn!("The poi {:?} has no tags even if it passes the filters",
+                  osmobj.id());
+            return None;
+        }
+    };
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => {
             (format_poi_id("node", node.id.0), mimir::Coord::new(node.lat(), node.lon()))
@@ -216,11 +223,12 @@ fn parse_poi(osmobj: &osmpbfreader::OsmObj,
         zip_codes: zip_codes,
         administrative_regions: adms,
         weight: 1,
+        poi_type: poi_type.clone(),
     })
 }
 
-fn format_poi_id(_type: &str, id: i64) -> String {
-    format!("poi:osm:{}:{}", _type, id)
+fn format_poi_id(osm_type: &str, id: i64) -> String {
+    format!("poi:osm:{}:{}", osm_type, id)
 }
 
 pub fn pois(pbf: &mut OsmPbfReader,
@@ -231,7 +239,7 @@ pub fn pois(pbf: &mut OsmPbfReader,
     let objects = pbf.get_objs_and_deps(|o| matcher.get_poi_id(o.tags()).is_some()).unwrap();
     objects.iter()
         .filter(|&(_, obj)| matcher.get_poi_id(obj.tags()).is_some())
-        .filter_map(|(_, obj)| parse_poi(obj, &objects, admins_geofinder, city_level))
+        .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder, city_level))
         .collect()
 }
 

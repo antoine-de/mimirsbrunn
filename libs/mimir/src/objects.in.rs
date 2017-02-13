@@ -84,6 +84,12 @@ impl Place {
             _ => false,
         }
     }
+    pub fn poi(&self) -> Option<&Poi> {
+        match *self {
+            Place::Poi(ref poi) => Some(poi),
+            _ => None,
+        }
+    }
 
     pub fn label(&self) -> &str {
         match *self {
@@ -150,6 +156,13 @@ pub struct Poi {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub weight: u32,
     pub zip_codes: Vec<String>,
+    pub poi_type: PoiType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PoiType {
+    pub id: String,
+    pub name: String,
 }
 
 impl MimirObject for Poi {
