@@ -35,9 +35,6 @@ use std::cell::Cell;
 use serde::ser::Serializer;
 use std::cmp::Ordering;
 
-// Note: this file is needed to use serde in rust stable
-// cf mimirsbrunn/build.rs for explanations
-
 pub trait Incr: Clone {
     fn id(&self) -> &str;
     fn incr(&mut self);

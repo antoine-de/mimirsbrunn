@@ -70,6 +70,9 @@ impl PoiConfig {
         try!(res.check());
         Ok(res)
     }
+    pub fn is_poi(&self, tags: &osmpbfreader::Tags) -> bool {
+        self.get_poi_type(tags).is_some()
+    }
     pub fn get_poi_id(&self, tags: &osmpbfreader::Tags) -> Option<&str> {
         self.get_poi_type(tags).map(|poi_type| poi_type.id.as_str())
     }
@@ -229,9 +232,9 @@ pub fn pois(pbf: &mut OsmPbfReader,
             admins_geofinder: &AdminGeoFinder,
             city_level: u32)
             -> Vec<Poi> {
-    let objects = pbf.get_objs_and_deps(|o| matcher.get_poi_id(o.tags()).is_some()).unwrap();
+    let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o.tags())).unwrap();
     objects.iter()
-        .filter(|&(_, obj)| matcher.get_poi_id(obj.tags()).is_some())
+        .filter(|&(_, obj)| matcher.is_poi(obj.tags()))
         .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder, city_level))
         .collect()
 }
