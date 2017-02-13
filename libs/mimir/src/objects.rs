@@ -231,7 +231,9 @@ pub struct Admin {
     pub weight: Cell<u32>,
     pub coord: Coord,
     #[serde(serialize_with="custom_multi_polygon_serialize",
-            deserialize_with="custom_multi_polygon_deserialize")]
+            deserialize_with="custom_multi_polygon_deserialize",
+            skip_serializing_if="Option::is_none",
+            default)]
     pub boundary: Option<geo::MultiPolygon<f64>>,
 }
 
