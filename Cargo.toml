@@ -25,28 +25,20 @@ mdo = "*"
 itertools = "*"
 
 [dev-dependencies]
-serde_json = "*"
 hyper = "^0.9"
 iron-test = "*"
 rustless = "*"
 iron = "*"
 mime = "0.2"
 
-[features]
-default = ["bragi/default", "mimir/default"]
-nightly = ["bragi/nightly", "mimir/nightly"]
-
 [dependencies.bragi]
 path = "libs/bragi"
-default-features = false
 
 [dependencies.mimir]
 path = "libs/mimir"
-default-features = false
 
 [dependencies.osm_builder]
 path = "libs/osm_builder"
-default-features = false
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"
