@@ -76,6 +76,8 @@ pub struct GeocodingResponse {
     // pub country: Option<String>,
     // pub geohash: Option<String>,
     pub administrative_regions: Vec<Rc<mimir::Admin>>,
+    #[serde(skip_serializing_if="Vec::is_empty", default)]
+    pub poi_types: Vec<mimir::PoiType>,
 }
 
 trait ToGeom {
@@ -142,6 +144,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             street: None,
             city: None,
             administrative_regions: vec![],
+            poi_types: vec![],
         }
     }
 }
@@ -189,6 +192,7 @@ impl From<mimir::Street> for GeocodingResponse {
             street: None,
             city: city,
             administrative_regions: admins,
+            poi_types: vec![],
         }
     }
 }
@@ -221,6 +225,7 @@ impl From<mimir::Addr> for GeocodingResponse {
             street: street_name,
             city: city,
             administrative_regions: admins,
+            poi_types: vec![],
         }
     }
 }
@@ -251,6 +256,7 @@ impl From<mimir::Poi> for GeocodingResponse {
             street: None,
             city: city,
             administrative_regions: admins,
+            poi_types: vec![other.poi_type],
         }
     }
 }
@@ -281,6 +287,7 @@ impl From<mimir::Stop> for GeocodingResponse {
             street: None,
             city: city,
             administrative_regions: admins,
+            poi_types: vec![],
         }
     }
 }

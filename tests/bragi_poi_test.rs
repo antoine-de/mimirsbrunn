@@ -31,6 +31,8 @@
 extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
+use std::collections::BTreeMap;
+use serde_json::Value;
 use super::BragiHandler;
 use super::get_values;
 use super::get_value;
@@ -132,13 +134,25 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     assert_eq!(all_20.len(), 2);
 }
 
+fn get_poi_type_ids(e: &BTreeMap<String, Value>) -> Vec<&str> {
+    let array = match e.get("poi_types").and_then(|json| json.as_array()) {
+        None => return vec![],
+        Some(array) => array,
+    };
+    array.iter()
+        .filter_map(|v| v.as_object().and_then(|o| o.get("id")))
+        .filter_map(|o| o.as_str())
+        .collect()
+}
+
 fn poi_from_osm_test(bragi: &BragiHandler) {
     // search poi: Poi as a relation in osm data
     let geocodings = bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, Poi::doc_type()), 1);
-    let first_poi = geocodings.iter().find(|e| get_value(e, "type") == Poi::doc_type());
-    assert_eq!(get_value(first_poi.unwrap(), "citycode"), "91179");
+    let first_poi = geocodings.iter().find(|e| get_value(e, "type") == Poi::doc_type()).unwrap();
+    assert_eq!(get_value(first_poi, "citycode"), "91179");
+    assert_eq!(get_poi_type_ids(first_poi), &["amenity:parking"]);
 
     // search poi: Poi as a way in osm data
     let geocodings = bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)");
@@ -148,6 +162,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "id"), "poi:osm:way:112361498");
     assert_eq!(get_value(poi, "label"), "Hôtel de Ville (Melun)");
+    assert_eq!(get_poi_type_ids(poi), &["amenity:townhall"]);
 
     // we search for POIs with a type but an empty name, we should have set the name with the type.
     // for exemple there are parkings without name (but with the tag "anemity" = "Parking"),
