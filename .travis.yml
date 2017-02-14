@@ -17,12 +17,7 @@ script:
   - (cd libs/docker_wrapper && cargo fmt -- --write-mode=diff)
   - (cd libs/mimir && cargo fmt -- --write-mode=diff)
   - (cd libs/osm_builder && cargo fmt -- --write-mode=diff)
-  - cargo test
-  - test $TRAVIS_RUST_VERSION != nightly || cargo test --no-default-features --features nightly
-  - (cd libs/bragi && cargo test)
-  - (cd libs/mimir && cargo test)
-  - test $TRAVIS_RUST_VERSION != nightly || (cd libs/bragi && cargo test --no-default-features --features nightly)
-  - test $TRAVIS_RUST_VERSION != nightly || (cd libs/mimir && cargo test --no-default-features --features nightly)
+  - cargo test --all
 
 services:
   - docker

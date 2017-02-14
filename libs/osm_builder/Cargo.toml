@@ -3,13 +3,8 @@ name = "osm_builder"
 version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
-[features]
-default = ["mimir/default"]
-nightly = ["mimir/nightly"]
-
 [dependencies]
 osmpbfreader = "*"
 
 [dependencies.mimir]
 path = "../mimir"
-default-features = false

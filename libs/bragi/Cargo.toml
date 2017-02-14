@@ -2,7 +2,6 @@
 name = "bragi"
 version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
-build = "build.rs"
 
 [dependencies]
 docopt = "*"
@@ -19,18 +18,9 @@ valico = "1.0"
 rs-es = "0.5"
 serde = "0.8"
 serde_json = "0.8"
-serde_derive = { version = "0.8", optional = true }
-# we temporarily use our own git while geojson hasn't merged our PR on deserialization
+serde_derive = "0.8"
 geojson = { version="*", features=["with-serde"]}
 geo = "^0.3"
 
-[features]
-default = ["serde_codegen", "mimir/default"]
-nightly = ["serde_derive", "mimir/nightly"]
-
-[build-dependencies]
-serde_codegen = { version = "0.8", optional = true }
-
 [dependencies.mimir]
 path = "../mimir"
-default-features = false
