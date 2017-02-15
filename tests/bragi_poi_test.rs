@@ -152,7 +152,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     assert_eq!(count_types(&types, Poi::doc_type()), 1);
     let first_poi = geocodings.iter().find(|e| get_value(e, "type") == Poi::doc_type()).unwrap();
     assert_eq!(get_value(first_poi, "citycode"), "91179");
-    assert_eq!(get_poi_type_ids(first_poi), &["amenity:parking"]);
+    assert_eq!(get_poi_type_ids(first_poi), &["poi_type:amenity:parking"]);
 
     // search poi: Poi as a way in osm data
     let geocodings = bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)");
@@ -162,7 +162,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "id"), "poi:osm:way:112361498");
     assert_eq!(get_value(poi, "label"), "Hôtel de Ville (Melun)");
-    assert_eq!(get_poi_type_ids(poi), &["amenity:townhall"]);
+    assert_eq!(get_poi_type_ids(poi), &["poi_type:amenity:townhall"]);
 
     // we search for POIs with a type but an empty name, we should have set the name with the type.
     // for exemple there are parkings without name (but with the tag "anemity" = "Parking"),

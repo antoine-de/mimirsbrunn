@@ -59,15 +59,17 @@ pub struct PoiConfig {
 }
 impl Default for PoiConfig {
     fn default() -> Self {
-        let res: PoiConfig = serde_json::from_str(DEFAULT_JSON_POI_TYPES).unwrap();
+        let mut res: PoiConfig = serde_json::from_str(DEFAULT_JSON_POI_TYPES).unwrap();
         res.check().unwrap();
+        res.convert_id();
         res
     }
 }
 impl PoiConfig {
     pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<Error>> {
-        let res: PoiConfig = try!(serde_json::from_reader(r));
+        let mut res: PoiConfig = try!(serde_json::from_reader(r));
         try!(res.check());
+        res.convert_id();
         Ok(res)
     }
     pub fn is_poi(&self, tags: &osmpbfreader::Tags) -> bool {
@@ -100,6 +102,14 @@ impl PoiConfig {
             }
         }
         Ok(())
+    }
+    fn convert_id(&mut self) {
+        for poi_type in &mut self.poi_types {
+            poi_type.id = format!("poi_type:{}", poi_type.id);
+        }
+        for rule in &mut self.rules {
+            rule.poi_type_id = format!("poi_type:{}", rule.poi_type_id);
+        }
     }
 }
 const DEFAULT_JSON_POI_TYPES: &'static str = r#"
@@ -274,11 +284,11 @@ mod tests {
                    "bicycle_parking",
                    "parking",
                    "police"] {
-            assert_eq!(format!("amenity:{}", s),
+            assert_eq!(format!("poi_type:amenity:{}", s),
                        c.get_poi_id(&tags(&[("amenity", s)])).unwrap());
         }
         for s in &["garden", "park"] {
-            assert_eq!(format!("leisure:{}", s),
+            assert_eq!(format!("poi_type:leisure:{}", s),
                        c.get_poi_id(&tags(&[("leisure", s)])).unwrap());
         }
     }
@@ -339,9 +349,9 @@ mod tests {
             ]
         }"#;
         let c = from_str(json).unwrap();
-        assert_eq!(Some("amenity:bicycle_rental"),
+        assert_eq!(Some("poi_type:amenity:bicycle_rental"),
                    c.get_poi_id(&tags(&[("amenity:bicycle_rental", "true")])));
-        assert_eq!(Some("amenity:parking"),
+        assert_eq!(Some("poi_type:amenity:parking"),
                    c.get_poi_id(&tags(&[("amenity", "parking:effia")])));
     }
     #[test]
@@ -382,13 +392,13 @@ mod tests {
             ]
         }"#;
         let c = from_str(json).unwrap();
-        assert_eq!(Some("bob"),
+        assert_eq!(Some("poi_type:bob"),
                    c.get_poi_id(&tags(&[("bob", "bobette"), ("titi", "tata"), ("foo", "bar")])));
-        assert_eq!(Some("titi"),
+        assert_eq!(Some("poi_type:titi"),
                    c.get_poi_id(&tags(&[("bob", "bobitta"), ("titi", "toto"), ("foo", "bar")])));
-        assert_eq!(Some("bob_titi"),
+        assert_eq!(Some("poi_type:bob_titi"),
                    c.get_poi_id(&tags(&[("bob", "bobette"), ("titi", "toto"), ("foo", "bar")])));
-        assert_eq!(Some("foo"),
+        assert_eq!(Some("poi_type:foo"),
                    c.get_poi_id(&tags(&[("bob", "bobitta"), ("titi", "tata"), ("foo", "bar")])));
     }
 }
