@@ -21,6 +21,7 @@ serde_json = "0.8"
 serde_derive = "0.8"
 geojson = { version="*", features=["with-serde"]}
 geo = "^0.3"
+queryst = { git = "https://github.com/datanel/queryst", branch = "decode-params" }
 
 [dependencies.mimir]
 path = "../mimir"

@@ -143,7 +143,8 @@ impl ApiEndPoint {
                                 });
                             });
                         });
-                    })
+                    });
+                    params.opt_typed("type", json_dsl::encoded_array(","));
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -167,6 +168,9 @@ impl ApiEndPoint {
                         shape.push((ar.as_array().unwrap()[1].as_f64().unwrap(),
                                     ar.as_array().unwrap()[0].as_f64().unwrap()));
                     }
+                    let types = params.find("type")
+                        .and_then(|val| val.as_array())
+                        .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect());
                     let model_autocomplete = query::autocomplete(&q,
                                                                  &pt_dataset,
                                                                  all_data,
@@ -174,7 +178,8 @@ impl ApiEndPoint {
                                                                  limit,
                                                                  None,
                                                                  &cnx,
-                                                                 Some(shape));
+                                                                 Some(shape),
+                                                                 types);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -200,6 +205,7 @@ impl ApiEndPoint {
                             check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
                         });
                     });
+                    params.opt_typed("type", json_dsl::encoded_array(","));
                     params.validate_with(|val, path| {
                         // if we have a lat we should have a lon (and the opposite)
                         if let Some(obj) = val.as_object() {
@@ -242,6 +248,11 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
+
+                    let types = params.find("type")
+                        .and_then(|val| val.as_array())
+                        .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect());
+
                     let model_autocomplete = query::autocomplete(&q,
                                                                  &pt_dataset,
                                                                  all_data,
@@ -249,7 +260,8 @@ impl ApiEndPoint {
                                                                  limit,
                                                                  coord,
                                                                  &cnx,
-                                                                 None);
+                                                                 None,
+                                                                 types);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
