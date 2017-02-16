@@ -49,19 +49,30 @@ pub mod objects;
 pub mod rubber;
 pub use objects::*;
 use chrono::Local;
+use std::env;
 
 pub fn logger_init() -> Result<(), log::SetLoggerError> {
     let mut builder = env_logger::LogBuilder::new();
 
-    builder.filter(None, log::LogLevelFilter::Info)
-        .format(|record| {
+    if env::var("LOG_TIME").ok().map_or(false, |s| s == "1") {
+        builder.format(|record| {
             format!("[{time}]{lvl}:{loc}: {msg}",
                     time = Local::now(),
                     lvl = record.level(),
                     loc = record.location().module_path(),
                     msg = record.args())
         });
-    if let Ok(s) = std::env::var("RUST_LOG") {
+    } else {
+        builder.format(|record| {
+            format!("{lvl}:{loc}: {msg}",
+                    lvl = record.level(),
+                    loc = record.location().module_path(),
+                    msg = record.args())
+        });
+    }
+
+    builder.filter(None, log::LogLevelFilter::Info);
+    if let Ok(s) = env::var("RUST_LOG") {
         builder.parse(&s);
     }
     builder.init()
