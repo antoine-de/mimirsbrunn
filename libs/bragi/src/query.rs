@@ -227,11 +227,11 @@ fn make_indexes_impl<'a, F: FnMut(&str) -> bool>(all_data: bool,
     if let Some(ref types) = *types {
         let mut indexes = vec![];
         for a_type in types {
-            if *a_type != "stop_area" {
+            if *a_type != "public_transport:stop_area" {
                 indexes.push(get_indexes_by_type(a_type));
             }
         }
-        if pt_dataset_index.is_some() && types.contains(&"stop_area") {
+        if pt_dataset_index.is_some() && types.contains(&"public_transport:stop_area") {
             indexes.push(pt_dataset_index.clone().unwrap());
         }
 
@@ -366,25 +366,36 @@ fn test_make_indexes_impl() {
                                  |_index| true),
                vec!["munin_geo_data", "munin_stop_fr"]);
 
-    // no dataset + types poi, city, address and stop_area => munin_stop is not included
+    // no dataset + types poi, city, street, house and public_transport:stop_area => munin_stop is not included
     assert_eq!(make_indexes_impl(false,
                                  &None,
-                                 &Some(vec!["poi", "city", "street", "house", "stop_area"]),
+                                 &Some(vec!["poi",
+                                            "city",
+                                            "street",
+                                            "house",
+                                            "public_transport:stop_area"]),
                                  |_index| true),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
 
-    // no dataset fr + type stop_area only
-    assert_eq!(make_indexes_impl(false, &None, &Some(vec!["stop_area"]), |_index| true),
+    // no dataset fr + type public_transport:stop_area only
+    assert_eq!(make_indexes_impl(false,
+                                 &None,
+                                 &Some(vec!["public_transport:stop_area"]),
+                                 |_index| true),
                vec!["munin_geo_data"]);
 
-    // dataset fr + types poi, city, address and stop_area
+    // dataset fr + types poi, city, street, house and public_transport:stop_area
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
-                                 &Some(vec!["poi", "city", "street", "house", "stop_area"]),
+                                 &Some(vec!["poi",
+                                            "city",
+                                            "street",
+                                            "house",
+                                            "public_transport:stop_area"]),
                                  |_index| true),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr", "munin_stop_fr"]);
 
-    // dataset fr types poi, city, address without stop_area
+    // dataset fr types poi, city, street, house without public_transport:stop_area
     //  => munin_stop_fr is not included
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
