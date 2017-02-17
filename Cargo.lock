@@ -203,10 +203,16 @@ dependencies = [
 [[package]]
 name = "geo"
 version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/georust/rust-geo.git?rev=32f13a2c1070d83c50485ef785ecf4558a900be7#32f13a2c1070d83c50485ef785ecf4558a900be7"
 dependencies = [
- "num 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.1.36 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "geo"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+replace = "geo 0.3.2 (git+https://github.com/georust/rust-geo.git?rev=32f13a2c1070d83c50485ef785ecf4558a900be7)"
 
 [[package]]
 name = "geojson"
@@ -1183,6 +1189,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum flate2 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)" = "d4e4d0c15ef829cbc1b7cda651746be19cceeb238be7b1049227b14891df9e25"
 "checksum gcc 0.3.41 (registry+https://github.com/rust-lang/crates.io-index)" = "3689e1982a563af74960ae3a4758aa632bb8fd984cfc3cc3b60ee6109477ab6e"
 "checksum gdi32-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0912515a8ff24ba900422ecda800b52f4016a56251922d397c576bf92c690518"
+"checksum geo 0.3.2 (git+https://github.com/georust/rust-geo.git?rev=32f13a2c1070d83c50485ef785ecf4558a900be7)" = "<none>"
 "checksum geo 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "fc9cbde6f035f440d27851f05bc3a0e9cba075d2780d34856a4cf5b2ab87eb6e"
 "checksum geojson 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "dd92f28a2620e771a7785087f81e22b9fc95271b7432d1bd0757c4ccadaa8e64"
 "checksum gst 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "89d64d16c4e0ab924799d713bf939dd16a2e9d3e71afe9f2b2977f38a04e0188"
