@@ -214,55 +214,49 @@ fn get_indexes_by_type(a_type: &str) -> String {
     format!("munin_{}", doc_type)
 }
 
-fn make_indexes_impl<'a, F: FnMut(&str) -> bool>(all_data: bool,
-                                                 pt_dataset_index: &'a Option<String>,
-                                                 types: &Option<Vec<&str>>,
-                                                 mut is_existing_index: F)
-                                                 -> Vec<String> {
+fn make_indexes_impl<F: FnMut(&str) -> bool>(all_data: bool,
+                                             pt_dataset_index: &Option<String>,
+                                             types: &Option<Vec<&str>>,
+                                             mut is_existing_index: F)
+                                             -> Vec<String> {
     if all_data {
         return vec!["munin".to_string()];
     }
 
     let mut result: Vec<String> = vec![];
+    let mut push = |result: &mut Vec<_>, i: &str| if is_existing_index(i) {
+        result.push(i.into());
+    };
     if let Some(ref types) = *types {
-        let mut indexes = vec![];
-        for a_type in types {
-            if *a_type != "public_transport:stop_area" {
-                indexes.push(get_indexes_by_type(a_type));
-            }
+        for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
+            push(&mut result, &get_indexes_by_type(type_));
         }
-        if pt_dataset_index.is_some() && types.contains(&"public_transport:stop_area") {
-            indexes.push(pt_dataset_index.clone().unwrap());
+        match *pt_dataset_index {
+            Some(ref index) if types.contains(&"public_transport:stop_area") => {
+                push(&mut result, index)
+            }
+            _ => (),
         }
 
-        if indexes.is_empty() {
-            indexes.push("munin_geo_data".to_string());
-        }
-
-        for index in indexes {
-            if is_existing_index(index.as_str()) {
-                result.push(index);
-            }
+        if result.is_empty() {
+            push(&mut result, &"munin_geo_data".to_string());
         }
     } else {
-        if is_existing_index("munin_geo_data") {
-            result.push("munin_geo_data".to_string());
-        }
+        push(&mut result, &"munin_geo_data".to_string());
+
         if let Some(ref dataset) = *pt_dataset_index {
-            if is_existing_index(dataset.as_str()) {
-                result.push(dataset.clone());
-            }
+            push(&mut result, &dataset.clone());
         }
     }
 
     result
 }
 
-fn make_indexes<'a>(all_data: bool,
-                    pt_dataset_index: &'a Option<String>,
-                    types: &Option<Vec<&str>>,
-                    client: &mut rs_es::Client)
-                    -> Vec<String> {
+fn make_indexes(all_data: bool,
+                pt_dataset_index: &Option<String>,
+                types: &Option<Vec<&str>>,
+                client: &mut rs_es::Client)
+                -> Vec<String> {
     make_indexes_impl(all_data,
                       pt_dataset_index,
                       types,
@@ -366,7 +360,8 @@ fn test_make_indexes_impl() {
                                  |_index| true),
                vec!["munin_geo_data", "munin_stop_fr"]);
 
-    // no dataset + types poi, city, street, house and public_transport:stop_area => munin_stop is not included
+    // no dataset + types poi, city, street, house and public_transport:stop_area
+    // => munin_stop is not included
     assert_eq!(make_indexes_impl(false,
                                  &None,
                                  &Some(vec!["poi",
