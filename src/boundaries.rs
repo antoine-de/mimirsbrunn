@@ -303,6 +303,36 @@ fn test_build_one_boundary_closed() {
     }
 }
 
+
+#[test]
+fn test_build_two_opposite_clockwise_boundaries() {
+    let mut builder = osm_builder::OsmBuilder::new();
+    let rel_id = builder.relation()
+        .outer(vec![named_node(0.0, 0.0, "start"), // anti-clockwise polygon
+                    named_node(0.0, 1.0, "1"),
+                    named_node(1.0, 1.0, "2"),
+                    named_node(1.0, 0.0, "3"),
+                    named_node(0.0, 0.0, "start")])
+        .outer(vec![named_node(0.0, 0.0, "another_start"), // clockwise polygon
+                    named_node(0.0, -1.0, "4"),
+                    named_node(-1.0, -1.0, "5"),
+                    named_node(-1.0, 0.0, "6"),
+                    named_node(0.0, 0.0, "another_start")])
+        .relation_id
+        .into();
+    if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
+        let multipolygon = build_boundary(&relation, &builder.objects);
+        assert!(multipolygon.is_some());
+        let multipolygon = multipolygon.unwrap();
+        assert_eq!(multipolygon.0.len(), 2);
+        let centroid = make_centroid(&Some(multipolygon));
+        assert_eq!(centroid.lon(), 0.0);
+        assert_eq!(centroid.lat(), 0.0);
+    } else {
+        assert!(false); //this should not happen
+    }
+}
+
 #[test]
 fn test_build_two_boundary_closed() {
     let mut builder = osm_builder::OsmBuilder::new();

@@ -46,3 +46,8 @@ path = "libs/docker_wrapper"
 # we just call one test method: cf. tests::all_tests()
 [[test]]
 name = "tests"
+
+# Hotfix: https://github.com/georust/rust-geo/issues/92
+# TODO: Once the new release is done, we'll redirect "geo" to crate.io, aka. remove [replace]
+[replace]
+"geo:0.3.2" = {git = "https://github.com/georust/rust-geo.git", rev = "32f13a2c1070d83c50485ef785ecf4558a900be7"}
