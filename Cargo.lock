@@ -61,7 +61,7 @@ dependencies = [
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mdo 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mimir 1.2.0",
- "queryst 1.0.1 (git+https://github.com/datanel/queryst?branch=decode-params)",
+ "queryst 1.0.1 (git+https://github.com/rustless/queryst?rev=b29604af7bfb05c2b9d98d726ab1bafd0533cc10)",
  "regex 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -700,7 +700,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "queryst"
 version = "1.0.1"
-source = "git+https://github.com/datanel/queryst?branch=decode-params#25aba7af5793d89bc4fff1852aeddd5c4435787c"
+source = "git+https://github.com/rustless/queryst?rev=b29604af7bfb05c2b9d98d726ab1bafd0533cc10#b29604af7bfb05c2b9d98d726ab1bafd0533cc10"
 dependencies = [
  "lazy_static 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.1.80 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1249,7 +1249,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum plugin 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "1a6a0dc3910bc8db877ffed8e457763b317cf880df4ae19109b9f77d277cf6e0"
 "checksum pnacl-build-helper 1.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "61c9231d31aea845007443d62fcbb58bb6949ab9c18081ee1e09920e0cf1118b"
 "checksum protobuf 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "229112a9213bf62a59f0702871a6e4872fe928161fc7a08f17cdd6c8c7988bf7"
-"checksum queryst 1.0.1 (git+https://github.com/datanel/queryst?branch=decode-params)" = "<none>"
+"checksum queryst 1.0.1 (git+https://github.com/rustless/queryst?rev=b29604af7bfb05c2b9d98d726ab1bafd0533cc10)" = "<none>"
 "checksum queryst 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d7b4b1ebfa90f26fd4394ff25ad6ebfd4bf39841687a2bbaa75ca71a3c893a27"
 "checksum quote 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)" = "e7b44fd83db28b83c1c58187159934906e5e955c812e211df413b76b03c909a5"
 "checksum rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)" = "022e0636ec2519ddae48154b028864bdce4eaf7d35226ab8e65c611be97b189d"

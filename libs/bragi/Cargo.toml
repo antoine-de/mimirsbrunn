@@ -21,7 +21,9 @@ serde_json = "0.8"
 serde_derive = "0.8"
 geojson = { version="*", features=["with-serde"]}
 geo = "^0.3"
-queryst = { git = "https://github.com/datanel/queryst", branch = "decode-params" }
+
+# remove this line once is rustless > 0.10.0 is released
+queryst = { git = "https://github.com/rustless/queryst", rev = "b29604af7bfb05c2b9d98d726ab1bafd0533cc10" }
 
 [dependencies.mimir]
 path = "../mimir"
