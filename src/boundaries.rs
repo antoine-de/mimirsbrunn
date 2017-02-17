@@ -312,12 +312,12 @@ fn test_build_two_opposite_clockwise_boundaries() {
                     named_node(0.0, 1.0, "1"),
                     named_node(1.0, 1.0, "2"),
                     named_node(1.0, 0.0, "3"),
-                    named_node(0.0, 0.0, "start")]) 
+                    named_node(0.0, 0.0, "start")])
         .outer(vec![named_node(0.0, 0.0, "another_start"), // clockwise polygon
                     named_node(0.0, -1.0, "4"),
                     named_node(-1.0, -1.0, "5"),
                     named_node(-1.0, 0.0, "6"),
-                    named_node(0.0, 0.0, "another_start")]) 
+                    named_node(0.0, 0.0, "another_start")])
         .relation_id
         .into();
     if let osmpbfreader::OsmObj::Relation(ref relation) = builder.objects[&rel_id] {
