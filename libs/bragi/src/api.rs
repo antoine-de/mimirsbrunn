@@ -56,6 +56,28 @@ fn render<T>(mut client: rustless::Client,
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
+#[derive(Copy, Clone)]
+enum Type {
+    City,
+    House,
+    Poi,
+    StopArea,
+    Street,
+}
+
+impl Type {
+    fn from_str(type_: &str) -> Option<Type> {
+        match type_ {
+            "city" => Some(Type::City),
+            "house" => Some(Type::House),
+            "poi" => Some(Type::Poi),
+            "public_transport:stop_area" => Some(Type::StopArea),
+            "street" => Some(Type::Street),
+            _ => None,
+        }
+    }
+}
+
 pub struct ApiEndPoint {
     pub es_cnx_string: String,
 }
@@ -144,7 +166,10 @@ impl ApiEndPoint {
                             });
                         });
                     });
-                    params.opt_typed("type", json_dsl::encoded_array(","));
+                    params.opt("type", |t| {
+                        t.coerce(json_dsl::encoded_array(","));
+                        t.validate_with(|val, path| check_type(val.as_array().unwrap(), path));
+                    });
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -205,7 +230,11 @@ impl ApiEndPoint {
                             check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
                         });
                     });
-                    params.opt_typed("type", json_dsl::encoded_array(","));
+                    params.opt("type", |t| {
+                        t.coerce(json_dsl::encoded_array(","));
+                        t.validate_with(|val, path| check_type(val.as_array().unwrap(), path));
+                    });
+
                     params.validate_with(|val, path| {
                         // if we have a lat we should have a lon (and the opposite)
                         if let Some(obj) = val.as_object() {
@@ -289,6 +318,22 @@ fn check_bound(val: &serde_json::Value,
     } else {
         unreachable!("should never happen, already checked");
     }
+}
+
+fn check_type(types: &Vec<serde_json::Value>,
+              path: &str)
+              -> Result<(), valico_error::ValicoErrors> {
+    for type_ in types {
+        let type_as_str = type_.as_str().unwrap();
+        if Type::from_str(type_as_str).is_none() {
+            return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                path: path.to_string(),
+                                detail: Some(format!("{} is not a valid type", type_as_str)),
+                            })]);
+        }
+    }
+
+    Ok(())
 }
 
 fn check_coordinates(val: &serde_json::Value,

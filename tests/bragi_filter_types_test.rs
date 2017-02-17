@@ -32,7 +32,8 @@ extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
 use super::BragiHandler;
-use super::{count_types, get_types};
+use super::{count_types, get_types, to_json};
+use hyper::status::StatusCode::BadRequest;
 
 
 pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
@@ -75,6 +76,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     type_stop_area_no_dataset_test(&bragi);
     type_poi_and_dataset_test(&bragi);
     type_poi_and_city_no_dataset_test(&bragi);
+    unvalid_type_test(&bragi);
 }
 
 
@@ -114,4 +116,20 @@ fn type_poi_and_city_no_dataset_test(bragi: &BragiHandler) {
     assert_eq!(count_types(&types, "house"), 0);
     assert!(count_types(&types, "city") > 0);
     assert!(count_types(&types, "poi") > 0);
+}
+
+fn unvalid_type_test(bragi: &BragiHandler) {
+    let response = bragi.raw_get("/autocomplete?q=melun&type[]=unvalid");
+    assert!(response.is_err());
+
+    let iron_error = response.unwrap_err();
+    assert_eq!(iron_error.response.status.unwrap(), BadRequest);
+
+    let json = to_json(iron_error.response);
+    let error_msg = json.pointer("/long")
+        .unwrap()
+        .as_str()
+        .unwrap();
+
+    assert!(error_msg.contains("unvalid is not a valid type"))
 }
