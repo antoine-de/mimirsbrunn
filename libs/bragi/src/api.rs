@@ -37,6 +37,7 @@ use valico::common::error as valico_error;
 use super::query;
 use model::v1::*;
 use model;
+use std::str::FromStr;
 
 const MAX_LAT: f64 = 180f64;
 const MIN_LAT: f64 = -180f64;
@@ -56,7 +57,7 @@ fn render<T>(mut client: rustless::Client,
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum Type {
     City,
     House,
@@ -65,15 +66,16 @@ enum Type {
     Street,
 }
 
-impl Type {
-    fn from_str(type_: &str) -> Option<Type> {
-        match type_ {
-            "city" => Some(Type::City),
-            "house" => Some(Type::House),
-            "poi" => Some(Type::Poi),
-            "public_transport:stop_area" => Some(Type::StopArea),
-            "street" => Some(Type::Street),
-            _ => None,
+impl FromStr for Type {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "city" => Ok(Type::City),
+            "house" => Ok(Type::House),
+            "poi" => Ok(Type::Poi),
+            "public_transport:stop_area" => Ok(Type::StopArea),
+            "street" => Ok(Type::Street),
+            _ => Err(format!("{} is not a valid type", s)),
         }
     }
 }
@@ -324,11 +326,10 @@ fn check_type(types: &Vec<serde_json::Value>,
               path: &str)
               -> Result<(), valico_error::ValicoErrors> {
     for type_ in types {
-        let type_as_str = type_.as_str().unwrap();
-        if Type::from_str(type_as_str).is_none() {
+        if let Err(e) = Type::from_str(type_.as_str().unwrap()) {
             return Err(vec![Box::new(json_dsl::errors::WrongValue {
                                 path: path.to_string(),
-                                detail: Some(format!("{} is not a valid type", type_as_str)),
+                                detail: Some(e),
                             })]);
         }
     }
