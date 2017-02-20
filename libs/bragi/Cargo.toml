@@ -22,5 +22,8 @@ serde_derive = "0.8"
 geojson = { version="*", features=["with-serde"]}
 geo = "^0.3"
 
+# remove this line once queryst > 1.0.1 is released
+queryst = { git = "https://github.com/rustless/queryst", rev = "b29604af7bfb05c2b9d98d726ab1bafd0533cc10" }
+
 [dependencies.mimir]
 path = "../mimir"

@@ -37,6 +37,7 @@ use valico::common::error as valico_error;
 use super::query;
 use model::v1::*;
 use model;
+use std::str::FromStr;
 
 const MAX_LAT: f64 = 180f64;
 const MIN_LAT: f64 = -180f64;
@@ -54,6 +55,29 @@ fn render<T>(mut client: rustless::Client,
     client.set_json_content_type();
     client.set_header(header::AccessControlAllowOrigin::Any);
     client.text(serde_json::to_string(&obj).unwrap())
+}
+
+#[derive(Copy, Clone, Debug)]
+enum Type {
+    City,
+    House,
+    Poi,
+    StopArea,
+    Street,
+}
+
+impl FromStr for Type {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "city" => Ok(Type::City),
+            "house" => Ok(Type::House),
+            "poi" => Ok(Type::Poi),
+            "public_transport:stop_area" => Ok(Type::StopArea),
+            "street" => Ok(Type::Street),
+            _ => Err(format!("{} is not a valid type", s)),
+        }
+    }
 }
 
 pub struct ApiEndPoint {
@@ -143,7 +167,11 @@ impl ApiEndPoint {
                                 });
                             });
                         });
-                    })
+                    });
+                    params.opt("type", |t| {
+                        t.coerce(json_dsl::encoded_array(","));
+                        t.validate_with(|val, path| check_type(val.as_array().unwrap(), path));
+                    });
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -167,6 +195,9 @@ impl ApiEndPoint {
                         shape.push((ar.as_array().unwrap()[1].as_f64().unwrap(),
                                     ar.as_array().unwrap()[0].as_f64().unwrap()));
                     }
+                    let types = params.find("type")
+                        .and_then(|val| val.as_array())
+                        .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect());
                     let model_autocomplete = query::autocomplete(&q,
                                                                  &pt_dataset,
                                                                  all_data,
@@ -174,7 +205,8 @@ impl ApiEndPoint {
                                                                  limit,
                                                                  None,
                                                                  &cnx,
-                                                                 Some(shape));
+                                                                 Some(shape),
+                                                                 types);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -200,6 +232,11 @@ impl ApiEndPoint {
                             check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
                         });
                     });
+                    params.opt("type", |t| {
+                        t.coerce(json_dsl::encoded_array(","));
+                        t.validate_with(|val, path| check_type(val.as_array().unwrap(), path));
+                    });
+
                     params.validate_with(|val, path| {
                         // if we have a lat we should have a lon (and the opposite)
                         if let Some(obj) = val.as_object() {
@@ -242,6 +279,11 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
+
+                    let types = params.find("type")
+                        .and_then(|val| val.as_array())
+                        .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect());
+
                     let model_autocomplete = query::autocomplete(&q,
                                                                  &pt_dataset,
                                                                  all_data,
@@ -249,7 +291,8 @@ impl ApiEndPoint {
                                                                  limit,
                                                                  coord,
                                                                  &cnx,
-                                                                 None);
+                                                                 None,
+                                                                 types);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -277,6 +320,21 @@ fn check_bound(val: &serde_json::Value,
     } else {
         unreachable!("should never happen, already checked");
     }
+}
+
+fn check_type(types: &Vec<serde_json::Value>,
+              path: &str)
+              -> Result<(), valico_error::ValicoErrors> {
+    for type_ in types {
+        if let Err(e) = Type::from_str(type_.as_str().unwrap()) {
+            return Err(vec![Box::new(json_dsl::errors::WrongValue {
+                                path: path.to_string(),
+                                detail: Some(e),
+                            })]);
+        }
+    }
+
+    Ok(())
 }
 
 fn check_coordinates(val: &serde_json::Value,
