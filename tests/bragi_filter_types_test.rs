@@ -76,6 +76,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     type_stop_area_no_dataset_test(&bragi);
     type_poi_and_dataset_test(&bragi);
     type_poi_and_city_no_dataset_test(&bragi);
+    type_poi_and_city_with_percent_encoding_no_dataset_test(&bragi);
     type_stop_area_dataset_test(&bragi);
     unvalid_type_test(&bragi);
 }
