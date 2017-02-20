@@ -151,19 +151,28 @@ impl ApiEndPoint {
                     params.opt_typed("limit", json_dsl::u64());
                     params.opt_typed("offset", json_dsl::u64());
                     params.opt_typed("_all_data", json_dsl::boolean());
-                    params.req("geometry", |geometry| {
-                        geometry.coerce(json_dsl::object());
-                        geometry.nest(|params| {
+                    params.req("shape", |shape| {
+                        shape.coerce(json_dsl::object());
+                        shape.nest(|params| {
                             params.req("type", |geojson_type| {
                                 geojson_type.coerce(json_dsl::string());
-                                geojson_type.allow_values(&["Polygon".to_string()]);
+                                geojson_type.allow_values(&["Feature".to_string()]);
                             });
-                        });
-                        geometry.nest(|params| {
-                            params.req("coordinates", |shape| {
-                                shape.coerce(json_dsl::array());
-                                shape.validate_with(|val, path| {
-                                    check_coordinates(val, path, "Coordinates is invalid")
+                            params.req("geometry", |geometry| {
+                                geometry.coerce(json_dsl::object());
+                                geometry.nest(|params| {
+                                    params.req("type", |geojson_type| {
+                                        geojson_type.coerce(json_dsl::string());
+                                        geojson_type.allow_values(&["Polygon".to_string()]);
+                                    });
+                                });
+                                geometry.nest(|params| {
+                                    params.req("coordinates", |shape| {
+                                        shape.coerce(json_dsl::array());
+                                        shape.validate_with(|val, path| {
+                                            check_coordinates(val, path, "Coordinates is invalid")
+                                        });
+                                    });
                                 });
                             });
                         });
@@ -186,7 +195,7 @@ impl ApiEndPoint {
                         .unwrap_or(DEFAULT_OFFSET);
                     let limit =
                         params.find("limit").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_LIMIT);
-                    let geometry = params.find_path(&["geometry"]).unwrap();
+                    let geometry = params.find_path(&["shape", "geometry"]).unwrap();
                     let coordinates =
                         geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
                     let mut shape = Vec::new();

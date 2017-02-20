@@ -96,8 +96,9 @@ fn simple_bano_autocomplete_test(bragi: &BragiHandler) {
 //      B ---------------------C
 fn simple_bano_shape_filter_test(bragi: &BragiHandler) {
     // Search with shape where house number in shape
-    let shape = r#"{"geometry":{"type":"Polygon","coordinates":[[[2.376488, 48.846431],
-        [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}"#;
+    let shape = r#"{"shape":{"type":"Feature","geometry":{"type":"Polygon",
+        "coordinates":[[[2.376488, 48.846431],
+        [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}}"#;
     let resp = bragi.raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape).unwrap();
 
     let result_body = iron_test::response::extract_body_to_string(resp);
