@@ -119,6 +119,17 @@ fn type_poi_and_city_no_dataset_test(bragi: &BragiHandler) {
     assert!(count_types(&types, "poi") > 0);
 }
 
+fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &BragiHandler) {
+    // Same test as before but with percent encoded type param
+    let response = bragi.get("/autocomplete?q=melun&type%5B%5D=poi&type%5B%5D=city");
+    let types = get_types(&response);
+    assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
+    assert_eq!(count_types(&types, "street"), 0);
+    assert_eq!(count_types(&types, "house"), 0);
+    assert!(count_types(&types, "city") > 0);
+    assert!(count_types(&types, "poi") > 0);
+}
+
 fn type_stop_area_dataset_test(bragi: &BragiHandler) {
     // with this query we should only find stop areas
     let response =
