@@ -10,13 +10,12 @@ log = "*"
 docopt = "*"
 rustc-serialize = "*"
 csv = "*"
-rs-es = "0.5"
 regex = "*"
 osmpbfreader = "*"
 chrono = "0.2"
-serde = "0.8"
-serde_derive = "0.8"
-serde_json = "0.8"
+serde = "0.9"
+serde_derive = "0.9"
+serde_json = "0.9"
 geo = "^0.3"
 gst = "0.1"
 ordered-float = "0.0.2"
@@ -25,9 +24,9 @@ itertools = "*"
 
 [dev-dependencies]
 hyper = "^0.9"
-iron-test = "*"
+iron-test = "^0.4"
 rustless = "*"
-iron = "*"
+iron = "^0.4"
 mime = "0.2"
 
 [dependencies.bragi]
@@ -41,6 +40,10 @@ path = "libs/osm_builder"
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"
+
+[dependencies.rs-es]
+version = "^0.9"
+default-features = false
 
 # we just call one test method: cf. tests::all_tests()
 [[test]]

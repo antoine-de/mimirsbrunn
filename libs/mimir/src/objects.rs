@@ -32,8 +32,7 @@ use geo;
 use serde;
 use std::rc::Rc;
 use std::cell::Cell;
-use serde::ser::Serializer;
-use serde::ser::SerializeStruct;
+use serde::ser::{Serializer, SerializeStruct};
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -229,16 +228,13 @@ pub struct Admin {
     #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
     pub weight: Cell<u32>,
     pub coord: Coord,
-    #[serde(serialize_with="custom_multi_polygon_serialize",
-            deserialize_with="custom_multi_polygon_deserialize",
-            skip_serializing_if="Option::is_none",
-            default)]
+    #[serde(serialize_with="custom_multi_polygon_serialize", deserialize_with="custom_multi_polygon_deserialize")]
     pub boundary: Option<geo::MultiPolygon<f64>>,
 }
 
 fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPolygon<f64>>,
                                      serializer: S)
-                                     -> Result<S::Ok, S::Error>
+                                     -> Result<(), S::Error>
     where S: Serializer
 {
     use geojson::{Value, Geometry, GeoJson};
@@ -306,7 +302,7 @@ impl Members for Admin {
 
 impl Eq for Admin {}
 
-fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: S) -> Result<S::Ok, S::Error>
+fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: S) -> Result<(), S::Error>
     where S: Serializer
 {
     // we can serialize the cell as a u32, since the reference is
@@ -470,10 +466,6 @@ impl serde::Deserialize for GeoCoordField {
         impl serde::de::Visitor for GeoCoordFieldVisitor {
             type Value = GeoCoordField;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("`lat` or `lon`")
-            }
-
             fn visit_str<E>(self, value: &str) -> Result<GeoCoordField, E>
                 where E: serde::de::Error
             {
@@ -502,9 +494,6 @@ struct GeoCoordDeserializerVisitor;
 impl serde::de::Visitor for GeoCoordDeserializerVisitor {
     type Value = Coord;
 
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("struct Coord")
-    }
     fn visit_map<V>(self, mut visitor: V) -> Result<Coord, V::Error>
         where V: serde::de::MapVisitor
     {

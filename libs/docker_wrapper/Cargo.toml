@@ -4,6 +4,6 @@ version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
 [dependencies]
-hyper = "*"
+hyper = "^0.9"
 log = "0.3"
 retry = "*"
