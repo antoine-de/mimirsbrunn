@@ -12,13 +12,20 @@
                     "type": "nGram",
                     "min_gram": "3",
                     "max_gram": "3"
+                },
+                "synonym_filter": {
+                    "type": "synonym",
+                    "synonyms": [
+                        "mairie,hotel de ville",
+                        "st,saint"
+                    ]
                 }
             },
             "analyzer": {
                 "word": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "lowercase", "asciifolding" ],
+                    "filter": [ "lowercase", "asciifolding", "synonym_filter" ],
                     "char_filter" : [ ]
                 },
                 "prefix": {
