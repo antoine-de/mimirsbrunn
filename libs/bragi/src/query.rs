@@ -237,10 +237,6 @@ fn make_indexes_impl<F: FnMut(&str) -> bool>(all_data: bool,
             }
             _ => (),
         }
-
-        if result.is_empty() {
-            push(&mut result, &"munin_geo_data".to_string());
-        }
     } else {
         push(&mut result, &"munin_geo_data".to_string());
 
@@ -282,6 +278,12 @@ fn query(q: &str,
     let indexes = make_indexes(all_data, &pt_dataset_index, types, &mut client);
 
     debug!("ES indexes: {:?}", indexes);
+
+    if indexes.is_empty() {
+        // if there is no indexes, rs_es search with index "_all"
+        // but we want to return emtpy response in this case.
+        return Ok(vec![]);
+    }
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
         .with_indexes(&indexes.iter().map(|index| index.as_str()).collect::<Vec<&str>>())
@@ -377,7 +379,7 @@ fn test_make_indexes_impl() {
                                  &None,
                                  &Some(vec!["public_transport:stop_area"]),
                                  |_index| true),
-               vec!["munin_geo_data"]);
+               Vec::<String>::new());
 
     // dataset fr + types poi, city, street, house and public_transport:stop_area
     assert_eq!(make_indexes_impl(false,
