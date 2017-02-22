@@ -91,11 +91,9 @@ fn no_type_no_dataset_test(bragi: &BragiHandler) {
 }
 
 fn type_stop_area_no_dataset_test(bragi: &BragiHandler) {
-    // with this query we should not find any stops
+    // with this query we should return an empty response
     let response = bragi.get("/autocomplete?q=14 juillet&type[]=public_transport:stop_area");
-    let types = get_types(&response);
-    let count = count_types(&types, "public_transport:stop_area");
-    assert_eq!(count, 0);
+    assert!(response.is_empty());
 }
 
 fn type_poi_and_dataset_test(bragi: &BragiHandler) {
