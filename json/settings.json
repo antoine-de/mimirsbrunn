@@ -15,23 +15,26 @@
                 },
                 "synonym_filter": {
                     "type": "synonym",
-                    "synonyms": [
-                        "mairie,hotel de ville",
-                        "st,saint"
-                    ]
+                    "synonyms": []
                 }
             },
             "analyzer": {
                 "word": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "lowercase", "asciifolding", "synonym_filter" ],
+                    "filter": [ "lowercase", "asciifolding" ],
                     "char_filter" : [ ]
                 },
                 "prefix": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "lowercase", "asciifolding", "prefix_filter" ],
+                    "filter": [ "synonym_filter", "lowercase", "asciifolding", "prefix_filter" ],
+                    "char_filter" : [ ]
+                },
+                "ngram_with_synonyms": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "synonym_filter", "lowercase", "asciifolding", "ngram_filter" ],
                     "char_filter" : [ ]
                 },
                 "ngram": {
@@ -72,7 +75,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "street": {
@@ -120,7 +128,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "administrative_region": {
@@ -162,7 +175,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "zip_codes": {
@@ -208,7 +226,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "administrative_region": {
@@ -250,7 +273,8 @@
                                 "ngram": {
                                     "type": "string",
                                     "index_options": "docs",
-                                    "analyzer": "ngram"
+                                    "analyzer": "ngram_with_synonyms",
+                                    "search_analyzer": "ngram"
                                 }
                             }
                         }
@@ -287,7 +311,8 @@
                 "ngram": {
                   "type": "string",
                   "index_options": "docs",
-                  "analyzer": "ngram"
+                  "analyzer": "ngram_with_synonyms",
+                  "search_analyzer": "ngram"
                 }
               }
             },
