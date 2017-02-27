@@ -97,13 +97,12 @@ fn build_query(q: &str,
         MatchType::Fuzzy => "label.ngram",
     };
 
-    let boost_main_match_query = rs_q::build_multi_match(vec![main_match_type.to_string()],
-                                                         q.to_string())
-        .with_boost(100)
+    let boost_main_match_query = rs_q::build_match(main_match_type.to_string(), q.to_string())
+        .with_boost(1000)
         .build();
-    let boost_zipcode_match_query = rs_q::build_multi_match(vec!["zip_codes.prefix".to_string()],
-                                                            q.to_string())
-        .with_boost(500)
+
+    let boost_zipcode_match_query =rs_q::build_match("zip_codes.prefix".to_string(), q.to_string())
+        .with_boost(100)
         .build();
 
     let mut should_query = vec![boost_addr,
@@ -116,7 +115,7 @@ fn build_query(q: &str,
     // to have better results
     if match_type == MatchType::Fuzzy {
         should_query.push(rs_q::build_match("label.prefix", q.to_string())
-            .with_boost(1000)
+            .with_boost(2000)
             .build());
     }
 
@@ -151,47 +150,57 @@ fn build_query(q: &str,
         .with_should(should_query)
         .build();
 
-    use rs_es::query::{CombinationMinimumShouldMatch, MinimumShouldMatch};
-    let min_match = |min, threshold| {
-        CombinationMinimumShouldMatch::new(MinimumShouldMatch::from(min),
-                                           MinimumShouldMatch::from(threshold))
-    };
-
-    let minimum_should_match = match match_type {
-        MatchType::Prefix => {
-            // when we search [0, 2] fields, we need to match 100% of them
-            // when we search [3, 4] fields, we need to match 90% of them
-            // when we search [5, +] fields, we only need to match 70% on them
-            // this way if the input has more fields than the documents
-            // (additional information like the country, the region, ...)
-            // they can be ignored
-            MinimumShouldMatch::from(vec![min_match(2, 90f64), min_match(4, 70f64)])
-        }
-        // for fuzzy search we lower our expectation and we accept 50% of token match
-        MatchType::Fuzzy => MinimumShouldMatch::from(50f64),
-    };
-
-    let mut must = vec![rs_q::build_multi_match(vec![main_match_type.to_string(),
-                                                     "zip_codes.prefix".to_string()],
-                                                q.to_string())
-                            .with_minimum_should_match(minimum_should_match)
-                            .build()];
-
-    if let Some(s) = shape {
-        must.push(rs_q::build_geo_polygon("coord", s).build());
-    }
+    use rs_es::query::MinimumShouldMatch;
 
     // filter to handle house number
     // we either want:
     // * to exactly match the document house_number
     // * or that the document has no house_number
-    let filter = rs_q::build_bool()
-        .with_should(vec![rs_q::build_bool()
-                              .with_must_not(rs_q::build_exists("house_number").build())
-                              .build(),
-                          rs_q::build_match("house_number", q.to_string()).build()])
-        .with_must(must)
+    let first_bool = rs_q::build_bool().with_should(vec![
+        rs_q::build_bool()
+            .with_must_not(rs_q::build_exists("house_number")
+            .build()).build(),
+        rs_q::build_match("house_number", q.to_string())
+            .build()])
         .build();
+
+    let minimum_should_match = match match_type {
+        MatchType::Prefix => {
+             MinimumShouldMatch::from(100f64)
+        }
+        // for fuzzy search we lower our expectation and we accept 50% of token match
+        MatchType::Fuzzy => MinimumShouldMatch::from(50f64),
+    };
+    let should = vec![rs_q::build_match(main_match_type.to_string(), q.to_string())
+        .with_minimum_should_match(minimum_should_match)
+        .build(),
+        // A must clause is used to manage zip_codes in case where the zip_code is present in the request,
+        // and its appearance disturbs the 100% label.prefix, it'll be a pitty that we launch a fuzzy 
+        // on the request if the request is actually well spelt.  
+        // Ex: 
+        //  q: 20 rue de thumesnil 59000
+        // WITH the following must clause, "59000" will match a zip_code, and "20 rue de thumesnil" will match
+        // the label.prefix 
+        // WITHOUT the following must clause, since we don't have the zip codes in the labels
+        // the request will be rejected by 100% label.prefix and passed to label.ngram
+        rs_q::build_bool().with_must(vec![
+            rs_q::build_match("zip_codes.prefix", q.to_string())
+            .with_minimum_should_match(1) // at least one token should match the zip_codes.prefix
+            .build(),
+            rs_q::build_match("label.prefix", q.to_string())
+            .with_minimum_should_match(-1) // at least N-1 token should match the label.prefix
+            .build()])
+        .build()];
+
+    let second_bool = rs_q::build_bool().with_should(should).build();     
+
+    let mut must = vec![first_bool, second_bool];
+
+    if let Some(s) = shape {
+        must.push(rs_q::build_geo_polygon("coord", s).build());
+    }
+    let filter = rs_q::build_bool()
+        .with_must(must).build();
 
     rs_q::build_bool()
         .with_must(vec![sub_query])
