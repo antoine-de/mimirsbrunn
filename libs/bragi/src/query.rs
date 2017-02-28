@@ -98,7 +98,7 @@ fn build_query(q: &str,
     };
 
     let boost_main_match_query = rs_q::build_match(main_match_type.to_string(), q.to_string())
-        .with_boost(1000)
+        .with_boost(500)
         .build();
 
     let boost_zipcode_match_query = rs_q::build_match("zip_codes.prefix".to_string(),
@@ -116,7 +116,7 @@ fn build_query(q: &str,
     // to have better results
     if match_type == MatchType::Fuzzy {
         should_query.push(rs_q::build_match("label.prefix", q.to_string())
-            .with_boost(2000)
+            .with_boost(1000)
             .build());
     }
 
@@ -125,7 +125,7 @@ fn build_query(q: &str,
         let boost_on_proximity =
             rs_q::build_function_score()
                 .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-                .with_boost(500)
+                .with_boost(1500)
                 .with_function(Function::build_decay("coord",
                                            rs_u::Location::LatLon(c.lat, c.lon),
                                            rs_u::Distance::new(50f64,
@@ -137,7 +137,7 @@ fn build_query(q: &str,
         // if we don't have coords, we take the field `weight` into account
         let boost_on_weight = rs_q::build_function_score()
             .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-            .with_boost(300)
+            .with_boost(500)
             .with_query(rs_q::build_match_all().build())
             .with_function(Function::build_field_value_factor("weight")
                 .with_factor(1)
