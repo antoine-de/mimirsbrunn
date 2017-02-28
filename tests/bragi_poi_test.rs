@@ -114,9 +114,9 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     // search by zip code
     let geocodings = bragi.get("/autocomplete?q=77000&limit=15");
     let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, Poi::doc_type()), 2);
+    assert_eq!(count_types(&types, Poi::doc_type()), 0);
     assert_eq!(count_types(&types, "city"), 3);
-    assert_eq!(count_types(&types, "street"), 7);
+    assert_eq!(count_types(&types, "street"), 0);
 
     // search by zip code and limit is string type
     let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=ABCD");
@@ -128,10 +128,10 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
 
     // search by zip code and limit and offset
     let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=0");
-    assert_eq!(all_20.len(), 10);
+    assert_eq!(all_20.len(), 3);
 
     let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=10");
-    assert_eq!(all_20.len(), 2);
+    assert_eq!(all_20.len(), 0);
 }
 
 fn get_poi_type_ids(e: &BTreeMap<String, Value>) -> Vec<&str> {

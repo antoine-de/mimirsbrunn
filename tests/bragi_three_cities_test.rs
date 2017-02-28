@@ -92,10 +92,9 @@ fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
 }
 
 fn three_cities_zip_code_test(bragi: &BragiHandler) {
-    // we query with only a zip code, we should be able to find admins,
-    // and some street of it (and all on this admin)
+    // we query with only a zip code, we should be able to find admins
     let res = bragi.get("/autocomplete?q=77000");
-    assert_eq!(res.len(), 10);
+    assert_eq!(res.len(), 3);
     assert!(get_values(&res, "postcode").iter().all(|r| r.contains("77000")));
     let types = get_types(&res);
     // since we did not ask for an house number, we should get none
