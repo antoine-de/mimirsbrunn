@@ -61,7 +61,7 @@ pub fn bragi_osm_test(es_wrapper: ::ElasticSearchWrapper) {
 
 fn zip_code_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77000");
-    assert_eq!(all_20.len(), 3);
+    assert_eq!(all_20.len(), 10);
     for postcodes in get_values(&all_20, "postcode") {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
@@ -69,7 +69,7 @@ fn zip_code_test(bragi: &BragiHandler) {
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
-    assert_eq!(count, 0);
+    assert_eq!(count, 7);
 
     let count = count_types(&types, "city");
     assert_eq!(count, 3);
