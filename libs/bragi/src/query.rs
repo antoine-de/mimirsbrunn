@@ -178,7 +178,7 @@ fn build_query(q: &str,
             rs_q::build_multi_match(vec!["label.prefix".to_string(),
                                          "zip_codes.prefix".to_string()],
                                     q.to_string())
-                .with_minimum_should_match(MinimumShouldMatch::from(50f64))
+                .with_minimum_should_match(MinimumShouldMatch::from(40f64))
                 .build()
         }
     };
