@@ -141,8 +141,7 @@ impl Rubber {
         let mut analysis_json_value = try!(serde_json::from_str::<serde_json::Value>(&analysis)
             .map_err(|err| format!("{}", err)));
 
-        let synonyms: Vec<_> = SYNONYMS.to_vec()
-            .into_iter()
+        let synonyms: Vec<_> = SYNONYMS.iter()
             .map(|s| serde_json::Value::String(s.to_string()))
             .collect();
 
