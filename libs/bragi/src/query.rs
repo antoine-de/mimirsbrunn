@@ -165,6 +165,17 @@ fn build_query(q: &str,
     use rs_es::query::MinimumShouldMatch;
 
     let second_condition = match match_type {
+        // When the match type is Prefix, we want to use every possible information even though
+        // these are not present in label, for instance, the zip_code. The cross_fields match type
+        // allows to do the trick.
+        
+        // Ex:
+        //   q : 20 rue hector malot 75012
+        // WITHOUT the cross_fields match type, it will match neither "label" nor "zip_codes" and 
+        // the request will be treated by Fuzzy later, it's a pitty, because the adresse is actually 
+        // well spelt.
+        // WITH the cross_fields match type, the request will be spilted into terms to match 
+        // "label" and "zip_codes"
         MatchType::Prefix => {
             rs_q::build_multi_match(vec!["label.prefix".to_string(),
                                          "zip_codes.prefix".to_string()],
@@ -173,12 +184,12 @@ fn build_query(q: &str,
                 .with_operator("and")
                 .build()
         }
-        // for fuzzy search we lower our expectation and we accept 50% of token match
+        // for fuzzy search we lower our expectation and we accept 45% of token match
         MatchType::Fuzzy => {
             rs_q::build_multi_match(vec!["label.prefix".to_string(),
                                          "zip_codes.prefix".to_string()],
                                     q.to_string())
-                .with_minimum_should_match(MinimumShouldMatch::from(40f64))
+                .with_minimum_should_match(MinimumShouldMatch::from(45f64))
                 .build()
         }
     };
