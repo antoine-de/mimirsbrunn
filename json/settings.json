@@ -28,13 +28,13 @@
                 "prefix": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "synonym_filter", "lowercase", "asciifolding", "prefix_filter" ],
+                    "filter": [ "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
                     "char_filter" : [ ]
                 },
                 "ngram_with_synonyms": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "synonym_filter", "lowercase", "asciifolding", "ngram_filter" ],
+                    "filter": [ "lowercase", "asciifolding", "synonym_filter", "ngram_filter" ],
                     "char_filter" : [ ]
                 },
                 "ngram": {
