@@ -12,6 +12,10 @@
                     "type": "nGram",
                     "min_gram": "3",
                     "max_gram": "3"
+                },
+                "synonym_filter": {
+                    "type": "synonym",
+                    "synonyms": []
                 }
             },
             "analyzer": {
@@ -24,7 +28,13 @@
                 "prefix": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "lowercase", "asciifolding", "prefix_filter" ],
+                    "filter": [ "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
+                    "char_filter" : [ ]
+                },
+                "ngram_with_synonyms": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding", "synonym_filter", "ngram_filter" ],
                     "char_filter" : [ ]
                 },
                 "ngram": {
@@ -65,7 +75,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "street": {
@@ -113,7 +128,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "administrative_region": {
@@ -155,7 +175,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "zip_codes": {
@@ -201,7 +226,12 @@
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         },
-                        "ngram": { "type": "string", "index_options": "docs", "analyzer": "ngram" }
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
                     }
                 },
                 "administrative_region": {
@@ -243,7 +273,8 @@
                                 "ngram": {
                                     "type": "string",
                                     "index_options": "docs",
-                                    "analyzer": "ngram"
+                                    "analyzer": "ngram_with_synonyms",
+                                    "search_analyzer": "ngram"
                                 }
                             }
                         }
@@ -280,7 +311,8 @@
                 "ngram": {
                   "type": "string",
                   "index_options": "docs",
-                  "analyzer": "ngram"
+                  "analyzer": "ngram_with_synonyms",
+                  "search_analyzer": "ngram"
                 }
               }
             },

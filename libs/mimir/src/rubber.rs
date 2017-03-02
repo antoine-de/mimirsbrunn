@@ -43,6 +43,24 @@ use rs_es::operations::search::ScanResult;
 use super::objects::{AliasOperations, AliasOperation, AliasParameter};
 use rs_es::units::Duration;
 
+const SYNONYMS: [&'static str; 17] = ["cc,centre commercial",
+                                      "hotel de ville,mairie",
+                                      "gare sncf,gare",
+                                      "chu,chr,hopital",
+                                      "ld,lieu-dit",
+                                      "st,saint",
+                                      "ste,sainte",
+                                      "bvd,bld,bd,boulevard",
+                                      "pt,pont",
+                                      "rle,ruelle",
+                                      "rte,route",
+                                      "vla,villa",
+                                      "grand-champ,grandchamp",
+                                      "fac,faculte,ufr,universite",
+                                      "embarcadere,gare maritime",
+                                      "cpam,securite sociale",
+                                      "anpe,pole emploi"];
+
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
     es_client: rs_es::Client,
@@ -119,7 +137,18 @@ impl Rubber {
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
         let analysis = include_str!("../../../json/settings.json");
-        self.put(name, &analysis)
+
+        let mut analysis_json_value = try!(serde_json::from_str::<serde_json::Value>(&analysis)
+            .map_err(|err| format!("{}", err)));
+
+        let synonyms: Vec<_> = SYNONYMS.iter()
+            .map(|s| serde_json::Value::String(s.to_string()))
+            .collect();
+
+        *analysis_json_value.pointer_mut("/settings/analysis/filter/synonym_filter/synonyms")
+            .unwrap() = serde_json::Value::Array(synonyms);
+
+        self.put(name, &analysis_json_value.to_string())
             .map_err(|e| {
                 info!("Error while creating new index {}", name);
                 e.to_string()
