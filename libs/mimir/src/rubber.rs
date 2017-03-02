@@ -56,10 +56,10 @@ const SYNONYMS: [&'static str; 17] = ["cc,centre commercial",
                                       "rte,route",
                                       "vla,villa",
                                       "grand-champ,grandchamp",
-                                      "fac,faculté,ufr,université",
-                                      "embarcadère,gare maritime",
-                                      "CPAM,sécurité sociale",
-                                      "ANPE,Pole Emploi"];
+                                      "fac,faculte,ufr,universite",
+                                      "embarcadere,gare maritime",
+                                      "cpam,securite sociale",
+                                      "anpe,pole emploi"];
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
