@@ -32,7 +32,7 @@ extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
 use super::BragiHandler;
-use super::{count_types, get_types, to_json};
+use super::{count_types, get_types, to_json, get_value};
 use hyper::status::StatusCode::BadRequest;
 
 
@@ -84,7 +84,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
 
 fn no_type_no_dataset_test(bragi: &BragiHandler) {
     // with this query we should not find any stops
-    let response = bragi.get("/autocomplete?q=14 juillet");
+    let response = bragi.get("/autocomplete?q=Parking vélo Saint-Martin");
     let types = get_types(&response);
     let count = count_types(&types, "public_transport:stop_area");
     assert_eq!(count, 0);
@@ -92,19 +92,24 @@ fn no_type_no_dataset_test(bragi: &BragiHandler) {
 
 fn type_stop_area_no_dataset_test(bragi: &BragiHandler) {
     // with this query we should return an empty response
-    let response = bragi.get("/autocomplete?q=14 juillet&type[]=public_transport:stop_area");
+    let response =
+        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&type[]=public_transport:stop_area");
     assert!(response.is_empty());
 }
 
 fn type_poi_and_dataset_test(bragi: &BragiHandler) {
     // with this query we should only find pois
-    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1&type[]=poi");
+    let response =
+        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&pt_dataset=dataset1&type[]=poi");
     let types = get_types(&response);
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "city"), 0);
     assert_eq!(count_types(&types, "street"), 0);
     assert_eq!(count_types(&types, "house"), 0);
     assert!(count_types(&types, "poi") > 0);
+
+    let poi = response.first().unwrap();
+    assert_eq!(get_value(poi, "name"), "Parking vélo");
 }
 
 fn type_poi_and_city_no_dataset_test(bragi: &BragiHandler) {
