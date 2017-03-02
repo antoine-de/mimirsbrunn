@@ -168,13 +168,12 @@ fn build_query(q: &str,
         // When the match type is Prefix, we want to use every possible information even though
         // these are not present in label, for instance, the zip_code. The cross_fields match type
         // allows to do the trick.
-        
         // Ex:
         //   q : 20 rue hector malot 75012
-        // WITHOUT the cross_fields match type, it will match neither "label" nor "zip_codes" and 
-        // the request will be treated by Fuzzy later, it's a pitty, because the adresse is actually 
+        // WITHOUT the cross_fields match type, it will match neither "label" nor "zip_codes" and
+        // the request will be treated by Fuzzy later, it's a pitty, because the adresse is actually
         // well spelt.
-        // WITH the cross_fields match type, the request will be spilted into terms to match 
+        // WITH the cross_fields match type, the request will be spilted into terms to match
         // "label" and "zip_codes"
         MatchType::Prefix => {
             rs_q::build_multi_match(vec!["label.prefix".to_string(),
