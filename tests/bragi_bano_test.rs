@@ -54,6 +54,7 @@ pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
     simple_bano_autocomplete_test(&bragi);
     simple_bano_shape_filter_test(&bragi);
     simple_bano_lon_lat_test(&bragi);
+    long_bano_address_test(&bragi);
 }
 
 
@@ -142,4 +143,15 @@ fn simple_bano_lon_lat_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=20 rue hector malot&lat=48&lon=2.4");
     assert_eq!(get_values(&all_20, "label"),
                vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]);
+}
+
+fn long_bano_address_test(bragi: &BragiHandler) {
+    // test with a very long request which consists of an exact address and something else
+    // and the "something else" should not disturb the research
+    let all_20 =
+        bragi.get("/autocomplete?q=An-Incredibly-long-but-not-nonsense-request 20 rue hector \
+                   malot paris");
+    assert_eq!(all_20.len(), 1);
+    assert_eq!(get_values(&all_20, "label"),
+               vec!["20 Rue Hector Malot (Paris)"]);
 }

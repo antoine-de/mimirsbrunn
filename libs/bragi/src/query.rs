@@ -183,12 +183,17 @@ fn build_query(q: &str,
                 .with_operator("and")
                 .build()
         }
-        // for fuzzy search we lower our expectation and we accept 45% of token match
+        // for fuzzy search we lower our expectation and we accept 40% of token match on label.ngram
+        // the "40%" is empirical, it's supposed to be able to manage cases like one-word missspelt
+        // requests and very long requets.
+        // One-word misspelt request:
+        //     Vaureaaal (instead of Vaureal)
+        // Very long requests:
+        //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
         MatchType::Fuzzy => {
-            rs_q::build_multi_match(vec!["label.prefix".to_string(),
-                                         "zip_codes.prefix".to_string()],
+            rs_q::build_multi_match(vec!["label.ngram".to_string(), "zip_codes.prefix".to_string()],
                                     q.to_string())
-                .with_minimum_should_match(MinimumShouldMatch::from(45f64))
+                .with_minimum_should_match(MinimumShouldMatch::from(40f64))
                 .build()
         }
     };
