@@ -183,10 +183,10 @@ fn build_query(q: &str,
                 .with_operator("and")
                 .build()
         }
-        // for fuzzy search we lower our expectation and we accept 40% of token match on label.ngram
-        // the "40%" is empirical, it's supposed to be able to manage cases like one-word missspelt
-        // requests and very long requets.
-        // One-word misspelt request:
+        // for fuzzy search we lower our expectation and we accept 40% of token match on label.ngram.
+        // The "40%" is empirical, it's supposed to be able to manage cases BOTH missspelt one-word
+        // requests AND very long requests.
+        // Missspelt one-word request:
         //     Vaureaaal (instead of Vaureal)
         // Very long requests:
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
