@@ -132,9 +132,9 @@ impl ApiEndPoint {
                     let all_data =
                         params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
 
-                    let fearture = query::feature(&pt_dataset, all_data, &cnx, &id);
+                    let feature = query::feature(&pt_dataset, all_data, &cnx, &id);
 
-                    let response = model::v1::AutocompleteResponse::from(fearture);
+                    let response = model::v1::AutocompleteResponse::from(feature);
                     render(client, response)
                 })
             });
