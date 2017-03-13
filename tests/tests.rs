@@ -285,6 +285,7 @@ fn all_tests() {
     );
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
+    rubber_test::rubber_ghost_index_cleanup(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_bano_test::bragi_bano_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_osm_test::bragi_osm_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_three_cities_test::bragi_three_cities_test(ElasticSearchWrapper::new(&docker_wrapper));

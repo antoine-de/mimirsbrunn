@@ -160,16 +160,29 @@ impl Rubber {
             })
     }
 
-    fn get_last_index(&self, doc_type: &str, dataset: &str) -> Result<Vec<String>, String> {
+    // get the last indexes for this doc_type/dataset
+    // Note: to be resilient to ghost ES indexes, we return all indexes for this doc_type/dataset
+    // but the new index
+    fn get_last_index(&self,
+                      new_index: &str,
+                      doc_type: &str,
+                      dataset: &str)
+                      -> Result<Vec<String>, String> {
         let base_index = get_main_type_and_dataset_index(doc_type, dataset);
-        self.get(&format!("{}/_aliases", base_index))
+        self.get(&format!("{}*/_aliases", base_index))
             .map_err(|e| e.to_string())
             .and_then(|res| match res.status {
                 StatusCode::Ok => {
                     let value: serde_json::Value = try!(res.read_response()
                         .map_err(|e| e.to_string()));
                     Ok(value.as_object()
-                        .and_then(|aliases| Some(aliases.keys().cloned().collect()))
+                        .and_then(|aliases| {
+                            Some(aliases.keys()
+                                // new_index is not an old index
+                                .filter(|i| i.as_str() != new_index)
+                                .cloned()
+                                .collect())
+                        })
                         .unwrap_or_else(|| {
                             info!("no previous index to delete for type {} and dataset {}",
                                   doc_type,
@@ -196,7 +209,7 @@ impl Rubber {
                          is_geo_data: bool)
                          -> Result<(), String> {
         debug!("publishing index");
-        let last_indexes = try!(self.get_last_index(doc_type, dataset));
+        let last_indexes = try!(self.get_last_index(&index, doc_type, dataset));
 
         let dataset_index = get_main_type_and_dataset_index(doc_type, dataset);
         try!(self.alias(&dataset_index, &vec![index.clone()], &last_indexes));
