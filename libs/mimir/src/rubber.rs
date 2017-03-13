@@ -176,12 +176,12 @@ impl Rubber {
                     let value: serde_json::Value = try!(res.read_response()
                         .map_err(|e| e.to_string()));
                     Ok(value.as_object()
-                        .and_then(|aliases| {
-                            Some(aliases.keys()
+                        .map(|aliases| {
+                            aliases.keys()
                                 // new_index is not an old index
                                 .filter(|i| i.as_str() != new_index)
                                 .cloned()
-                                .collect())
+                                .collect()
                         })
                         .unwrap_or_else(|| {
                             info!("no previous index to delete for type {} and dataset {}",
