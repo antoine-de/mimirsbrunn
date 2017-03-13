@@ -166,7 +166,7 @@ fn stop_all_data_test(bragi: &BragiHandler) {
 
 fn stop_by_id_test(bragi: &BragiHandler) {
     // search with id
-    let response = bragi.get("/features?id=stop_area:SA:second_station&pt_dataset=dataset1");
+    let response = bragi.get("/features/stop_area:SA:second_station?pt_dataset=dataset1");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"),

@@ -119,14 +119,14 @@ impl ApiEndPoint {
 
     fn features(&self) -> rustless::Api {
         Api::build(|api| {
-            api.get("features", |endpoint| {
+            api.get("features/:id", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("id", json_dsl::string());
                     dataset_builder(params);
                 });
+
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                                            println!("params: {:?}", params);
                     let id = params.find("id");
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
