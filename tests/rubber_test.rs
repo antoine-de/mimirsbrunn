@@ -171,7 +171,8 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
 }
 
 /// test that rubber correctly cleanup ghost indexes
-/// (indexes that are not aliases to anything, for example if an import has been stopped in the middle)
+/// (indexes that are not aliases to anything, for example
+/// if an import has been stopped in the middle)
 pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
     // we create a ghost ES index
     let client = hyper::client::Client::new();
