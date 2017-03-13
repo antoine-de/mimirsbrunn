@@ -285,6 +285,18 @@ fn make_indexes(all_data: bool,
                       types,
                       |index| is_existing_index(client, index))
 }
+                
+fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+
+    debug!("{} documents found", result.hits.total);
+    // for the moment rs-es does not handle enum Document,
+    // so we need to convert the ES glob to a Place
+    Ok(result.hits
+        .hits
+        .into_iter()
+        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .collect())
+}
 
 fn query(q: &str,
          pt_dataset: &Option<&str>,
@@ -320,15 +332,49 @@ fn query(q: &str,
         .with_size(limit)
         .send());
 
-    debug!("{} documents found", result.hits.total);
+	collect(result)
+}
 
-    // for the moment rs-es does not handle enum Document,
-    // so we need to convert the ES glob to a Place
-    Ok(result.hits
-        .hits
-        .into_iter()
-        .filter_map(|hit| make_place(hit.doc_type, hit.source))
-        .collect())
+fn query_feature(pt_dataset: &Option<&str>,
+    all_data: bool,
+    cnx: &str,
+         id: &Option<&serde_json::Value>)
+         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+	let val = rs_es::units::JsonVal::from(id.unwrap()).unwrap();
+	let build_ids = rs_q::build_ids(vec![val]).build();
+
+    let filter = rs_q::build_bool()
+        .with_must(vec![build_ids])
+        .build();
+    let query = rs_q::build_bool().with_filter(filter).build();
+
+    let mut client = build_rs_client(&cnx.to_string());
+
+    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
+    let indexes = make_indexes(all_data, &pt_dataset_index, &None, &mut client);
+
+    debug!("ES indexes: {:?}", indexes);
+
+    if indexes.is_empty() {
+        // if there is no indexes, rs_es search with index "_all"
+        // but we want to return emtpy response in this case.
+        return Ok(vec![]);
+    }
+
+    let result: SearchResult<serde_json::Value> = try!(client.search_query()
+        .with_indexes(&indexes.iter().map(|index| index.as_str()).collect::<Vec<&str>>())
+        .with_query(&query)
+        .send());
+
+
+	collect(result)
+}
+         
+pub fn feature(pt_dataset: &Option<&str>, all_data: bool, cnx: &str, id: &Option<&serde_json::Value>)
+                    -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+
+    let results = try!(query_feature(&pt_dataset, all_data, cnx, id));
+        Ok(results)
 }
 
 pub fn autocomplete(q: &str,

@@ -124,6 +124,7 @@ impl ApiEndPoint {
         Api::build(|api| {
             api.mount(self.status());
             api.mount(self.autocomplete());
+            api.mount(self.feature());
         })
     }
 
@@ -138,6 +139,31 @@ impl ApiEndPoint {
                         status: "good".to_string(),
                     };
                     render(client, status)
+                })
+            });
+        })
+    }
+
+    fn feature(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("feature", |endpoint| {
+                endpoint.params(|params| {
+                    params.opt_typed("id", json_dsl::string());
+                    params.opt_typed("pt_dataset", json_dsl::string());
+                    params.opt_typed("_all_data", json_dsl::boolean());
+                });
+                let cnx = self.es_cnx_string.clone();
+                endpoint.handle(move |client, params| {
+                    let id = params.find("id");
+                    let pt_dataset = params.find("pt_dataset")
+                        .and_then(|val| val.as_str());
+                    let all_data =
+                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
+
+                    let fearture = query::feature(&pt_dataset, all_data, &cnx, &id);
+                    
+                    let response = model::v1::AutocompleteResponse::from(fearture);
+                    render(client, response)
                 })
             });
         })
