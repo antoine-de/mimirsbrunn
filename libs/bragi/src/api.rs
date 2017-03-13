@@ -84,6 +84,7 @@ pub struct ApiEndPoint {
     pub es_cnx_string: String,
 }
 
+
 impl ApiEndPoint {
     pub fn root(&self) -> rustless::Api {
         Api::build(|api| {
@@ -147,6 +148,8 @@ impl ApiEndPoint {
             api.post("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
+                    params.opt_typed("uri", json_dsl::string());
+                    params.mutually_exclusive(&["q", "uri"]);
                     params.opt_typed("pt_dataset", json_dsl::string());
                     params.opt_typed("limit", json_dsl::u64());
                     params.opt_typed("offset", json_dsl::u64());
@@ -186,6 +189,7 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
+                    let uri = params.find("uri");
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
                     let all_data =
@@ -215,7 +219,8 @@ impl ApiEndPoint {
                                                                  None,
                                                                  &cnx,
                                                                  Some(shape),
-                                                                 types);
+                                                                 types,
+                                                                 &uri);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -223,7 +228,9 @@ impl ApiEndPoint {
             });
             api.get("autocomplete", |endpoint| {
                 endpoint.params(|params| {
-                    params.req_typed("q", json_dsl::string());
+                    params.opt_typed("q", json_dsl::string());
+                    params.opt_typed("uri", json_dsl::string());
+                    params.mutually_exclusive(&["q", "uri"]);
                     params.opt_typed("pt_dataset", json_dsl::string());
                     params.opt_typed("limit", json_dsl::u64());
                     params.opt_typed("offset", json_dsl::u64());
@@ -269,6 +276,7 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
+                    let uri = params.find("uri");
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
                     let all_data =
@@ -301,7 +309,8 @@ impl ApiEndPoint {
                                                                  coord,
                                                                  &cnx,
                                                                  None,
-                                                                 types);
+                                                                 types,
+                                                                 &uri);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
