@@ -97,7 +97,7 @@ impl ApiEndPoint {
         Api::build(|api| {
             api.mount(self.status());
             api.mount(self.autocomplete());
-            api.mount(self.feature());
+            api.mount(self.features());
         })
     }
 
@@ -117,24 +117,25 @@ impl ApiEndPoint {
         })
     }
 
-    fn feature(&self) -> rustless::Api {
+    fn features(&self) -> rustless::Api {
         Api::build(|api| {
-            api.get("feature", |endpoint| {
+            api.get("features", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("id", json_dsl::string());
                     dataset_builder(params);
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
+                                            println!("params: {:?}", params);
                     let id = params.find("id");
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
                     let all_data =
                         params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
 
-                    let feature = query::feature(&pt_dataset, all_data, &cnx, &id);
+                    let features = query::features(&pt_dataset, all_data, &cnx, &id);
 
-                    let response = model::v1::AutocompleteResponse::from(feature);
+                    let response = model::v1::AutocompleteResponse::from(features);
                     render(client, response)
                 })
             });

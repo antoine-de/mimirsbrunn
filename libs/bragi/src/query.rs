@@ -323,11 +323,12 @@ fn query(q: &str,
     collect(result)
 }
 
-fn query_feature(pt_dataset: &Option<&str>,
-                 all_data: bool,
-                 cnx: &str,
-                 id: &Option<&serde_json::Value>)
-                 -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+pub fn features(pt_dataset: &Option<&str>,
+               all_data: bool,
+               cnx: &str,
+               id: &Option<&serde_json::Value>)
+               -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    
     let val = rs_es::units::JsonVal::from(id.unwrap()).unwrap();
     let build_ids = rs_q::build_ids(vec![val]).build();
 
@@ -354,18 +355,7 @@ fn query_feature(pt_dataset: &Option<&str>,
         .with_query(&query)
         .send());
 
-
     collect(result)
-}
-
-pub fn feature(pt_dataset: &Option<&str>,
-               all_data: bool,
-               cnx: &str,
-               id: &Option<&serde_json::Value>)
-               -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-
-    let results = try!(query_feature(&pt_dataset, all_data, cnx, id));
-    Ok(results)
 }
 
 pub fn autocomplete(q: &str,
