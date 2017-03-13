@@ -87,8 +87,8 @@ fn build_query(q: &str,
                -> rs_es::query::Query {
 
     if uri.is_some() {
-    	let val = rs_es::units::JsonVal::from(uri.unwrap()).unwrap();
-    	let ids = rs_q::build_ids(vec![val]).build();
+        let val = rs_es::units::JsonVal::from(uri.unwrap()).unwrap();
+        let ids = rs_q::build_ids(vec![val]).build();
 
         let filter = rs_q::build_bool()
             .with_must(vec![ids])
@@ -285,8 +285,9 @@ fn make_indexes(all_data: bool,
                       types,
                       |index| is_existing_index(client, index))
 }
-                
-fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+
+fn collect(result: SearchResult<serde_json::Value>)
+           -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
 
     debug!("{} documents found", result.hits.total);
     // for the moment rs-es does not handle enum Document,
@@ -332,16 +333,16 @@ fn query(q: &str,
         .with_size(limit)
         .send());
 
-	collect(result)
+    collect(result)
 }
 
 fn query_feature(pt_dataset: &Option<&str>,
-    all_data: bool,
-    cnx: &str,
-         id: &Option<&serde_json::Value>)
-         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-	let val = rs_es::units::JsonVal::from(id.unwrap()).unwrap();
-	let build_ids = rs_q::build_ids(vec![val]).build();
+                 all_data: bool,
+                 cnx: &str,
+                 id: &Option<&serde_json::Value>)
+                 -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+    let val = rs_es::units::JsonVal::from(id.unwrap()).unwrap();
+    let build_ids = rs_q::build_ids(vec![val]).build();
 
     let filter = rs_q::build_bool()
         .with_must(vec![build_ids])
@@ -367,14 +368,17 @@ fn query_feature(pt_dataset: &Option<&str>,
         .send());
 
 
-	collect(result)
+    collect(result)
 }
-         
-pub fn feature(pt_dataset: &Option<&str>, all_data: bool, cnx: &str, id: &Option<&serde_json::Value>)
-                    -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+
+pub fn feature(pt_dataset: &Option<&str>,
+               all_data: bool,
+               cnx: &str,
+               id: &Option<&serde_json::Value>)
+               -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
 
     let results = try!(query_feature(&pt_dataset, all_data, cnx, id));
-        Ok(results)
+    Ok(results)
 }
 
 pub fn autocomplete(q: &str,

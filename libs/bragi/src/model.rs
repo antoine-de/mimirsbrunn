@@ -349,7 +349,9 @@ pub mod v1 {
     #[derive(Serialize, Deserialize, Debug)]
     pub enum V1Reponse {
         Error(CustomError),
-        Response { description: String },
+        Response {
+            description: String,
+        },
     }
     #[derive(Debug)]
     pub enum AutocompleteResponse {

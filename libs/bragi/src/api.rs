@@ -161,7 +161,7 @@ impl ApiEndPoint {
                         params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
 
                     let fearture = query::feature(&pt_dataset, all_data, &cnx, &id);
-                    
+
                     let response = model::v1::AutocompleteResponse::from(fearture);
                     render(client, response)
                 })
