@@ -46,7 +46,6 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let res: Vec<_> = es_wrapper.search_and_filter("20", |_| true).collect();
     assert_eq!(res.len(), 2);
 
-
     // after an import, we should have 1 index, and some aliases to this index
     let client = Client::new();
     let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))

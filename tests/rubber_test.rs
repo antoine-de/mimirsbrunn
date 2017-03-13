@@ -33,6 +33,7 @@ use mimir::{Street, Admin, Coord, MimirObject};
 use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
+use hyper;
 
 fn check_has_elt(es: &::ElasticSearchWrapper, fun: Box<Fn(&Value)>) {
     let search = es.search("*:*"); // we get all documents in the base
@@ -167,4 +168,60 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
     };
     check_has_elt(&es, Box::new(check_admin));
+}
+
+/// test that rubber correctly cleanup ghost indexes
+/// (indexes that are not aliases to anything, for example
+/// if an import has been stopped in the middle)
+pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
+    // we create a ghost ES index
+    let client = hyper::client::Client::new();
+    let old_idx_name = "munin_admin_fr_20170313_113227_006297916";
+    let res = client.put(&format!("{host}/{idx}", host = es.host(), idx = old_idx_name))
+        .send()
+        .unwrap();
+
+    assert_eq!(res.status, hyper::Ok);
+    info!("result: {:?}", res);
+
+    es.refresh();
+    assert_eq!(get_munin_indexes(&es), [old_idx_name.to_string()]);
+
+    let admin = Admin {
+        id: "admin:bob".to_string(),
+        insee: "insee:dummy".to_string(),
+        level: 8,
+        name: "my admin".to_string(),
+        label: "my admin (zip_code)".to_string(),
+        zip_codes: vec!["zip_code".to_string()],
+        weight: Cell::new(42),
+        coord: Coord::new(48.5110722f64, 2.68326290f64),
+        boundary: None,
+    };
+
+    // we index our admin
+    let result = es.rubber.index("fr", std::iter::once(admin));
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 1); // we have indexed 1 element
+
+    es.refresh(); // we need to refresh the index to be sure to get the elt;
+
+    // we should have only one index, and it should not be the previous one
+    assert_eq!(get_munin_indexes(&es).len(), 1);
+    assert!(!get_munin_indexes(&es).contains(&old_idx_name.to_string()));
+}
+
+// return the list of the munin indexes
+fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
+    use super::ToJson;
+    let client = hyper::client::Client::new();
+    let res = client.get(&format!("{host}/_aliases", host = es.host()))
+        .send()
+        .unwrap();
+    assert_eq!(res.status, hyper::Ok);
+
+    let json = res.to_json();
+    let raw_indexes = json.as_object().unwrap();
+    raw_indexes.keys().cloned().collect()
 }
