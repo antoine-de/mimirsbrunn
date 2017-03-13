@@ -178,7 +178,7 @@ impl Rubber {
                     Ok(value.as_object()
                         .map(|aliases| {
                             aliases.keys()
-                                // new_index is not an old index
+                                // we don't want to remove the newly created index
                                 .filter(|i| i.as_str() != new_index)
                                 .cloned()
                                 .collect()
