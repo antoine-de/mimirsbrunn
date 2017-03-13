@@ -242,8 +242,7 @@ impl ApiEndPoint {
                                                                  None,
                                                                  &cnx,
                                                                  Some(shape),
-                                                                 types,
-                                                                 &uri);
+                                                                 types);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -329,8 +328,7 @@ impl ApiEndPoint {
                                                                  coord,
                                                                  &cnx,
                                                                  None,
-                                                                 types,
-                                                                 &uri);
+                                                                 types);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)

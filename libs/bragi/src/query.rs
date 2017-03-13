@@ -82,21 +82,9 @@ enum MatchType {
 fn build_query(q: &str,
                match_type: MatchType,
                coord: &Option<model::Coord>,
-               shape: Option<Vec<rs_es::units::Location>>,
-               uri: &Option<&serde_json::Value>)
+               shape: Option<Vec<rs_es::units::Location>>)
                -> rs_es::query::Query {
 
-    if uri.is_some() {
-        let val = rs_es::units::JsonVal::from(uri.unwrap()).unwrap();
-        let ids = rs_q::build_ids(vec![val]).build();
-
-        let filter = rs_q::build_bool()
-            .with_must(vec![ids])
-            .build();
-        return rs_q::build_bool()
-            .with_filter(filter)
-            .build();
-    }
     use rs_es::query::functions::Function;
     // we order the type of object we want
     // Note: the addresses are boosted more because even if we don't want them first
@@ -308,10 +296,9 @@ fn query(q: &str,
          limit: u64,
          coord: &Option<model::Coord>,
          shape: Option<Vec<rs_es::units::Location>>,
-         types: &Option<Vec<&str>>,
-         uri: &Option<&serde_json::Value>)
+         types: &Option<Vec<&str>>)
          -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    let query = build_query(q, match_type, coord, shape, uri);
+    let query = build_query(q, match_type, coord, shape);
 
     let mut client = build_rs_client(&cnx.to_string());
 
@@ -389,8 +376,7 @@ pub fn autocomplete(q: &str,
                     coord: Option<model::Coord>,
                     cnx: &str,
                     shape: Option<Vec<(f64, f64)>>,
-                    types: Option<Vec<&str>>,
-                    uri: &Option<&serde_json::Value>)
+                    types: Option<Vec<&str>>)
                     -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
@@ -407,8 +393,7 @@ pub fn autocomplete(q: &str,
                              limit,
                              &coord,
                              make_shape(&shape),
-                             &types,
-                             uri));
+                             &types));
     if results.is_empty() {
         query(&q,
               &pt_dataset,
@@ -419,8 +404,7 @@ pub fn autocomplete(q: &str,
               limit,
               &coord,
               make_shape(&shape),
-              &types,
-              uri)
+              &types)
     } else {
         Ok(results)
     }
