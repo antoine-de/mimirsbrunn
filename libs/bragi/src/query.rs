@@ -324,11 +324,11 @@ fn query(q: &str,
 }
 
 pub fn features(pt_dataset: &Option<&str>,
-               all_data: bool,
-               cnx: &str,
-               id: &Option<&serde_json::Value>)
-               -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-    
+                all_data: bool,
+                cnx: &str,
+                id: &Option<&serde_json::Value>)
+                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+
     let val = rs_es::units::JsonVal::from(id.unwrap()).unwrap();
     let build_ids = rs_q::build_ids(vec![val]).build();
 
