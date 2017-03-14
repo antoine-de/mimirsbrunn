@@ -41,12 +41,12 @@ const MAX_LON: f64 = 90f64;
 const MIN_LON: f64 = -90f64;
 
 
-pub fn dataset_builder(params: &mut json_dsl::Builder) {
+pub fn dataset_param(params: &mut json_dsl::Builder) {
     params.opt_typed("pt_dataset", json_dsl::string());
     params.opt_typed("_all_data", json_dsl::boolean());
 }
 
-pub fn coord_builder(params: &mut json_dsl::Builder) {
+pub fn coord_param(params: &mut json_dsl::Builder) {
     params.opt("lon", |lon| {
         lon.coerce(json_dsl::f64());
         lon.validate_with(|val, path| {
@@ -81,12 +81,12 @@ pub fn coord_builder(params: &mut json_dsl::Builder) {
     });
 }
 
-pub fn paginate_builder(params: &mut json_dsl::Builder) {
+pub fn paginate_param(params: &mut json_dsl::Builder) {
     params.opt_typed("limit", json_dsl::u64());
     params.opt_typed("offset", json_dsl::u64());
 }
 
-pub fn shape_builder(params: &mut json_dsl::Builder) {
+pub fn shape_param(params: &mut json_dsl::Builder) {
     params.req("shape", |shape| {
         shape.coerce(json_dsl::object());
         shape.nest(|params| {
@@ -115,7 +115,7 @@ pub fn shape_builder(params: &mut json_dsl::Builder) {
     });
 }
 
-pub fn types_builder(params: &mut json_dsl::Builder) {
+pub fn types_param(params: &mut json_dsl::Builder) {
     params.opt("type", |t| {
         t.coerce(json_dsl::encoded_array(","));
         t.validate_with(|val, path| check_type(val.as_array().unwrap(), path));

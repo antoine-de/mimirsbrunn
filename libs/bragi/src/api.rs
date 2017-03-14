@@ -36,7 +36,7 @@ use valico::json_dsl;
 use super::query;
 use model::v1::*;
 use model;
-use params::{dataset_builder, paginate_builder, shape_builder, types_builder, coord_builder};
+use params::{dataset_param, paginate_param, shape_param, types_param, coord_param};
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
@@ -122,7 +122,7 @@ impl ApiEndPoint {
             api.get("features/:id", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("id", json_dsl::string());
-                    dataset_builder(params);
+                    dataset_param(params);
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -147,10 +147,10 @@ impl ApiEndPoint {
             api.post("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
-                    dataset_builder(params);
-                    paginate_builder(params);
-                    shape_builder(params);
-                    types_builder(params);
+                    dataset_param(params);
+                    paginate_param(params);
+                    shape_param(params);
+                    types_param(params);
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -194,10 +194,10 @@ impl ApiEndPoint {
             api.get("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
-                    dataset_builder(params);
-                    paginate_builder(params);
-                    coord_builder(params);
-                    types_builder(params);
+                    dataset_param(params);
+                    paginate_param(params);
+                    coord_param(params);
+                    types_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
