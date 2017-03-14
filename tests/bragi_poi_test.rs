@@ -52,7 +52,6 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     // - bano-three_cities
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    info!("Launching {}", osm2mimir);
     ::launch_and_assert(osm2mimir,
                         vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-way".into(),
@@ -62,7 +61,6 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],

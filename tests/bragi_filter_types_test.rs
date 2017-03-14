@@ -47,7 +47,6 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     // - stops.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    info!("Launching {}", osm2mimir);
     ::launch_and_assert(osm2mimir,
                         vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-way".into(),
@@ -58,14 +57,12 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    info!("Launching {}", stops2mimir);
     ::launch_and_assert(stops2mimir,
                         vec!["--input=./tests/fixtures/stops.txt".into(),
                              "--dataset=dataset1".into(),

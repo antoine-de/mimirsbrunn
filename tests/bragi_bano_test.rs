@@ -44,7 +44,6 @@ pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
     // We load bano files
     // *********************************
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/sample-bano.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
