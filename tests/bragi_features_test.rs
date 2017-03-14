@@ -37,7 +37,7 @@ pub fn bragi_features_test(es_wrapper: ::ElasticSearchWrapper) {
                              "--dataset=dataset1".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
-    
+
     addr_by_id_test(&bragi);
     admin_by_id_test(&bragi);
     street_by_id_test(&bragi);
@@ -58,7 +58,7 @@ fn street_by_id_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/features/161162362");
     assert_eq!(all_20.len(), 1);
     let types = get_types(&all_20);
-    
+
     let count = count_types(&types, "street");
     assert_eq!(count, 1);
 
