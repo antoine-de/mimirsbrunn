@@ -67,7 +67,6 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
 
     stop_attached_to_admin_test(&bragi);
     stop_no_admin_test(&bragi);
-    stop_by_id_test(&bragi);
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
     ::launch_and_assert(stops2mimir,
@@ -159,14 +158,3 @@ fn stop_all_data_test(bragi: &BragiHandler) {
     let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
     assert_eq!(response.len(), 2);
 }
-
-fn stop_by_id_test(bragi: &BragiHandler) {
-    // search with id
-    let response = bragi.get("/features/stop_area:SA:second_station?pt_dataset=dataset1");
-    assert_eq!(response.len(), 1);
-    let stop = response.first().unwrap();
-    assert_eq!(get_value(stop, "id"),
-               "stop_area:SA:second_station");
-
-}
-
