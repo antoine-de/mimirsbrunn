@@ -152,9 +152,8 @@ fn main() {
     mimir::logger_init().unwrap();
     info!("importing bano into Mimir");
 
-    let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+    let args: Args =
+        docopt::Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
 
     let file_path = Path::new(&args.flag_input);
     if file_path.is_dir() {

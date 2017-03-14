@@ -52,9 +52,7 @@ pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // after an import, we should have 4 indexes, and some aliases to this index
     let client = Client::new();
-    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
-        .send()
-        .unwrap();
+    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host())).send().unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();

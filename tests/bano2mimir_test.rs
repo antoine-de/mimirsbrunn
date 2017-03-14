@@ -48,9 +48,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // after an import, we should have 1 index, and some aliases to this index
     let client = Client::new();
-    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
-        .send()
-        .unwrap();
+    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host())).send().unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
@@ -79,9 +77,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
 
     // we should still have only one index (but a different one)
-    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host()))
-        .send()
-        .unwrap();
+    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host())).send().unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();

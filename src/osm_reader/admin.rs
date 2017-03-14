@@ -73,9 +73,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             continue;
         }
         if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
-            let level = relation.tags
-                .get("admin_level")
-                .and_then(|s| s.parse().ok());
+            let level = relation.tags.get("admin_level").and_then(|s| s.parse().ok());
             let level = match level {
                 None => {
                     info!("invalid admin_level for relation {}: admin_level {:?}",

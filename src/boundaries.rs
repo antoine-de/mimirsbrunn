@@ -48,10 +48,16 @@ impl BoundaryPart {
         BoundaryPart { nodes: nodes }
     }
     pub fn first(&self) -> osmpbfreader::NodeId {
-        self.nodes.first().unwrap().id
+        self.nodes
+            .first()
+            .unwrap()
+            .id
     }
     pub fn last(&self) -> osmpbfreader::NodeId {
-        self.nodes.last().unwrap().id
+        self.nodes
+            .last()
+            .unwrap()
+            .id
     }
 }
 

@@ -72,6 +72,7 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     poi_admin_test(&bragi);
     poi_zip_code_test(&bragi);
     poi_from_osm_test(&bragi);
+    poi_misspelt_one_word_admin_test(&bragi);
 }
 
 
@@ -176,4 +177,24 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=ENSE3 site Ampère");
     // we can find other results (due to the fuzzy search, but we can't find the 'site Ampère')
     assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère"));
+}
+
+fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
+    // with this search we should be able to find a poi called "Melun"
+    let geocodings = bragi.get("/autocomplete?q=Melun");
+    let types = get_types(&geocodings);
+    let count = count_types(&types, Poi::doc_type());
+    assert!(count >= 1);
+    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
+
+    // when we search for 'Meluuun', we should find some places in melun
+    let geocodings = bragi.get("/autocomplete?q=Meluuun");
+    for postcodes in get_values(&geocodings, "postcode") {
+        assert!(postcodes.split(';').any(|p| p == "77000"));
+    }
+    // we should also be able to find the city of melun which will carry more postcodes
+    let cities = filter_by_type(&geocodings, "city");
+    assert_eq!(cities.len(), 1);
+    let melun = &cities.first().unwrap();
+    assert_eq!(get_value(melun, "name"), "Melun");
 }
