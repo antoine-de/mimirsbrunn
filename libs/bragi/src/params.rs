@@ -60,6 +60,25 @@ pub fn coord_builder(params: &mut json_dsl::Builder) {
             check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
         });
     });
+    params.validate_with(|val, path| {
+        // if we have a lat we should have a lon (and the opposite)
+        if let Some(obj) = val.as_object() {
+            let has_lon = obj.get("lon").is_some();
+            let has_lat = obj.get("lat").is_some();
+            if has_lon ^ has_lat {
+                Err(vec![Box::new(json_dsl::errors::WrongValue {
+                             path: path.to_string(),
+                             detail: Some("you need to provide a lon AND a lat \
+                                           if you provide one of them"
+                                 .to_string()),
+                         })])
+            } else {
+                Ok(())
+            }
+        } else {
+            unreachable!("should never happen, already checked");
+        }
+    });
 }
 
 pub fn paginate_builder(params: &mut json_dsl::Builder) {
