@@ -51,8 +51,7 @@ fn admin_by_id_test(bragi: &BragiHandler) {
     let count = count_types(&types, "city");
     assert_eq!(count, 1);
 
-    assert_eq!(get_values(&all_20, "id"),
-               vec!["admin:fr:77288"]);
+    assert_eq!(get_values(&all_20, "id"), vec!["admin:fr:77288"]);
 }
 
 fn street_by_id_test(bragi: &BragiHandler) {
@@ -63,8 +62,7 @@ fn street_by_id_test(bragi: &BragiHandler) {
     let count = count_types(&types, "street");
     assert_eq!(count, 1);
 
-    assert_eq!(get_values(&all_20, "id"),
-               vec!["161162362"]);
+    assert_eq!(get_values(&all_20, "id"), vec!["161162362"]);
 }
 
 fn addr_by_id_test(bragi: &BragiHandler) {
@@ -73,8 +71,7 @@ fn addr_by_id_test(bragi: &BragiHandler) {
     let types = get_types(&all_20);
     let count = count_types(&types, "house");
     assert_eq!(count, 1);
-    assert_eq!(get_values(&all_20, "id"),
-               vec!["addr:2.68385;48.50539"]);
+    assert_eq!(get_values(&all_20, "id"), vec!["addr:2.68385;48.50539"]);
 }
 
 fn stop_by_id_test(bragi: &BragiHandler) {
@@ -82,7 +79,6 @@ fn stop_by_id_test(bragi: &BragiHandler) {
     let response = bragi.get("/features/stop_area:SA:second_station?pt_dataset=dataset1");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
-    assert_eq!(get_value(stop, "id"),
-               "stop_area:SA:second_station");
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
 
 }
