@@ -149,8 +149,8 @@ fn long_bano_address_test(bragi: &BragiHandler) {
     // test with a very long request which consists of an exact address and something else
     // and the "something else" should not disturb the research
     let all_20 =
-        bragi.get("/autocomplete?q=The Marvellous Navitia Developers Kisio Digital 20 rue \
-                   hector malot paris");
+        bragi.get("/autocomplete?q=The Marvellous Navitia Developers Kisio Digital 20 rue hector \
+                   malot paris");
     assert_eq!(all_20.len(), 1);
     assert_eq!(get_values(&all_20, "label"),
                vec!["20 Rue Hector Malot (Paris)"]);

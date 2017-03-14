@@ -183,7 +183,7 @@ fn build_query(q: &str,
                 .with_operator("and")
                 .build()
         }
-        // for fuzzy search we lower our expectation and we accept 40% of token match on label.ngram.
+        // for fuzzy search we lower our expectation & we accept 40% of token match on label.ngram
         // The "40%" is empirical, it's supposed to be able to manage cases BOTH missspelt one-word
         // requests AND very long requests.
         // Missspelt one-word request:

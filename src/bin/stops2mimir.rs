@@ -43,8 +43,7 @@ use docopt::Docopt;
 use mimirsbrunn::utils::{format_label, get_zip_codes_from_admins};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
-const USAGE: &'static str =
-    "
+const USAGE: &'static str = "
 Usage:
     stops2mimir --help
     stops2mimir --input=<file> \
@@ -200,29 +199,21 @@ fn main() {
     mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
 
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|dopt| dopt.decode())
-        .unwrap_or_else(|e| e.exit());
+    let args: Args = Docopt::new(USAGE).and_then(|dopt| dopt.decode()).unwrap_or_else(|e| e.exit());
 
     info!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
-    let mut rdr = csv::Reader::from_file(args.flag_input)
-        .unwrap()
-        .double_quote(true);
+    let mut rdr = csv::Reader::from_file(args.flag_input).unwrap().double_quote(true);
 
     let mut stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
         .unwrap()
-        .filter_map(|rc| {
-            rc.map_err(|e| debug!("skip csv line because: {}", e))
-                .ok()
-        })
+        .filter_map(|rc| rc.map_err(|e| debug!("skip csv line because: {}", e)).ok())
         .collect();
 
     attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.flag_city_level);
 
     info!("Importing stops into Mimir");
-    let nb_stops = rubber.index(&args.flag_dataset, stops.iter())
-        .unwrap();
+    let nb_stops = rubber.index(&args.flag_dataset, stops.iter()).unwrap();
 
     info!("Nb of indexed stops: {}", nb_stops);
 
@@ -245,10 +236,7 @@ fn test_load_stops() {
 
     let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
         .unwrap()
-        .filter_map(|rc| {
-            rc.map_err(|e| println!("error at csv line decoding : {}", e))
-                .ok()
-        })
+        .filter_map(|rc| rc.map_err(|e| println!("error at csv line decoding : {}", e)).ok())
         .collect();
     assert_eq!(stops.len(), 3);
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();

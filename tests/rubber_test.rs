@@ -177,9 +177,8 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
     // we create a ghost ES index
     let client = hyper::client::Client::new();
     let old_idx_name = "munin_admin_fr_20170313_113227_006297916";
-    let res = client.put(&format!("{host}/{idx}", host = es.host(), idx = old_idx_name))
-        .send()
-        .unwrap();
+    let res =
+        client.put(&format!("{host}/{idx}", host = es.host(), idx = old_idx_name)).send().unwrap();
 
     assert_eq!(res.status, hyper::Ok);
     info!("result: {:?}", res);
@@ -216,9 +215,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
 fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
     use super::ToJson;
     let client = hyper::client::Client::new();
-    let res = client.get(&format!("{host}/_aliases", host = es.host()))
-        .send()
-        .unwrap();
+    let res = client.get(&format!("{host}/_aliases", host = es.host())).send().unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();

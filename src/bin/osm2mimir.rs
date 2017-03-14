@@ -76,11 +76,13 @@ Options:
 
 fn main() {
     mimir::logger_init().unwrap();
-    let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+    let args: Args =
+        docopt::Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
 
-    let levels = args.flag_level.iter().cloned().collect();
+    let levels = args.flag_level
+        .iter()
+        .cloned()
+        .collect();
     let city_level = args.flag_city_level;
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
     debug!("creation of indexes");
@@ -101,13 +103,11 @@ fn main() {
 
         if args.flag_import_way {
             info!("importing streets into Mimir");
-            let nb_streets = rubber.index(&args.flag_dataset, streets.into_iter())
-                .unwrap();
+            let nb_streets = rubber.index(&args.flag_dataset, streets.into_iter()).unwrap();
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
-    let nb_admins = rubber.index(&args.flag_dataset, admins.iter())
-        .unwrap();
+    let nb_admins = rubber.index(&args.flag_dataset, admins.iter()).unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.flag_import_poi {
@@ -126,8 +126,7 @@ fn main() {
         compute_poi_weight(&mut pois, city_level);
 
         info!("Importing pois into Mimir");
-        let nb_pois = rubber.index(&args.flag_dataset, pois.iter())
-            .unwrap();
+        let nb_pois = rubber.index(&args.flag_dataset, pois.iter()).unwrap();
 
         info!("Nb of indexed pois: {}", nb_pois);
     }

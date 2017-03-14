@@ -97,10 +97,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn refresh(&self) {
         info!("Refreshing ES indexes");
 
-        let res = hyper::client::Client::new()
-            .get(&format!("{}/_refresh", self.host()))
-            .send()
-            .unwrap();
+        let res =
+            hyper::client::Client::new().get(&format!("{}/_refresh", self.host())).send().unwrap();
         assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
     }
 
@@ -176,10 +174,7 @@ impl<'a> ElasticSearchWrapper<'a> {
 fn launch_and_assert(cmd: &'static str,
                      args: Vec<std::string::String>,
                      es_wrapper: &ElasticSearchWrapper) {
-    let status = Command::new(cmd)
-        .args(&args)
-        .status()
-        .unwrap();
+    let status = Command::new(cmd).args(&args).status().unwrap();
     assert!(status.success(), "`{}` failed {}", cmd, &status);
     es_wrapper.refresh();
 }
