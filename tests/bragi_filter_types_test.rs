@@ -207,8 +207,9 @@ fn stop_by_id_test(bragi: &BragiHandler) {
 
 fn stop_by_id_not_exist_test(bragi: &BragiHandler) {
     // search with id
-    let response = bragi.raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1").unwrap();
-    
+    let response = bragi.raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1")
+        .unwrap();
+
     assert_eq!(response.status, Some(NotFound));
 
     let result_body = iron_test::response::extract_body_to_string(response);
