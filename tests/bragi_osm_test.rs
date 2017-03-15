@@ -45,7 +45,6 @@ pub fn bragi_osm_test(es_wrapper: ::ElasticSearchWrapper) {
     // We load the OSM dataset (including ways)
     // *********************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    info!("Launching {}", osm2mimir);
     ::launch_and_assert(osm2mimir,
                         vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-way".into(),

@@ -59,6 +59,7 @@ extern crate log;
 pub mod api;
 pub mod query;
 mod model;
+mod params;
 
 #[derive(RustcDecodable, Debug)]
 pub struct Args {

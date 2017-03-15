@@ -48,7 +48,6 @@ pub fn bragi_three_cities_test(es_wrapper: ::ElasticSearchWrapper) {
     // - bano-three_cities
     // *********************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    info!("Launching {}", osm2mimir);
     ::launch_and_assert(osm2mimir,
                         vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-way".into(),
@@ -57,7 +56,6 @@ pub fn bragi_three_cities_test(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
@@ -119,6 +117,7 @@ fn three_cities_zip_code_address_test(bragi: &BragiHandler) {
     assert_eq!(get_values(&all_20, "label"),
                vec!["2 Rue de la Reine Blanche (Melun)"]);
 }
+
 
 fn three_cities_shape_test(bragi: &BragiHandler) {
     //      A ---------------------D

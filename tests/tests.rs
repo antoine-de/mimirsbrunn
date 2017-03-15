@@ -97,8 +97,10 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn refresh(&self) {
         info!("Refreshing ES indexes");
 
-        let res =
-            hyper::client::Client::new().get(&format!("{}/_refresh", self.host())).send().unwrap();
+        let res = hyper::client::Client::new()
+            .get(&format!("{}/_refresh", self.host()))
+            .send()
+            .unwrap();
         assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
     }
 

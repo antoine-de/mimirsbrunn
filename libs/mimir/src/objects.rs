@@ -351,7 +351,7 @@ impl MimirObject for Street {
         "street"
     }
     fn es_id(&self) -> Option<String> {
-        None
+        Some(self.id.clone())
     }
 }
 
@@ -383,7 +383,7 @@ impl MimirObject for Addr {
         "addr"
     }
     fn es_id(&self) -> Option<String> {
-        None
+        Some(self.id.clone())
     }
 }
 

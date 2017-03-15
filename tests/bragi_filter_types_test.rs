@@ -33,7 +33,8 @@ extern crate iron_test;
 extern crate serde_json;
 use super::BragiHandler;
 use super::{count_types, get_types, to_json, get_value};
-use hyper::status::StatusCode::BadRequest;
+use super::get_values;
+use hyper::status::StatusCode::{BadRequest, NotFound};
 
 
 pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
@@ -47,7 +48,6 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     // - stops.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    info!("Launching {}", osm2mimir);
     ::launch_and_assert(osm2mimir,
                         vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
                              "--import-way".into(),
@@ -58,14 +58,12 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
                         &es_wrapper);
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    info!("Launching {}", stops2mimir);
     ::launch_and_assert(stops2mimir,
                         vec!["--input=./tests/fixtures/stops.txt".into(),
                              "--dataset=dataset1".into(),
@@ -79,6 +77,11 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     type_poi_and_city_with_percent_encoding_no_dataset_test(&bragi);
     type_stop_area_dataset_test(&bragi);
     unvalid_type_test(&bragi);
+    addr_by_id_test(&bragi);
+    admin_by_id_test(&bragi);
+    street_by_id_test(&bragi);
+    stop_by_id_test(&bragi);
+    stop_area_that_does_not_exists(&bragi);
 }
 
 
@@ -161,4 +164,54 @@ fn unvalid_type_test(bragi: &BragiHandler) {
         .unwrap();
 
     assert!(error_msg.contains("unvalid is not a valid type"))
+}
+
+fn admin_by_id_test(bragi: &BragiHandler) {
+    let all_20 = bragi.get("/features/admin:fr:77288");
+    assert_eq!(all_20.len(), 1);
+    let types = get_types(&all_20);
+    let count = count_types(&types, "city");
+    assert_eq!(count, 1);
+
+    assert_eq!(get_values(&all_20, "id"), vec!["admin:fr:77288"]);
+}
+
+fn street_by_id_test(bragi: &BragiHandler) {
+    let all_20 = bragi.get("/features/161162362");
+    assert_eq!(all_20.len(), 1);
+    let types = get_types(&all_20);
+
+    let count = count_types(&types, "street");
+    assert_eq!(count, 1);
+
+    assert_eq!(get_values(&all_20, "id"), vec!["161162362"]);
+}
+
+fn addr_by_id_test(bragi: &BragiHandler) {
+    let all_20 = bragi.get("/features/addr:2.68385;48.50539");
+    assert_eq!(all_20.len(), 1);
+    let types = get_types(&all_20);
+    let count = count_types(&types, "house");
+    assert_eq!(count, 1);
+    assert_eq!(get_values(&all_20, "id"), vec!["addr:2.68385;48.50539"]);
+}
+
+fn stop_by_id_test(bragi: &BragiHandler) {
+    // search with id
+    let response = bragi.get("/features/stop_area:SA:second_station?pt_dataset=dataset1");
+    assert_eq!(response.len(), 1);
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
+
+}
+
+fn stop_area_that_does_not_exists(bragi: &BragiHandler) {
+    // search with id
+    let response = bragi.raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1")
+        .unwrap();
+
+    assert_eq!(response.status, Some(NotFound));
+
+    let result_body = iron_test::response::extract_body_to_string(response);
+    assert!(result_body.contains("Unable to find object"));
 }

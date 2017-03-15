@@ -37,7 +37,6 @@ use super::ToJson;
 /// Checks that we are able to find one object (a specific address)
 pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/sample-bano.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
@@ -70,7 +69,6 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                vec!["munin", "munin_addr", "munin_addr_fr", "munin_geo_data"]);
 
     // then we import again the bano file:
-    info!("importing again {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/sample-bano.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],

@@ -44,7 +44,6 @@ pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    info!("Launching {}", bano2mimir);
     ::launch_and_assert(bano2mimir,
                         vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
                              format!("--connection-string={}", es_wrapper.host())],
