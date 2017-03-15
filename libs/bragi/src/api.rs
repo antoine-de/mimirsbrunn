@@ -126,15 +126,16 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                endpoint.handle(move |client, params| {
+                endpoint.handle(move |mut client, params| {
                     let id = params.find("id");
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
-                    let all_data =
-                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
-
+                    let all_data = params.find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
                     let features = query::features(&pt_dataset, all_data, &cnx, &id);
-
+                    if features.is_err() {
+                        client.set_status(status::StatusCode::NotFound);
+                    }
                     let response = model::v1::AutocompleteResponse::from(features);
                     render(client, response)
                 })
@@ -158,8 +159,8 @@ impl ApiEndPoint {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
-                    let all_data =
-                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
+                    let all_data = params.find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
@@ -204,8 +205,8 @@ impl ApiEndPoint {
                     let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
-                    let all_data =
-                        params.find("_all_data").and_then(|val| val.as_bool()).unwrap_or(false);
+                    let all_data = params.find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
                     let offset = params.find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);

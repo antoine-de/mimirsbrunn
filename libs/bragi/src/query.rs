@@ -355,7 +355,11 @@ pub fn features(pt_dataset: &Option<&str>,
         .with_query(&query)
         .send());
 
-    collect(result)
+    if result.hits.total == 0 {
+        Err(rs_es::error::EsError::EsError("Unable to find object".to_string()))
+    } else {
+        collect(result)
+    }
 }
 
 pub fn autocomplete(q: &str,

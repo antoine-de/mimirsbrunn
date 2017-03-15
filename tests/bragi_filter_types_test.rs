@@ -34,7 +34,7 @@ extern crate serde_json;
 use super::BragiHandler;
 use super::{count_types, get_types, to_json, get_value};
 use super::get_values;
-use hyper::status::StatusCode::BadRequest;
+use hyper::status::StatusCode::{BadRequest, NotFound};
 
 
 pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
@@ -81,6 +81,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     admin_by_id_test(&bragi);
     street_by_id_test(&bragi);
     stop_by_id_test(&bragi);
+    stop_by_id_not_exist_test(&bragi);
 }
 
 
@@ -202,4 +203,14 @@ fn stop_by_id_test(bragi: &BragiHandler) {
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
 
+}
+
+fn stop_by_id_not_exist_test(bragi: &BragiHandler) {
+    // search with id
+    let response = bragi.raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1").unwrap();
+    
+    assert_eq!(response.status, Some(NotFound));
+
+    let result_body = iron_test::response::extract_body_to_string(response);
+    assert!(result_body.contains("Unable to find object"));
 }
