@@ -81,7 +81,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     admin_by_id_test(&bragi);
     street_by_id_test(&bragi);
     stop_by_id_test(&bragi);
-    stop_by_id_not_exist_test(&bragi);
+    stop_area_that_does_not_exists(&bragi);
 }
 
 
@@ -205,7 +205,7 @@ fn stop_by_id_test(bragi: &BragiHandler) {
 
 }
 
-fn stop_by_id_not_exist_test(bragi: &BragiHandler) {
+fn stop_area_that_does_not_exists(bragi: &BragiHandler) {
     // search with id
     let response = bragi.raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1")
         .unwrap();
