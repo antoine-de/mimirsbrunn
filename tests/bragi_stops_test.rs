@@ -173,4 +173,11 @@ fn stop_order_by_weight_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "label"), "weight three");
     assert_eq!(get_value(stop, "name"), "weight three");
     assert_eq!(get_value(stop, "id"), "stop_area:SA:weight_3_station");
+
+    let stop = response.last().unwrap();
+
+    assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
+    assert_eq!(get_value(stop, "label"), "weight one");
+    assert_eq!(get_value(stop, "name"), "weight one");
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:weight_1_station");
 }
