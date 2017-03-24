@@ -263,7 +263,8 @@ fn test_load_stops() {
         .unwrap()
         .double_quote(true);
 
-    let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
+    let mut nb_stop_points = HashMap::new();
+    let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
         .unwrap()
         .filter_map(|rc| rc.map_err(|e| println!("error at csv line decoding : {}", e)).ok())
         .collect();
