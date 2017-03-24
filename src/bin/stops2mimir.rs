@@ -121,12 +121,12 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
     fn next(&mut self) -> Option<Self::Item> {
         fn get(record: &[String], pos: usize) -> csv::Result<&str> {
             record.get(pos)
-                  .map(|s| s.as_str())
-                  .ok_or_else(|| csv::Error::Decode(format!("Failed accessing record '{}'.", pos)))
+                .map(|s| s.as_str())
+                .ok_or_else(|| csv::Error::Decode(format!("Failed accessing record '{}'.", pos)))
         }
         fn parse_f64(s: &str) -> csv::Result<f64> {
             s.parse()
-             .map_err(|_| csv::Error::Decode(format!("Failed converting '{}' from str.", s)))
+                .map_err(|_| csv::Error::Decode(format!("Failed converting '{}' from str.", s)))
         }
 
         fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<()> {
@@ -238,12 +238,12 @@ fn main() {
     let mut nb_stop_points = HashMap::new();
 
     let mut stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
-                                          .unwrap()
-                                          .filter_map(|rc| {
-                                              rc.map_err(|e| debug!("skip csv line because: {}", e))
-                                                .ok()
-                                          })
-                                          .collect();
+        .unwrap()
+        .filter_map(|rc| {
+            rc.map_err(|e| debug!("skip csv line because: {}", e))
+                .ok()
+        })
+        .collect();
 
     attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.flag_city_level);
 
@@ -268,19 +268,17 @@ fn test_load_stops() {
     // SA:witout_lon: StopArea object without longitude coord
     // SA:station_no_city: StopArea far away, we won't be able to attach it to a city
     let mut rdr = csv::Reader::from_file("./tests/fixtures/stops.txt".to_string())
-                      .unwrap()
-                      .double_quote(true);
+        .unwrap()
+        .double_quote(true);
 
     let mut nb_stop_points = HashMap::new();
     let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
-                                      .unwrap()
-                                      .filter_map(|rc| {
-                                          rc.map_err(|e| {
-                                                println!("error at csv line decoding : {}", e)
-                                            })
-                                            .ok()
-                                      })
-                                      .collect();
+        .unwrap()
+        .filter_map(|rc| {
+            rc.map_err(|e| println!("error at csv line decoding : {}", e))
+                .ok()
+        })
+        .collect();
     assert_eq!(stops.len(), 5);
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(ids,
