@@ -268,10 +268,12 @@ fn test_load_stops() {
         .unwrap()
         .filter_map(|rc| rc.map_err(|e| println!("error at csv line decoding : {}", e)).ok())
         .collect();
-    assert_eq!(stops.len(), 3);
+    assert_eq!(stops.len(), 5);
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(ids,
                vec!["stop_area:SA:main_station",
                     "stop_area:SA:second_station",
-                    "stop_area:SA:station_no_city"]);
+                    "stop_area:SA:station_no_city",
+                    "stop_area:SA:weight_1_station",
+                    "stop_area:SA:weight_3_station"]);
 }

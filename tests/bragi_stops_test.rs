@@ -77,6 +77,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
 
     stop_filtered_by_dataset_test(&bragi);
     stop_all_data_test(&bragi);
+    stop_order_by_weight_test(&bragi);
 }
 
 
@@ -157,4 +158,18 @@ fn stop_all_data_test(bragi: &BragiHandler) {
     // search wiht _all_data = true
     let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
     assert_eq!(response.len(), 2);
+}
+
+fn stop_order_by_weight_test(bragi: &BragiHandler) {
+    // The StopAreas are sorted by weight. stop_area:SA:weight_3_station having weight 3
+    // will be the first element in the result where as stop_area:SA:weight_1_station will always be second.  
+    let response = bragi.get("/autocomplete?q=weight&_all_data=true");
+    assert_eq!(response.len(), 2);
+    
+    let stop = response.first().unwrap();
+
+    assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
+    assert_eq!(get_value(stop, "label"), "weight three");
+    assert_eq!(get_value(stop, "name"), "weight three");
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:weight_3_station");
 }
