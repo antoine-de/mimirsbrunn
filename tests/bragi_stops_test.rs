@@ -162,7 +162,7 @@ fn stop_all_data_test(bragi: &BragiHandler) {
 
 fn stop_order_by_weight_test(bragi: &BragiHandler) {
     // The StopAreas are sorted by weight. stop_area:SA:weight_3_station having weight 3
-    // will be the first element in the result where as stop_area:SA:weight_1_station will 
+    // will be the first element in the result where as stop_area:SA:weight_1_station will
     //always be second.
     let response = bragi.get("/autocomplete?q=weight&_all_data=true");
     assert_eq!(response.len(), 2);
