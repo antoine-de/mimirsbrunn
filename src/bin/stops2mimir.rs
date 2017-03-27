@@ -144,7 +144,7 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
                 let location_type = self.get_location_type(&r);
                 let visible = self.get_visible(&r);
                 let parent_station = self.get_parent_station(&r);
-                //if it's a stop, we update its stop_area counter                    
+                //if it's a stop point, we update its stop_area counter                    
                 if let (Some(0), Some(id)) = (location_type, parent_station) {
                     if !id.is_empty() {
                         *self.nb_stop_points.entry(format!("stop_area:{}", id)).or_insert(0) += 1;
