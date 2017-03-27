@@ -41,7 +41,7 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                         &es_wrapper);
     // Test: Import of stops
     let res: Vec<_> = es_wrapper.search_and_filter("*", |_| true).collect();
-    assert_eq!(res.len(), 3);
+    assert_eq!(res.len(), 5);
     assert!(res.iter().all(|r| r.is_stop()));
 
     // Test: search for stop area not in ES base

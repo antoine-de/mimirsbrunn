@@ -42,6 +42,7 @@ use mimir::rubber::Rubber;
 use docopt::Docopt;
 use mimirsbrunn::utils::{format_label, get_zip_codes_from_admins};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use std::collections::HashMap;
 
 const USAGE: &'static str = "
 Usage:
@@ -74,10 +75,14 @@ struct StopPointIter<'a, R: std::io::Read + 'a> {
     stop_name_pos: usize,
     location_type_pos: Option<usize>,
     stop_visible_pos: Option<usize>,
+    parent_station_pos: Option<usize>,
+    nb_stop_points: &'a mut HashMap<String, u32>,
 }
 
 impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
-    fn new(r: &'a mut csv::Reader<R>) -> csv::Result<Self> {
+    fn new(r: &'a mut csv::Reader<R>,
+           nb_stop_points: &'a mut HashMap<String, u32>)
+           -> csv::Result<Self> {
         let headers = try!(r.headers());
         let get_optional_pos = |name| headers.iter().position(|s| s == name);
 
@@ -95,6 +100,8 @@ impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
             stop_name_pos: try!(get_pos("stop_name")),
             location_type_pos: get_optional_pos("location_type"),
             stop_visible_pos: get_optional_pos("visible"),
+            parent_station_pos: get_optional_pos("parent_station"),
+            nb_stop_points: nb_stop_points,
         })
     }
     fn get_location_type(&self, record: &[String]) -> Option<u8> {
@@ -102,6 +109,10 @@ impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
     }
     fn get_visible(&self, record: &[String]) -> Option<u8> {
         self.stop_visible_pos.and_then(|pos| record.get(pos).and_then(|s| s.parse().ok()))
+    }
+
+    fn get_parent_station<'b>(&self, record: &'b [String]) -> Option<&'b String> {
+        self.parent_station_pos.and_then(|pos| record.get(pos))
     }
 }
 
@@ -127,12 +138,19 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
                 Ok(())
             }
         }
+
         self.iter.next().map(|r| {
             r.and_then(|r| {
                 let location_type = self.get_location_type(&r);
                 let visible = self.get_visible(&r);
+                let parent_station = self.get_parent_station(&r);
+                //if it's a stop point, we update its stop_area counter
+                if let (Some(0), Some(id)) = (location_type, parent_station) {
+                    if !id.is_empty() {
+                        *self.nb_stop_points.entry(format!("stop_area:{}", id)).or_insert(0) += 1;
+                    }
+                }
                 try!(is_valid_stop_area(&location_type, &visible));
-
                 let stop_id = try!(get(&r, self.stop_id_pos));
                 let stop_lat = try!(get(&r, self.stop_lat_pos));
                 let stop_lat = try!(parse_f64(stop_lat));
@@ -195,6 +213,16 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: I
           nb_matched + nb_unmatched);
 }
 
+// Update weight value for each stop_area from HashMap.
+fn finalize_stop_area_weight<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: It,
+    nb_stop_points: &HashMap<String, u32>) {
+    for stop in stops {
+        if let Some(weight) = nb_stop_points.get(&stop.id) {
+            stop.weight = *weight;
+        }
+    }
+}
+
 fn main() {
     mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
@@ -205,12 +233,19 @@ fn main() {
     let mut rubber = Rubber::new(&args.flag_connection_string);
     let mut rdr = csv::Reader::from_file(args.flag_input).unwrap().double_quote(true);
 
-    let mut stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
+    let mut nb_stop_points = HashMap::new();
+
+    let mut stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
         .unwrap()
-        .filter_map(|rc| rc.map_err(|e| debug!("skip csv line because: {}", e)).ok())
+        .filter_map(|rc| {
+            rc.map_err(|e| debug!("skip csv line because: {}", e))
+                .ok()
+        })
         .collect();
 
     attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.flag_city_level);
+
+    finalize_stop_area_weight(stops.iter_mut(), &nb_stop_points);
 
     info!("Importing stops into Mimir");
     let nb_stops = rubber.index(&args.flag_dataset, stops.iter()).unwrap();
@@ -234,14 +269,20 @@ fn test_load_stops() {
         .unwrap()
         .double_quote(true);
 
-    let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr)
+    let mut nb_stop_points = HashMap::new();
+    let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
         .unwrap()
-        .filter_map(|rc| rc.map_err(|e| println!("error at csv line decoding : {}", e)).ok())
+        .filter_map(|rc| {
+            rc.map_err(|e| println!("error at csv line decoding : {}", e))
+                .ok()
+        })
         .collect();
-    assert_eq!(stops.len(), 3);
+    assert_eq!(stops.len(), 5);
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(ids,
                vec!["stop_area:SA:main_station",
                     "stop_area:SA:second_station",
-                    "stop_area:SA:station_no_city"]);
+                    "stop_area:SA:station_no_city",
+                    "stop_area:SA:weight_1_station",
+                    "stop_area:SA:weight_3_station"]);
 }
