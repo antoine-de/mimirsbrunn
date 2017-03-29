@@ -214,15 +214,21 @@ fn build_query(q: &str,
         .build()
 }
 
-fn is_existing_index(client: &mut rs_es::Client, index: &str) -> Result<bool, rs_es::error::EsError> {
+fn is_existing_index(client: &mut rs_es::Client,
+                     index: &str)
+                     -> Result<bool, rs_es::error::EsError> {
     if index.is_empty() {
         return Ok(false);
     }
     match client.open_index(&index) {
-		Err(::rs_es::error::EsError::EsServerError(_)) => Err(rs_es::error::EsError::EsServerError("Index not found ".to_string())),
-		Err(_) => Err(rs_es::error::EsError::EsError("Elasticsearch Connection Error ".to_string())),
-		Ok(_) => Ok(true),
-    }	
+        Err(::rs_es::error::EsError::EsServerError(_)) => {
+            Err(rs_es::error::EsError::EsServerError("Index not found ".to_string()))
+        }
+        Err(_) => {
+            Err(rs_es::error::EsError::EsError("Elasticsearch Connection Error ".to_string()))
+        }
+        Ok(_) => Ok(true),
+    }
 }
 
 fn get_indexes_by_type(a_type: &str) -> String {
@@ -236,19 +242,21 @@ fn get_indexes_by_type(a_type: &str) -> String {
     format!("munin_{}", doc_type)
 }
 
-fn make_indexes_impl<F: FnMut(&str) -> Result<bool, rs_es::error::EsError>> (all_data: bool,
-                                             pt_dataset_index: &Option<String>,
-                                             types: &Option<Vec<&str>>,
-                                             mut is_existing_index: F)
-                                             -> Result<Vec<String>, rs_es::error::EsError> {
+fn make_indexes_impl<F: FnMut(&str) -> Result<bool, rs_es::error::EsError>>
+    (all_data: bool,
+     pt_dataset_index: &Option<String>,
+     types: &Option<Vec<&str>>,
+     mut is_existing_index: F)
+     -> Result<Vec<String>, rs_es::error::EsError> {
     if all_data {
         return Ok(vec!["munin".to_string()]);
     }
 
     let mut result: Vec<String> = vec![];
-    let mut push = |result: &mut Vec<_>, i: &str| -> Result<(), rs_es::error::EsError> {if try!(is_existing_index(i)) {
-        result.push(i.into());
-    	}
+    let mut push = |result: &mut Vec<_>, i: &str| -> Result<(), rs_es::error::EsError> {
+        if try!(is_existing_index(i)) {
+            result.push(i.into());
+        }
         Ok(())
     };
     if let Some(ref types) = *types {
@@ -276,7 +284,7 @@ fn make_indexes(all_data: bool,
                 pt_dataset_index: &Option<String>,
                 types: &Option<Vec<&str>>,
                 client: &mut rs_es::Client)
-                -> Result<Vec<String>, rs_es::error::EsError>  {
+                -> Result<Vec<String>, rs_es::error::EsError> {
     make_indexes_impl(all_data,
                       pt_dataset_index,
                       types,
@@ -313,7 +321,7 @@ fn query(q: &str,
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
     let indexes = try!(make_indexes(all_data, &pt_dataset_index, types, &mut client));
-    
+
     debug!("ES indexes: {:?}", indexes);
 
     if indexes.is_empty() {
