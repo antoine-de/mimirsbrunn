@@ -424,18 +424,27 @@ pub fn autocomplete(q: &str,
 #[test]
 fn test_make_indexes_impl() {
     // all_data
-    assert_eq!(make_indexes_impl(true, &None, &None, |_index| true),
+    assert_eq!(make_indexes_impl(true,
+                                 &None,
+                                 &None,
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin"]);
 
     // no dataset and no types
-    assert_eq!(make_indexes_impl(false, &None, &None, |_index| true),
+    assert_eq!(make_indexes_impl(false,
+                                 &None,
+                                 &None,
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_geo_data"]);
 
     // dataset fr + no types
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
                                  &None,
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_geo_data", "munin_stop_fr"]);
 
     // no dataset + types poi, city, street, house and public_transport:stop_area
@@ -447,14 +456,16 @@ fn test_make_indexes_impl() {
                                             "street",
                                             "house",
                                             "public_transport:stop_area"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
 
     // no dataset fr + type public_transport:stop_area only
     assert_eq!(make_indexes_impl(false,
                                  &None,
                                  &Some(vec!["public_transport:stop_area"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                Vec::<String>::new());
 
     // dataset fr + types poi, city, street, house and public_transport:stop_area
@@ -465,7 +476,8 @@ fn test_make_indexes_impl() {
                                             "street",
                                             "house",
                                             "public_transport:stop_area"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr", "munin_stop_fr"]);
 
     // dataset fr types poi, city, street, house without public_transport:stop_area
@@ -473,6 +485,7 @@ fn test_make_indexes_impl() {
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
                                  &Some(vec!["poi", "city", "street", "house"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
 }
