@@ -221,12 +221,8 @@ fn is_existing_index(client: &mut rs_es::Client,
         return Ok(false);
     }
     match client.open_index(&index) {
-        Err(::rs_es::error::EsError::EsServerError(_)) => {
-            Err(rs_es::error::EsError::EsServerError("Index not found ".to_string()))
-        }
-        Err(_) => {
-            Err(rs_es::error::EsError::EsError("Elasticsearch Connection Error ".to_string()))
-        }
+        Err(::rs_es::error::EsError::EsServerError(_)) => Ok(false),
+        Err(e) => Err(e),
         Ok(_) => Ok(true),
     }
 }
@@ -488,4 +484,15 @@ fn test_make_indexes_impl() {
                                  |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
                    .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
+    
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with a result "false" as non of the index 
+    // is present in elasticsearch
+    assert_eq!(make_indexes_impl(false,
+                                 &Some("munin_stop_fr".to_string()),
+                                 &Some(vec!["poi", "city", "street", "house"]),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(false) })
+                   .unwrap(),
+               Vec::<String>::new());
+                       
 }
