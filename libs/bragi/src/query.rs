@@ -495,4 +495,15 @@ fn test_make_indexes_impl() {
                    .unwrap(),
                Vec::<String>::new());
 
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with an error in the result (Elasticsearch is absent..)
+    match make_indexes_impl(false,
+                            &Some("munin_stop_fr".to_string()),
+                            &Some(vec!["poi", "city", "street", "house"]),
+                            |_index| -> Result<bool, rs_es::error::EsError> {
+                                Err(rs_es::error::EsError::EsError("Elasticsearch".to_string()))
+                            }) {
+        Err(e) => assert_eq!(e.to_string(), "Elasticsearch".to_string()),
+        Ok(_) => (),
+    }
 }
