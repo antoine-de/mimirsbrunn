@@ -504,6 +504,6 @@ fn test_make_indexes_impl() {
                                 Err(rs_es::error::EsError::EsError("Elasticsearch".to_string()))
                             }) {
         Err(e) => assert_eq!(e.to_string(), "Elasticsearch".to_string()),
-        Ok(_) => (),
+        Ok(_) => assert!(false),
     }
 }
