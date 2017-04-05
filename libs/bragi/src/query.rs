@@ -221,7 +221,8 @@ fn is_existing_index(client: &mut rs_es::Client,
         return Ok(false);
     }
     match client.open_index(&index) {
-        Err(::rs_es::error::EsError::EsServerError(_)) => Ok(false),
+        //This error indicates that the search index is absent in ElasticSearch.
+        Err(::rs_es::error::EsError::EsError(_)) => Ok(false),
         Err(e) => Err(e),
         Ok(_) => Ok(true),
     }
