@@ -214,8 +214,18 @@ fn build_query(q: &str,
         .build()
 }
 
-fn is_existing_index(client: &mut rs_es::Client, index: &str) -> bool {
-    !index.is_empty() && client.open_index(&index).is_ok()
+fn is_existing_index(client: &mut rs_es::Client,
+                     index: &str)
+                     -> Result<bool, rs_es::error::EsError> {
+    if index.is_empty() {
+        return Ok(false);
+    }
+    match client.open_index(&index) {
+        //This error indicates that the search index is absent in ElasticSearch.
+        Err(::rs_es::error::EsError::EsError(_)) => Ok(false),
+        Err(e) => Err(e),
+        Ok(_) => Ok(true),
+    }
 }
 
 fn get_indexes_by_type(a_type: &str) -> String {
@@ -229,45 +239,49 @@ fn get_indexes_by_type(a_type: &str) -> String {
     format!("munin_{}", doc_type)
 }
 
-fn make_indexes_impl<F: FnMut(&str) -> bool>(all_data: bool,
-                                             pt_dataset_index: &Option<String>,
-                                             types: &Option<Vec<&str>>,
-                                             mut is_existing_index: F)
-                                             -> Vec<String> {
+fn make_indexes_impl<F: FnMut(&str) -> Result<bool, rs_es::error::EsError>>
+    (all_data: bool,
+     pt_dataset_index: &Option<String>,
+     types: &Option<Vec<&str>>,
+     mut is_existing_index: F)
+     -> Result<Vec<String>, rs_es::error::EsError> {
     if all_data {
-        return vec!["munin".to_string()];
+        return Ok(vec!["munin".to_string()]);
     }
 
     let mut result: Vec<String> = vec![];
-    let mut push = |result: &mut Vec<_>, i: &str| if is_existing_index(i) {
-        result.push(i.into());
+    let mut push = |result: &mut Vec<_>, i: &str| -> Result<(), rs_es::error::EsError> {
+        if try!(is_existing_index(i)) {
+            result.push(i.into());
+        }
+        Ok(())
     };
     if let Some(ref types) = *types {
         for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
-            push(&mut result, &get_indexes_by_type(type_));
+            try!(push(&mut result, &get_indexes_by_type(type_)));
         }
         match *pt_dataset_index {
             Some(ref index) if types.contains(&"public_transport:stop_area") => {
-                push(&mut result, index)
+                try!(push(&mut result, index));
             }
             _ => (),
         }
     } else {
-        push(&mut result, &"munin_geo_data".to_string());
+        try!(push(&mut result, &"munin_geo_data".to_string()));
 
         if let Some(ref dataset) = *pt_dataset_index {
-            push(&mut result, &dataset.clone());
+            try!(push(&mut result, &dataset.clone()));
         }
     }
 
-    result
+    Ok(result)
 }
 
 fn make_indexes(all_data: bool,
                 pt_dataset_index: &Option<String>,
                 types: &Option<Vec<&str>>,
                 client: &mut rs_es::Client)
-                -> Vec<String> {
+                -> Result<Vec<String>, rs_es::error::EsError> {
     make_indexes_impl(all_data,
                       pt_dataset_index,
                       types,
@@ -303,7 +317,7 @@ fn query(q: &str,
     let mut client = build_rs_client(&cnx.to_string());
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
-    let indexes = make_indexes(all_data, &pt_dataset_index, types, &mut client);
+    let indexes = try!(make_indexes(all_data, &pt_dataset_index, types, &mut client));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -340,7 +354,7 @@ pub fn features(pt_dataset: &Option<&str>,
     let mut client = build_rs_client(&cnx.to_string());
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
-    let indexes = make_indexes(all_data, &pt_dataset_index, &None, &mut client);
+    let indexes = try!(make_indexes(all_data, &pt_dataset_index, &None, &mut client));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -407,18 +421,27 @@ pub fn autocomplete(q: &str,
 #[test]
 fn test_make_indexes_impl() {
     // all_data
-    assert_eq!(make_indexes_impl(true, &None, &None, |_index| true),
+    assert_eq!(make_indexes_impl(true,
+                                 &None,
+                                 &None,
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin"]);
 
     // no dataset and no types
-    assert_eq!(make_indexes_impl(false, &None, &None, |_index| true),
+    assert_eq!(make_indexes_impl(false,
+                                 &None,
+                                 &None,
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_geo_data"]);
 
     // dataset fr + no types
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
                                  &None,
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_geo_data", "munin_stop_fr"]);
 
     // no dataset + types poi, city, street, house and public_transport:stop_area
@@ -430,14 +453,16 @@ fn test_make_indexes_impl() {
                                             "street",
                                             "house",
                                             "public_transport:stop_area"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
 
     // no dataset fr + type public_transport:stop_area only
     assert_eq!(make_indexes_impl(false,
                                  &None,
                                  &Some(vec!["public_transport:stop_area"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                Vec::<String>::new());
 
     // dataset fr + types poi, city, street, house and public_transport:stop_area
@@ -448,7 +473,8 @@ fn test_make_indexes_impl() {
                                             "street",
                                             "house",
                                             "public_transport:stop_area"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr", "munin_stop_fr"]);
 
     // dataset fr types poi, city, street, house without public_transport:stop_area
@@ -456,6 +482,29 @@ fn test_make_indexes_impl() {
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
                                  &Some(vec!["poi", "city", "street", "house"]),
-                                 |_index| true),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                   .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with a result "false" as non of the index
+    // is present in elasticsearch
+    assert_eq!(make_indexes_impl(false,
+                                 &Some("munin_stop_fr".to_string()),
+                                 &Some(vec!["poi", "city", "street", "house"]),
+                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(false) })
+                   .unwrap(),
+               Vec::<String>::new());
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with an error in the result (Elasticsearch is absent..)
+    match make_indexes_impl(false,
+                            &Some("munin_stop_fr".to_string()),
+                            &Some(vec!["poi", "city", "street", "house"]),
+                            |_index| -> Result<bool, rs_es::error::EsError> {
+                                Err(rs_es::error::EsError::EsError("Elasticsearch".to_string()))
+                            }) {
+        Err(e) => assert_eq!(e.to_string(), "Elasticsearch".to_string()),
+        Ok(_) => assert!(false),
+    }
 }
