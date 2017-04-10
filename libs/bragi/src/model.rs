@@ -360,7 +360,7 @@ pub mod v1 {
 
     use serde;
     impl serde::Serialize for AutocompleteResponse {
-        fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where S: serde::Serializer
         {
             match self {
