@@ -83,7 +83,7 @@ fn zip_code_street_test(bragi: &BragiHandler) {
     assert!(get_values(&all_20, "postcode").iter().all(|r| *r == "77000"));
 
     let boundary = all_20[0]["administrative_regions"].pointer("/0/boundary");
-    assert!(boundary.is_none());
+    assert_eq!(boundary, None);
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");

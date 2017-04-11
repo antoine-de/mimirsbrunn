@@ -38,11 +38,8 @@ extern crate rustc_serialize;
 extern crate docopt;
 extern crate iron;
 extern crate urlencoded;
-extern crate regex;
 
 extern crate rustless;
-extern crate hyper;
-extern crate jsonway;
 extern crate valico;
 extern crate mimir;
 extern crate geojson;

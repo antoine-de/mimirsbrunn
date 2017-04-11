@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::model;
-use regex;
 use rs_es;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
@@ -37,15 +36,6 @@ use mimir;
 use serde_json;
 use serde;
 use mimir::objects::{MimirObject, Admin, Addr, Stop};
-
-fn build_rs_client(cnx: &String) -> rs_es::Client {
-    let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
-    let cap = re.captures(&cnx).unwrap();
-    let host = cap.name("host").unwrap().as_str();
-    let port = cap.name("port").unwrap().as_str().parse::<u32>().unwrap();
-
-    rs_es::Client::new(&host, port)
-}
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
@@ -289,8 +279,8 @@ fn make_indexes(all_data: bool,
 }
 
 fn collect(result: SearchResult<serde_json::Value>)
-           -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
-
+           -> Result<Vec<mimir::Place>, rs_es::error::EsError>
+{
     debug!("{} documents found", result.hits.total);
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
@@ -314,7 +304,7 @@ fn query(q: &str,
          -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let query = build_query(q, match_type, coord, shape);
 
-    let mut client = build_rs_client(&cnx.to_string());
+    let mut client = rs_es::Client::new(cnx).unwrap();
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
     let indexes = try!(make_indexes(all_data, &pt_dataset_index, types, &mut client));
@@ -340,10 +330,10 @@ fn query(q: &str,
 pub fn features(pt_dataset: &Option<&str>,
                 all_data: bool,
                 cnx: &str,
-                id: &Option<&serde_json::Value>)
+                id: &str)
                 -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
 
-    let val = rs_es::units::JsonVal::from(id.unwrap()).unwrap();
+    let val = rs_es::units::JsonVal::String(id.into());
     let build_ids = rs_q::build_ids(vec![val]).build();
 
     let filter = rs_q::build_bool()
@@ -351,7 +341,7 @@ pub fn features(pt_dataset: &Option<&str>,
         .build();
     let query = rs_q::build_bool().with_filter(filter).build();
 
-    let mut client = build_rs_client(&cnx.to_string());
+    let mut client = rs_es::Client::new(cnx).unwrap();
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
     let indexes = try!(make_indexes(all_data, &pt_dataset_index, &None, &mut client));

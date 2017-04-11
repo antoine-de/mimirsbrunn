@@ -34,7 +34,6 @@ extern crate serde_json;
 use super::BragiHandler;
 use super::get_values;
 use super::to_json;
-use serde_json::Value;
 
 
 pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
@@ -59,8 +58,7 @@ pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
 
 fn status_test(bragi: &BragiHandler) {
     let resp = bragi.raw_get("/status").unwrap();
-    assert_eq!(to_json(resp).find("status"),
-               Some(&Value::String("good".to_string())));
+    assert_eq!(to_json(resp).pointer("/status"), Some(&json!("good")));
 }
 
 fn simple_bano_autocomplete_test(bragi: &BragiHandler) {
