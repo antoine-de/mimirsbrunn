@@ -143,9 +143,7 @@ fn check_bound(val: &JsonValue,
     }
 }
 
-fn check_type(types: &Vec<JsonValue>,
-              path: &str)
-              -> Result<(), valico_error::ValicoErrors> {
+fn check_type(types: &[JsonValue], path: &str) -> Result<(), valico_error::ValicoErrors> {
     for type_ in types {
         if let Err(e) = Type::from_str(type_.as_str().unwrap()) {
             return Err(vec![Box::new(json_dsl::errors::WrongValue {

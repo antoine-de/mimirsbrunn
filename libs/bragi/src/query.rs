@@ -29,6 +29,7 @@
 // www.navitia.io
 use super::model;
 use rs_es;
+use rs_es::error::EsError;
 use rs_es::query::Query as rs_q;
 use rs_es::operations::search::SearchResult;
 use rs_es::units as rs_u;
@@ -204,15 +205,13 @@ fn build_query(q: &str,
         .build()
 }
 
-fn is_existing_index(client: &mut rs_es::Client,
-                     index: &str)
-                     -> Result<bool, rs_es::error::EsError> {
+fn is_existing_index(client: &mut rs_es::Client, index: &str) -> Result<bool, EsError> {
     if index.is_empty() {
         return Ok(false);
     }
     match client.open_index(&index) {
         //This error indicates that the search index is absent in ElasticSearch.
-        Err(::rs_es::error::EsError::EsError(_)) => Ok(false),
+        Err(EsError::EsError(_)) => Ok(false),
         Err(e) => Err(e),
         Ok(_) => Ok(true),
     }
@@ -229,18 +228,17 @@ fn get_indexes_by_type(a_type: &str) -> String {
     format!("munin_{}", doc_type)
 }
 
-fn make_indexes_impl<F: FnMut(&str) -> Result<bool, rs_es::error::EsError>>
-    (all_data: bool,
-     pt_dataset_index: &Option<String>,
-     types: &Option<Vec<&str>>,
-     mut is_existing_index: F)
-     -> Result<Vec<String>, rs_es::error::EsError> {
+fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(all_data: bool,
+                                                              pt_dataset_index: &Option<String>,
+                                                              types: &Option<Vec<&str>>,
+                                                              mut is_existing_index: F)
+                                                              -> Result<Vec<String>, EsError> {
     if all_data {
         return Ok(vec!["munin".to_string()]);
     }
 
     let mut result: Vec<String> = vec![];
-    let mut push = |result: &mut Vec<_>, i: &str| -> Result<(), rs_es::error::EsError> {
+    let mut push = |result: &mut Vec<_>, i: &str| -> Result<(), EsError> {
         if try!(is_existing_index(i)) {
             result.push(i.into());
         }
@@ -271,16 +269,14 @@ fn make_indexes(all_data: bool,
                 pt_dataset_index: &Option<String>,
                 types: &Option<Vec<&str>>,
                 client: &mut rs_es::Client)
-                -> Result<Vec<String>, rs_es::error::EsError> {
+                -> Result<Vec<String>, EsError> {
     make_indexes_impl(all_data,
                       pt_dataset_index,
                       types,
                       |index| is_existing_index(client, index))
 }
 
-fn collect(result: SearchResult<serde_json::Value>)
-           -> Result<Vec<mimir::Place>, rs_es::error::EsError>
-{
+fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>, EsError> {
     debug!("{} documents found", result.hits.total);
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
@@ -301,7 +297,7 @@ fn query(q: &str,
          coord: &Option<model::Coord>,
          shape: Option<Vec<rs_es::units::Location>>,
          types: &Option<Vec<&str>>)
-         -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+         -> Result<Vec<mimir::Place>, EsError> {
     let query = build_query(q, match_type, coord, shape);
 
     let mut client = rs_es::Client::new(cnx).unwrap();
@@ -331,7 +327,7 @@ pub fn features(pt_dataset: &Option<&str>,
                 all_data: bool,
                 cnx: &str,
                 id: &str)
-                -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+                -> Result<Vec<mimir::Place>, EsError> {
 
     let val = rs_es::units::JsonVal::String(id.into());
     let build_ids = rs_q::build_ids(vec![val]).build();
@@ -360,7 +356,7 @@ pub fn features(pt_dataset: &Option<&str>,
         .send());
 
     if result.hits.total == 0 {
-        Err(rs_es::error::EsError::EsError("Unable to find object".to_string()))
+        Err(EsError::EsError("Unable to find object".to_string()))
     } else {
         collect(result)
     }
@@ -375,7 +371,7 @@ pub fn autocomplete(q: &str,
                     cnx: &str,
                     shape: Option<Vec<(f64, f64)>>,
                     types: Option<Vec<&str>>)
-                    -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
+                    -> Result<Vec<mimir::Place>, EsError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
     }
@@ -410,27 +406,19 @@ pub fn autocomplete(q: &str,
 
 #[test]
 fn test_make_indexes_impl() {
+    fn ok_index(_index: &str) -> Result<bool, EsError> {
+        Ok(true)
+    }
     // all_data
-    assert_eq!(make_indexes_impl(true,
-                                 &None,
-                                 &None,
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
-                   .unwrap(),
+    assert_eq!(make_indexes_impl(true, &None, &None, ok_index).unwrap(),
                vec!["munin"]);
 
     // no dataset and no types
-    assert_eq!(make_indexes_impl(false,
-                                 &None,
-                                 &None,
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
-                   .unwrap(),
+    assert_eq!(make_indexes_impl(false, &None, &None, ok_index).unwrap(),
                vec!["munin_geo_data"]);
 
     // dataset fr + no types
-    assert_eq!(make_indexes_impl(false,
-                                 &Some("munin_stop_fr".to_string()),
-                                 &None,
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+    assert_eq!(make_indexes_impl(false, &Some("munin_stop_fr".to_string()), &None, ok_index)
                    .unwrap(),
                vec!["munin_geo_data", "munin_stop_fr"]);
 
@@ -443,7 +431,7 @@ fn test_make_indexes_impl() {
                                             "street",
                                             "house",
                                             "public_transport:stop_area"]),
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                                 ok_index)
                    .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
 
@@ -451,7 +439,7 @@ fn test_make_indexes_impl() {
     assert_eq!(make_indexes_impl(false,
                                  &None,
                                  &Some(vec!["public_transport:stop_area"]),
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                                 ok_index)
                    .unwrap(),
                Vec::<String>::new());
 
@@ -463,7 +451,7 @@ fn test_make_indexes_impl() {
                                             "street",
                                             "house",
                                             "public_transport:stop_area"]),
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                                 ok_index)
                    .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr", "munin_stop_fr"]);
 
@@ -472,7 +460,7 @@ fn test_make_indexes_impl() {
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
                                  &Some(vec!["poi", "city", "street", "house"]),
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(true) })
+                                 ok_index)
                    .unwrap(),
                vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
 
@@ -482,7 +470,7 @@ fn test_make_indexes_impl() {
     assert_eq!(make_indexes_impl(false,
                                  &Some("munin_stop_fr".to_string()),
                                  &Some(vec!["poi", "city", "street", "house"]),
-                                 |_index| -> Result<bool, rs_es::error::EsError> { Ok(false) })
+                                 |_index| Ok::<_, EsError>(false))
                    .unwrap(),
                Vec::<String>::new());
 
@@ -491,10 +479,8 @@ fn test_make_indexes_impl() {
     match make_indexes_impl(false,
                             &Some("munin_stop_fr".to_string()),
                             &Some(vec!["poi", "city", "street", "house"]),
-                            |_index| -> Result<bool, rs_es::error::EsError> {
-                                Err(rs_es::error::EsError::EsError("Elasticsearch".to_string()))
-                            }) {
-        Err(e) => assert_eq!(e.to_string(), "Elasticsearch".to_string()),
-        Ok(_) => assert!(false),
+                            |_index| Err::<bool, _>(EsError::EsError("Elasticsearch".into()))) {
+        Err(EsError::EsError(e)) => assert_eq!(e, "Elasticsearch"),
+        _ => assert!(false),
     }
 }
