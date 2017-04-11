@@ -6,21 +6,17 @@ authors = ["dt.ro <dt.ro@canaltp.fr>"]
 [dependencies]
 docopt = "*"
 rustc-serialize = "*"
-hyper = "^0.9"
-jsonway = "*"
-iron = "*"
+iron = "0.4"
 log = "*"
 rustless = "0.10"
-urlencoded = "*"
-regex = "*"
-mdo = "*"
+urlencoded = "0.4"
 valico = "1.0"
-rs-es = "0.5"
-serde = "0.8"
-serde_json = "0.8"
-serde_derive = "0.8"
-geojson = { version="*", features=["with-serde"]}
-geo = "^0.3"
+rs-es = {version = "0.9", default-features = false}
+serde = "0.9"
+serde_json = "0.9"
+serde_derive = "0.9"
+geojson = "0.6"
+geo = "0.4"
 
 [dependencies.mimir]
 path = "../mimir"

@@ -36,6 +36,7 @@ extern crate rustless;
 extern crate iron;
 extern crate iron_test;
 extern crate mime;
+#[macro_use]
 extern crate serde_json;
 extern crate bragi;
 #[macro_use]
@@ -57,7 +58,7 @@ mod bragi_filter_types_test;
 mod bragi_synonyms_test;
 
 use docker_wrapper::*;
-use std::collections::BTreeMap;
+use serde_json::Map;
 use serde_json::value::Value;
 use hyper::client::response::Response;
 use std::process::Command;
@@ -128,16 +129,16 @@ impl<'a> ElasticSearchWrapper<'a> {
         where F: 'b + FnMut(&mimir::Place) -> bool
     {
         use serde_json::value::Value;
-        use std::collections::btree_map;
-        fn into_object(json: Value) -> Option<btree_map::BTreeMap<String, Value>> {
+        use serde_json::map::{Map, Entry};
+        fn into_object(json: Value) -> Option<Map<String, Value>> {
             match json {
                 Value::Object(o) => Some(o),
                 _ => None,
             }
         }
         fn get(json: Value, key: &str) -> Option<Value> {
-            into_object(json).and_then(|mut json| match json.entry(key.into()) {
-                btree_map::Entry::Occupied(o) => Some(o.remove()),
+            into_object(json).and_then(|mut json| match json.entry(key.to_string()) {
+                Entry::Occupied(o) => Some(o.remove()),
                 _ => None,
             })
         }
@@ -197,7 +198,7 @@ impl BragiHandler {
                                 &self.app)
     }
 
-    pub fn get(&self, q: &str) -> Vec<BTreeMap<String, Value>> {
+    pub fn get(&self, q: &str) -> Vec<Map<String, Value>> {
         get_results(self.raw_get(q).unwrap())
     }
 
@@ -212,7 +213,7 @@ impl BragiHandler {
                                  &self.app)
     }
 
-    pub fn post_shape(&self, q: &str, shape: &str) -> Vec<BTreeMap<String, Value>> {
+    pub fn post_shape(&self, q: &str, shape: &str) -> Vec<Map<String, Value>> {
         get_results(self.raw_post_shape(q, shape).unwrap())
     }
 }
@@ -222,9 +223,9 @@ pub fn to_json(r: iron::Response) -> Value {
     serde_json::from_str(&s).unwrap()
 }
 
-pub fn get_results(r: iron::Response) -> Vec<BTreeMap<String, Value>> {
+pub fn get_results(r: iron::Response) -> Vec<Map<String, Value>> {
     to_json(r)
-        .find("features")
+        .pointer("/features")
         .expect("wrongly formated bragi response")
         .as_array()
         .expect("features must be array")
@@ -239,21 +240,19 @@ pub fn get_results(r: iron::Response) -> Vec<BTreeMap<String, Value>> {
         .collect()
 }
 
-pub fn get_values<'a>(r: &'a [BTreeMap<String, Value>], val: &'a str) -> Vec<&'a str> {
+pub fn get_values<'a>(r: &'a [Map<String, Value>], val: &'a str) -> Vec<&'a str> {
     r.iter().map(|e| get_value(e, val)).collect()
 }
 
-pub fn get_value<'a>(e: &'a BTreeMap<String, Value>, val: &'a str) -> &'a str {
+pub fn get_value<'a>(e: &'a Map<String, Value>, val: &'a str) -> &'a str {
     e.get(val).and_then(|l| l.as_str()).unwrap_or("")
 }
 
-pub fn get_types(r: &[BTreeMap<String, Value>]) -> Vec<&str> {
+pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
     r.iter().map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("")).collect()
 }
 
-pub fn filter_by_type<'a>(r: &'a [BTreeMap<String, Value>],
-                          t: &'a str)
-                          -> Vec<BTreeMap<String, Value>> {
+pub fn filter_by_type<'a>(r: &'a [Map<String, Value>], t: &'a str) -> Vec<Map<String, Value>> {
     r.iter()
         .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
         .cloned()

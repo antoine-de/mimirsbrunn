@@ -41,12 +41,12 @@ extern crate env_logger;
 extern crate chrono;
 extern crate hyper;
 extern crate rs_es;
-extern crate regex;
 extern crate geo;
 extern crate geojson;
 
 pub mod objects;
 pub mod rubber;
+
 pub use objects::*;
 use chrono::Local;
 use std::env;

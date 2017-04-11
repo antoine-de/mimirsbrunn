@@ -31,7 +31,6 @@
 
 use super::objects::{MimirObject, Admin};
 use chrono;
-use regex;
 use hyper;
 use hyper::status::StatusCode;
 use rs_es::error::EsError;
@@ -83,14 +82,10 @@ fn get_main_type_index(doc_type: &str) -> String {
 impl Rubber {
     // build a rubber with a connection string (http://host:port/)
     pub fn new(cnx: &str) -> Rubber {
-        let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
-        let cap = re.captures(cnx).unwrap();
-        let host = cap.name("host").unwrap().as_str();
-        let port = cap.name("port").unwrap().as_str().parse::<u32>().unwrap();
-        info!("elastic search host {:?} port {:?}", host, port);
+        info!("elastic search host {} ", cnx);
 
         Rubber {
-            es_client: rs_es::Client::new(&host, port),
+            es_client: rs_es::Client::new(&cnx).unwrap(),
             http_client: hyper::client::Client::new(),
         }
     }
@@ -371,11 +366,6 @@ impl Rubber {
 pub fn test_valid_url() {
     Rubber::new("http://localhost:9200");
     Rubber::new("localhost:9200");
-}
-
-#[test]
-#[should_panic]
-pub fn test_invalid_url() {
     Rubber::new("http://bob");
 }
 

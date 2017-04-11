@@ -127,7 +127,7 @@ impl ApiEndPoint {
 
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |mut client, params| {
-                    let id = params.find("id");
+                    let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_dataset = params.find("pt_dataset")
                         .and_then(|val| val.as_str());
                     let all_data = params.find("_all_data")

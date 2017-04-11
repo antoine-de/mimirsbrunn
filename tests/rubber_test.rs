@@ -28,36 +28,31 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use serde_json::value::{to_value, Value};
+use serde_json::value::Value;
 use mimir::{Street, Admin, Coord, MimirObject};
 use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
 use hyper;
 
-fn check_has_elt(es: &::ElasticSearchWrapper, fun: Box<Fn(&Value)>) {
+fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
     // we should have our elt
-    assert_eq!(search.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0),
-               1);
-    let es_elt = search.lookup("hits.hits")
-        .and_then(|h| h.as_array())
-        .and_then(|v| v.first())
-        .unwrap();
-    fun(es_elt);
+    assert_eq!(search.pointer("/hits/total"), Some(&json!(1)));
+    fun(search.pointer("/hits/hits/0").unwrap());
 }
 
 fn check_has_bob(es: &::ElasticSearchWrapper) {
     let check_is_bob = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_str()).unwrap(),
+        assert_eq!(es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
                    "street");
-        let es_bob = es_elt.find("_source").unwrap();
-        assert_eq!(es_bob.find("id"), Some(&to_value("bob")));
-        assert_eq!(es_bob.find("street_name"), Some(&to_value("bob's street")));
-        assert_eq!(es_bob.find("label"), Some(&to_value("bob's name")));
-        assert_eq!(es_bob.find("weight"), Some(&Value::U64(42)));
+        let es_bob = es_elt.pointer("/_source").unwrap();
+        assert_eq!(es_bob.pointer("/id"), Some(&json!("bob")));
+        assert_eq!(es_bob.pointer("/street_name"), Some(&json!("bob's street")));
+        assert_eq!(es_bob.pointer("/label"), Some(&json!("bob's name")));
+        assert_eq!(es_bob.pointer("/weight"), Some(&json!(42)));
     };
-    check_has_elt(es, Box::new(check_is_bob));
+    check_has_elt(es, check_is_bob);
 }
 
 /// check the zero downtime update
@@ -114,21 +109,21 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
 
     // then we should have our bobette
     let check_is_bobette = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_str()).unwrap(),
+        assert_eq!(es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
                    "street");
-        let es_bob = es_elt.find("_source").unwrap();
-        assert_eq!(es_bob.find("id"), Some(&to_value("bobette")));
-        assert_eq!(es_bob.find("street_name"),
-                   Some(&to_value("bobette's street")));
-        assert_eq!(es_bob.find("label"), Some(&to_value("bobette's name")));
-        assert_eq!(es_bob.find("weight"), Some(&Value::U64(24)));
+        let es_bob = es_elt.pointer("/_source").unwrap();
+        assert_eq!(es_bob.pointer("/id"), Some(&json!("bobette")));
+        assert_eq!(es_bob.pointer("/street_name"),
+                   Some(&json!("bobette's street")));
+        assert_eq!(es_bob.pointer("/label"), Some(&json!("bobette's name")));
+        assert_eq!(es_bob.pointer("/weight"), Some(&json!(24)));
 
-        let es_coord = es_bob.find("coord").unwrap();
-        assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
-        assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
+        let es_coord = es_bob.pointer("/coord").unwrap();
+        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
+        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
 
     };
-    check_has_elt(&es, Box::new(check_is_bobette));
+    check_has_elt(&es, check_is_bobette);
 }
 
 pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
@@ -156,18 +151,18 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     es.refresh(); // we need to refresh the index to be sure to get the elt;
 
     let check_admin = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_str()).unwrap(),
+        assert_eq!(es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
                    Admin::doc_type());
-        let es_source = es_elt.find("_source").unwrap();
-        assert_eq!(es_elt.find("_id"), es_source.find("id"));
-        assert_eq!(es_elt.find("_id"), Some(&to_value("admin:bob")));
-        assert_eq!(es_source.find("insee"), Some(&to_value("insee:dummy")));
+        let es_source = es_elt.pointer("/_source").unwrap();
+        assert_eq!(es_elt.pointer("/_id"), es_source.pointer("/id"));
+        assert_eq!(es_elt.pointer("/_id"), Some(&json!("admin:bob")));
+        assert_eq!(es_source.pointer("/insee"), Some(&json!("insee:dummy")));
 
-        let es_coord = es_source.find("coord").unwrap();
-        assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
-        assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
+        let es_coord = es_source.pointer("/coord").unwrap();
+        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
+        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
     };
-    check_has_elt(&es, Box::new(check_admin));
+    check_has_elt(&es, check_admin);
 }
 
 /// test that rubber correctly cleanup ghost indexes

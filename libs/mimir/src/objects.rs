@@ -32,8 +32,9 @@ use geo;
 use serde;
 use std::rc::Rc;
 use std::cell::Cell;
-use serde::ser::Serializer;
+use serde::ser::{Serializer, SerializeStruct};
 use std::cmp::Ordering;
+use std::fmt;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -235,8 +236,8 @@ pub struct Admin {
 }
 
 fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPolygon<f64>>,
-                                     serializer: &mut S)
-                                     -> Result<(), S::Error>
+                                     serializer: S)
+                                     -> Result<S::Ok, S::Error>
     where S: Serializer
 {
     use geojson::{Value, Geometry, GeoJson};
@@ -250,8 +251,7 @@ fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPol
     }
 }
 
-fn custom_multi_polygon_deserialize<D>(d: &mut D)
-                                       -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
+fn custom_multi_polygon_deserialize<D>(d: D) -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
     where D: serde::de::Deserializer
 {
     use geojson;
@@ -305,7 +305,7 @@ impl Members for Admin {
 
 impl Eq for Admin {}
 
-fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: &mut S) -> Result<(), S::Error>
+fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer
 {
     // we can serialize the cell as a u32, since the reference is
@@ -445,13 +445,13 @@ impl ::std::ops::Deref for Coord {
 }
 
 impl serde::Serialize for Coord {
-    fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: serde::Serializer
     {
-        let mut state = try!(serializer.serialize_struct("Coord", 2));
-        try!(serializer.serialize_struct_elt(&mut state, "lat", &self.0.x));
-        try!(serializer.serialize_struct_elt(&mut state, "lon", &self.0.y));
-        serializer.serialize_struct_end(state)
+        let mut ser = serializer.serialize_struct("Coord", 2)?;
+        ser.serialize_field("lat", &self.0.x)?;
+        ser.serialize_field("lon", &self.0.y)?;
+        ser.end()
     }
 }
 
@@ -461,7 +461,7 @@ enum GeoCoordField {
 }
 
 impl serde::Deserialize for GeoCoordField {
-    fn deserialize<D>(deserializer: &mut D) -> Result<GeoCoordField, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<GeoCoordField, D::Error>
         where D: serde::de::Deserializer
     {
         struct GeoCoordFieldVisitor;
@@ -469,13 +469,17 @@ impl serde::Deserialize for GeoCoordField {
         impl serde::de::Visitor for GeoCoordFieldVisitor {
             type Value = GeoCoordField;
 
-            fn visit_str<E>(&mut self, value: &str) -> Result<GeoCoordField, E>
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("`lat` or `lon`")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<GeoCoordField, E>
                 where E: serde::de::Error
             {
                 match value {
                     "lat" => Ok(GeoCoordField::X),
                     "lon" => Ok(GeoCoordField::Y),
-                    _ => Err(serde::de::Error::custom("expected lon or lat")),
+                    _ => Err(serde::de::Error::unknown_field(value, GEOCOORDFIELDS)),
                 }
             }
         }
@@ -483,13 +487,13 @@ impl serde::Deserialize for GeoCoordField {
         deserializer.deserialize(GeoCoordFieldVisitor)
     }
 }
+const GEOCOORDFIELDS: &'static [&'static str] = &["lat", "lon"];
 
 impl serde::Deserialize for Coord {
-    fn deserialize<D>(deserializer: &mut D) -> Result<Coord, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Coord, D::Error>
         where D: serde::de::Deserializer
     {
-        static FIELDS: &'static [&'static str] = &["lat", "lon"];
-        deserializer.deserialize_struct("Coord", FIELDS, GeoCoordDeserializerVisitor)
+        deserializer.deserialize_struct("Coord", GEOCOORDFIELDS, GeoCoordDeserializerVisitor)
     }
 }
 struct GeoCoordDeserializerVisitor;
@@ -497,37 +501,43 @@ struct GeoCoordDeserializerVisitor;
 impl serde::de::Visitor for GeoCoordDeserializerVisitor {
     type Value = Coord;
 
-    fn visit_map<V>(&mut self, mut visitor: V) -> Result<Coord, V::Error>
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("struct Coord")
+    }
+
+    fn visit_map<V>(self, mut visitor: V) -> Result<Coord, V::Error>
         where V: serde::de::MapVisitor
     {
+        use serde::de::Error;
         let mut x = None;
         let mut y = None;
 
-        loop {
-            match try!(visitor.visit_key()) {
-                Some(GeoCoordField::X) => {
-                    x = Some(try!(visitor.visit_value()));
+        while let Some(key) = visitor.visit_key()? {
+            match key {
+                GeoCoordField::X => {
+                    if x.is_some() {
+                        return Err(Error::duplicate_field("x"));
+                    }
+                    x = Some(visitor.visit_value()?);
                 }
-                Some(GeoCoordField::Y) => {
-                    y = Some(try!(visitor.visit_value()));
-                }
-                None => {
-                    break;
+                GeoCoordField::Y => {
+                    if y.is_some() {
+                        return Err(Error::duplicate_field("y"));
+                    }
+                    y = Some(visitor.visit_value()?);
                 }
             }
         }
 
         let x = match x {
             Some(x) => x,
-            None => try!(visitor.missing_field("x")),
+            None => return Err(Error::missing_field("x")),
         };
 
         let y = match y {
             Some(y) => y,
-            None => try!(visitor.missing_field("y")),
+            None => return Err(Error::missing_field("y")),
         };
-
-        try!(visitor.end());
 
         Ok(Coord(geo::Coordinate { x: x, y: y }))
     }

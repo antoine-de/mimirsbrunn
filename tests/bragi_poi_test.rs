@@ -31,7 +31,7 @@
 extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
-use std::collections::BTreeMap;
+use serde_json::Map;
 use serde_json::Value;
 use super::BragiHandler;
 use super::get_values;
@@ -133,7 +133,7 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     assert_eq!(all_20.len(), 2);
 }
 
-fn get_poi_type_ids(e: &BTreeMap<String, Value>) -> Vec<&str> {
+fn get_poi_type_ids(e: &Map<String, Value>) -> Vec<&str> {
     let array = match e.get("poi_types").and_then(|json| json.as_array()) {
         None => return vec![],
         Some(array) => array,

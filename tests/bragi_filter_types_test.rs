@@ -34,7 +34,7 @@ extern crate serde_json;
 use super::BragiHandler;
 use super::{count_types, get_types, to_json, get_value};
 use super::get_values;
-use hyper::status::StatusCode::{BadRequest, NotFound};
+use rustless::server::status::StatusCode::{BadRequest, NotFound};
 
 
 pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {

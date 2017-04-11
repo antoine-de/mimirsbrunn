@@ -30,7 +30,7 @@
 
 use valico::json_dsl;
 use valico::common::error as valico_error;
-use serde_json;
+use rustless::json::JsonValue;
 use std::str::FromStr;
 
 
@@ -123,7 +123,7 @@ pub fn types_param(params: &mut json_dsl::Builder) {
 }
 
 
-fn check_bound(val: &serde_json::Value,
+fn check_bound(val: &JsonValue,
                path: &str,
                min: f64,
                max: f64,
@@ -143,9 +143,7 @@ fn check_bound(val: &serde_json::Value,
     }
 }
 
-fn check_type(types: &Vec<serde_json::Value>,
-              path: &str)
-              -> Result<(), valico_error::ValicoErrors> {
+fn check_type(types: &[JsonValue], path: &str) -> Result<(), valico_error::ValicoErrors> {
     for type_ in types {
         if let Err(e) = Type::from_str(type_.as_str().unwrap()) {
             return Err(vec![Box::new(json_dsl::errors::WrongValue {
@@ -158,7 +156,7 @@ fn check_type(types: &Vec<serde_json::Value>,
     Ok(())
 }
 
-fn check_coordinates(val: &serde_json::Value,
+fn check_coordinates(val: &JsonValue,
                      path: &str,
                      error_msg: &str)
                      -> Result<(), valico_error::ValicoErrors> {
