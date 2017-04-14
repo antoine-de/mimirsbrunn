@@ -28,7 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use valico::json_dsl;
+use valico::json_dsl::{self, Builder, Param};
 use valico::common::error as valico_error;
 use rustless::json::JsonValue;
 use std::str::FromStr;
@@ -41,20 +41,30 @@ const MAX_LON: f64 = 90f64;
 const MIN_LON: f64 = -90f64;
 
 
-pub fn dataset_param(params: &mut json_dsl::Builder) {
+pub fn dataset_param(params: &mut Builder) {
     params.opt_typed("pt_dataset", json_dsl::string());
     params.opt_typed("_all_data", json_dsl::boolean());
 }
 
-pub fn coord_param(params: &mut json_dsl::Builder) {
-    params.opt("lon", |lon| {
+pub fn coord_param(params: &mut Builder, is_opt: bool) {
+    fn checker<F: FnOnce(&mut Param)>(builder: &mut Builder,
+                                      is_opt: bool,
+                                      name: &str,
+                                      param_builder: F) {
+        if is_opt {
+            builder.opt(name, param_builder)
+        } else {
+            builder.req(name, param_builder)
+        }
+    }
+    checker(params, is_opt, "lon", |lon| {
         lon.coerce(json_dsl::f64());
         lon.validate_with(|val, path| {
             check_bound(val, path, MIN_LON, MAX_LON, "lon is not a valid longitude")
         });
     });
 
-    params.opt("lat", |lat| {
+    checker(params, is_opt, "lat", |lat| {
         lat.coerce(json_dsl::f64());
         lat.validate_with(|val, path| {
             check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
@@ -81,12 +91,12 @@ pub fn coord_param(params: &mut json_dsl::Builder) {
     });
 }
 
-pub fn paginate_param(params: &mut json_dsl::Builder) {
+pub fn paginate_param(params: &mut Builder) {
     params.opt_typed("limit", json_dsl::u64());
     params.opt_typed("offset", json_dsl::u64());
 }
 
-pub fn shape_param(params: &mut json_dsl::Builder) {
+pub fn shape_param(params: &mut Builder) {
     params.req("shape", |shape| {
         shape.coerce(json_dsl::object());
         shape.nest(|params| {
@@ -115,7 +125,7 @@ pub fn shape_param(params: &mut json_dsl::Builder) {
     });
 }
 
-pub fn types_param(params: &mut json_dsl::Builder) {
+pub fn types_param(params: &mut Builder) {
     params.opt("type", |t| {
         t.coerce(json_dsl::encoded_array(","));
         t.validate_with(|val, path| check_type(val.as_array().unwrap(), path));

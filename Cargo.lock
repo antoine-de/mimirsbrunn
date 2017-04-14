@@ -850,7 +850,7 @@ dependencies = [
 [[package]]
 name = "rs-es"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/TeXitoi/rs-es?rev=4e77efdfb7a54300035d5cbe217e6e866c56e227#4e77efdfb7a54300035d5cbe217e6e866c56e227"
 dependencies = [
  "hyper 0.10.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -860,6 +860,12 @@ dependencies = [
  "serde_json 0.9.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "rs-es"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+replace = "rs-es 0.9.0 (git+https://github.com/TeXitoi/rs-es?rev=4e77efdfb7a54300035d5cbe217e6e866c56e227)"
 
 [[package]]
 name = "rustc-serialize"
@@ -1320,6 +1326,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rental 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a9302838552c6499e000d549fe4d8ebbe716e1abbfad06cdd4ffd4ed5b8314ff"
 "checksum rental-impl 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "016f4e8045e9a66bdd634a8aa48935660de26958add2cf7e1431909702603b49"
 "checksum retry 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "29460f6011a25fc70b22010e796bd98330baccaa0005cba6f90b858a510dec0d"
+"checksum rs-es 0.9.0 (git+https://github.com/TeXitoi/rs-es?rev=4e77efdfb7a54300035d5cbe217e6e866c56e227)" = "<none>"
 "checksum rs-es 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fb2d95697dff9a51530aefc476adface817fd7c8d888d41b9ad3c094e7ed8235"
 "checksum rustc-serialize 0.3.23 (registry+https://github.com/rust-lang/crates.io-index)" = "684ce48436d6465300c9ea783b6b14c4361d6b8dcbb1375b486a69cc19e2dfb0"
 "checksum rustc_version 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "c5f5376ea5e30ce23c03eb77cbe4962b988deead10910c372b226388b594c084"
