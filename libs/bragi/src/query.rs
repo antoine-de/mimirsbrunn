@@ -367,8 +367,8 @@ pub fn features(pt_dataset: &Option<&str>,
 
 pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsError> {
     let mut client = rs_es::Client::new(cnx).unwrap();
-    let indexes = vec!["house".into(), "street".into()];
-    let indexes = make_indexes(false, &None, &Some(indexes), &mut client)?;
+    let types = vec!["house".into(), "street".into()];
+    let indexes = make_indexes(false, &None, &Some(types), &mut client)?;
     let distance = rs_u::Distance::new(500., rs_u::DistanceUnit::Meter);
     let geo_distance = rs_q::build_geo_distance("coord", (coord.lat, coord.lon), distance).build();
     let query = rs_q::build_bool()
