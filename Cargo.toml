@@ -50,4 +50,3 @@ name = "tests"
 [replace]
 # remove this line once queryst > 1.0.1 is released
 "queryst:1.0.1" = { git = "https://github.com/rustless/queryst", rev = "b29604af7bfb05c2b9d98d726ab1bafd0533cc10" }
-"rs-es:0.9.0" = { git = "https://github.com/TeXitoi/rs-es", rev = "4e77efdfb7a54300035d5cbe217e6e866c56e227" }

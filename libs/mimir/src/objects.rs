@@ -223,9 +223,6 @@ pub struct Admin {
     pub label: String,
     pub name: String,
     pub zip_codes: Vec<String>,
-    // Attribut weight is used in elastic search to sort the result. It is absent in the response
-    // of navitia (jormungandr) and hence deserializing is not necessary
-    #[serde(serialize_with="custom_cell_serialize", skip_deserializing)]
     pub weight: Cell<u32>,
     pub coord: Coord,
     #[serde(serialize_with="custom_multi_polygon_serialize",
@@ -304,14 +301,6 @@ impl Members for Admin {
 }
 
 impl Eq for Admin {}
-
-fn custom_cell_serialize<S>(cell: &Cell<u32>, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer
-{
-    // we can serialize the cell as a u32, since the reference is
-    // important only while loading the data in ES but not in bragi
-    serializer.serialize_u32(cell.get())
-}
 
 impl MimirObject for Admin {
     fn is_geo_data() -> bool {
