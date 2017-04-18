@@ -98,6 +98,7 @@ impl ApiEndPoint {
             api.mount(self.status());
             api.mount(self.autocomplete());
             api.mount(self.features());
+            api.mount(self.reverse());
         })
     }
 
@@ -112,6 +113,25 @@ impl ApiEndPoint {
                         status: "good".to_string(),
                     };
                     render(client, status)
+                })
+            });
+        })
+    }
+
+    fn reverse(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("reverse", |endpoint| {
+                endpoint.params(|params| { coord_param(params, false); });
+                let cnx = self.es_cnx_string.clone();
+                endpoint.handle(move |client, params| {
+                    let coord = model::Coord {
+                        lon: params.find("lon").and_then(|p| p.as_f64()).unwrap(),
+                        lat: params.find("lat").and_then(|p| p.as_f64()).unwrap(),
+                    };
+                    let model_autocomplete = query::reverse(&coord, &cnx);
+
+                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    render(client, response)
                 })
             });
         })
@@ -197,7 +217,7 @@ impl ApiEndPoint {
                     params.opt_typed("q", json_dsl::string());
                     dataset_param(params);
                     paginate_param(params);
-                    coord_param(params);
+                    coord_param(params, true);
                     types_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();

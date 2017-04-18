@@ -53,6 +53,7 @@ pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
     simple_bano_shape_filter_test(&bragi);
     simple_bano_lon_lat_test(&bragi);
     long_bano_address_test(&bragi);
+    reverse_bano_test(&bragi);
 }
 
 
@@ -150,5 +151,12 @@ fn long_bano_address_test(bragi: &BragiHandler) {
                    malot paris");
     assert_eq!(all_20.len(), 1);
     assert_eq!(get_values(&all_20, "label"),
+               vec!["20 Rue Hector Malot (Paris)"]);
+}
+
+fn reverse_bano_test(bragi: &BragiHandler) {
+    let res = bragi.get("/reverse?lon=2.37716&lat=48.8468");
+    assert_eq!(res.len(), 1);
+    assert_eq!(get_values(&res, "label"),
                vec!["20 Rue Hector Malot (Paris)"]);
 }

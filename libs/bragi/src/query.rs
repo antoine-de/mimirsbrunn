@@ -70,6 +70,21 @@ enum MatchType {
     Fuzzy,
 }
 
+/// Create a `rs_es::Query` that boosts results according to the
+/// distance to `coord`.
+fn build_proximity(coord: &model::Coord) -> rs_q {
+    rs_q::build_function_score()
+        .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
+        .with_boost(1500)
+        .with_function(
+            rs_es::query::functions::Function::build_decay(
+                "coord",
+                rs_u::Location::LatLon(coord.lat, coord.lon),
+                rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer)
+            ).build_exp()
+        ).build()
+}
+
 fn build_query(q: &str,
                match_type: MatchType,
                coord: &Option<model::Coord>,
@@ -114,17 +129,7 @@ fn build_query(q: &str,
 
     if let &Some(ref c) = coord {
         // if we have coordinate, we boost we result near this coordinate
-        let boost_on_proximity =
-            rs_q::build_function_score()
-                .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-                .with_boost(1500)
-                .with_function(Function::build_decay("coord",
-                                           rs_u::Location::LatLon(c.lat, c.lon),
-                                           rs_u::Distance::new(50f64,
-                                                               rs_u::DistanceUnit::Kilometer))
-                                   .build_exp())
-                .build();
-        should_query.push(boost_on_proximity);
+        should_query.push(build_proximity(c));
     } else {
         // if we don't have coords, we take the field `weight` into account
         let boost_on_weight = rs_q::build_function_score()
@@ -309,7 +314,7 @@ fn query(q: &str,
 
     if indexes.is_empty() {
         // if there is no indexes, rs_es search with index "_all"
-        // but we want to return emtpy response in this case.
+        // but we want to return empty response in this case.
         return Ok(vec![]);
     }
 
@@ -346,8 +351,8 @@ pub fn features(pt_dataset: &Option<&str>,
 
     if indexes.is_empty() {
         // if there is no indexes, rs_es search with index "_all"
-        // but we want to return emtpy response in this case.
-        return Ok(vec![]);
+        // but we want to return an error in this case.
+        return Err(EsError::EsError("Unable to find object".to_string()));
     }
 
     let result: SearchResult<serde_json::Value> = try!(client.search_query()
@@ -360,6 +365,26 @@ pub fn features(pt_dataset: &Option<&str>,
     } else {
         collect(result)
     }
+}
+
+/// Reverse geocoding request, that returns the house or street the
+/// closest to the given `coord`.
+pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsError> {
+    let mut client = rs_es::Client::new(cnx).unwrap();
+    let types = vec!["house".into(), "street".into()];
+    let indexes = make_indexes(false, &None, &Some(types), &mut client)?;
+    let distance = rs_u::Distance::new(500., rs_u::DistanceUnit::Meter);
+    let geo_distance = rs_q::build_geo_distance("coord", (coord.lat, coord.lon), distance).build();
+    let query = rs_q::build_bool()
+        .with_should(build_proximity(coord))
+        .with_must(geo_distance)
+        .build();
+    let result: SearchResult<serde_json::Value> = client.search_query()
+        .with_indexes(&indexes.iter().map(|index| index.as_str()).collect::<Vec<_>>())
+        .with_query(&query)
+        .with_size(1)
+        .send()?;
+    collect(result)
 }
 
 pub fn autocomplete(q: &str,

@@ -11,7 +11,7 @@ log = "*"
 rustless = "0.10"
 urlencoded = "0.4"
 valico = "1.0"
-rs-es = {version = "0.9", default-features = false}
+rs-es = {version = "0.9.1", default-features = false}
 serde = "0.9"
 serde_json = "0.9"
 serde_derive = "0.9"
