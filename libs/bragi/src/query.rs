@@ -70,6 +70,8 @@ enum MatchType {
     Fuzzy,
 }
 
+/// Create a `rs_es::Query` that boosts results according to the
+/// distance to `coord`.
 fn build_proximity(coord: &model::Coord) -> rs_q {
     rs_q::build_function_score()
         .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
@@ -365,6 +367,8 @@ pub fn features(pt_dataset: &Option<&str>,
     }
 }
 
+/// Reverse geocoding request, that returns the house or street the
+/// closest to the given `coord`.
 pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsError> {
     let mut client = rs_es::Client::new(cnx).unwrap();
     let types = vec!["house".into(), "street".into()];
