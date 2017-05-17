@@ -75,13 +75,13 @@ enum MatchType {
 fn build_proximity(coord: &model::Coord) -> rs_q {
     rs_q::build_function_score()
         .with_boost_mode(rs_es::query::compound::BoostMode::Multiply)
-        .with_boost(1500)
+        .with_boost(100000)
         .with_function(
             rs_es::query::functions::Function::build_decay(
                 "coord",
                 rs_u::Location::LatLon(coord.lat, coord.lon),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer)
-            ).build_exp()
+            ).build_gauss()
         ).build()
 }
 
