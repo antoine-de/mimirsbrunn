@@ -80,10 +80,15 @@ impl Bano {
             x: self.lat,
             y: self.lon,
         });
+
+        // If we have an admin corresponding to the INSEE, we know
+        // that's the good one, thus we remove all the admins of its
+        // level found by the geofinder, and add our admin.
         if let Some(admin) = admins_from_insee.get(self.insee()) {
             admins.retain(|a| a.level != admin.level);
             admins.push(admin.clone());
         }
+
         let weight = admins.iter().find(|a| a.level == 8).map_or(0, |a| a.weight.get());
 
         let street = mimir::Street {

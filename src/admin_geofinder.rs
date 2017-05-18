@@ -99,7 +99,7 @@ impl AdminGeoFinder {
             .collect()
     }
 
-    /// Iterates on the contained admins with boundary
+    /// Iterates on all the admins with a not None boundary.
     pub fn admins<'a>(&'a self) -> Box<Iterator<Item = Admin> + 'a> {
         let iter = self.admins
             .get(&Rect::from_float(std::f32::NEG_INFINITY,
