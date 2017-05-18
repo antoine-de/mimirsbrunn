@@ -98,6 +98,22 @@ impl AdminGeoFinder {
             .map(|admin_and_boundary| admin_and_boundary.1.clone())
             .collect()
     }
+
+    /// Iterates on all the admins with a not None boundary.
+    pub fn admins<'a>(&'a self) -> Box<Iterator<Item = Admin> + 'a> {
+        let iter = self.admins
+            .get(&Rect::from_float(std::f32::NEG_INFINITY,
+                                   std::f32::INFINITY,
+                                   std::f32::NEG_INFINITY,
+                                   std::f32::INFINITY))
+            .into_iter()
+            .map(|(_, a)| {
+                let mut admin = (*a.1).clone();
+                admin.boundary = a.0.clone();
+                admin
+            });
+        Box::new(iter)
+    }
 }
 
 impl Default for AdminGeoFinder {

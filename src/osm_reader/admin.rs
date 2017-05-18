@@ -113,7 +113,10 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 .get("addr:postcode")
                 .or_else(|| relation.tags.get("postal_code"))
                 .map_or("", |val| &val[..]);
-            let zip_codes = zip_code.split(';').map(|s| s.to_string()).sorted();
+            let zip_codes = zip_code.split(';')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+                .sorted();
             let boundary = build_boundary(relation, &objects);
             let admin = mimir::Admin {
                 id: admin_id,

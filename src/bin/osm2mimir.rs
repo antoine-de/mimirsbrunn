@@ -107,7 +107,7 @@ fn main() {
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
-    let nb_admins = rubber.index(&args.flag_dataset, admins.iter()).unwrap();
+    let nb_admins = rubber.index(&args.flag_dataset, admins_geofinder.admins()).unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.flag_import_poi {
