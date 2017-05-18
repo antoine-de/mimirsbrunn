@@ -133,7 +133,7 @@ impl<'a, T: MimirObject> MimirObject for &'a T {
     }
 }
 
-impl<'a, T: MimirObject> MimirObject for &'a Rc<T> {
+impl<T: MimirObject> MimirObject for Rc<T> {
     fn is_geo_data() -> bool {
         T::is_geo_data()
     }
