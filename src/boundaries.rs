@@ -194,10 +194,16 @@ pub fn build_boundary(relation: &osmpbfreader::Relation,
                 multipoly.0.push(Polygon::new(LineString(outer), vec![]));
                 break;
             }
-            if ! added_part {
+            if !added_part {
                 use geo::haversine_distance::HaversineDistance;
-                let p = |n: &osmpbfreader::Node| Point(Coordinate { x: n.lat(), y: n.lon() });
-                let distance = p(outer.first().unwrap()).haversine_distance(&p(outer.last().unwrap()));
+                let p = |n: &osmpbfreader::Node| {
+                    Point(Coordinate {
+                        x: n.lat(),
+                        y: n.lon(),
+                    })
+                };
+                let distance = p(outer.first().unwrap())
+                    .haversine_distance(&p(outer.last().unwrap()));
                 if distance < 10. {
                     warn!("boundary: relation/{} ({}): unclosed polygon, dist({:?}, {:?}) = {}",
                           relation.id.0,

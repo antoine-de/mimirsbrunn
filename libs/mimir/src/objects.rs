@@ -422,9 +422,8 @@ impl Coord {
         self.lat() == 0. && self.lon() == 0.
     }
     pub fn is_valid(&self) -> bool {
-        !self.is_default()
-            && -90. <= self.lat() && self.lat() <= 90.
-            && -180. <= self.lon() && self.lon() <= 180.
+        !self.is_default() && -90. <= self.lat() && self.lat() <= 90. && -180. <= self.lon() &&
+        self.lon() <= 180.
     }
 }
 impl Default for Coord {
