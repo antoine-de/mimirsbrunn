@@ -418,11 +418,18 @@ impl Coord {
     pub fn lon(&self) -> f64 {
         self.y
     }
-    pub fn default() -> Coord {
-        Coord(geo::Coordinate { x: 0., y: 0. })
-    }
     pub fn is_default(&self) -> bool {
         self.lat() == 0. && self.lon() == 0.
+    }
+    pub fn is_valid(&self) -> bool {
+        !self.is_default()
+            && -90. <= self.lat() && self.lat() <= 90.
+            && -180. <= self.lon() && self.lon() <= 180.
+    }
+}
+impl Default for Coord {
+    fn default() -> Coord {
+        Coord(geo::Coordinate { x: 0., y: 0. })
     }
 }
 
