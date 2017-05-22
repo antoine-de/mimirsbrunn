@@ -76,8 +76,9 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             let level = relation.tags.get("admin_level").and_then(|s| s.parse().ok());
             let level = match level {
                 None => {
-                    info!("invalid admin_level for relation {}: admin_level {:?}",
+                    warn!("relation/{} ({}): invalid admin_level: {:?}, skipped",
                           relation.id.0,
+                          relation.tags.get("name").map_or("", String::as_str),
                           relation.tags.get("admin_level"));
                     continue;
                 }
@@ -87,10 +88,8 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             let name = match relation.tags.get("name") {
                 Some(val) => val,
                 None => {
-                    warn!("adminstrative region without name for relation {}:  admin_level {} \
-                           ignored.",
-                          relation.id.0,
-                          level);
+                    warn!("relation/{}: adminstrative region without name, skipped",
+                          relation.id.0);
                     continue;
                 }
             };
