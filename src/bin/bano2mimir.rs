@@ -89,7 +89,7 @@ impl Bano {
             admins.push(admin.clone());
         }
 
-        let weight = admins.iter().find(|a| a.level == 8).map_or(0, |a| a.weight.get());
+        let weight = admins.iter().find(|a| a.level == 8).map_or(0., |a| a.weight.get());
 
         let street = mimir::Street {
             id: street_id,

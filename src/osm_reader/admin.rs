@@ -124,7 +124,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 name: name.to_string(),
                 label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
                 zip_codes: zip_codes,
-                weight: Cell::new(0),
+                weight: Cell::new(0.),
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
             };
@@ -134,10 +134,21 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
     administrative_regions
 }
 
-pub fn compute_admin_weight(streets: &mut StreetsVec) {
+pub fn compute_admin_weight(streets: &StreetsVec) {
+    let mut max = 0.;
     for st in streets {
-        for admin in &mut st.administrative_regions {
-            admin.weight.set(admin.weight.get() + 1);
+        for admin in &st.administrative_regions {
+            admin.weight.set(admin.weight.get() + 1.);
+            max = f64::max(max, admin.weight.get());
+        }
+    }
+
+    let mut admins_done = BTreeSet::default();
+    for st in streets {
+        for admin in &st.administrative_regions {
+            if admins_done.insert(admin.id.clone()) {
+                admin.weight.set(admin.weight.get() / max);
+            }
         }
     }
 }

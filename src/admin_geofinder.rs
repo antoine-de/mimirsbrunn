@@ -181,7 +181,7 @@ mod tests {
             name: "city".to_string(),
             label: format!("city {}", offset),
             zip_codes: vec!["421337".to_string()],
-            weight: ::std::cell::Cell::new(1),
+            weight: ::std::cell::Cell::new(0.),
             coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
