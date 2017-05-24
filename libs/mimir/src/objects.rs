@@ -152,7 +152,7 @@ pub struct Poi {
     pub name: String,
     pub coord: Coord,
     pub administrative_regions: Vec<Rc<Admin>>,
-    pub weight: u32,
+    pub weight: f64,
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
 }
@@ -191,7 +191,7 @@ pub struct Stop {
     pub name: String,
     pub coord: Coord,
     pub administrative_regions: Vec<Rc<Admin>>,
-    pub weight: u32,
+    pub weight: f64,
     pub zip_codes: Vec<String>,
 }
 
@@ -223,7 +223,7 @@ pub struct Admin {
     pub label: String,
     pub name: String,
     pub zip_codes: Vec<String>,
-    pub weight: Cell<u32>,
+    pub weight: Cell<f64>,
     pub coord: Coord,
     #[serde(serialize_with="custom_multi_polygon_serialize",
             deserialize_with="custom_multi_polygon_deserialize",
@@ -319,7 +319,7 @@ pub struct Street {
     pub street_name: String,
     pub administrative_regions: Vec<Rc<Admin>>,
     pub label: String,
-    pub weight: u32,
+    pub weight: f64,
     pub coord: Coord,
     pub zip_codes: Vec<String>,
 }
@@ -328,7 +328,7 @@ impl Incr for Street {
         &self.id
     }
     fn incr(&mut self) {
-        self.weight += 1;
+        self.weight += 1.;
     }
 }
 
@@ -360,7 +360,7 @@ pub struct Addr {
     pub street: Street,
     pub label: String,
     pub coord: Coord,
-    pub weight: u32,
+    pub weight: f64,
     pub zip_codes: Vec<String>,
 }
 
