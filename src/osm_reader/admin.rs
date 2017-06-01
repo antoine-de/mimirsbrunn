@@ -31,6 +31,7 @@
 extern crate osmpbfreader;
 extern crate mimir;
 
+use admin_geofinder::AdminGeoFinder;
 use boundaries::{build_boundary, make_centroid};
 use std::cell::Cell;
 use std::collections::BTreeSet;
@@ -134,8 +135,8 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
     administrative_regions
 }
 
-pub fn compute_admin_weight(streets: &StreetsVec) {
-    let mut max = 0.;
+pub fn compute_admin_weight(streets: &StreetsVec, admins_geofinder: &AdminGeoFinder) {
+    let mut max = 1.;
     for st in streets {
         for admin in &st.administrative_regions {
             admin.weight.set(admin.weight.get() + 1.);
@@ -143,13 +144,8 @@ pub fn compute_admin_weight(streets: &StreetsVec) {
         }
     }
 
-    let mut admins_done = BTreeSet::default();
-    for st in streets {
-        for admin in &st.administrative_regions {
-            if admins_done.insert(admin.id.clone()) {
-                admin.weight.set(admin.weight.get() / max);
-            }
-        }
+    for admin in admins_geofinder.admins_without_boundary() {
+        admin.weight.set(admin.weight.get() / max);
     }
 }
 
