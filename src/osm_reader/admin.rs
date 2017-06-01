@@ -31,6 +31,7 @@
 extern crate osmpbfreader;
 extern crate mimir;
 
+use admin_geofinder::AdminGeoFinder;
 use boundaries::{build_boundary, make_centroid};
 use std::cell::Cell;
 use std::collections::BTreeSet;
@@ -63,6 +64,7 @@ impl AdminMatcher {
 
 pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Vec<mimir::Admin> {
     let mut administrative_regions = Vec::<mimir::Admin>::new();
+    let mut insee_inserted = BTreeSet::default();
     let matcher = AdminMatcher::new(levels);
     info!("reading pbf...");
     let objects = pbf.get_objs_and_deps(|o| matcher.is_admin(o)).unwrap();
@@ -101,9 +103,20 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
                 .map(|node| mimir::Coord::new(node.lat(), node.lon()));
-            let (admin_id, insee_id) = match relation.tags.get("ref:INSEE") {
+            let (admin_id, insee_id) = match relation.tags
+                .get("ref:INSEE")
+                .map(|v| v.trim_left_matches('0')) {
+                Some(val) if !insee_inserted.contains(val) => {
+                    insee_inserted.insert(val.to_string());
+                    (format!("admin:fr:{}", val), val)
+                }
                 Some(val) => {
-                    (format!("admin:fr:{}", val.trim_left_matches('0')), val.trim_left_matches('0'))
+                    let id = format!("admin:osm:{}", relation.id.0);
+                    warn!("relation/{}: have the INSEE {} that is already used, using {} as id",
+                          relation.id.0,
+                          val,
+                          id);
+                    (id, val)
                 }
                 None => (format!("admin:osm:{}", relation.id.0), ""),
             };
@@ -134,8 +147,8 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
     administrative_regions
 }
 
-pub fn compute_admin_weight(streets: &StreetsVec) {
-    let mut max = 0.;
+pub fn compute_admin_weight(streets: &StreetsVec, admins_geofinder: &AdminGeoFinder) {
+    let mut max = 1.;
     for st in streets {
         for admin in &st.administrative_regions {
             admin.weight.set(admin.weight.get() + 1.);
@@ -143,13 +156,8 @@ pub fn compute_admin_weight(streets: &StreetsVec) {
         }
     }
 
-    let mut admins_done = BTreeSet::default();
-    for st in streets {
-        for admin in &st.administrative_regions {
-            if admins_done.insert(admin.id.clone()) {
-                admin.weight.set(admin.weight.get() / max);
-            }
-        }
+    for admin in admins_geofinder.admins_without_boundary() {
+        admin.weight.set(admin.weight.get() / max);
     }
 }
 
