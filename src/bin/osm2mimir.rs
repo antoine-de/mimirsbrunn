@@ -89,7 +89,8 @@ fn main() {
     let mut rubber = Rubber::new(&args.flag_connection_string);
 
     info!("creating adminstrative regions");
-    let admins_geofinder = administrative_regions(&mut parsed_pbf, levels).iter().cloned().collect::<AdminGeoFinder>();
+    let admins_geofinder =
+        administrative_regions(&mut parsed_pbf, levels).iter().cloned().collect::<AdminGeoFinder>();
     {
         info!("Extracting streets from osm");
         let mut streets = streets(&mut parsed_pbf, &admins_geofinder, city_level);

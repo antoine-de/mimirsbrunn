@@ -64,6 +64,7 @@ impl AdminMatcher {
 
 pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Vec<mimir::Admin> {
     let mut administrative_regions = Vec::<mimir::Admin>::new();
+    let mut insee_inserted = BTreeSet::default();
     let matcher = AdminMatcher::new(levels);
     info!("reading pbf...");
     let objects = pbf.get_objs_and_deps(|o| matcher.is_admin(o)).unwrap();
@@ -102,9 +103,20 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
                 .map(|node| mimir::Coord::new(node.lat(), node.lon()));
-            let (admin_id, insee_id) = match relation.tags.get("ref:INSEE") {
+            let (admin_id, insee_id) = match relation.tags
+                .get("ref:INSEE")
+                .map(|v| v.trim_left_matches('0')) {
+                Some(val) if !insee_inserted.contains(val) => {
+                    insee_inserted.insert(val.to_string());
+                    (format!("admin:fr:{}", val), val)
+                }
                 Some(val) => {
-                    (format!("admin:fr:{}", val.trim_left_matches('0')), val.trim_left_matches('0'))
+                    let id = format!("admin:osm:{}", relation.id.0);
+                    warn!("relation/{}: have the INSEE {} that is already used, using {} as id",
+                          relation.id.0,
+                          val,
+                          id);
+                    (id, val)
                 }
                 None => (format!("admin:osm:{}", relation.id.0), ""),
             };
