@@ -87,7 +87,7 @@
                     "properties": {
                         "id": { "type": "string", "index": "no" },
                         "street_name": { "type": "string" },
-                        "administrative_region": {
+                        "administrative_regions": {
                             "properties": {
                                 "id": { "type": "string", "index": "no" },
                                 "level": { "type": "long", "index": "no" },
@@ -136,7 +136,7 @@
                         }
                     }
                 },
-                "administrative_region": {
+                "administrative_regions": {
                     "properties": {
                         "id": { "type": "string", "index": "no" },
                         "level": { "type": "long", "index": "no" },
@@ -234,7 +234,7 @@
                         }
                     }
                 },
-                "administrative_region": {
+                "administrative_regions": {
                     "properties": {
                         "id": { "type": "string", "index": "no" },
                         "level": { "type": "long", "index": "no" },
@@ -316,7 +316,7 @@
                 }
               }
             },
-            "administrative_region": {
+            "administrative_regions": {
               "properties": {
                 "id": {
                   "type": "string",
