@@ -56,18 +56,22 @@ pub fn logger_init() -> Result<(), log::SetLoggerError> {
 
     if env::var("LOG_TIME").ok().map_or(false, |s| s == "1") {
         builder.format(|record| {
-            format!("[{time}] [{lvl}] [{loc}] {msg}",
-                    time = Local::now(),
-                    lvl = record.level(),
-                    loc = record.location().module_path(),
-                    msg = record.args())
+            format!(
+                "[{time}] [{lvl}] [{loc}] {msg}",
+                time = Local::now(),
+                lvl = record.level(),
+                loc = record.location().module_path(),
+                msg = record.args()
+            )
         });
     } else {
         builder.format(|record| {
-            format!("[{lvl}] [{loc}] {msg}",
-                    lvl = record.level(),
-                    loc = record.location().module_path(),
-                    msg = record.args())
+            format!(
+                "[{lvl}] [{loc}] {msg}",
+                lvl = record.level(),
+                loc = record.location().module_path(),
+                msg = record.args()
+            )
         });
     }
 

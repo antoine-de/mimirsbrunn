@@ -44,8 +44,10 @@ fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
 
 fn check_has_bob(es: &::ElasticSearchWrapper) {
     let check_is_bob = |es_elt: &Value| {
-        assert_eq!(es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
-                   "street");
+        assert_eq!(
+            es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
+            "street"
+        );
         let es_bob = es_elt.pointer("/_source").unwrap();
         assert_eq!(es_bob.pointer("/id"), Some(&json!("bob")));
         assert_eq!(es_bob.pointer("/street_name"), Some(&json!("bob's street")));
@@ -100,21 +102,27 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         check_has_bob(&es);
     });
     let result = rubber.index(dataset, checker_iter);
-    assert!(result.is_ok(),
-            "impossible to index bobette, res: {:?}",
-            result);
+    assert!(
+        result.is_ok(),
+        "impossible to index bobette, res: {:?}",
+        result
+    );
     assert_eq!(result.unwrap(), 1); // we still have only indexed 1 element
 
     es.refresh(); // we send another refresh
 
     // then we should have our bobette
     let check_is_bobette = |es_elt: &Value| {
-        assert_eq!(es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
-                   "street");
+        assert_eq!(
+            es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
+            "street"
+        );
         let es_bob = es_elt.pointer("/_source").unwrap();
         assert_eq!(es_bob.pointer("/id"), Some(&json!("bobette")));
-        assert_eq!(es_bob.pointer("/street_name"),
-                   Some(&json!("bobette's street")));
+        assert_eq!(
+            es_bob.pointer("/street_name"),
+            Some(&json!("bobette's street"))
+        );
         assert_eq!(es_bob.pointer("/label"), Some(&json!("bobette's name")));
         assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.24)));
 
@@ -151,8 +159,10 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     es.refresh(); // we need to refresh the index to be sure to get the elt;
 
     let check_admin = |es_elt: &Value| {
-        assert_eq!(es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
-                   Admin::doc_type());
+        assert_eq!(
+            es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
+            Admin::doc_type()
+        );
         let es_source = es_elt.pointer("/_source").unwrap();
         assert_eq!(es_elt.pointer("/_id"), es_source.pointer("/id"));
         assert_eq!(es_elt.pointer("/_id"), Some(&json!("admin:bob")));
@@ -172,8 +182,14 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
     // we create a ghost ES index
     let client = hyper::client::Client::new();
     let old_idx_name = "munin_admin_fr_20170313_113227_006297916";
-    let res =
-        client.put(&format!("{host}/{idx}", host = es.host(), idx = old_idx_name)).send().unwrap();
+    let res = client
+        .put(&format!(
+            "{host}/{idx}",
+            host = es.host(),
+            idx = old_idx_name
+        ))
+        .send()
+        .unwrap();
 
     assert_eq!(res.status, hyper::Ok);
     info!("result: {:?}", res);
@@ -210,7 +226,10 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
 fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
     use super::ToJson;
     let client = hyper::client::Client::new();
-    let res = client.get(&format!("{host}/_aliases", host = es.host())).send().unwrap();
+    let res = client
+        .get(&format!("{host}/_aliases", host = es.host()))
+        .send()
+        .unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();

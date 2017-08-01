@@ -42,10 +42,12 @@ const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
 
 
-fn render<T>(mut client: rustless::Client,
-             obj: T)
-             -> Result<rustless::Client, rustless::ErrorResponse>
-    where T: serde::Serialize
+fn render<T>(
+    mut client: rustless::Client,
+    obj: T,
+) -> Result<rustless::Client, rustless::ErrorResponse>
+where
+    T: serde::Serialize,
 {
     client.set_json_content_type();
     client.set_header(header::AccessControlAllowOrigin::Any);
@@ -83,9 +85,10 @@ impl ApiEndPoint {
                         long: format!("bad request, error: {}", error),
                     }
                 };
-                let mut resp = rustless::Response::from(status::StatusCode::BadRequest,
-                                                        Box::new(serde_json::to_string(&err)
-                                                            .unwrap()));
+                let mut resp = rustless::Response::from(
+                    status::StatusCode::BadRequest,
+                    Box::new(serde_json::to_string(&err).unwrap()),
+                );
                 resp.set_json_content_type();
                 Some(resp)
             });
@@ -148,10 +151,11 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |mut client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
-                    let pt_dataset = params.find("pt_dataset")
-                        .and_then(|val| val.as_str());
-                    let all_data = params.find("_all_data")
-                        .map_or(false, |val| val.as_bool().unwrap());
+                    let pt_dataset = params.find("pt_dataset").and_then(|val| val.as_str());
+                    let all_data = params.find("_all_data").map_or(
+                        false,
+                        |val| val.as_bool().unwrap(),
+                    );
                     let features = query::features(&pt_dataset, all_data, &cnx, &id);
                     if features.is_err() {
                         client.set_status(status::StatusCode::NotFound);
@@ -176,37 +180,54 @@ impl ApiEndPoint {
 
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
-                    let pt_dataset = params.find("pt_dataset")
-                        .and_then(|val| val.as_str());
-                    let all_data = params.find("_all_data")
-                        .map_or(false, |val| val.as_bool().unwrap());
-                    let offset = params.find("offset")
+                    let q = params
+                        .find("q")
+                        .and_then(|val| val.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let pt_dataset = params.find("pt_dataset").and_then(|val| val.as_str());
+                    let all_data = params.find("_all_data").map_or(
+                        false,
+                        |val| val.as_bool().unwrap(),
+                    );
+                    let offset = params
+                        .find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
-                    let limit =
-                        params.find("limit").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_LIMIT);
+                    let limit = params
+                        .find("limit")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_LIMIT);
                     let geometry = params.find_path(&["shape", "geometry"]).unwrap();
-                    let coordinates =
-                        geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
+                    let coordinates = geometry
+                        .find_path(&["coordinates"])
+                        .unwrap()
+                        .as_array()
+                        .unwrap();
                     let mut shape = Vec::new();
                     for ar in coordinates[0].as_array().unwrap() {
                         // (Lat, Lon)
-                        shape.push((ar.as_array().unwrap()[1].as_f64().unwrap(),
-                                    ar.as_array().unwrap()[0].as_f64().unwrap()));
+                        shape.push((
+                            ar.as_array().unwrap()[1].as_f64().unwrap(),
+                            ar.as_array().unwrap()[0].as_f64().unwrap(),
+                        ));
                     }
-                    let types = params.find("type")
-                        .and_then(|val| val.as_array())
-                        .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect());
-                    let model_autocomplete = query::autocomplete(&q,
-                                                                 &pt_dataset,
-                                                                 all_data,
-                                                                 offset,
-                                                                 limit,
-                                                                 None,
-                                                                 &cnx,
-                                                                 Some(shape),
-                                                                 types);
+                    let types = params.find("type").and_then(|val| val.as_array()).map(
+                        |val| {
+                            val.iter().map(|val| val.as_str().unwrap()).collect()
+                        },
+                    );
+                    let model_autocomplete = query::autocomplete(
+                        &q,
+                        &pt_dataset,
+                        all_data,
+                        offset,
+                        limit,
+                        None,
+                        &cnx,
+                        Some(shape),
+                        types,
+                    );
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -222,16 +243,24 @@ impl ApiEndPoint {
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = params.find("q").and_then(|val| val.as_str()).unwrap_or("").to_string();
-                    let pt_dataset = params.find("pt_dataset")
-                        .and_then(|val| val.as_str());
-                    let all_data = params.find("_all_data")
-                        .map_or(false, |val| val.as_bool().unwrap());
-                    let offset = params.find("offset")
+                    let q = params
+                        .find("q")
+                        .and_then(|val| val.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let pt_dataset = params.find("pt_dataset").and_then(|val| val.as_str());
+                    let all_data = params.find("_all_data").map_or(
+                        false,
+                        |val| val.as_bool().unwrap(),
+                    );
+                    let offset = params
+                        .find("offset")
                         .and_then(|val| val.as_u64())
                         .unwrap_or(DEFAULT_OFFSET);
-                    let limit =
-                        params.find("limit").and_then(|val| val.as_u64()).unwrap_or(DEFAULT_LIMIT);
+                    let limit = params
+                        .find("limit")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_LIMIT);
                     let lon = params.find("lon").and_then(|p| p.as_f64());
                     let lat = params.find("lat").and_then(|p| p.as_f64());
                     // we have already checked that if there is a lon, lat
@@ -243,19 +272,23 @@ impl ApiEndPoint {
                         })
                     });
 
-                    let types = params.find("type")
-                        .and_then(|val| val.as_array())
-                        .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect());
+                    let types = params.find("type").and_then(|val| val.as_array()).map(
+                        |val| {
+                            val.iter().map(|val| val.as_str().unwrap()).collect()
+                        },
+                    );
 
-                    let model_autocomplete = query::autocomplete(&q,
-                                                                 &pt_dataset,
-                                                                 all_data,
-                                                                 offset,
-                                                                 limit,
-                                                                 coord,
-                                                                 &cnx,
-                                                                 None,
-                                                                 types);
+                    let model_autocomplete = query::autocomplete(
+                        &q,
+                        &pt_dataset,
+                        all_data,
+                        offset,
+                        limit,
+                        coord,
+                        &cnx,
+                        None,
+                        types,
+                    );
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)

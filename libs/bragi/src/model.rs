@@ -42,7 +42,7 @@ pub struct Geocoding {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Feature {
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub feature_type: String,
     pub geometry: geojson::Geometry,
     pub properties: Properties,
@@ -56,18 +56,18 @@ pub struct Properties {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GeocodingResponse {
     pub id: String,
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub place_type: String, // FIXME: use an enum?
     pub label: Option<String>,
     pub name: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub housenumber: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
     pub citycode: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub level: Option<u32>,
     // pub accuracy: Option<i32>,
     // pub district: Option<String>,
@@ -76,7 +76,7 @@ pub struct GeocodingResponse {
     // pub country: Option<String>,
     // pub geohash: Option<String>,
     pub administrative_regions: Vec<Rc<mimir::Admin>>,
-    #[serde(skip_serializing_if="Vec::is_empty", default)]
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
 }
 
@@ -153,14 +153,16 @@ fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
     // for the moment for the 'postcode' and the 'city', we take first admin
     // that has a postcode
     // TODO: change this (with a 'city tag in the admin ?')
-    admins.iter()
+    admins
+        .iter()
         .find(|a| !a.zip_codes.is_empty())
         .or_else(|| admins.iter().next())
         .map(|admin| admin.name.clone())
 }
 
 fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
-    admins.iter()
+    admins
+        .iter()
         .find(|a| !a.zip_codes.is_empty())
         .or_else(|| admins.iter().next())
         .map(|admin| admin.insee.clone())
@@ -203,7 +205,11 @@ impl From<mimir::Addr> for GeocodingResponse {
         let label = Some(other.label);
         let housenumber = Some(other.house_number.to_string());
         let street_name = Some(other.street.street_name.to_string());
-        let name = Some(format!("{} {}", other.house_number, other.street.street_name));
+        let name = Some(format!(
+            "{} {}",
+            other.house_number,
+            other.street.street_name
+        ));
         let admins = other.street.administrative_regions;
         let city = get_city_name(&admins);
         let postcode = if other.zip_codes.is_empty() {
@@ -294,7 +300,7 @@ impl From<mimir::Stop> for GeocodingResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Autocomplete {
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     format_type: String,
     geocoding: Geocoding,
     features: Vec<Feature>,
@@ -316,8 +322,10 @@ impl Autocomplete {
 
 impl From<Vec<mimir::Place>> for Autocomplete {
     fn from(places: Vec<mimir::Place>) -> Autocomplete {
-        Autocomplete::new("".to_string(),
-                          places.into_iter().map(|p| Feature::from(p)).collect())
+        Autocomplete::new(
+            "".to_string(),
+            places.into_iter().map(|p| Feature::from(p)).collect(),
+        )
     }
 }
 
@@ -361,7 +369,8 @@ pub mod v1 {
     use serde;
     impl serde::Serialize for AutocompleteResponse {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where S: serde::Serializer
+        where
+            S: serde::Serializer,
         {
             match self {
                 &AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),

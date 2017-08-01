@@ -33,9 +33,10 @@ extern crate osmpbfreader;
 
 use std::collections::BTreeMap;
 
-pub fn get_way_coord(obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-                     way: &osmpbfreader::objects::Way)
-                     -> mimir::Coord {
+pub fn get_way_coord(
+    obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    way: &osmpbfreader::objects::Way,
+) -> mimir::Coord {
     way.nodes
         .iter()
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))

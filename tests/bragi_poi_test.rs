@@ -52,19 +52,27 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     // - bano-three_cities
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(osm2mimir,
-                        vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
-                             "--import-way".into(),
-                             "--import-poi".into(),
-                             "--level=8".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        osm2mimir,
+        vec![
+            "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--import-way".into(),
+            "--import-poi".into(),
+            "--level=8".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(bano2mimir,
-                        vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        bano2mimir,
+        vec![
+            "--input=./tests/fixtures/bano-three_cities.csv".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     poi_admin_address_test(&bragi);
     poi_admin_test(&bragi);
@@ -93,7 +101,9 @@ fn poi_admin_test(bragi: &BragiHandler) {
     let count = count_types(&types, Poi::doc_type());
     assert!(count >= 1);
 
-    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
+    assert!(get_values(&geocodings, "label").contains(
+        &"Melun Rp (Melun)",
+    ));
 
     // when we search for just 'Melun', we should find some places in melun
     let geocodings = bragi.get("/autocomplete?q=Melun");
@@ -138,7 +148,8 @@ fn get_poi_type_ids(e: &Map<String, Value>) -> Vec<&str> {
         None => return vec![],
         Some(array) => array,
     };
-    array.iter()
+    array
+        .iter()
         .filter_map(|v| v.as_object().and_then(|o| o.get("id")))
         .filter_map(|o| o.as_str())
         .collect()
@@ -149,7 +160,10 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, Poi::doc_type()), 1);
-    let first_poi = geocodings.iter().find(|e| get_value(e, "type") == Poi::doc_type()).unwrap();
+    let first_poi = geocodings
+        .iter()
+        .find(|e| get_value(e, "type") == Poi::doc_type())
+        .unwrap();
     assert_eq!(get_value(first_poi, "citycode"), "91179");
     assert_eq!(get_poi_type_ids(first_poi), &["poi_type:amenity:parking"]);
 
@@ -174,7 +188,9 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     // (barycenter not computed so far), it should be filtered.
     let geocodings = bragi.get("/autocomplete?q=ENSE3 site Ampère");
     // we can find other results (due to the fuzzy search, but we can't find the 'site Ampère')
-    assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère"));
+    assert!(!get_values(&geocodings, "label").contains(
+        &"ENSE3 site Ampère",
+    ));
 }
 
 fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
@@ -183,7 +199,9 @@ fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
     let types = get_types(&geocodings);
     let count = count_types(&types, Poi::doc_type());
     assert!(count >= 1);
-    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)"));
+    assert!(get_values(&geocodings, "label").contains(
+        &"Melun Rp (Melun)",
+    ));
 
     // when we search for 'Meluuun', we should find some places in melun
     let geocodings = bragi.get("/autocomplete?q=Meluuun");

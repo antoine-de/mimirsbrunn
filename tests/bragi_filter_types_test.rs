@@ -48,27 +48,39 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     // - stops.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(osm2mimir,
-                        vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
-                             "--import-way".into(),
-                             "--import-admin".into(),
-                             "--import-poi".into(),
-                             "--level=8".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        osm2mimir,
+        vec![
+            "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--import-way".into(),
+            "--import-admin".into(),
+            "--import-poi".into(),
+            "--level=8".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(bano2mimir,
-                        vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        bano2mimir,
+        vec![
+            "--input=./tests/fixtures/bano-three_cities.csv".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(stops2mimir,
-                        vec!["--input=./tests/fixtures/stops.txt".into(),
-                             "--dataset=dataset1".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        stops2mimir,
+        vec![
+            "--input=./tests/fixtures/stops.txt".into(),
+            "--dataset=dataset1".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     no_type_no_dataset_test(&bragi);
     type_stop_area_no_dataset_test(&bragi);
@@ -95,15 +107,17 @@ fn no_type_no_dataset_test(bragi: &BragiHandler) {
 
 fn type_stop_area_no_dataset_test(bragi: &BragiHandler) {
     // with this query we should return an empty response
-    let response =
-        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&type[]=public_transport:stop_area");
+    let response = bragi.get(
+        "/autocomplete?q=Parking vélo Saint-Martin&type[]=public_transport:stop_area",
+    );
     assert!(response.is_empty());
 }
 
 fn type_poi_and_dataset_test(bragi: &BragiHandler) {
     // with this query we should only find pois
-    let response =
-        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&pt_dataset=dataset1&type[]=poi");
+    let response = bragi.get(
+        "/autocomplete?q=Parking vélo Saint-Martin&pt_dataset=dataset1&type[]=poi",
+    );
     let types = get_types(&response);
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "city"), 0);
@@ -139,9 +153,10 @@ fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &BragiHandler)
 
 fn type_stop_area_dataset_test(bragi: &BragiHandler) {
     // with this query we should only find stop areas
-    let response =
-        bragi.get("/autocomplete?q=Vaux-le-Pénil&pt_dataset=dataset1&type[]=public_transport:\
-                   stop_area");
+    let response = bragi.get(
+        "/autocomplete?q=Vaux-le-Pénil&pt_dataset=dataset1&type[]=public_transport:\
+                   stop_area",
+    );
     let types = get_types(&response);
     assert!(count_types(&types, "public_transport:stop_area") > 0);
     assert_eq!(count_types(&types, "street"), 0);
@@ -158,10 +173,7 @@ fn unvalid_type_test(bragi: &BragiHandler) {
     assert_eq!(iron_error.response.status.unwrap(), BadRequest);
 
     let json = to_json(iron_error.response);
-    let error_msg = json.pointer("/long")
-        .unwrap()
-        .as_str()
-        .unwrap();
+    let error_msg = json.pointer("/long").unwrap().as_str().unwrap();
 
     assert!(error_msg.contains("unvalid is not a valid type"))
 }
@@ -207,7 +219,10 @@ fn stop_by_id_test(bragi: &BragiHandler) {
 
 fn stop_area_that_does_not_exists(bragi: &BragiHandler) {
     // search with id
-    let response = bragi.raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1")
+    let response = bragi
+        .raw_get(
+            "/features/stop_area:SA:second_station::AA?pt_dataset=dataset1",
+        )
         .unwrap();
 
     assert_eq!(response.status, Some(NotFound));

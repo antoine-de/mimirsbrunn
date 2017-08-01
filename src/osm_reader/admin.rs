@@ -52,10 +52,13 @@ impl AdminMatcher {
     pub fn is_admin(&self, obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Relation(ref rel) => {
-                rel.tags.get("boundary").map_or(false, |v| v == "administrative") &&
-                rel.tags.get("admin_level").map_or(false, |lvl| {
-                    self.admin_levels.contains(&lvl.parse::<u32>().unwrap_or(0))
-                })
+                rel.tags.get("boundary").map_or(
+                    false,
+                    |v| v == "administrative",
+                ) &&
+                    rel.tags.get("admin_level").map_or(false, |lvl| {
+                        self.admin_levels.contains(&lvl.parse::<u32>().unwrap_or(0))
+                    })
             }
             _ => false,
         }
@@ -75,13 +78,17 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             continue;
         }
         if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
-            let level = relation.tags.get("admin_level").and_then(|s| s.parse().ok());
+            let level = relation.tags.get("admin_level").and_then(
+                |s| s.parse().ok(),
+            );
             let level = match level {
                 None => {
-                    warn!("relation/{} ({}): invalid admin_level: {:?}, skipped",
-                          relation.id.0,
-                          relation.tags.get("name").map_or("", String::as_str),
-                          relation.tags.get("admin_level"));
+                    warn!(
+                        "relation/{} ({}): invalid admin_level: {:?}, skipped",
+                        relation.id.0,
+                        relation.tags.get("name").map_or("", String::as_str),
+                        relation.tags.get("admin_level")
+                    );
                     continue;
                 }
                 Some(l) => l,
@@ -90,42 +97,49 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
             let name = match relation.tags.get("name") {
                 Some(val) => val,
                 None => {
-                    warn!("relation/{}: adminstrative region without name, skipped",
-                          relation.id.0);
+                    warn!(
+                        "relation/{}: adminstrative region without name, skipped",
+                        relation.id.0
+                    );
                     continue;
                 }
             };
 
             // admininstrative region without coordinates
-            let coord_center = relation.refs
+            let coord_center = relation
+                .refs
                 .iter()
                 .find(|r| r.role == "admin_centre")
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
                 .map(|node| mimir::Coord::new(node.lat(), node.lon()));
-            let (admin_id, insee_id) = match relation.tags
-                .get("ref:INSEE")
-                .map(|v| v.trim_left_matches('0')) {
+            let (admin_id, insee_id) = match relation.tags.get("ref:INSEE").map(|v| {
+                v.trim_left_matches('0')
+            }) {
                 Some(val) if !insee_inserted.contains(val) => {
                     insee_inserted.insert(val.to_string());
                     (format!("admin:fr:{}", val), val)
                 }
                 Some(val) => {
                     let id = format!("admin:osm:{}", relation.id.0);
-                    warn!("relation/{}: have the INSEE {} that is already used, using {} as id",
-                          relation.id.0,
-                          val,
-                          id);
+                    warn!(
+                        "relation/{}: have the INSEE {} that is already used, using {} as id",
+                        relation.id.0,
+                        val,
+                        id
+                    );
                     (id, val)
                 }
                 None => (format!("admin:osm:{}", relation.id.0), ""),
             };
 
-            let zip_code = relation.tags
+            let zip_code = relation
+                .tags
                 .get("addr:postcode")
                 .or_else(|| relation.tags.get("postal_code"))
                 .map_or("", |val| &val[..]);
-            let zip_codes = zip_code.split(';')
+            let zip_codes = zip_code
+                .split(';')
                 .filter(|s| !s.is_empty())
                 .map(|s| s.to_string())
                 .sorted();
@@ -166,9 +180,11 @@ fn format_zip_codes(zip_codes: &[String]) -> String {
         0 => "".to_string(),
         1 => format!(" ({})", zip_codes.first().unwrap()),
         _ => {
-            format!(" ({}-{})",
-                    zip_codes.first().unwrap(),
-                    zip_codes.last().unwrap())
+            format!(
+                " ({}-{})",
+                zip_codes.first().unwrap(),
+                zip_codes.last().unwrap()
+            )
         }
     }
 }

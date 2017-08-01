@@ -225,17 +225,18 @@ pub struct Admin {
     pub zip_codes: Vec<String>,
     pub weight: Cell<f64>,
     pub coord: Coord,
-    #[serde(serialize_with="custom_multi_polygon_serialize",
-            deserialize_with="custom_multi_polygon_deserialize",
-            skip_serializing_if="Option::is_none",
-            default)]
+    #[serde(serialize_with = "custom_multi_polygon_serialize",
+            deserialize_with = "custom_multi_polygon_deserialize",
+            skip_serializing_if = "Option::is_none", default)]
     pub boundary: Option<geo::MultiPolygon<f64>>,
 }
 
-fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPolygon<f64>>,
-                                     serializer: S)
-                                     -> Result<S::Ok, S::Error>
-    where S: Serializer
+fn custom_multi_polygon_serialize<S>(
+    multi_polygon_option: &Option<geo::MultiPolygon<f64>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
 {
     use geojson::{Value, Geometry, GeoJson};
     use serde::Serialize;
@@ -249,7 +250,8 @@ fn custom_multi_polygon_serialize<S>(multi_polygon_option: &Option<geo::MultiPol
 }
 
 fn custom_multi_polygon_deserialize<D>(d: D) -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
-    where D: serde::de::Deserializer
+where
+    D: serde::de::Deserializer,
 {
     use geojson;
     use serde::Deserialize;
@@ -392,9 +394,9 @@ pub struct AliasOperations {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AliasOperation {
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub add: Option<AliasParameter>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub remove: Option<AliasParameter>,
 }
 
@@ -423,7 +425,7 @@ impl Coord {
     }
     pub fn is_valid(&self) -> bool {
         !self.is_default() && -90. <= self.lat() && self.lat() <= 90. && -180. <= self.lon() &&
-        self.lon() <= 180.
+            self.lon() <= 180.
     }
 }
 impl Default for Coord {
@@ -441,7 +443,8 @@ impl ::std::ops::Deref for Coord {
 
 impl serde::Serialize for Coord {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer
+    where
+        S: serde::Serializer,
     {
         let mut ser = serializer.serialize_struct("Coord", 2)?;
         ser.serialize_field("lat", &self.0.x)?;
@@ -457,7 +460,8 @@ enum GeoCoordField {
 
 impl serde::Deserialize for GeoCoordField {
     fn deserialize<D>(deserializer: D) -> Result<GeoCoordField, D::Error>
-        where D: serde::de::Deserializer
+    where
+        D: serde::de::Deserializer,
     {
         struct GeoCoordFieldVisitor;
 
@@ -469,7 +473,8 @@ impl serde::Deserialize for GeoCoordField {
             }
 
             fn visit_str<E>(self, value: &str) -> Result<GeoCoordField, E>
-                where E: serde::de::Error
+            where
+                E: serde::de::Error,
             {
                 match value {
                     "lat" => Ok(GeoCoordField::X),
@@ -486,7 +491,8 @@ const GEOCOORDFIELDS: &'static [&'static str] = &["lat", "lon"];
 
 impl serde::Deserialize for Coord {
     fn deserialize<D>(deserializer: D) -> Result<Coord, D::Error>
-        where D: serde::de::Deserializer
+    where
+        D: serde::de::Deserializer,
     {
         deserializer.deserialize_struct("Coord", GEOCOORDFIELDS, GeoCoordDeserializerVisitor)
     }
@@ -501,7 +507,8 @@ impl serde::de::Visitor for GeoCoordDeserializerVisitor {
     }
 
     fn visit_map<V>(self, mut visitor: V) -> Result<Coord, V::Error>
-        where V: serde::de::MapVisitor
+    where
+        V: serde::de::MapVisitor,
     {
         use serde::de::Error;
         let mut x = None;

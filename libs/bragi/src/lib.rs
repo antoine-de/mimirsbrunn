@@ -64,8 +64,7 @@ pub struct Args {
     flag_connection_string: String,
 }
 
-static USAGE: &'static str =
-    "
+static USAGE: &'static str = "
 Usage:
     bragi --help
     bragi [--bind=<address>] \
@@ -86,8 +85,10 @@ pub fn runserver() {
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
     if args.flag_connection_string.is_empty() {
-        args.flag_connection_string =
-            std::env::var("BRAGI_ES").ok().unwrap_or("http://localhost:9200/munin".to_string());
+        args.flag_connection_string = std::env::var("BRAGI_ES").ok().unwrap_or(
+            "http://localhost:9200/munin"
+                .to_string(),
+        );
     }
     let api = api::ApiEndPoint { es_cnx_string: args.flag_connection_string.clone() }.root();
     let app = Application::new(api);

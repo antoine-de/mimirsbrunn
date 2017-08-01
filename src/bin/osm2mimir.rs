@@ -76,21 +76,20 @@ Options:
 
 fn main() {
     mimir::logger_init().unwrap();
-    let args: Args =
-        docopt::Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
+    let args: Args = docopt::Docopt::new(USAGE)
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
 
-    let levels = args.flag_level
-        .iter()
-        .cloned()
-        .collect();
+    let levels = args.flag_level.iter().cloned().collect();
     let city_level = args.flag_city_level;
     let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
 
     info!("creating adminstrative regions");
-    let admins_geofinder =
-        administrative_regions(&mut parsed_pbf, levels).into_iter().collect::<AdminGeoFinder>();
+    let admins_geofinder = administrative_regions(&mut parsed_pbf, levels)
+        .into_iter()
+        .collect::<AdminGeoFinder>();
     {
         info!("Extracting streets from osm");
         let mut streets = streets(&mut parsed_pbf, &admins_geofinder, city_level);
@@ -103,11 +102,15 @@ fn main() {
 
         if args.flag_import_way {
             info!("importing streets into Mimir");
-            let nb_streets = rubber.index(&args.flag_dataset, streets.into_iter()).unwrap();
+            let nb_streets = rubber
+                .index(&args.flag_dataset, streets.into_iter())
+                .unwrap();
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
-    let nb_admins = rubber.index(&args.flag_dataset, admins_geofinder.admins()).unwrap();
+    let nb_admins = rubber
+        .index(&args.flag_dataset, admins_geofinder.admins())
+        .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.flag_import_poi {

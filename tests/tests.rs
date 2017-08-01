@@ -117,16 +117,20 @@ impl<'a> ElasticSearchWrapper<'a> {
     /// simple search on an index
     /// assert that the result is OK and transform it to a json Value
     pub fn search(&self, word: &str) -> serde_json::Value {
-        let res = self.rubber.get(&format!("munin/_search?q={}", word)).unwrap();
+        let res = self.rubber
+            .get(&format!("munin/_search?q={}", word))
+            .unwrap();
         assert!(res.status == hyper::Ok);
         res.to_json()
     }
 
-    pub fn search_and_filter<'b, F>(&self,
-                                    word: &str,
-                                    predicate: F)
-                                    -> Box<Iterator<Item = mimir::Place> + 'b>
-        where F: 'b + FnMut(&mimir::Place) -> bool
+    pub fn search_and_filter<'b, F>(
+        &self,
+        word: &str,
+        predicate: F,
+    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    where
+        F: 'b + FnMut(&mimir::Place) -> bool,
     {
         use serde_json::value::Value;
         use serde_json::map::{Map, Entry};
@@ -148,35 +152,42 @@ impl<'a> ElasticSearchWrapper<'a> {
             .and_then(|hits| {
                 match hits {
                     Value::Array(v) => {
-                        Some(Box::new(v.into_iter()
-                            .filter_map(|json| {
-                                into_object(json).and_then(|obj| {
-                                    let doc_type = obj.get("_type")
-                                        .and_then(|doc_type| doc_type.as_str())
-                                        .map(|doc_type| doc_type.into());
+                        Some(Box::new(
+                            v.into_iter()
+                                .filter_map(|json| {
+                                    into_object(json).and_then(|obj| {
+                                        let doc_type = obj.get("_type")
+                                            .and_then(|doc_type| doc_type.as_str())
+                                            .map(|doc_type| doc_type.into());
 
-                                    doc_type.and_then(|doc_type| {
-                                        // The real object is contained in the _source section.
-                                        obj.get("_source").and_then(|src| {
-                                            bragi::query::make_place(doc_type,
-                                                                     Some(Box::new(src.clone())))
+                                        doc_type.and_then(|doc_type| {
+                                            // The real object is contained in the _source section.
+                                            obj.get("_source").and_then(|src| {
+                                                bragi::query::make_place(
+                                                    doc_type,
+                                                    Some(Box::new(src.clone())),
+                                                )
+                                            })
                                         })
                                     })
                                 })
-                            })
-                            .filter(predicate)) as
-                             Box<Iterator<Item = mimir::Place>>)
+                                .filter(predicate),
+                        ) as
+                            Box<Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
             })
-            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+            .unwrap_or(Box::new(None.into_iter()) as
+                Box<Iterator<Item = mimir::Place>>)
     }
 }
 
-fn launch_and_assert(cmd: &'static str,
-                     args: Vec<std::string::String>,
-                     es_wrapper: &ElasticSearchWrapper) {
+fn launch_and_assert(
+    cmd: &'static str,
+    args: Vec<std::string::String>,
+    es_wrapper: &ElasticSearchWrapper,
+) {
     let status = Command::new(cmd).args(&args).status().unwrap();
     assert!(status.success(), "`{}` failed {}", cmd, &status);
     es_wrapper.refresh();
@@ -193,9 +204,11 @@ impl BragiHandler {
     }
 
     pub fn raw_get(&self, q: &str) -> iron::IronResult<iron::Response> {
-        iron_test::request::get(&format!("http://localhost:3000{}", q),
-                                iron::Headers::new(),
-                                &self.app)
+        iron_test::request::get(
+            &format!("http://localhost:3000{}", q),
+            iron::Headers::new(),
+            &self.app,
+        )
     }
 
     pub fn get(&self, q: &str) -> Vec<Map<String, Value>> {
@@ -207,10 +220,12 @@ impl BragiHandler {
         let mime: mime::Mime = "application/json".parse().unwrap();
         header.set(iron::headers::ContentType(mime));
 
-        iron_test::request::post(&format!("http://localhost:3000{}", q),
-                                 header,
-                                 shape,
-                                 &self.app)
+        iron_test::request::post(
+            &format!("http://localhost:3000{}", q),
+            header,
+            shape,
+            &self.app,
+        )
     }
 
     pub fn post_shape(&self, q: &str, shape: &str) -> Vec<Map<String, Value>> {
@@ -249,12 +264,16 @@ pub fn get_value<'a>(e: &'a Map<String, Value>, val: &'a str) -> &'a str {
 }
 
 pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
-    r.iter().map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("")).collect()
+    r.iter()
+        .map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or(""))
+        .collect()
 }
 
 pub fn filter_by_type<'a>(r: &'a [Map<String, Value>], t: &'a str) -> Vec<Map<String, Value>> {
     r.iter()
-        .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
+        .filter(|e| {
+            e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t
+        })
         .cloned()
         .collect()
 }
@@ -277,7 +296,7 @@ fn all_tests() {
     osm2mimir_test::osm2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     stops2mimir_test::stops2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(
-        ElasticSearchWrapper::new(&docker_wrapper)
+        ElasticSearchWrapper::new(&docker_wrapper),
     );
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));

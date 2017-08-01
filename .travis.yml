@@ -1,7 +1,7 @@
 language: rust
 cache: cargo
 before_script: 
-  - cargo install -f rustfmt --vers 0.7.1  # the 0.8.0 is buggy, for the moment we fix the version
+  - cargo install -f rustfmt
   - export PATH=$PATH:$HOME/.cargo/bin
 rust:
   - stable

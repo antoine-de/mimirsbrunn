@@ -34,24 +34,35 @@ use super::ToJson;
 
 pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(osm2mimir,
-                        vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
-                             "--import-way".into(),
-                             "--import-admin".into(),
-                             "--import-poi".into(),
-                             "--level=8".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        osm2mimir,
+        vec![
+            "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--import-way".into(),
+            "--import-admin".into(),
+            "--import-poi".into(),
+            "--level=8".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(bano2mimir,
-                        vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        bano2mimir,
+        vec![
+            "--input=./tests/fixtures/bano-three_cities.csv".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     // after an import, we should have 4 indexes, and some aliases to this index
     let client = Client::new();
-    let res = client.get(&format!("{host}/_aliases", host = es_wrapper.host())).send().unwrap();
+    let res = client
+        .get(&format!("{host}/_aliases", host = es_wrapper.host()))
+        .send()
+        .unwrap();
     assert_eq!(res.status, hyper::Ok);
 
     let json = res.to_json();
