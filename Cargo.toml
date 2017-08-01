@@ -8,7 +8,7 @@ build = "build.rs"
 
 [dependencies]
 log = "*"
-docopt = "*"
+docopt = "0.7"
 rustc-serialize = "*"
 csv = "*"
 rs-es = {version = "0.9", default-features = false}
@@ -18,7 +18,7 @@ chrono = "0.3"
 serde = "0.9"
 serde_derive = "0.9"
 serde_json = "0.9"
-geo = "0.4"
+geo = "=0.4.6"
 gst = "0.1"
 ordered-float = "0.0.2"
 mdo = "*"

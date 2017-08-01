@@ -4,7 +4,7 @@ version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
 [dependencies]
-docopt = "*"
+docopt = "0.7"
 rustc-serialize = "*"
 iron = "0.4"
 log = "*"
@@ -16,7 +16,7 @@ serde = "0.9"
 serde_json = "0.9"
 serde_derive = "0.9"
 geojson = "0.6"
-geo = "0.4"
+geo = "=0.4.6"
 
 [dependencies.mimir]
 path = "../mimir"
