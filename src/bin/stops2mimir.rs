@@ -28,7 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 extern crate docopt;
 extern crate csv;
 extern crate mimir;
@@ -43,6 +45,7 @@ use docopt::Docopt;
 use mimirsbrunn::utils::{format_label, get_zip_codes_from_admins};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::HashMap;
+use std::error::Error;
 
 const USAGE: &'static str = "
 Usage:
@@ -59,7 +62,7 @@ Options:
     -C, --city-level=<level>  City level to calculate weight [default: 8]
 ";
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     flag_input: String,
     flag_dataset: String,
@@ -68,7 +71,7 @@ struct Args {
 }
 
 struct StopPointIter<'a, R: std::io::Read + 'a> {
-    iter: csv::StringRecords<'a, R>,
+    iter: csv::StringRecordsIter<'a, R>,
     stop_id_pos: usize,
     stop_lat_pos: usize,
     stop_lon_pos: usize,
@@ -83,13 +86,13 @@ impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
     fn new(
         r: &'a mut csv::Reader<R>,
         nb_stop_points: &'a mut HashMap<String, u32>,
-    ) -> csv::Result<Self> {
-        let headers = try!(r.headers());
+    ) -> Result<Self, Box<Error>> {
+        let headers = try!(r.headers()).clone();
         let get_optional_pos = |name| headers.iter().position(|s| s == name);
 
-        let get_pos = |field| {
+        let get_pos = |field| -> Result<usize, Box<Error>> {
             get_optional_pos(field).ok_or_else(|| {
-                csv::Error::Decode(format!("Invalid file, cannot find column '{}'", field))
+                format!("Invalid file, cannot find column '{}'", field).into()
             })
         };
 
@@ -105,77 +108,84 @@ impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
             nb_stop_points: nb_stop_points,
         })
     }
-    fn get_location_type(&self, record: &[String]) -> Option<u8> {
+    fn get_location_type(&self, record: &csv::StringRecord) -> Option<u8> {
         self.location_type_pos.and_then(|pos| {
             record.get(pos).and_then(|s| s.parse().ok())
         })
     }
-    fn get_visible(&self, record: &[String]) -> Option<u8> {
+    fn get_visible(&self, record: &csv::StringRecord) -> Option<u8> {
         self.stop_visible_pos.and_then(|pos| {
             record.get(pos).and_then(|s| s.parse().ok())
         })
     }
 
-    fn get_parent_station<'b>(&self, record: &'b [String]) -> Option<&'b String> {
+    fn get_parent_station<'b>(&self, record: &'b csv::StringRecord) -> Option<&'b str> {
         self.parent_station_pos.and_then(|pos| record.get(pos))
     }
 }
 
 impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
-    type Item = csv::Result<mimir::Stop>;
+    type Item = Result<mimir::Stop, Box<Error>>;
     fn next(&mut self) -> Option<Self::Item> {
-        fn get(record: &[String], pos: usize) -> csv::Result<&str> {
-            record.get(pos).map(|s| s.as_str()).ok_or_else(|| {
-                csv::Error::Decode(format!("Failed accessing record '{}'.", pos))
+        fn get(record: &csv::StringRecord, pos: usize) -> Result<&str, Box<Error>> {
+            record.get(pos).ok_or_else(|| {
+                format!("Failed accessing record '{}'.", pos).into()
             })
         }
-        fn parse_f64(s: &str) -> csv::Result<f64> {
+        fn parse_f64(s: &str) -> Result<f64, Box<Error>> {
             s.parse().map_err(|_| {
-                csv::Error::Decode(format!("Failed converting '{}' from str.", s))
+                format!("Failed converting '{}' from str.", s).into()
             })
         }
 
-        fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<()> {
+        fn is_valid_stop_area(
+            location_type: &Option<u8>,
+            visible: &Option<u8>,
+        ) -> Result<(), Box<Error>> {
             if *location_type != Some(1) {
-                Err(csv::Error::Decode("not a stop_area.".to_string()))
+                Err("not a stop_area.".into())
             } else if *visible == Some(0) {
-                Err(csv::Error::Decode("stop_area invisible.".to_string()))
+                Err("stop_area invisible.".into())
             } else {
                 Ok(())
             }
         }
 
-        self.iter.next().map(|r| {
-            r.and_then(|r| {
-                let location_type = self.get_location_type(&r);
-                let visible = self.get_visible(&r);
-                let parent_station = self.get_parent_station(&r);
-                //if it's a stop point, we update its stop_area counter
-                if let (Some(0), Some(id)) = (location_type, parent_station) {
-                    if !id.is_empty() {
-                        *self.nb_stop_points
-                            .entry(format!("stop_area:{}", id))
-                            .or_insert(0) += 1;
-                    }
-                }
-                try!(is_valid_stop_area(&location_type, &visible));
-                let stop_id = try!(get(&r, self.stop_id_pos));
-                let stop_lat = try!(get(&r, self.stop_lat_pos));
-                let stop_lat = try!(parse_f64(stop_lat));
-                let stop_lon = try!(get(&r, self.stop_lon_pos));
-                let stop_lon = try!(parse_f64(stop_lon));
-                let stop_name = try!(get(&r, self.stop_name_pos));
-                Ok(mimir::Stop {
-                    id: format!("stop_area:{}", stop_id), // prefix to match navitia's id
-                    coord: mimir::Coord::new(stop_lat, stop_lon),
-                    label: stop_name.to_string(),
-                    weight: 0.,
-                    zip_codes: vec![],
-                    administrative_regions: vec![],
-                    name: stop_name.to_string(),
-                })
+        let r = match self.iter.next() {
+            None => return None,
+            Some(Err(e)) => return Some(Err(e.into())),
+            Some(Ok(n)) => n,
+        };
+        let location_type = self.get_location_type(&r);
+        let visible = self.get_visible(&r);
+        let parent_station = self.get_parent_station(&r);
+        //if it's a stop point, we update its stop_area counter
+        if let (Some(0), Some(id)) = (location_type, parent_station) {
+            if !id.is_empty() {
+                *self.nb_stop_points
+                    .entry(format!("stop_area:{}", id))
+                    .or_insert(0) += 1;
+            }
+        }
+        let f = || {
+            try!(is_valid_stop_area(&location_type, &visible));
+            let stop_id = try!(get(&r, self.stop_id_pos));
+            let stop_lat = try!(get(&r, self.stop_lat_pos));
+            let stop_lat = try!(parse_f64(stop_lat));
+            let stop_lon = try!(get(&r, self.stop_lon_pos));
+            let stop_lon = try!(parse_f64(stop_lon));
+            let stop_name = try!(get(&r, self.stop_name_pos));
+            Ok(mimir::Stop {
+                id: format!("stop_area:{}", stop_id), // prefix to match navitia's id
+                coord: mimir::Coord::new(stop_lat, stop_lon),
+                label: stop_name.to_string(),
+                weight: 0.,
+                zip_codes: vec![],
+                administrative_regions: vec![],
+                name: stop_name.to_string(),
             })
-        })
+        };
+        Some(f())
     }
 }
 
@@ -243,14 +253,12 @@ fn main() {
     info!("Launching stops2mimir...");
 
     let args: Args = Docopt::new(USAGE)
-        .and_then(|dopt| dopt.decode())
+        .and_then(|dopt| dopt.deserialize())
         .unwrap_or_else(|e| e.exit());
 
     info!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
-    let mut rdr = csv::Reader::from_file(args.flag_input)
-        .unwrap()
-        .double_quote(true);
+    let mut rdr = csv::Reader::from_path(args.flag_input).unwrap();
 
     let mut nb_stop_points = HashMap::new();
 
@@ -283,9 +291,7 @@ fn test_load_stops() {
     // SA:without_lat: StopArea object without lattitude coord
     // SA:witout_lon: StopArea object without longitude coord
     // SA:station_no_city: StopArea far away, we won't be able to attach it to a city
-    let mut rdr = csv::Reader::from_file("./tests/fixtures/stops.txt".to_string())
-        .unwrap()
-        .double_quote(true);
+    let mut rdr = csv::Reader::from_path("./tests/fixtures/stops.txt".to_string()).unwrap();
 
     let mut nb_stop_points = HashMap::new();
     let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)

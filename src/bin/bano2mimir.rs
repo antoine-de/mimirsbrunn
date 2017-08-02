@@ -28,9 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 extern crate docopt;
 extern crate csv;
-extern crate rustc_serialize;
 extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
@@ -47,7 +49,7 @@ use std::collections::BTreeMap;
 
 type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Serialize, Deserialize)]
 pub struct Bano {
     pub id: String,
     pub nb: String,
@@ -146,9 +148,12 @@ where
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
-        let mut rdr = csv::Reader::from_file(&f).unwrap().has_headers(false);
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(&f)
+            .unwrap();
 
-        let iter = rdr.decode().map(|r| {
+        let iter = rdr.deserialize().map(|r| {
             let b: Bano = r.unwrap();
             b.into_addr(&admins_by_insee, &admins_geofinder)
         });
@@ -162,7 +167,7 @@ where
         .unwrap();
 }
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 struct Args {
     flag_input: String,
     flag_connection_string: String,
@@ -184,7 +189,7 @@ fn main() {
     info!("importing bano into Mimir");
 
     let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode())
+        .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
 
     let file_path = Path::new(&args.flag_input);

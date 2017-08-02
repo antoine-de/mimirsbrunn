@@ -6,11 +6,11 @@ authors = ["Canal TP <dt.ro@canaltp.fr>"]
 [dependencies]
 log = "*"
 env_logger = "*"
-rs-es = {version = "0.9", default-features = false}
-serde = "0.9.14"
-serde_derive = "0.9"
-serde_json = "0.9"
+rs-es = {version = "0.10", default-features = false}
+serde = {version = "1", features = ["rc"]}
+serde_derive = "1"
+serde_json = "1"
 chrono = "0.3"
 hyper = "0.10"
-geo = "=0.4.6"
-geojson = "0.6"
+geo = "0.4.7"
+geojson = "0.8"
