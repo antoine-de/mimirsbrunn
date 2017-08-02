@@ -30,8 +30,9 @@
 
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
-extern crate docopt;
+#[macro_use]
+extern crate structopt_derive;
+extern crate structopt;
 extern crate csv;
 extern crate mimir;
 extern crate itertools;
@@ -41,32 +42,26 @@ extern crate log;
 
 use std::rc::Rc;
 use mimir::rubber::Rubber;
-use docopt::Docopt;
 use mimirsbrunn::utils::{format_label, get_zip_codes_from_admins};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::HashMap;
+use structopt::StructOpt;
 
-const USAGE: &'static str = "
-Usage:
-    stops2mimir --help
-    stops2mimir --input=<file> \
-     [--connection-string=<connection-string>] [--dataset=<dataset>] [--city-level=<level>]
-
-Options:
-    -h, --help                Show this message.
-    -i, --input=<file>        NTFS stops.txt file.
-    -c, --connection-string=<connection-string>   \
-                              Elasticsearch parameters [default: http://localhost:9200/munin].
-    -d, --dataset=<dataset>   Name of the dataset [default: fr].
-    -C, --city-level=<level>  City level to calculate weight [default: 8]
-";
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, StructOpt)]
 struct Args {
-    flag_input: String,
-    flag_dataset: String,
-    flag_connection_string: String,
-    flag_city_level: u32,
+    /// NTFS stops.txt file.
+    #[structopt(short = "i", long = "input")]
+    input: String,
+    /// Name of the dataset.
+    #[structopt(short = "d", long = "dataset", default_value = "fr")]
+    dataset: String,
+    /// Elasticsearch parameters.
+    #[structopt(short = "c", long = "connection-string",
+                default_value = "http://localhost:9200/munin")]
+    connection_string: String,
+    /// City level to calculate weight.
+    #[structopt(short = "C", long = "city-level", default_value = "8")]
+    city_level: u32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,13 +168,11 @@ fn main() {
     mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
 
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|dopt| dopt.deserialize())
-        .unwrap_or_else(|e| e.exit());
+    let args = Args::from_args();
 
     info!("creation of indexes");
-    let mut rubber = Rubber::new(&args.flag_connection_string);
-    let mut rdr = csv::Reader::from_path(args.flag_input).unwrap();
+    let mut rubber = Rubber::new(&args.connection_string);
+    let mut rdr = csv::Reader::from_path(args.input).unwrap();
 
     let mut nb_stop_points = HashMap::new();
 
@@ -193,15 +186,14 @@ fn main() {
         })
         .collect();
 
-    attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.flag_city_level);
+    attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.city_level);
 
     finalize_stop_area_weight(stops.iter_mut(), &nb_stop_points);
 
     info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.index(&args.flag_dataset, stops.iter()).unwrap();
+    let nb_stops = rubber.index(&args.dataset, stops.iter()).unwrap();
 
     info!("Nb of indexed stops: {}", nb_stops);
-
 }
 
 #[test]

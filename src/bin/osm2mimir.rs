@@ -29,14 +29,14 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate docopt;
+extern crate structopt_derive;
+extern crate structopt;
 #[macro_use]
 extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
 
+use structopt::StructOpt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
 use mimirsbrunn::osm_reader::poi::{pois, compute_poi_weight, PoiConfig};
@@ -44,49 +44,47 @@ use mimirsbrunn::osm_reader::street::{streets, compute_street_weight};
 use mimirsbrunn::osm_reader::parse_osm_pbf;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
-
-#[derive(Deserialize, Debug)]
+#[derive(StructOpt, Debug)]
 struct Args {
-    flag_input: String,
-    flag_level: Vec<u32>,
-    flag_city_level: u32,
-    flag_connection_string: String,
-    flag_import_way: bool,
-    flag_import_admin: bool,
-    flag_import_poi: bool,
-    flag_dataset: String,
-    flag_poi_config: Option<String>,
+    /// OSM PBF file.
+    #[structopt(short = "i", long = "input")]
+    input: String,
+    /// Admin levels to keep.
+    #[structopt(short = "l", long = "level")]
+    level: Vec<u32>,
+    /// City level to  calculate weight.
+    #[structopt(short = "C", long = "city-level", default_value = "8")]
+    city_level: u32,
+    /// Elasticsearch parameters.
+    #[structopt(short = "c", long = "connection-string",
+                default_value = "http://localhost:9200/munin")]
+    connection_string: String,
+    /// Import ways.
+    #[structopt(short = "w", long = "import-way")]
+    import_way: bool,
+    /// Import admins.
+    #[structopt(short = "a", long = "import-admin")]
+    import_admin: bool,
+    /// Import POIs.
+    #[structopt(short = "p", long = "import-poi")]
+    import_poi: bool,
+    /// Name of the dataset.
+    #[structopt(short = "d", long = "dataset", default_value = "fr")]
+    dataset: String,
+    /// POI configuration.
+    #[structopt(short = "j", long = "poi-config")]
+    poi_config: Option<String>,
 }
-
-static USAGE: &'static str = r#"Usage:
-    osm2mimir --help
-    osm2mimir [options] --input=<file> --level=<level> ...
-
-Options:
-    -h, --help                Show this message.
-    -i, --input=<file>        OSM PBF file.
-    -l, --level=<level>       Admin levels to keep.
-    -C, --city-level=<level>  City level to  calculate weight, [default: 8]
-    -w, --import-way          Import ways
-    -a, --import-admin        Import admins
-    -p, --import-poi          Import POIs
-    -c, --connection-string=<connection-string>
-                              Elasticsearch parameters, [default: http://localhost:9200/munin]
-    -d, --dataset=<dataset>   Name of the dataset, [default: fr]
-    -j, --poi-config=<json>   POI configuration
-"#;
 
 fn main() {
     mimir::logger_init().unwrap();
-    let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.deserialize())
-        .unwrap_or_else(|e| e.exit());
+    let args = Args::from_args();
 
-    let levels = args.flag_level.iter().cloned().collect();
-    let city_level = args.flag_city_level;
-    let mut parsed_pbf = parse_osm_pbf(&args.flag_input);
+    let levels = args.level.iter().cloned().collect();
+    let city_level = args.city_level;
+    let mut parsed_pbf = parse_osm_pbf(&args.input);
     debug!("creation of indexes");
-    let mut rubber = Rubber::new(&args.flag_connection_string);
+    let mut rubber = Rubber::new(&args.connection_string);
 
     info!("creating adminstrative regions");
     let admins_geofinder = administrative_regions(&mut parsed_pbf, levels)
@@ -102,21 +100,19 @@ fn main() {
         info!("computing street weight");
         compute_street_weight(&mut streets, city_level);
 
-        if args.flag_import_way {
+        if args.import_way {
             info!("importing streets into Mimir");
-            let nb_streets = rubber
-                .index(&args.flag_dataset, streets.into_iter())
-                .unwrap();
+            let nb_streets = rubber.index(&args.dataset, streets.into_iter()).unwrap();
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
     let nb_admins = rubber
-        .index(&args.flag_dataset, admins_geofinder.admins())
+        .index(&args.dataset, admins_geofinder.admins())
         .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
 
-    if args.flag_import_poi {
-        let matcher = match args.flag_poi_config {
+    if args.import_poi {
+        let matcher = match args.poi_config {
             None => PoiConfig::default(),
             Some(filename) => {
                 let path = std::path::Path::new(&filename);
@@ -131,7 +127,7 @@ fn main() {
         compute_poi_weight(&mut pois, city_level);
 
         info!("Importing pois into Mimir");
-        let nb_pois = rubber.index(&args.flag_dataset, pois.iter()).unwrap();
+        let nb_pois = rubber.index(&args.dataset, pois.iter()).unwrap();
 
         info!("Nb of indexed pois: {}", nb_pois);
     }
