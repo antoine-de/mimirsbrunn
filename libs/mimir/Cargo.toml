@@ -10,7 +10,7 @@ rs-es = {version = "0.10", default-features = false}
 serde = {version = "1", features = ["rc"]}
 serde_derive = "1"
 serde_json = "1"
-chrono = "0.3"
+chrono = "0.4"
 hyper = "0.10"
 geo = "0.4.7"
 geojson = "0.8"
