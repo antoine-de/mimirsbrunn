@@ -45,7 +45,6 @@ use docopt::Docopt;
 use mimirsbrunn::utils::{format_label, get_zip_codes_from_admins};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::HashMap;
-use std::error::Error;
 
 const USAGE: &'static str = "
 Usage:
@@ -70,123 +69,15 @@ struct Args {
     flag_city_level: u32,
 }
 
-struct StopPointIter<'a, R: std::io::Read + 'a> {
-    iter: csv::StringRecordsIter<'a, R>,
-    stop_id_pos: usize,
-    stop_lat_pos: usize,
-    stop_lon_pos: usize,
-    stop_name_pos: usize,
-    location_type_pos: Option<usize>,
-    stop_visible_pos: Option<usize>,
-    parent_station_pos: Option<usize>,
-    nb_stop_points: &'a mut HashMap<String, u32>,
-}
-
-impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
-    fn new(
-        r: &'a mut csv::Reader<R>,
-        nb_stop_points: &'a mut HashMap<String, u32>,
-    ) -> Result<Self, Box<Error>> {
-        let headers = try!(r.headers()).clone();
-        let get_optional_pos = |name| headers.iter().position(|s| s == name);
-
-        let get_pos = |field| -> Result<usize, Box<Error>> {
-            get_optional_pos(field).ok_or_else(|| {
-                format!("Invalid file, cannot find column '{}'", field).into()
-            })
-        };
-
-        Ok(StopPointIter {
-            iter: r.records(),
-            stop_id_pos: try!(get_pos("stop_id")),
-            stop_lat_pos: try!(get_pos("stop_lat")),
-            stop_lon_pos: try!(get_pos("stop_lon")),
-            stop_name_pos: try!(get_pos("stop_name")),
-            location_type_pos: get_optional_pos("location_type"),
-            stop_visible_pos: get_optional_pos("visible"),
-            parent_station_pos: get_optional_pos("parent_station"),
-            nb_stop_points: nb_stop_points,
-        })
-    }
-    fn get_location_type(&self, record: &csv::StringRecord) -> Option<u8> {
-        self.location_type_pos.and_then(|pos| {
-            record.get(pos).and_then(|s| s.parse().ok())
-        })
-    }
-    fn get_visible(&self, record: &csv::StringRecord) -> Option<u8> {
-        self.stop_visible_pos.and_then(|pos| {
-            record.get(pos).and_then(|s| s.parse().ok())
-        })
-    }
-
-    fn get_parent_station<'b>(&self, record: &'b csv::StringRecord) -> Option<&'b str> {
-        self.parent_station_pos.and_then(|pos| record.get(pos))
-    }
-}
-
-impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
-    type Item = Result<mimir::Stop, Box<Error>>;
-    fn next(&mut self) -> Option<Self::Item> {
-        fn get(record: &csv::StringRecord, pos: usize) -> Result<&str, Box<Error>> {
-            record.get(pos).ok_or_else(|| {
-                format!("Failed accessing record '{}'.", pos).into()
-            })
-        }
-        fn parse_f64(s: &str) -> Result<f64, Box<Error>> {
-            s.parse().map_err(|_| {
-                format!("Failed converting '{}' from str.", s).into()
-            })
-        }
-
-        fn is_valid_stop_area(
-            location_type: &Option<u8>,
-            visible: &Option<u8>,
-        ) -> Result<(), Box<Error>> {
-            if *location_type != Some(1) {
-                Err("not a stop_area.".into())
-            } else if *visible == Some(0) {
-                Err("stop_area invisible.".into())
-            } else {
-                Ok(())
-            }
-        }
-
-        let r = match self.iter.next() {
-            None => return None,
-            Some(Err(e)) => return Some(Err(e.into())),
-            Some(Ok(n)) => n,
-        };
-        let location_type = self.get_location_type(&r);
-        let visible = self.get_visible(&r);
-        let parent_station = self.get_parent_station(&r);
-        //if it's a stop point, we update its stop_area counter
-        if let (Some(0), Some(id)) = (location_type, parent_station) {
-            if !id.is_empty() {
-                *self.nb_stop_points
-                    .entry(format!("stop_area:{}", id))
-                    .or_insert(0) += 1;
-            }
-        }
-        let f = || {
-            try!(is_valid_stop_area(&location_type, &visible));
-            let stop_id = try!(get(&r, self.stop_id_pos));
-            let stop_lat = try!(get(&r, self.stop_lat_pos));
-            let stop_lat = try!(parse_f64(stop_lat));
-            let stop_lon = try!(get(&r, self.stop_lon_pos));
-            let stop_lon = try!(parse_f64(stop_lon));
-            let stop_name = try!(get(&r, self.stop_name_pos));
-            Ok(mimir::Stop {
-                id: format!("stop_area:{}", stop_id), // prefix to match navitia's id
-                coord: mimir::Coord::new(stop_lat, stop_lon),
-                label: stop_name.to_string(),
-                weight: 0.,
-                zip_codes: vec![],
-                administrative_regions: vec![],
-                name: stop_name.to_string(),
-            })
-        };
-        Some(f())
-    }
+#[derive(Debug, Deserialize)]
+struct Stop {
+    stop_id: String,
+    stop_lat: f64,
+    stop_lon: f64,
+    stop_name: String,
+    location_type: Option<i32>,
+    visible: Option<i32>,
+    parent_station: Option<String>,
 }
 
 fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>, city_level: u32) {
@@ -248,6 +139,34 @@ fn finalize_stop_area_weight<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     }
 }
 
+fn stop_to_mimir_stop(
+    nb_stop_points: &mut HashMap<String, u32>,
+    stop: Stop,
+) -> Option<mimir::Stop> {
+    match (stop.location_type, stop.parent_station) {
+        (Some(0), Some(ref id)) |
+        (None, Some(ref id)) if !id.is_empty() => {
+            *nb_stop_points
+                .entry(format!("stop_area:{}", id))
+                .or_insert(0) += 1
+        }
+        _ => (),
+    }
+    if stop.location_type == Some(1) && stop.visible != Some(0) {
+        Some(mimir::Stop {
+            id: format!("stop_area:{}", stop.stop_id), // prefix to match navitia's id
+            coord: mimir::Coord::new(stop.stop_lat, stop.stop_lon),
+            label: stop.stop_name.clone(),
+            weight: 0.,
+            zip_codes: vec![],
+            administrative_regions: vec![],
+            name: stop.stop_name,
+        })
+    } else {
+        None
+    }
+}
+
 fn main() {
     mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
@@ -262,18 +181,18 @@ fn main() {
 
     let mut nb_stop_points = HashMap::new();
 
-    let mut stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
-        .unwrap()
+    let mut stops: Vec<mimir::Stop> = rdr.deserialize()
         .filter_map(|rc| {
-            rc.map_err(|e| debug!("skip csv line because: {}", e)).ok()
+            rc.map_err(|e| warn!("skip csv line because: {}", e)).ok()
         })
+        .filter_map(|stop: Stop| stop_to_mimir_stop(&mut nb_stop_points, stop))
         .collect();
 
     attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.flag_city_level);
 
     finalize_stop_area_weight(stops.iter_mut(), &nb_stop_points);
 
-    info!("Importing stops into Mimir");
+    info!("Importing {} stops into Mimir", stops.len());
     let nb_stops = rubber.index(&args.flag_dataset, stops.iter()).unwrap();
 
     info!("Nb of indexed stops: {}", nb_stops);
@@ -283,25 +202,13 @@ fn main() {
 #[test]
 fn test_load_stops() {
     use itertools::Itertools;
-    // stops.txt:
-    // SP:main_station : StopPoint object
-    // SA:main_station: StopArea valid
-    // SA:second_station: StopArea valid with visible is empty
-    // SA:invisible_station: invisible StopArea
-    // SA:without_lat: StopArea object without lattitude coord
-    // SA:witout_lon: StopArea object without longitude coord
-    // SA:station_no_city: StopArea far away, we won't be able to attach it to a city
     let mut rdr = csv::Reader::from_path("./tests/fixtures/stops.txt".to_string()).unwrap();
 
     let mut nb_stop_points = HashMap::new();
-    let stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
-        .unwrap()
-        .filter_map(|rc| {
-            rc.map_err(|e| println!("error at csv line decoding : {}", e))
-                .ok()
-        })
+    let stops: Vec<mimir::Stop> = rdr.deserialize()
+        .filter_map(Result::ok)
+        .filter_map(|stop| stop_to_mimir_stop(&mut nb_stop_points, stop))
         .collect();
-    assert_eq!(stops.len(), 5);
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(
         ids,
@@ -313,4 +220,6 @@ fn test_load_stops() {
             "stop_area:SA:weight_3_station",
         ]
     );
+    let weights: Vec<_> = ids.iter().map(|id| nb_stop_points.get(id)).collect();
+    assert_eq!(weights, vec![Some(&1), Some(&1), None, Some(&1), Some(&3)]);
 }
