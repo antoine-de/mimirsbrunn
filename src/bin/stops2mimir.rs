@@ -80,9 +80,10 @@ struct StopPointIter<'a, R: std::io::Read + 'a> {
 }
 
 impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
-    fn new(r: &'a mut csv::Reader<R>,
-           nb_stop_points: &'a mut HashMap<String, u32>)
-           -> csv::Result<Self> {
+    fn new(
+        r: &'a mut csv::Reader<R>,
+        nb_stop_points: &'a mut HashMap<String, u32>,
+    ) -> csv::Result<Self> {
         let headers = try!(r.headers());
         let get_optional_pos = |name| headers.iter().position(|s| s == name);
 
@@ -105,10 +106,14 @@ impl<'a, R: std::io::Read + 'a> StopPointIter<'a, R> {
         })
     }
     fn get_location_type(&self, record: &[String]) -> Option<u8> {
-        self.location_type_pos.and_then(|pos| record.get(pos).and_then(|s| s.parse().ok()))
+        self.location_type_pos.and_then(|pos| {
+            record.get(pos).and_then(|s| s.parse().ok())
+        })
     }
     fn get_visible(&self, record: &[String]) -> Option<u8> {
-        self.stop_visible_pos.and_then(|pos| record.get(pos).and_then(|s| s.parse().ok()))
+        self.stop_visible_pos.and_then(|pos| {
+            record.get(pos).and_then(|s| s.parse().ok())
+        })
     }
 
     fn get_parent_station<'b>(&self, record: &'b [String]) -> Option<&'b String> {
@@ -120,13 +125,14 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
     type Item = csv::Result<mimir::Stop>;
     fn next(&mut self) -> Option<Self::Item> {
         fn get(record: &[String], pos: usize) -> csv::Result<&str> {
-            record.get(pos)
-                .map(|s| s.as_str())
-                .ok_or_else(|| csv::Error::Decode(format!("Failed accessing record '{}'.", pos)))
+            record.get(pos).map(|s| s.as_str()).ok_or_else(|| {
+                csv::Error::Decode(format!("Failed accessing record '{}'.", pos))
+            })
         }
         fn parse_f64(s: &str) -> csv::Result<f64> {
-            s.parse()
-                .map_err(|_| csv::Error::Decode(format!("Failed converting '{}' from str.", s)))
+            s.parse().map_err(|_| {
+                csv::Error::Decode(format!("Failed converting '{}' from str.", s))
+            })
         }
 
         fn is_valid_stop_area(location_type: &Option<u8>, visible: &Option<u8>) -> csv::Result<()> {
@@ -147,7 +153,9 @@ impl<'a, R: std::io::Read + 'a> Iterator for StopPointIter<'a, R> {
                 //if it's a stop point, we update its stop_area counter
                 if let (Some(0), Some(id)) = (location_type, parent_station) {
                     if !id.is_empty() {
-                        *self.nb_stop_points.entry(format!("stop_area:{}", id)).or_insert(0) += 1;
+                        *self.nb_stop_points
+                            .entry(format!("stop_area:{}", id))
+                            .or_insert(0) += 1;
                     }
                 }
                 try!(is_valid_stop_area(&location_type, &visible));
@@ -182,9 +190,11 @@ fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>, city_level
 /// The admins are loaded from Elasticsearch and stored in a quadtree
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
-fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: It,
-                                                                        rubber: &mut Rubber,
-                                                                        city_level: u32) {
+fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
+    stops: It,
+    rubber: &mut Rubber,
+    city_level: u32,
+) {
     let admins = rubber.get_all_admins().unwrap_or_else(|_| {
         info!("Administratives regions not found in elasticsearch db");
         vec![]
@@ -208,16 +218,18 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: I
         attach_stop(&mut stop, admins, city_level);
     }
 
-    info!("there is {}/{} stops without any admin",
-          nb_unmatched,
-          nb_matched + nb_unmatched);
+    info!(
+        "there is {}/{} stops without any admin",
+        nb_unmatched,
+        nb_matched + nb_unmatched
+    );
 }
 
 // Update weight value for each stop_area from HashMap.
 fn finalize_stop_area_weight<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     stops: It,
-    nb_stop_points: &HashMap<String, u32>)
-{
+    nb_stop_points: &HashMap<String, u32>,
+) {
     let max = *nb_stop_points.values().max().unwrap_or(&1) as f64;
     for stop in stops {
         if let Some(weight) = nb_stop_points.get(&stop.id) {
@@ -230,19 +242,22 @@ fn main() {
     mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
 
-    let args: Args = Docopt::new(USAGE).and_then(|dopt| dopt.decode()).unwrap_or_else(|e| e.exit());
+    let args: Args = Docopt::new(USAGE)
+        .and_then(|dopt| dopt.decode())
+        .unwrap_or_else(|e| e.exit());
 
     info!("creation of indexes");
     let mut rubber = Rubber::new(&args.flag_connection_string);
-    let mut rdr = csv::Reader::from_file(args.flag_input).unwrap().double_quote(true);
+    let mut rdr = csv::Reader::from_file(args.flag_input)
+        .unwrap()
+        .double_quote(true);
 
     let mut nb_stop_points = HashMap::new();
 
     let mut stops: Vec<mimir::Stop> = StopPointIter::new(&mut rdr, &mut nb_stop_points)
         .unwrap()
         .filter_map(|rc| {
-            rc.map_err(|e| debug!("skip csv line because: {}", e))
-                .ok()
+            rc.map_err(|e| debug!("skip csv line because: {}", e)).ok()
         })
         .collect();
 
@@ -282,10 +297,14 @@ fn test_load_stops() {
         .collect();
     assert_eq!(stops.len(), 5);
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
-    assert_eq!(ids,
-               vec!["stop_area:SA:main_station",
-                    "stop_area:SA:second_station",
-                    "stop_area:SA:station_no_city",
-                    "stop_area:SA:weight_1_station",
-                    "stop_area:SA:weight_3_station"]);
+    assert_eq!(
+        ids,
+        vec![
+            "stop_area:SA:main_station",
+            "stop_area:SA:second_station",
+            "stop_area:SA:station_no_city",
+            "stop_area:SA:weight_1_station",
+            "stop_area:SA:weight_3_station",
+        ]
+    );
 }

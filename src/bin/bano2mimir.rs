@@ -68,10 +68,11 @@ impl Bano {
         assert!(self.id.len() >= 10);
         &self.id[..10]
     }
-    pub fn into_addr(self,
-                     admins_from_insee: &AdminFromInsee,
-                     admins_geofinder: &AdminGeoFinder)
-                     -> mimir::Addr {
+    pub fn into_addr(
+        self,
+        admins_from_insee: &AdminFromInsee,
+        admins_geofinder: &AdminGeoFinder,
+    ) -> mimir::Addr {
         let street_name = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.nb, self.street);
         let addr_label = format!("{} ({})", addr_name, self.city);
@@ -89,7 +90,10 @@ impl Bano {
             admins.push(admin.clone());
         }
 
-        let weight = admins.iter().find(|a| a.level == 8).map_or(0., |a| a.weight.get());
+        let weight = admins.iter().find(|a| a.level == 8).map_or(
+            0.,
+            |a| a.weight.get(),
+        );
 
         let street = mimir::Street {
             id: street_id,
@@ -113,19 +117,24 @@ impl Bano {
 }
 
 fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
-    where I: Iterator<Item = std::path::PathBuf>
+where
+    I: Iterator<Item = std::path::PathBuf>,
 {
     let mut rubber = Rubber::new(cnx_string);
 
-    let admins = rubber.get_admins_from_dataset(dataset)
-        .unwrap_or_else(|err| {
-            info!("Administratives regions not found in es db for dataset {}. (error: {})",
-                  dataset,
-                  err);
+    let admins = rubber.get_admins_from_dataset(dataset).unwrap_or_else(
+        |err| {
+            info!(
+                "Administratives regions not found in es db for dataset {}. (error: {})",
+                dataset,
+                err
+            );
             vec![]
-        });
+        },
+    );
     let admins_geofinder = admins.iter().cloned().collect();
-    let admins_by_insee = admins.into_iter()
+    let admins_by_insee = admins
+        .into_iter()
         .filter(|a| !a.insee.is_empty())
         .map(|mut a| {
             a.boundary = None; // to save some space we remove the admin boundary
@@ -148,7 +157,9 @@ fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
             Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
         }
     }
-    rubber.publish_index(Addr::doc_type(), dataset, addr_index, Addr::is_geo_data()).unwrap();
+    rubber
+        .publish_index(Addr::doc_type(), dataset, addr_index, Addr::is_geo_data())
+        .unwrap();
 }
 
 #[derive(RustcDecodable, Debug)]
@@ -172,18 +183,23 @@ fn main() {
     mimir::logger_init().unwrap();
     info!("importing bano into Mimir");
 
-    let args: Args =
-        docopt::Docopt::new(USAGE).and_then(|d| d.decode()).unwrap_or_else(|e| e.exit());
+    let args: Args = docopt::Docopt::new(USAGE)
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
 
     let file_path = Path::new(&args.flag_input);
     if file_path.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.flag_input).unwrap();
-        index_bano(&args.flag_connection_string,
-                   &args.flag_dataset,
-                   paths.map(|p| p.unwrap().path()));
+        index_bano(
+            &args.flag_connection_string,
+            &args.flag_dataset,
+            paths.map(|p| p.unwrap().path()),
+        );
     } else {
-        index_bano(&args.flag_connection_string,
-                   &args.flag_dataset,
-                   std::iter::once(std::path::PathBuf::from(&args.flag_input)));
+        index_bano(
+            &args.flag_connection_string,
+            &args.flag_dataset,
+            std::iter::once(std::path::PathBuf::from(&args.flag_input)),
+        );
     }
 }

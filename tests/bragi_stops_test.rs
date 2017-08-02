@@ -46,34 +46,50 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     // - stops.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(osm2mimir,
-                        vec!["--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
-                             "--level=8".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        osm2mimir,
+        vec![
+            "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--level=8".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(bano2mimir,
-                        vec!["--input=./tests/fixtures/bano-three_cities.csv".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        bano2mimir,
+        vec![
+            "--input=./tests/fixtures/bano-three_cities.csv".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(stops2mimir,
-                        vec!["--input=./tests/fixtures/stops.txt".into(),
-                             "--dataset=dataset1".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        stops2mimir,
+        vec![
+            "--input=./tests/fixtures/stops.txt".into(),
+            "--dataset=dataset1".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     stop_attached_to_admin_test(&bragi);
     stop_no_admin_test(&bragi);
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(stops2mimir,
-                        vec!["--input=./tests/fixtures/stops_dataset2.txt".into(),
-                             "--dataset=dataset2".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        stops2mimir,
+        vec![
+            "--input=./tests/fixtures/stops_dataset2.txt".into(),
+            "--dataset=dataset2".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
 
     stop_filtered_by_dataset_test(&bragi);
     stop_all_data_test(&bragi);
@@ -97,7 +113,9 @@ fn stop_attached_to_admin_test(bragi: &BragiHandler) {
     // this stop area is in the boundary of the admin 'Vaux-le-Pénil',
     // it should have been associated to it
     assert_eq!(get_value(stop, "city"), "Vaux-le-Pénil");
-    let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
+    let admins = stop.get("administrative_regions").and_then(
+        |a| a.as_array(),
+    );
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 1);
 }
 
@@ -113,7 +131,9 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "name"), "Far west station");
     assert_eq!(get_value(stop, "id"), "stop_area:SA:station_no_city");
     assert_eq!(get_value(stop, "city"), "");
-    let admins = stop.get("administrative_regions").and_then(|a| a.as_array());
+    let admins = stop.get("administrative_regions").and_then(
+        |a| a.as_array(),
+    );
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
 }
 
@@ -126,8 +146,10 @@ fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
 
     let stop = response.last().unwrap();
-    assert_eq!(get_value(stop, "id"),
-               "stop_area:SA:second_station:dataset2");
+    assert_eq!(
+        get_value(stop, "id"),
+        "stop_area:SA:second_station:dataset2"
+    );
 
     // filter by dataset1
     let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1");
@@ -142,8 +164,10 @@ fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
     assert_eq!(response.len(), 1);
 
     let stop = response.first().unwrap();
-    assert_eq!(get_value(stop, "id"),
-               "stop_area:SA:second_station:dataset2");
+    assert_eq!(
+        get_value(stop, "id"),
+        "stop_area:SA:second_station:dataset2"
+    );
 }
 
 fn stop_all_data_test(bragi: &BragiHandler) {

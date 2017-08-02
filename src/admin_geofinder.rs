@@ -77,10 +77,12 @@ impl AdminGeoFinder {
                 Rect::from_float(down(x), up(x), down(y), up(y))
             };
             coords.fold(first_rect, |accu, p| {
-                Rect::from_float(min(accu.xmin, p.x()),
-                                 max(accu.xmax, p.x()),
-                                 min(accu.ymin, p.y()),
-                                 max(accu.ymax, p.y()))
+                Rect::from_float(
+                    min(accu.xmin, p.x()),
+                    max(accu.xmax, p.x()),
+                    min(accu.ymin, p.y()),
+                    max(accu.ymax, p.y()),
+                )
             })
         };
         self.admins.insert(rect, BoundaryAndAdmin::new(admin));
@@ -94,7 +96,12 @@ impl AdminGeoFinder {
             .get(&search)
             .into_iter()
             .map(|(_, a)| a)
-            .filter(|a| a.0.as_ref().map_or(false, |b| (*b).contains(&geo::Point(*coord))))
+            .filter(|a| {
+                a.0.as_ref().map_or(
+                    false,
+                    |b| (*b).contains(&geo::Point(*coord)),
+                )
+            })
             .map(|admin_and_boundary| admin_and_boundary.1.clone())
             .collect()
     }
@@ -102,10 +109,12 @@ impl AdminGeoFinder {
     /// Iterates on all the admins with a not None boundary.
     pub fn admins<'a>(&'a self) -> Box<Iterator<Item = Admin> + 'a> {
         let iter = self.admins
-            .get(&Rect::from_float(std::f32::NEG_INFINITY,
-                                   std::f32::INFINITY,
-                                   std::f32::NEG_INFINITY,
-                                   std::f32::INFINITY))
+            .get(&Rect::from_float(
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+            ))
             .into_iter()
             .map(|(_, a)| {
                 let mut admin = (*a.1).clone();
@@ -118,10 +127,12 @@ impl AdminGeoFinder {
     /// Iterates on all the `Rc<Admin>` in the structure as returned by `get`.
     pub fn admins_without_boundary<'a>(&'a self) -> Box<Iterator<Item = Rc<Admin>> + 'a> {
         let iter = self.admins
-            .get(&Rect::from_float(std::f32::NEG_INFINITY,
-                                   std::f32::INFINITY,
-                                   std::f32::NEG_INFINITY,
-                                   std::f32::INFINITY))
+            .get(&Rect::from_float(
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+            ))
             .into_iter()
             .map(|(_, a)| a.1.clone());
         Box::new(iter)
@@ -158,10 +169,14 @@ fn up(f: f32) -> f32 {
 fn test_up_down() {
     for &f in [1.0f64, 0., -0., -1., 0.1, -0.1, 0.9, -0.9, 42., -42.].iter() {
         let small_f = f as f32;
-        assert!(down(small_f) as f64 <= f,
-                format!("{} <= {}", down(small_f) as f64, f));
-        assert!(f <= up(small_f) as f64,
-                format!("{} <= {}", f, up(small_f) as f64));
+        assert!(
+            down(small_f) as f64 <= f,
+            format!("{} <= {}", down(small_f) as f64, f)
+        );
+        assert!(
+            f <= up(small_f) as f64,
+            format!("{} <= {}", f, up(small_f) as f64)
+        );
     }
 }
 
@@ -175,16 +190,20 @@ mod tests {
 
     fn make_admin(offset: f64) -> ::mimir::Admin {
         // the boundary is a big octogon
-        let shape = ::geo::Polygon::new(::geo::LineString(vec![p(3. + offset, 0. + offset),
-                                                               p(6. + offset, 0. + offset),
-                                                               p(9. + offset, 3. + offset),
-                                                               p(9. + offset, 6. + offset),
-                                                               p(6. + offset, 9. + offset),
-                                                               p(3. + offset, 9. + offset),
-                                                               p(0. + offset, 6. + offset),
-                                                               p(0. + offset, 3. + offset),
-                                                               p(3. + offset, 0. + offset)]),
-                                        vec![]);
+        let shape = ::geo::Polygon::new(
+            ::geo::LineString(vec![
+                p(3. + offset, 0. + offset),
+                p(6. + offset, 0. + offset),
+                p(9. + offset, 3. + offset),
+                p(9. + offset, 6. + offset),
+                p(6. + offset, 9. + offset),
+                p(3. + offset, 9. + offset),
+                p(0. + offset, 6. + offset),
+                p(0. + offset, 3. + offset),
+                p(3. + offset, 0. + offset),
+            ]),
+            vec![],
+        );
         let boundary = ::geo::MultiPolygon(vec![shape]);
 
         ::mimir::Admin {

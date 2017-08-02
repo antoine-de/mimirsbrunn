@@ -47,10 +47,12 @@ pub fn dataset_param(params: &mut Builder) {
 }
 
 pub fn coord_param(params: &mut Builder, is_opt: bool) {
-    fn checker<F: FnOnce(&mut Param)>(builder: &mut Builder,
-                                      is_opt: bool,
-                                      name: &str,
-                                      param_builder: F) {
+    fn checker<F: FnOnce(&mut Param)>(
+        builder: &mut Builder,
+        is_opt: bool,
+        name: &str,
+        param_builder: F,
+    ) {
         if is_opt {
             builder.opt(name, param_builder)
         } else {
@@ -76,12 +78,16 @@ pub fn coord_param(params: &mut Builder, is_opt: bool) {
             let has_lon = obj.get("lon").is_some();
             let has_lat = obj.get("lat").is_some();
             if has_lon ^ has_lat {
-                Err(vec![Box::new(json_dsl::errors::WrongValue {
-                             path: path.to_string(),
-                             detail: Some("you need to provide a lon AND a lat \
+                Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(
+                            "you need to provide a lon AND a lat \
                                            if you provide one of them"
-                                 .to_string()),
-                         })])
+                                .to_string(),
+                        ),
+                    }),
+                ])
             } else {
                 Ok(())
             }
@@ -133,20 +139,23 @@ pub fn types_param(params: &mut Builder) {
 }
 
 
-fn check_bound(val: &JsonValue,
-               path: &str,
-               min: f64,
-               max: f64,
-               error_msg: &str)
-               -> Result<(), valico_error::ValicoErrors> {
+fn check_bound(
+    val: &JsonValue,
+    path: &str,
+    min: f64,
+    max: f64,
+    error_msg: &str,
+) -> Result<(), valico_error::ValicoErrors> {
     if let Some(lon) = val.as_f64() {
         if min <= lon && lon <= max {
             Ok(())
         } else {
-            Err(vec![Box::new(json_dsl::errors::WrongValue {
-                         path: path.to_string(),
-                         detail: Some(error_msg.to_string()),
-                     })])
+            Err(vec![
+                Box::new(json_dsl::errors::WrongValue {
+                    path: path.to_string(),
+                    detail: Some(error_msg.to_string()),
+                }),
+            ])
         }
     } else {
         unreachable!("should never happen, already checked");
@@ -156,83 +165,104 @@ fn check_bound(val: &JsonValue,
 fn check_type(types: &[JsonValue], path: &str) -> Result<(), valico_error::ValicoErrors> {
     for type_ in types {
         if let Err(e) = Type::from_str(type_.as_str().unwrap()) {
-            return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                path: path.to_string(),
-                                detail: Some(e),
-                            })]);
+            return Err(vec![
+                Box::new(json_dsl::errors::WrongValue {
+                    path: path.to_string(),
+                    detail: Some(e),
+                }),
+            ]);
         }
     }
 
     Ok(())
 }
 
-fn check_coordinates(val: &JsonValue,
-                     path: &str,
-                     error_msg: &str)
-                     -> Result<(), valico_error::ValicoErrors> {
+fn check_coordinates(
+    val: &JsonValue,
+    path: &str,
+    error_msg: &str,
+) -> Result<(), valico_error::ValicoErrors> {
 
     if !val.is_array() {
-        return Err(vec![Box::new(json_dsl::errors::WrongType {
-                            path: path.to_string(),
-                            detail: error_msg.to_string(),
-                        })]);
+        return Err(vec![
+            Box::new(json_dsl::errors::WrongType {
+                path: path.to_string(),
+                detail: error_msg.to_string(),
+            }),
+        ]);
     }
     let array = val.as_array().unwrap();
     if array.is_empty() {
-        return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                            path: path.to_string(),
-                            detail: Some(error_msg.to_string()),
-                        })]);
+        return Err(vec![
+            Box::new(json_dsl::errors::WrongValue {
+                path: path.to_string(),
+                detail: Some(error_msg.to_string()),
+            }),
+        ]);
     }
 
     for arr0 in array {
         if !arr0.is_array() {
-            return Err(vec![Box::new(json_dsl::errors::WrongType {
-                                path: path.to_string(),
-                                detail: error_msg.to_string(),
-                            })]);
+            return Err(vec![
+                Box::new(json_dsl::errors::WrongType {
+                    path: path.to_string(),
+                    detail: error_msg.to_string(),
+                }),
+            ]);
         }
         let arr1 = arr0.as_array().unwrap();
         if arr1.is_empty() {
-            return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                path: path.to_string(),
-                                detail: Some(error_msg.to_string()),
-                            })]);
+            return Err(vec![
+                Box::new(json_dsl::errors::WrongValue {
+                    path: path.to_string(),
+                    detail: Some(error_msg.to_string()),
+                }),
+            ]);
         }
         for arr2 in arr1 {
             if !arr2.is_array() {
-                return Err(vec![Box::new(json_dsl::errors::WrongType {
-                                    path: path.to_string(),
-                                    detail: error_msg.to_string(),
-                                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongType {
+                        path: path.to_string(),
+                        detail: error_msg.to_string(),
+                    }),
+                ]);
             }
             let lonlat = arr2.as_array().unwrap();
             if lonlat.len() != 2 {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                    path: path.to_string(),
-                                    detail: Some(error_msg.to_string()),
-                                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(error_msg.to_string()),
+                    }),
+                ]);
             }
 
             if !(lonlat[0].is_f64() && lonlat[1].is_f64()) {
-                return Err(vec![Box::new(json_dsl::errors::WrongType {
-                                    path: path.to_string(),
-                                    detail: error_msg.to_string(),
-                                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongType {
+                        path: path.to_string(),
+                        detail: error_msg.to_string(),
+                    }),
+                ]);
             }
             let lon = lonlat[0].as_f64().unwrap();
             let lat = lonlat[1].as_f64().unwrap();
             if !(MIN_LON <= lon && lon <= MAX_LON) {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                    path: path.to_string(),
-                                    detail: Some(error_msg.to_string()),
-                                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(error_msg.to_string()),
+                    }),
+                ]);
             }
             if !(MIN_LAT <= lat && lat <= MAX_LAT) {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                    path: path.to_string(),
-                                    detail: Some(error_msg.to_string()),
-                                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(error_msg.to_string()),
+                    }),
+                ]);
             }
         }
     }

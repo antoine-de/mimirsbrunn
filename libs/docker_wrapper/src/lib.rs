@@ -48,19 +48,32 @@ impl DockerWrapper {
 
     fn setup(&mut self) -> Result<(), Box<Error>> {
         info!("Launching ES docker");
-        let status = try!(Command::new("docker")
-            .args(&["run", "-d", "--name=mimirsbrunn_tests", "elasticsearch:2"])
-            .status());
+        let status = try!(
+            Command::new("docker")
+                .args(
+                    &["run", "-d", "--name=mimirsbrunn_tests", "elasticsearch:2"],
+                )
+                .status()
+        );
         if !status.success() {
             return Err(format!("`docker run` failed {}", &status).into());
         }
 
         // we need to get the ip of the container if the container has been run on another machine
-        let container_ip_cmd = try!(Command::new("docker")
-            .args(&["inspect", "--format={{.NetworkSettings.IPAddress}}", "mimirsbrunn_tests"])
-            .output());
+        let container_ip_cmd = try!(
+            Command::new("docker")
+                .args(
+                    &[
+                        "inspect",
+                        "--format={{.NetworkSettings.IPAddress}}",
+                        "mimirsbrunn_tests",
+                    ],
+                )
+                .output()
+        );
 
-        let container_ip = std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
+        let container_ip = std::str::from_utf8(container_ip_cmd.stdout.as_slice())?
+            .trim();
 
         warn!("container ip = {:?}", container_ip);
         self.ip = container_ip.to_string();
@@ -102,9 +115,11 @@ fn docker_command(args: &[&'static str]) {
 impl Drop for DockerWrapper {
     fn drop(&mut self) {
         if std::env::var("DONT_KILL_THE_WHALE") == Ok("1".to_string()) {
-            warn!("the docker won't be stoped at the end, you can debug it.
+            warn!(
+                "the docker won't be stoped at the end, you can debug it.
             Note: ES has been mapped to the port 9242 in you localhost
-            manually stop and rm the container mimirsbrunn_tests after debug");
+            manually stop and rm the container mimirsbrunn_tests after debug"
+            );
             return;
         }
         docker_command(&["stop", "mimirsbrunn_tests"]);

@@ -50,7 +50,8 @@ impl<'a> Relation<'a> {
             self.builder
                 .objects
                 .get_mut(&self.relation_id.into())
-                .unwrap() {
+                .unwrap()
+        {
             rel.refs.push(osmpbfreader::Ref {
                 role: "outer".to_string(),
                 member: id.into(),
@@ -95,7 +96,8 @@ impl OsmBuilder {
     }
 
     pub fn way(&mut self, coords: Vec<(mimir::Coord, Option<String>)>) -> osmpbfreader::WayId {
-        let nodes = coords.into_iter()
+        let nodes = coords
+            .into_iter()
             .map(|pair| self.node(pair.0, pair.1))
             .collect::<Vec<_>>();
         let id = osmpbfreader::WayId(self.way_id);

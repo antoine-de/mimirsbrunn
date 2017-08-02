@@ -35,21 +35,29 @@ extern crate mimir;
 /// Checks that we are able to find one object (a specific address)
 pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(stops2mimir,
-                        vec!["--input=./tests/fixtures/stops.txt".into(),
-                             format!("--connection-string={}", es_wrapper.host())],
-                        &es_wrapper);
+    ::launch_and_assert(
+        stops2mimir,
+        vec![
+            "--input=./tests/fixtures/stops.txt".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
     // Test: Import of stops
     let res: Vec<_> = es_wrapper.search_and_filter("*", |_| true).collect();
     assert_eq!(res.len(), 5);
     assert!(res.iter().all(|r| r.is_stop()));
 
     // Test: search for stop area not in ES base
-    let res: Vec<_> = es_wrapper.search_and_filter("label:unknown", |_| true).collect();
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("label:unknown", |_| true)
+        .collect();
     assert!(res.len() == 0);
 
     // Test: search for "République"
-    let res: Vec<_> = es_wrapper.search_and_filter("label:République", |_| true).collect();
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("label:République", |_| true)
+        .collect();
     assert!(res.len() == 1);
     assert_eq!(res[0].label(), "République");
     assert!(res[0].admins().is_empty());

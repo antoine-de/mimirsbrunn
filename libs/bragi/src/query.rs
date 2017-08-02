@@ -42,9 +42,10 @@ use mimir::objects::{MimirObject, Admin, Addr, Stop, Street, Poi};
 /// it uses the _type field of ES to know which type of the Place enum to fill
 pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<mimir::Place> {
     value.and_then(|v| {
-        fn convert<T: serde::Deserialize>(v: serde_json::Value,
-                                          f: fn(T) -> mimir::Place)
-                                          -> Option<mimir::Place> {
+        fn convert<T: serde::Deserialize>(
+            v: serde_json::Value,
+            f: fn(T) -> mimir::Place,
+        ) -> Option<mimir::Place> {
             serde_json::from_value::<T>(v)
                 .map_err(|err| warn!("Impossible to load ES result: {}", err))
                 .ok()
@@ -79,39 +80,50 @@ fn build_proximity_with_boost(coord: &model::Coord, boost: f64) -> Query {
             rs_es::query::functions::Function::build_decay(
                 "coord",
                 rs_u::Location::LatLon(coord.lat, coord.lon),
-                rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer)
-            ).build_gauss()
-        ).build()
+                rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
+            ).build_gauss(),
+        )
+        .build()
 }
 
-fn build_query(q: &str,
-               match_type: MatchType,
-               coord: &Option<model::Coord>,
-               shape: Option<Vec<rs_es::units::Location>>)
-               -> Query {
+fn build_query(
+    q: &str,
+    match_type: MatchType,
+    coord: &Option<model::Coord>,
+    shape: Option<Vec<rs_es::units::Location>>,
+) -> Query {
     use rs_es::query::functions::Function;
 
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
-        Query::build_term("_type", T::doc_type()).with_boost(boost).build()
+        Query::build_term("_type", T::doc_type())
+            .with_boost(boost)
+            .build()
     }
     let type_query = Query::build_bool()
-        .with_should(vec![match_type_with_boost::<Addr>(12.),
-                          match_type_with_boost::<Admin>(11.),
-                          match_type_with_boost::<Stop>(10.),
-                          match_type_with_boost::<Poi>(2.),
-                          match_type_with_boost::<Street>(1.)])
+        .with_should(vec![
+            match_type_with_boost::<Addr>(12.),
+            match_type_with_boost::<Admin>(11.),
+            match_type_with_boost::<Stop>(10.),
+            match_type_with_boost::<Poi>(2.),
+            match_type_with_boost::<Street>(1.),
+        ])
         .with_boost(20.)
         .build();
 
     // Priorization by query string
-    let mut string_should = vec![Query::build_match("label", q).with_boost(1.).build(),
-                                 Query::build_match("label.prefix", q).with_boost(1.).build(),
-                                 Query::build_match("zip_codes", q).with_boost(1.).build()];
+    let mut string_should = vec![
+        Query::build_match("label", q).with_boost(1.).build(),
+        Query::build_match("label.prefix", q).with_boost(1.).build(),
+        Query::build_match("zip_codes", q).with_boost(1.).build(),
+    ];
     if let MatchType::Fuzzy = match_type {
         string_should.push(Query::build_match("label.ngram", q).with_boost(1.).build());
     }
-    let string_query = Query::build_bool().with_should(string_should).with_boost(1.).build();
+    let string_query = Query::build_bool()
+        .with_should(string_should)
+        .with_boost(1.)
+        .build();
 
     // Priorization by importance
     let importance_query = match coord {
@@ -129,10 +141,13 @@ fn build_query(q: &str,
     // * to exactly match the document house_number
     // * or that the document has no house_number
     let first_condition = Query::build_bool()
-        .with_should(vec![Query::build_bool()
-                              .with_must_not(Query::build_exists("house_number").build())
-                              .build(),
-                          Query::build_match("house_number", q.to_string()).build()])
+        .with_should(vec![
+            Query::build_bool()
+                .with_must_not(Query::build_exists("house_number").build())
+                .build(),
+            Query::build_match("house_number", q.to_string())
+                .build(),
+        ])
         .build();
 
     use rs_es::query::MinimumShouldMatch;
@@ -149,9 +164,10 @@ fn build_query(q: &str,
         // WITH the cross_fields match type, the request will be spilted into terms to match
         // "label" and "zip_codes"
         MatchType::Prefix => {
-            Query::build_multi_match(vec!["label.prefix".to_string(), "zip_codes".to_string()],
-                                     q.to_string())
-                .with_type(rs_es::query::full_text::MatchQueryType::CrossFields)
+            Query::build_multi_match(
+                vec!["label.prefix".to_string(), "zip_codes".to_string()],
+                q.to_string(),
+            ).with_type(rs_es::query::full_text::MatchQueryType::CrossFields)
                 .with_operator("and")
                 .build()
         }
@@ -163,9 +179,10 @@ fn build_query(q: &str,
         // Very long requests:
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
         MatchType::Fuzzy => {
-            Query::build_multi_match(vec!["label.ngram".to_string(), "zip_codes".to_string()],
-                                     q.to_string())
-                .with_minimum_should_match(MinimumShouldMatch::from(40f64))
+            Query::build_multi_match(
+                vec!["label.ngram".to_string(), "zip_codes".to_string()],
+                q.to_string(),
+            ).with_minimum_should_match(MinimumShouldMatch::from(40f64))
                 .build()
         }
     };
@@ -205,11 +222,12 @@ fn get_indexes_by_type(a_type: &str) -> String {
     format!("munin_{}", doc_type)
 }
 
-fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(all_data: bool,
-                                                              pt_dataset_index: &Option<String>,
-                                                              types: &Option<Vec<&str>>,
-                                                              mut is_existing_index: F)
-                                                              -> Result<Vec<String>, EsError> {
+fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
+    all_data: bool,
+    pt_dataset_index: &Option<String>,
+    types: &Option<Vec<&str>>,
+    mut is_existing_index: F,
+) -> Result<Vec<String>, EsError> {
     if all_data {
         return Ok(vec!["munin".to_string()]);
     }
@@ -242,45 +260,54 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(all_data: bool,
     Ok(result)
 }
 
-fn make_indexes(all_data: bool,
-                pt_dataset_index: &Option<String>,
-                types: &Option<Vec<&str>>,
-                client: &mut rs_es::Client)
-                -> Result<Vec<String>, EsError> {
-    make_indexes_impl(all_data,
-                      pt_dataset_index,
-                      types,
-                      |index| is_existing_index(client, index))
+fn make_indexes(
+    all_data: bool,
+    pt_dataset_index: &Option<String>,
+    types: &Option<Vec<&str>>,
+    client: &mut rs_es::Client,
+) -> Result<Vec<String>, EsError> {
+    make_indexes_impl(all_data, pt_dataset_index, types, |index| {
+        is_existing_index(client, index)
+    })
 }
 
 fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>, EsError> {
     debug!("{} documents found", result.hits.total);
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
-    Ok(result.hits
-        .hits
-        .into_iter()
-        .filter_map(|hit| make_place(hit.doc_type, hit.source))
-        .collect())
+    Ok(
+        result
+            .hits
+            .hits
+            .into_iter()
+            .filter_map(|hit| make_place(hit.doc_type, hit.source))
+            .collect(),
+    )
 }
 
-fn query(q: &str,
-         pt_dataset: &Option<&str>,
-         all_data: bool,
-         cnx: &str,
-         match_type: MatchType,
-         offset: u64,
-         limit: u64,
-         coord: &Option<model::Coord>,
-         shape: Option<Vec<rs_es::units::Location>>,
-         types: &Option<Vec<&str>>)
-         -> Result<Vec<mimir::Place>, EsError> {
+fn query(
+    q: &str,
+    pt_dataset: &Option<&str>,
+    all_data: bool,
+    cnx: &str,
+    match_type: MatchType,
+    offset: u64,
+    limit: u64,
+    coord: &Option<model::Coord>,
+    shape: Option<Vec<rs_es::units::Location>>,
+    types: &Option<Vec<&str>>,
+) -> Result<Vec<mimir::Place>, EsError> {
     let query = build_query(q, match_type, coord, shape);
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
-    let indexes = try!(make_indexes(all_data, &pt_dataset_index, types, &mut client));
+    let indexes = try!(make_indexes(
+        all_data,
+        &pt_dataset_index,
+        types,
+        &mut client,
+    ));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -290,34 +317,44 @@ fn query(q: &str,
         return Ok(vec![]);
     }
 
-    let result: SearchResult<serde_json::Value> = try!(client.search_query()
-        .with_indexes(&indexes.iter().map(|index| index.as_str()).collect::<Vec<&str>>())
-        .with_query(&query)
-        .with_from(offset)
-        .with_size(limit)
-        .send());
+    let result: SearchResult<serde_json::Value> = try!(
+        client
+            .search_query()
+            .with_indexes(&indexes
+                .iter()
+                .map(|index| index.as_str())
+                .collect::<Vec<&str>>())
+            .with_query(&query)
+            .with_from(offset)
+            .with_size(limit)
+            .send()
+    );
 
     collect(result)
 }
 
-pub fn features(pt_dataset: &Option<&str>,
-                all_data: bool,
-                cnx: &str,
-                id: &str)
-                -> Result<Vec<mimir::Place>, EsError> {
+pub fn features(
+    pt_dataset: &Option<&str>,
+    all_data: bool,
+    cnx: &str,
+    id: &str,
+) -> Result<Vec<mimir::Place>, EsError> {
 
     let val = rs_es::units::JsonVal::String(id.into());
     let build_ids = Query::build_ids(vec![val]).build();
 
-    let filter = Query::build_bool()
-        .with_must(vec![build_ids])
-        .build();
+    let filter = Query::build_bool().with_must(vec![build_ids]).build();
     let query = Query::build_bool().with_filter(filter).build();
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
     let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
-    let indexes = try!(make_indexes(all_data, &pt_dataset_index, &None, &mut client));
+    let indexes = try!(make_indexes(
+        all_data,
+        &pt_dataset_index,
+        &None,
+        &mut client,
+    ));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -327,10 +364,16 @@ pub fn features(pt_dataset: &Option<&str>,
         return Err(EsError::EsError("Unable to find object".to_string()));
     }
 
-    let result: SearchResult<serde_json::Value> = try!(client.search_query()
-        .with_indexes(&indexes.iter().map(|index| index.as_str()).collect::<Vec<&str>>())
-        .with_query(&query)
-        .send());
+    let result: SearchResult<serde_json::Value> = try!(
+        client
+            .search_query()
+            .with_indexes(&indexes
+                .iter()
+                .map(|index| index.as_str())
+                .collect::<Vec<&str>>())
+            .with_query(&query)
+            .send()
+    );
 
     if result.hits.total == 0 {
         Err(EsError::EsError("Unable to find object".to_string()))
@@ -351,51 +394,62 @@ pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsE
         .with_should(build_proximity_with_boost(coord, 1.))
         .with_must(geo_distance)
         .build();
-    let result: SearchResult<serde_json::Value> = client.search_query()
-        .with_indexes(&indexes.iter().map(|index| index.as_str()).collect::<Vec<_>>())
+    let result: SearchResult<serde_json::Value> = client
+        .search_query()
+        .with_indexes(&indexes
+            .iter()
+            .map(|index| index.as_str())
+            .collect::<Vec<_>>())
         .with_query(&query)
         .with_size(1)
         .send()?;
     collect(result)
 }
 
-pub fn autocomplete(q: &str,
-                    pt_dataset: &Option<&str>,
-                    all_data: bool,
-                    offset: u64,
-                    limit: u64,
-                    coord: Option<model::Coord>,
-                    cnx: &str,
-                    shape: Option<Vec<(f64, f64)>>,
-                    types: Option<Vec<&str>>)
-                    -> Result<Vec<mimir::Place>, EsError> {
+pub fn autocomplete(
+    q: &str,
+    pt_dataset: &Option<&str>,
+    all_data: bool,
+    offset: u64,
+    limit: u64,
+    coord: Option<model::Coord>,
+    cnx: &str,
+    shape: Option<Vec<(f64, f64)>>,
+    types: Option<Vec<&str>>,
+) -> Result<Vec<mimir::Place>, EsError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
-        shape.as_ref().map(|v| v.iter().map(|&l| l.into()).collect())
+        shape.as_ref().map(
+            |v| v.iter().map(|&l| l.into()).collect(),
+        )
     }
 
     // First we try a prety exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
-    let results = try!(query(&q,
-                             &pt_dataset,
-                             all_data,
-                             cnx,
-                             MatchType::Prefix,
-                             offset,
-                             limit,
-                             &coord,
-                             make_shape(&shape),
-                             &types));
+    let results = try!(query(
+        &q,
+        &pt_dataset,
+        all_data,
+        cnx,
+        MatchType::Prefix,
+        offset,
+        limit,
+        &coord,
+        make_shape(&shape),
+        &types,
+    ));
     if results.is_empty() {
-        query(&q,
-              &pt_dataset,
-              all_data,
-              cnx,
-              MatchType::Fuzzy,
-              offset,
-              limit,
-              &coord,
-              make_shape(&shape),
-              &types)
+        query(
+            &q,
+            &pt_dataset,
+            all_data,
+            cnx,
+            MatchType::Fuzzy,
+            offset,
+            limit,
+            &coord,
+            make_shape(&shape),
+            &types,
+        )
     } else {
         Ok(results)
     }
@@ -407,59 +461,86 @@ fn test_make_indexes_impl() {
         Ok(true)
     }
     // all_data
-    assert_eq!(make_indexes_impl(true, &None, &None, ok_index).unwrap(),
-               vec!["munin"]);
+    assert_eq!(
+        make_indexes_impl(true, &None, &None, ok_index).unwrap(),
+        vec!["munin"]
+    );
 
     // no dataset and no types
-    assert_eq!(make_indexes_impl(false, &None, &None, ok_index).unwrap(),
-               vec!["munin_geo_data"]);
+    assert_eq!(
+        make_indexes_impl(false, &None, &None, ok_index).unwrap(),
+        vec!["munin_geo_data"]
+    );
 
     // dataset fr + no types
-    assert_eq!(make_indexes_impl(false, &Some("munin_stop_fr".to_string()), &None, ok_index)
-                   .unwrap(),
-               vec!["munin_geo_data", "munin_stop_fr"]);
+    assert_eq!(
+        make_indexes_impl(false, &Some("munin_stop_fr".to_string()), &None, ok_index).unwrap(),
+        vec!["munin_geo_data", "munin_stop_fr"]
+    );
 
     // no dataset + types poi, city, street, house and public_transport:stop_area
     // => munin_stop is not included
-    assert_eq!(make_indexes_impl(false,
-                                 &None,
-                                 &Some(vec!["poi",
-                                            "city",
-                                            "street",
-                                            "house",
-                                            "public_transport:stop_area"]),
-                                 ok_index)
-                   .unwrap(),
-               vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &None,
+            &Some(vec![
+                "poi",
+                "city",
+                "street",
+                "house",
+                "public_transport:stop_area",
+            ]),
+            ok_index,
+        ).unwrap(),
+        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+    );
 
     // no dataset fr + type public_transport:stop_area only
-    assert_eq!(make_indexes_impl(false,
-                                 &None,
-                                 &Some(vec!["public_transport:stop_area"]),
-                                 ok_index)
-                   .unwrap(),
-               Vec::<String>::new());
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &None,
+            &Some(vec!["public_transport:stop_area"]),
+            ok_index,
+        ).unwrap(),
+        Vec::<String>::new()
+    );
 
     // dataset fr + types poi, city, street, house and public_transport:stop_area
-    assert_eq!(make_indexes_impl(false,
-                                 &Some("munin_stop_fr".to_string()),
-                                 &Some(vec!["poi",
-                                            "city",
-                                            "street",
-                                            "house",
-                                            "public_transport:stop_area"]),
-                                 ok_index)
-                   .unwrap(),
-               vec!["munin_poi", "munin_admin", "munin_street", "munin_addr", "munin_stop_fr"]);
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &Some("munin_stop_fr".to_string()),
+            &Some(vec![
+                "poi",
+                "city",
+                "street",
+                "house",
+                "public_transport:stop_area",
+            ]),
+            ok_index,
+        ).unwrap(),
+        vec![
+            "munin_poi",
+            "munin_admin",
+            "munin_street",
+            "munin_addr",
+            "munin_stop_fr",
+        ]
+    );
 
     // dataset fr types poi, city, street, house without public_transport:stop_area
     //  => munin_stop_fr is not included
-    assert_eq!(make_indexes_impl(false,
-                                 &Some("munin_stop_fr".to_string()),
-                                 &Some(vec!["poi", "city", "street", "house"]),
-                                 ok_index)
-                   .unwrap(),
-               vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]);
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &Some("munin_stop_fr".to_string()),
+            &Some(vec!["poi", "city", "street", "house"]),
+            ok_index,
+        ).unwrap(),
+        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+    );
 
     // dataset fr types poi, city, street, house without public_transport:stop_area
     // and the function is_existing_index with a result "false" as non of the index

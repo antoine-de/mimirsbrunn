@@ -50,19 +50,23 @@ pub struct StreetKey {
     pub admins: AdminSet,
 }
 
-pub fn streets(pbf: &mut OsmPbfReader,
-               admins_geofinder: &AdminGeoFinder,
-               city_level: u32)
-               -> StreetsVec {
+pub fn streets(
+    pbf: &mut OsmPbfReader,
+    admins_geofinder: &AdminGeoFinder,
+    city_level: u32,
+) -> StreetsVec {
 
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
                 way.tags.get("highway").map_or(false, |v| !v.is_empty()) &&
-                way.tags.get("name").map_or(false, |v| !v.is_empty())
+                    way.tags.get("name").map_or(false, |v| !v.is_empty())
             }
             osmpbfreader::OsmObj::Relation(ref rel) => {
-                rel.tags.get("type").map_or(false, |v| v == "associatedStreet")
+                rel.tags.get("type").map_or(
+                    false,
+                    |v| v == "associatedStreet",
+                )
             }
             _ => false,
         }
@@ -87,7 +91,8 @@ pub fn streets(pbf: &mut OsmPbfReader,
             let street_list = &mut street_list;
             let admins_geofinder = &admins_geofinder;
 
-            let inserted = mdo! {
+            let inserted =
+                mdo! {
                 when ref_obj.member.is_way();
                 when ref_obj.role == "street";
                 obj =<< objs_map.get(&ref_obj.member);
@@ -169,10 +174,11 @@ pub fn streets(pbf: &mut OsmPbfReader,
     street_list
 }
 
-fn get_street_admin(admins_geofinder: &AdminGeoFinder,
-                    obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-                    way: &osmpbfreader::objects::Way)
-                    -> Vec<Rc<mimir::Admin>> {
+fn get_street_admin(
+    admins_geofinder: &AdminGeoFinder,
+    obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    way: &osmpbfreader::objects::Way,
+) -> Vec<Rc<mimir::Admin>> {
     // for the moment we consider that the coord of the way is the coord of it's first node
     way.nodes
         .iter()

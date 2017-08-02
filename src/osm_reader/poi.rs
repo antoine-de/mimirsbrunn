@@ -82,23 +82,33 @@ impl PoiConfig {
         self.rules
             .iter()
             .find(|rule| {
-                rule.osm_tags_filters
-                    .iter()
-                    .all(|f| tags.get(&f.key).map_or(false, |v| v == &f.value))
+                rule.osm_tags_filters.iter().all(|f| {
+                    tags.get(&f.key).map_or(false, |v| v == &f.value)
+                })
             })
-            .and_then(|rule| self.poi_types.iter().find(|poi_type| poi_type.id == rule.poi_type_id))
+            .and_then(|rule| {
+                self.poi_types.iter().find(|poi_type| {
+                    poi_type.id == rule.poi_type_id
+                })
+            })
     }
     pub fn check(&self) -> Result<(), Box<Error>> {
         use std::collections::BTreeSet;
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
             if !ids.insert(&poi_type.id) {
-                try!(Err(format!("poi_type_id {:?} present several times", poi_type.id)));
+                try!(Err(format!(
+                    "poi_type_id {:?} present several times",
+                    poi_type.id
+                )));
             }
         }
         for rule in &self.rules {
             if !ids.contains(rule.poi_type_id.as_str()) {
-                try!(Err(format!("poi_type_id {:?} in a rule not declared", rule.poi_type_id)));
+                try!(Err(format!(
+                    "poi_type_id {:?} in a rule not declared",
+                    rule.poi_type_id
+                )));
             }
         }
         Ok(())
@@ -181,38 +191,48 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 }
 "#;
 
-fn parse_poi(osmobj: &osmpbfreader::OsmObj,
-             obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
-             matcher: &PoiConfig,
-             admins_geofinder: &AdminGeoFinder,
-             city_level: u32)
-             -> Option<mimir::Poi> {
+fn parse_poi(
+    osmobj: &osmpbfreader::OsmObj,
+    obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    matcher: &PoiConfig,
+    admins_geofinder: &AdminGeoFinder,
+    city_level: u32,
+) -> Option<mimir::Poi> {
     let poi_type = match matcher.get_poi_type(osmobj.tags()) {
         Some(poi_type) => poi_type,
         None => {
-            warn!("The poi {:?} has no tags even if it passes the filters",
-                  osmobj.id());
+            warn!(
+                "The poi {:?} has no tags even if it passes the filters",
+                osmobj.id()
+            );
             return None;
         }
     };
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => {
-            (format_poi_id("node", node.id.0), mimir::Coord::new(node.lat(), node.lon()))
+            (
+                format_poi_id("node", node.id.0),
+                mimir::Coord::new(node.lat(), node.lon()),
+            )
         }
         osmpbfreader::OsmObj::Way(ref way) => {
             (format_poi_id("way", way.id.0), get_way_coord(obj_map, way))
         }
         osmpbfreader::OsmObj::Relation(ref relation) => {
-            (format_poi_id("relation", relation.id.0),
-             make_centroid(&build_boundary(relation, obj_map)))
+            (
+                format_poi_id("relation", relation.id.0),
+                make_centroid(&build_boundary(relation, obj_map)),
+            )
         }
     };
 
     let name = osmobj.tags().get("name").unwrap_or(&poi_type.name);
 
     if coord.is_default() {
-        info!("The poi {} is rejected, cause: could not compute coordinates.",
-              id);
+        info!(
+            "The poi {} is rejected, cause: could not compute coordinates.",
+            id
+        );
         return None;
     }
 
@@ -237,15 +257,19 @@ fn format_poi_id(osm_type: &str, id: i64) -> String {
     format!("poi:osm:{}:{}", osm_type, id)
 }
 
-pub fn pois(pbf: &mut OsmPbfReader,
-            matcher: &PoiConfig,
-            admins_geofinder: &AdminGeoFinder,
-            city_level: u32)
-            -> Vec<Poi> {
+pub fn pois(
+    pbf: &mut OsmPbfReader,
+    matcher: &PoiConfig,
+    admins_geofinder: &AdminGeoFinder,
+    city_level: u32,
+) -> Vec<Poi> {
     let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o.tags())).unwrap();
-    objects.iter()
+    objects
+        .iter()
         .filter(|&(_, obj)| matcher.is_poi(obj.tags()))
-        .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder, city_level))
+        .filter_map(|(_, obj)| {
+            parse_poi(obj, &objects, matcher, admins_geofinder, city_level)
+        })
         .collect()
 }
 
@@ -275,21 +299,28 @@ mod tests {
     fn default_test() {
         let c = PoiConfig::default();
         assert!(c.get_poi_id(&tags(&[])).is_none());
-        for s in &["college",
-                   "university",
-                   "theatre",
-                   "hospital",
-                   "post_office",
-                   "bicycle_rental",
-                   "bicycle_parking",
-                   "parking",
-                   "police"] {
-            assert_eq!(format!("poi_type:amenity:{}", s),
-                       c.get_poi_id(&tags(&[("amenity", s)])).unwrap());
+        for s in &[
+            "college",
+            "university",
+            "theatre",
+            "hospital",
+            "post_office",
+            "bicycle_rental",
+            "bicycle_parking",
+            "parking",
+            "police",
+        ]
+        {
+            assert_eq!(
+                format!("poi_type:amenity:{}", s),
+                c.get_poi_id(&tags(&[("amenity", s)])).unwrap()
+            );
         }
         for s in &["garden", "park"] {
-            assert_eq!(format!("poi_type:leisure:{}", s),
-                       c.get_poi_id(&tags(&[("leisure", s)])).unwrap());
+            assert_eq!(
+                format!("poi_type:leisure:{}", s),
+                c.get_poi_id(&tags(&[("leisure", s)])).unwrap()
+            );
         }
     }
     #[test]
@@ -303,19 +334,23 @@ mod tests {
         from_str(r#"{"poi_types": [], "rules": []}"#).unwrap();
         from_str(r#"{"poi_types": [{"id": "foo"}], "rules": []}"#).unwrap_err();
         from_str(r#"{"poi_types": [{"name": "bar"}], "rules": []}"#).unwrap_err();
-        from_str(r#"{"poi_types": [{"id": "foo", "name": "bar"}], "rules": []}"#).unwrap();
+        from_str(
+            r#"{"poi_types": [{"id": "foo", "name": "bar"}], "rules": []}"#,
+        ).unwrap();
     }
     #[test]
     fn check_tests() {
-        from_str(r#"{
+        from_str(
+            r#"{
             "poi_types": [
                 {"id": "bob", "name": "Bob"},
                 {"id": "bob", "name": "Bobitto"}
             ],
             "rules": []
-        }"#)
-            .unwrap_err();
-        from_str(r#"{
+        }"#,
+        ).unwrap_err();
+        from_str(
+            r#"{
             "poi_types": [{"id": "bob", "name": "Bob"}],
             "rules": [
                 {
@@ -323,8 +358,8 @@ mod tests {
                     "poi_type_id": "bobette"
                 }
             ]
-        }"#)
-            .unwrap_err();
+        }"#,
+        ).unwrap_err();
     }
     #[test]
     fn check_with_colon() {
@@ -349,10 +384,14 @@ mod tests {
             ]
         }"#;
         let c = from_str(json).unwrap();
-        assert_eq!(Some("poi_type:amenity:bicycle_rental"),
-                   c.get_poi_id(&tags(&[("amenity:bicycle_rental", "true")])));
-        assert_eq!(Some("poi_type:amenity:parking"),
-                   c.get_poi_id(&tags(&[("amenity", "parking:effia")])));
+        assert_eq!(
+            Some("poi_type:amenity:bicycle_rental"),
+            c.get_poi_id(&tags(&[("amenity:bicycle_rental", "true")]))
+        );
+        assert_eq!(
+            Some("poi_type:amenity:parking"),
+            c.get_poi_id(&tags(&[("amenity", "parking:effia")]))
+        );
     }
     #[test]
     fn check_all_tags_first_match() {
@@ -392,13 +431,29 @@ mod tests {
             ]
         }"#;
         let c = from_str(json).unwrap();
-        assert_eq!(Some("poi_type:bob"),
-                   c.get_poi_id(&tags(&[("bob", "bobette"), ("titi", "tata"), ("foo", "bar")])));
-        assert_eq!(Some("poi_type:titi"),
-                   c.get_poi_id(&tags(&[("bob", "bobitta"), ("titi", "toto"), ("foo", "bar")])));
-        assert_eq!(Some("poi_type:bob_titi"),
-                   c.get_poi_id(&tags(&[("bob", "bobette"), ("titi", "toto"), ("foo", "bar")])));
-        assert_eq!(Some("poi_type:foo"),
-                   c.get_poi_id(&tags(&[("bob", "bobitta"), ("titi", "tata"), ("foo", "bar")])));
+        assert_eq!(
+            Some("poi_type:bob"),
+            c.get_poi_id(&tags(
+                &[("bob", "bobette"), ("titi", "tata"), ("foo", "bar")],
+            ))
+        );
+        assert_eq!(
+            Some("poi_type:titi"),
+            c.get_poi_id(&tags(
+                &[("bob", "bobitta"), ("titi", "toto"), ("foo", "bar")],
+            ))
+        );
+        assert_eq!(
+            Some("poi_type:bob_titi"),
+            c.get_poi_id(&tags(
+                &[("bob", "bobette"), ("titi", "toto"), ("foo", "bar")],
+            ))
+        );
+        assert_eq!(
+            Some("poi_type:foo"),
+            c.get_poi_id(&tags(
+                &[("bob", "bobitta"), ("titi", "tata"), ("foo", "bar")],
+            ))
+        );
     }
 }
