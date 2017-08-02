@@ -70,7 +70,7 @@ struct Args {
 }
 
 #[derive(Debug, Deserialize)]
-struct Stop {
+struct GtfsStop {
     stop_id: String,
     stop_lat: f64,
     stop_lon: f64,
@@ -78,6 +78,36 @@ struct Stop {
     location_type: Option<i32>,
     visible: Option<i32>,
     parent_station: Option<String>,
+}
+
+impl GtfsStop {
+    fn incr_stop_point(&self, nb_stop_points: &mut HashMap<String, u32>) {
+        match (self.location_type, &self.parent_station) {
+            (Some(0), &Some(ref id)) |
+            (None, &Some(ref id)) if !id.is_empty() => {
+                *nb_stop_points
+                    .entry(format!("stop_area:{}", id))
+                    .or_insert(0) += 1
+            }
+            _ => (),
+        }
+    }
+    // to be moved when TryInto is stablilized
+    fn try_into(self) -> Option<mimir::Stop> {
+        if self.location_type == Some(1) && self.visible != Some(0) {
+            Some(mimir::Stop {
+                id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
+                coord: mimir::Coord::new(self.stop_lat, self.stop_lon),
+                label: self.stop_name.clone(),
+                weight: 0.,
+                zip_codes: vec![],
+                administrative_regions: vec![],
+                name: self.stop_name,
+            })
+        } else {
+            None
+        }
+    }
 }
 
 fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>, city_level: u32) {
@@ -139,34 +169,6 @@ fn finalize_stop_area_weight<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     }
 }
 
-fn stop_to_mimir_stop(
-    nb_stop_points: &mut HashMap<String, u32>,
-    stop: Stop,
-) -> Option<mimir::Stop> {
-    match (stop.location_type, stop.parent_station) {
-        (Some(0), Some(ref id)) |
-        (None, Some(ref id)) if !id.is_empty() => {
-            *nb_stop_points
-                .entry(format!("stop_area:{}", id))
-                .or_insert(0) += 1
-        }
-        _ => (),
-    }
-    if stop.location_type == Some(1) && stop.visible != Some(0) {
-        Some(mimir::Stop {
-            id: format!("stop_area:{}", stop.stop_id), // prefix to match navitia's id
-            coord: mimir::Coord::new(stop.stop_lat, stop.stop_lon),
-            label: stop.stop_name.clone(),
-            weight: 0.,
-            zip_codes: vec![],
-            administrative_regions: vec![],
-            name: stop.stop_name,
-        })
-    } else {
-        None
-    }
-}
-
 fn main() {
     mimir::logger_init().unwrap();
     info!("Launching stops2mimir...");
@@ -185,7 +187,10 @@ fn main() {
         .filter_map(|rc| {
             rc.map_err(|e| warn!("skip csv line because: {}", e)).ok()
         })
-        .filter_map(|stop: Stop| stop_to_mimir_stop(&mut nb_stop_points, stop))
+        .filter_map(|stop: GtfsStop| {
+            stop.incr_stop_point(&mut nb_stop_points);
+            stop.try_into()
+        })
         .collect();
 
     attach_stops_to_admins(stops.iter_mut(), &mut rubber, args.flag_city_level);
@@ -207,7 +212,10 @@ fn test_load_stops() {
     let mut nb_stop_points = HashMap::new();
     let stops: Vec<mimir::Stop> = rdr.deserialize()
         .filter_map(Result::ok)
-        .filter_map(|stop| stop_to_mimir_stop(&mut nb_stop_points, stop))
+        .filter_map(|stop: GtfsStop| {
+            stop.incr_stop_point(&mut nb_stop_points);
+            stop.try_into()
+        })
         .collect();
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(
