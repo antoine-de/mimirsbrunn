@@ -28,12 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 extern crate docopt;
 #[macro_use]
 extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
-extern crate rustc_serialize;
 
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
@@ -43,7 +45,7 @@ use mimirsbrunn::osm_reader::parse_osm_pbf;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 struct Args {
     flag_input: String,
     flag_level: Vec<u32>,
@@ -77,7 +79,7 @@ Options:
 fn main() {
     mimir::logger_init().unwrap();
     let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode())
+        .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
 
     let levels = args.flag_level.iter().cloned().collect();

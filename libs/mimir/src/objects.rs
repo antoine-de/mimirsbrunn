@@ -33,6 +33,7 @@ use serde;
 use std::rc::Rc;
 use std::cell::Cell;
 use serde::ser::{Serializer, SerializeStruct};
+use serde::de::{self, Deserialize, Deserializer, Visitor, SeqAccess, MapAccess};
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -249,9 +250,11 @@ where
     }
 }
 
-fn custom_multi_polygon_deserialize<D>(d: D) -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
+fn custom_multi_polygon_deserialize<'de, D>(
+    d: D,
+) -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
 where
-    D: serde::de::Deserializer,
+    D: serde::de::Deserializer<'de>,
 {
     use geojson;
     use serde::Deserialize;
@@ -453,94 +456,69 @@ impl serde::Serialize for Coord {
     }
 }
 
-enum GeoCoordField {
-    X,
-    Y,
-}
-
-impl serde::Deserialize for GeoCoordField {
-    fn deserialize<D>(deserializer: D) -> Result<GeoCoordField, D::Error>
+impl<'de> Deserialize<'de> for Coord {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::de::Deserializer,
+        D: Deserializer<'de>,
     {
-        struct GeoCoordFieldVisitor;
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "lowercase")]
+        enum Field {
+            Lat,
+            Lon,
+        };
 
-        impl serde::de::Visitor for GeoCoordFieldVisitor {
-            type Value = GeoCoordField;
+        struct CoordVisitor;
+
+        impl<'de> Visitor<'de> for CoordVisitor {
+            type Value = Coord;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("`lat` or `lon`")
+                formatter.write_str("struct Coord")
             }
 
-            fn visit_str<E>(self, value: &str) -> Result<GeoCoordField, E>
+            fn visit_seq<V>(self, mut seq: V) -> Result<Coord, V::Error>
             where
-                E: serde::de::Error,
+                V: SeqAccess<'de>,
             {
-                match value {
-                    "lat" => Ok(GeoCoordField::X),
-                    "lon" => Ok(GeoCoordField::Y),
-                    _ => Err(serde::de::Error::unknown_field(value, GEOCOORDFIELDS)),
+                let lat = seq.next_element()?.ok_or_else(
+                    || de::Error::invalid_length(0, &self),
+                )?;
+                let lon = seq.next_element()?.ok_or_else(
+                    || de::Error::invalid_length(1, &self),
+                )?;
+                Ok(Coord::new(lat, lon))
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<Coord, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut lat = None;
+                let mut lon = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Lat => {
+                            if lat.is_some() {
+                                return Err(de::Error::duplicate_field("lat"));
+                            }
+                            lat = Some(map.next_value()?);
+                        }
+                        Field::Lon => {
+                            if lon.is_some() {
+                                return Err(de::Error::duplicate_field("lon"));
+                            }
+                            lon = Some(map.next_value()?);
+                        }
+                    }
                 }
+                let lat = lat.ok_or_else(|| de::Error::missing_field("lat"))?;
+                let lon = lon.ok_or_else(|| de::Error::missing_field("lon"))?;
+                Ok(Coord::new(lat, lon))
             }
         }
 
-        deserializer.deserialize(GeoCoordFieldVisitor)
-    }
-}
-const GEOCOORDFIELDS: &'static [&'static str] = &["lat", "lon"];
-
-impl serde::Deserialize for Coord {
-    fn deserialize<D>(deserializer: D) -> Result<Coord, D::Error>
-    where
-        D: serde::de::Deserializer,
-    {
-        deserializer.deserialize_struct("Coord", GEOCOORDFIELDS, GeoCoordDeserializerVisitor)
-    }
-}
-struct GeoCoordDeserializerVisitor;
-
-impl serde::de::Visitor for GeoCoordDeserializerVisitor {
-    type Value = Coord;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("struct Coord")
-    }
-
-    fn visit_map<V>(self, mut visitor: V) -> Result<Coord, V::Error>
-    where
-        V: serde::de::MapVisitor,
-    {
-        use serde::de::Error;
-        let mut x = None;
-        let mut y = None;
-
-        while let Some(key) = visitor.visit_key()? {
-            match key {
-                GeoCoordField::X => {
-                    if x.is_some() {
-                        return Err(Error::duplicate_field("x"));
-                    }
-                    x = Some(visitor.visit_value()?);
-                }
-                GeoCoordField::Y => {
-                    if y.is_some() {
-                        return Err(Error::duplicate_field("y"));
-                    }
-                    y = Some(visitor.visit_value()?);
-                }
-            }
-        }
-
-        let x = match x {
-            Some(x) => x,
-            None => return Err(Error::missing_field("x")),
-        };
-
-        let y = match y {
-            Some(y) => y,
-            None => return Err(Error::missing_field("y")),
-        };
-
-        Ok(Coord(geo::Coordinate { x: x, y: y }))
+        const FIELDS: &'static [&'static str] = &["lat", "lon"];
+        deserializer.deserialize_struct("Coord", FIELDS, CoordVisitor)
     }
 }

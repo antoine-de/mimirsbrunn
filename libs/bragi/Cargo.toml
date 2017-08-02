@@ -4,19 +4,18 @@ version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
 [dependencies]
-docopt = "*"
-rustc-serialize = "*"
+docopt = "0.8"
 iron = "0.4"
 log = "*"
 rustless = "0.10"
 urlencoded = "0.4"
 valico = "1.0"
-rs-es = {version = "0.9.1", default-features = false}
-serde = "0.9"
-serde_json = "0.9"
-serde_derive = "0.9"
-geojson = "0.6"
-geo = "0.4"
+rs-es = {version = "0.10", default-features = false}
+serde = {version = "1", features = ["rc"]}
+serde_json = "1"
+serde_derive = "1"
+geojson = "0.8"
+geo = "0.4.7"
 
 [dependencies.mimir]
 path = "../mimir"

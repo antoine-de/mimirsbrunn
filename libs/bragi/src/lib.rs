@@ -34,7 +34,6 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-extern crate rustc_serialize;
 extern crate docopt;
 extern crate iron;
 extern crate urlencoded;
@@ -58,7 +57,7 @@ pub mod query;
 mod model;
 mod params;
 
-#[derive(RustcDecodable, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Args {
     flag_bind: String,
     flag_connection_string: String,
@@ -82,7 +81,7 @@ Options:
 
 pub fn runserver() {
     let mut args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.decode())
+        .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
     if args.flag_connection_string.is_empty() {
         args.flag_connection_string = std::env::var("BRAGI_ES").ok().unwrap_or(

@@ -115,7 +115,7 @@ impl Rubber {
     }
 
     pub fn make_index(&self, doc_type: &str, dataset: &str) -> Result<String, String> {
-        let current_time = chrono::UTC::now().format("%Y%m%d_%H%M%S_%f");
+        let current_time = chrono::Utc::now().format("%Y%m%d_%H%M%S_%f");
         let index_name = format!("munin_{}_{}_{}", doc_type, dataset, current_time);
         info!("creating index {}", index_name);
         self.create_index(&index_name.to_string()).map(
