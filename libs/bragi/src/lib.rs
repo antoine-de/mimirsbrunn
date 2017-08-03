@@ -29,69 +29,55 @@
 // www.navitia.io
 
 #[macro_use]
+extern crate structopt_derive;
+extern crate structopt;
+#[macro_use]
 extern crate serde_derive;
-
 extern crate serde;
 extern crate serde_json;
-
-extern crate docopt;
 extern crate iron;
 extern crate urlencoded;
-
 extern crate rustless;
 extern crate valico;
 extern crate mimir;
 extern crate geojson;
 extern crate geo;
-
 extern crate rs_es;
-use iron::Iron;
-use rustless::Application;
-
 #[macro_use]
 extern crate log;
 
+use structopt::StructOpt;
+use iron::Iron;
+use rustless::Application;
 
 pub mod api;
 pub mod query;
 mod model;
 mod params;
 
-#[derive(Deserialize, Debug)]
+#[derive(StructOpt, Debug)]
 pub struct Args {
-    flag_bind: String,
-    flag_connection_string: String,
+    /// Address to bind.
+    #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:4000")]
+    bind: String,
+    /// Elasticsearch parameters, override BRAGI_ES environment variable.
+    #[structopt(short = "c", long = "connection-string",
+                default_value = "http://localhost:9200/munin")]
+    connection_string: String,
 }
 
-static USAGE: &'static str = "
-Usage:
-    bragi --help
-    bragi [--bind=<address>] \
-     [--connection-string=<connection-string>]
-
-Options:
-    -h, --help            Show this \
-     message.
-    -b, --bind=<addres>   adresse to bind, [default: 127.0.0.1:4000]
-    -c, \
-     --connection-string=<connection-string>
-                          Elasticsearch parameters, \
-     override BRAGI_ES and default to http://localhost:9200/munin
-";
-
 pub fn runserver() {
-    let mut args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.deserialize())
-        .unwrap_or_else(|e| e.exit());
-    if args.flag_connection_string.is_empty() {
-        args.flag_connection_string = std::env::var("BRAGI_ES").ok().unwrap_or(
-            "http://localhost:9200/munin"
-                .to_string(),
-        );
+    let matches = Args::clap().get_matches();
+    let connection_string_is_present = matches.occurrences_of("connection_string") != 0;
+    let mut args = Args::from_clap(matches);
+    if !connection_string_is_present {
+        if let Ok(s) = std::env::var("BRAGI_ES") {
+            args.connection_string = s;
+        }
     }
-    let api = api::ApiEndPoint { es_cnx_string: args.flag_connection_string.clone() }.root();
+    let api = api::ApiEndPoint { es_cnx_string: args.connection_string.clone() }.root();
     let app = Application::new(api);
-    println!("listening on {}", args.flag_bind);
-    Iron::new(app).http(args.flag_bind.as_str()).unwrap();
+    println!("listening on {}", args.bind);
+    Iron::new(app).http(args.bind.as_str()).unwrap();
 
 }

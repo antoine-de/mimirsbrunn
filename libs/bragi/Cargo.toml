@@ -4,7 +4,8 @@ version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
 [dependencies]
-docopt = "0.8"
+structopt = "0.1"
+structopt-derive = "0.1"
 iron = "0.4"
 log = "*"
 rustless = "0.10"

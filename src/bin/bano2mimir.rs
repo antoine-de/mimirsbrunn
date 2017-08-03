@@ -30,8 +30,9 @@
 
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
-extern crate docopt;
+#[macro_use]
+extern crate structopt_derive;
+extern crate structopt;
 extern crate csv;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -46,6 +47,7 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
 use std::rc::Rc;
 use std::collections::BTreeMap;
+use structopt::StructOpt;
 
 type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
 
@@ -167,44 +169,39 @@ where
         .unwrap();
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(StructOpt, Debug)]
 struct Args {
-    flag_input: String,
-    flag_connection_string: String,
-    flag_dataset: String,
+    /// Bano files. Can be either a directory or a file.
+    #[structopt(short = "i", long = "input")]
+    input: String,
+    /// Elasticsearch parameters.
+    #[structopt(short = "c", long = "connection-string",
+                default_value = "http://localhost:9200/munin")]
+    connection_string: String,
+    /// Name of the dataset.
+    #[structopt(short = "d", long = "dataset", default_value = "fr")]
+    dataset: String,
 }
-
-static USAGE: &'static str = "
-Usage:
-    bano2mimir --input=<input> [--connection-string=<connection-string>] [--dataset=<dataset>]
-
-    -i, --input=<input>           Bano files. Can be either a directory or a file.
-    -c, --connection-string=<connection-string>
-                                  Elasticsearch parameters, [default: http://localhost:9200/munin]
-    -d, --dataset=<dataset>       Name of the dataset, [default: fr]
-";
 
 fn main() {
     mimir::logger_init().unwrap();
     info!("importing bano into Mimir");
 
-    let args: Args = docopt::Docopt::new(USAGE)
-        .and_then(|d| d.deserialize())
-        .unwrap_or_else(|e| e.exit());
+    let args = Args::from_args();
 
-    let file_path = Path::new(&args.flag_input);
+    let file_path = Path::new(&args.input);
     if file_path.is_dir() {
-        let paths: std::fs::ReadDir = fs::read_dir(&args.flag_input).unwrap();
+        let paths: std::fs::ReadDir = fs::read_dir(&args.input).unwrap();
         index_bano(
-            &args.flag_connection_string,
-            &args.flag_dataset,
+            &args.connection_string,
+            &args.dataset,
             paths.map(|p| p.unwrap().path()),
         );
     } else {
         index_bano(
-            &args.flag_connection_string,
-            &args.flag_dataset,
-            std::iter::once(std::path::PathBuf::from(&args.flag_input)),
+            &args.connection_string,
+            &args.dataset,
+            std::iter::once(std::path::PathBuf::from(&args.input)),
         );
     }
 }
