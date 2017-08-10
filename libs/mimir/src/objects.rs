@@ -194,6 +194,8 @@ pub struct Stop {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
+    #[serde(default)]
+    pub coverages: Vec<String>,
 }
 
 impl MimirObject for Stop {

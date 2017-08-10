@@ -29,7 +29,7 @@
 // www.navitia.io
 
 
-use super::objects::{MimirObject, Admin};
+use super::objects::{Admin, MimirObject};
 use chrono;
 use hyper;
 use hyper::status::StatusCode;
@@ -38,8 +38,10 @@ use rs_es;
 use rs_es::EsResponse;
 use serde_json;
 use rs_es::operations::search::ScanResult;
-
-use super::objects::{AliasOperations, AliasOperation, AliasParameter};
+use serde;
+use std;
+use std::collections::BTreeMap;
+use super::objects::{AliasOperation, AliasOperations, AliasParameter};
 use rs_es::units::Duration;
 
 const SYNONYMS: [&'static str; 17] = [
@@ -71,14 +73,22 @@ pub struct Rubber {
 
 /// return the index associated to the given type and dataset
 /// this will be an alias over another real index
-fn get_main_type_and_dataset_index(doc_type: &str, dataset: &str) -> String {
+pub fn get_main_type_and_dataset_index(doc_type: &str, dataset: &str) -> String {
     format!("munin_{}_{}", doc_type, dataset)
 }
 
 /// return the index associated to the given type
 /// this will be an alias over another real index
-fn get_main_type_index(doc_type: &str) -> String {
+pub fn get_main_type_index(doc_type: &str) -> String {
     format!("munin_{}", doc_type)
+}
+
+pub fn get_date_index_name(base_index_name: &str) -> String {
+    format!(
+        "{}_{}",
+        base_index_name,
+        chrono::Utc::now().format("%Y%m%d_%H%M%S_%f")
+    )
 }
 
 impl Rubber {
@@ -115,8 +125,7 @@ impl Rubber {
     }
 
     pub fn make_index(&self, doc_type: &str, dataset: &str) -> Result<String, String> {
-        let current_time = chrono::Utc::now().format("%Y%m%d_%H%M%S_%f");
-        let index_name = format!("munin_{}_{}_{}", doc_type, dataset, current_time);
+        let index_name = get_date_index_name(&get_main_type_and_dataset_index(doc_type, dataset));
         info!("creating index {}", index_name);
         self.create_index(&index_name.to_string()).map(
             |_| index_name,
@@ -155,6 +164,47 @@ impl Rubber {
             })
     }
 
+    // get all aliases for a doc_type/dataset
+    // return a map with each index as key and all their aliases
+    pub fn get_all_aliased_index(
+        &self,
+        base_index: &str,
+    ) -> Result<BTreeMap<String, Vec<String>>, String> {
+        self.get(&format!("{}*/_aliases", base_index))
+            .map_err(|e| e.to_string())
+            .and_then(|res| match res.status {
+                StatusCode::Ok => {
+                    let value: serde_json::Value =
+                        try!(res.read_response().map_err(|e| e.to_string()));
+                    Ok(
+                        value
+                            .as_object()
+                            .map(|all_aliases| {
+                                all_aliases
+                                    .iter()
+                                    .filter_map(|(i, a)| {
+                                        a.pointer("/aliases").and_then(|a| a.as_object()).map(
+                                        |aliases| {
+                                            (i.clone(), aliases.keys().cloned().collect())
+                                        },
+                                    )
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_else(|| {
+                                info!("no aliases for {}", base_index);
+                                BTreeMap::new()
+                            }),
+                    )
+                }
+                StatusCode::NotFound => {
+                    info!("impossible to find alias {}", base_index);
+                    Ok(BTreeMap::new())
+                }
+                _ => Err(format!("invalid elasticsearch response: {:?}", res)),
+            })
+    }
+
     // get the last indexes for this doc_type/dataset
     // Note: to be resilient to ghost ES indexes, we return all indexes for this doc_type/dataset
     // but the new index
@@ -165,41 +215,14 @@ impl Rubber {
         dataset: &str,
     ) -> Result<Vec<String>, String> {
         let base_index = get_main_type_and_dataset_index(doc_type, dataset);
-        self.get(&format!("{}*/_aliases", base_index))
-            .map_err(|e| e.to_string())
-            .and_then(|res| match res.status {
-                StatusCode::Ok => {
-                    let value: serde_json::Value =
-                        try!(res.read_response().map_err(|e| e.to_string()));
-                    Ok(
-                        value
-                            .as_object()
-                            .map(|aliases| {
-                                aliases.keys()
-                                // we don't want to remove the newly created index
-                                .filter(|i| i.as_str() != new_index)
-                                .cloned()
-                                .collect()
-                            })
-                            .unwrap_or_else(|| {
-                                info!(
-                                    "no previous index to delete for type {} and dataset {}",
-                                    doc_type,
-                                    dataset
-                                );
-                                vec![]
-                            }),
-                    )
-                }
-                StatusCode::NotFound => {
-                    info!(
-                        "impossible to find alias {}, no last index to remove",
-                        base_index
-                    );
-                    Ok(vec![])
-                }
-                _ => Err(format!("invalid elasticsearch response: {:?}", res)),
-            })
+        // we don't want to remove the newly created index
+        Ok(
+            self.get_all_aliased_index(&base_index)?
+                .into_iter()
+                .map(|(k, _)| k)
+                .filter(|i| i.as_str() != new_index)
+                .collect(),
+        )
     }
 
     /// publish the index as the new index for this doc_type and this dataset
@@ -257,7 +280,12 @@ impl Rubber {
 
     /// add a list of new indexes to the alias
     /// remove a list of indexes from the alias
-    fn alias(&self, alias: &str, add: &Vec<String>, remove: &Vec<String>) -> Result<(), String> {
+    pub fn alias(
+        &self,
+        alias: &str,
+        add: &Vec<String>,
+        remove: &Vec<String>,
+    ) -> Result<(), String> {
         info!(
             "for {}, adding alias {:?}, removing {:?}",
             alias,
@@ -384,14 +412,20 @@ impl Rubber {
         self.get_admins_from_index(&get_main_type_index(Admin::doc_type()))
     }
 
-    fn get_admins_from_index(&mut self, index: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        let mut result: Vec<Admin> = vec![];
-        let mut scan: ScanResult<Admin> = try!(
+    pub fn get_all_objects_from_index<T>(
+        &mut self,
+        index: &str,
+    ) -> Result<Vec<T>, rs_es::error::EsError>
+    where
+        for<'de> T: MimirObject + serde::de::Deserialize<'de> + std::fmt::Debug,
+    {
+        let mut result: Vec<T> = vec![];
+        let mut scan: ScanResult<T> = try!(
             self.es_client
                 .search_query()
                 .with_indexes(&[&index])
                 .with_size(1000)
-                .with_types(&[&Admin::doc_type()])
+                .with_types(&[&T::doc_type()])
                 .scan(&Duration::minutes(1))
         );
         loop {
@@ -409,6 +443,10 @@ impl Rubber {
         }
         try!(scan.close(&mut self.es_client));
         Ok(result)
+    }
+
+    fn get_admins_from_index(&mut self, index: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
+        self.get_all_objects_from_index(index)
     }
 }
 
