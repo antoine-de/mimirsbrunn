@@ -208,7 +208,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
         .map(|(index, _)| index);
 
     let all_other_es_stops: Vec<_> = stops_indexes
-        .map(|index| get_all_stops(rubber, index).unwrap()) // TODO no unwrap
+        .map(|index| get_all_stops(rubber, index).unwrap())
         .flat_map(|stops| stops.into_iter())
         .collect();
 
