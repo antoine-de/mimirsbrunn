@@ -301,6 +301,7 @@ fn test_load_stops() {
     assert_eq!(
         ids,
         vec![
+            "stop_area:SA:known_by_all_dataset",
             "stop_area:SA:main_station",
             "stop_area:SA:second_station",
             "stop_area:SA:station_no_city",
@@ -309,5 +310,8 @@ fn test_load_stops() {
         ]
     );
     let weights: Vec<_> = ids.iter().map(|id| nb_stop_points.get(id)).collect();
-    assert_eq!(weights, vec![Some(&1), Some(&1), None, Some(&1), Some(&3)]);
+    assert_eq!(
+        weights,
+        vec![None, Some(&1), Some(&1), None, Some(&1), Some(&3)]
+    );
 }

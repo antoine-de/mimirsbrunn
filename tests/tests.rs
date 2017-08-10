@@ -124,10 +124,39 @@ impl<'a> ElasticSearchWrapper<'a> {
         res.to_json()
     }
 
-    pub fn search_and_filter<'b, F>(
+    pub fn search_on_global_stop_index(&self, word: &str) -> serde_json::Value {
+        let res = self.rubber
+            .get(&format!("munin_global_stops/_search?q={}", word))
+            .unwrap();
+        assert!(res.status == hyper::Ok);
+        res.to_json()
+    }
+
+    pub fn search_and_filter<'b, F>( &self,
+        word: &str,
+        predicate: F,
+    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    where
+        F: 'b + FnMut(&mimir::Place) -> bool,
+    {
+        self.search_and_filter_on_index(word, predicate, false)
+    }
+
+    pub fn search_and_filter_on_global_stop_index<'b, F>( &self,
+        word: &str,
+        predicate: F,
+    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    where
+        F: 'b + FnMut(&mimir::Place) -> bool,
+    {
+        self.search_and_filter_on_index(word, predicate, true)
+    }
+
+    fn search_and_filter_on_index<'b, F>(
         &self,
         word: &str,
         predicate: F,
+        search_on_global_stops: bool
     ) -> Box<Iterator<Item = mimir::Place> + 'b>
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
@@ -146,7 +175,11 @@ impl<'a> ElasticSearchWrapper<'a> {
                 _ => None,
             })
         }
-        let json = self.search(word);
+        let json = if search_on_global_stops {
+            self.search_on_global_stop_index(word)
+            } else {
+                self.search(word)
+            };
         get(json, "hits")
             .and_then(|json| get(json, "hits"))
             .and_then(|hits| {
