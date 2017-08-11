@@ -280,12 +280,7 @@ impl Rubber {
 
     /// add a list of new indexes to the alias
     /// remove a list of indexes from the alias
-    pub fn alias(
-        &self,
-        alias: &str,
-        add: &Vec<String>,
-        remove: &Vec<String>,
-    ) -> Result<(), String> {
+    pub fn alias(&self, alias: &str, add: &[String], remove: &[String]) -> Result<(), String> {
         info!(
             "for {}, adding alias {:?}, removing {:?}",
             alias,
@@ -405,11 +400,13 @@ impl Rubber {
         &mut self,
         dataset: &str,
     ) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index(&get_main_type_and_dataset_index(Admin::doc_type(), dataset))
+        self.get_all_objects_from_index(
+            &get_main_type_and_dataset_index(Admin::doc_type(), dataset),
+        )
     }
 
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_admins_from_index(&get_main_type_index(Admin::doc_type()))
+        self.get_all_objects_from_index(&get_main_type_index(Admin::doc_type()))
     }
 
     pub fn get_all_objects_from_index<T>(
@@ -420,14 +417,12 @@ impl Rubber {
         for<'de> T: MimirObject + serde::de::Deserialize<'de> + std::fmt::Debug,
     {
         let mut result: Vec<T> = vec![];
-        let mut scan: ScanResult<T> = try!(
-            self.es_client
-                .search_query()
-                .with_indexes(&[&index])
-                .with_size(1000)
-                .with_types(&[&T::doc_type()])
-                .scan(&Duration::minutes(1))
-        );
+        let mut scan: ScanResult<T> = self.es_client
+            .search_query()
+            .with_indexes(&[&index])
+            .with_size(1000)
+            .with_types(&[&T::doc_type()])
+            .scan(&Duration::minutes(1))?;
         loop {
             let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
             if page.hits.hits.len() == 0 {
@@ -443,10 +438,6 @@ impl Rubber {
         }
         try!(scan.close(&mut self.es_client));
         Ok(result)
-    }
-
-    fn get_admins_from_index(&mut self, index: &str) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_all_objects_from_index(index)
     }
 }
 

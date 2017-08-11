@@ -102,13 +102,10 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                     "stop_area:SA:second_station:dataset2" => {
                         assert_eq!(stop.coverages, vec!["dataset2"])
                     }
-                    _ => {
-                        print!("{}: {:?}", stop.id, stop);
-                        assert_eq!(stop.coverages, vec!["dataset1"])
-                    }
+                    _ => assert_eq!(stop.coverages, vec!["dataset1"]),
                 }
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 }

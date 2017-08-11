@@ -233,7 +233,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
 // publish the global stop index
 // alias the new index to the global stop alias, and remove the old index
 fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(), String> {
-    let last_global_indexes = rubber
+    let last_global_indexes: Vec<_> = rubber
         .get_all_aliased_index(GLOBAL_STOP_INDEX_NAME)?
         .into_iter()
         .map(|(k, _)| k)
