@@ -40,12 +40,13 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         vec![
             "--input=./tests/fixtures/stops.txt".into(),
             format!("--connection-string={}", es_wrapper.host()),
+            "--dataset=dataset1".into(),
         ],
         &es_wrapper,
     );
     // Test: Import of stops
     let res: Vec<_> = es_wrapper.search_and_filter("*", |_| true).collect();
-    assert_eq!(res.len(), 5);
+    assert_eq!(res.len(), 6);
     assert!(res.iter().all(|r| r.is_stop()));
 
     // Test: search for stop area not in ES base
@@ -61,4 +62,50 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res.len() == 1);
     assert_eq!(res[0].label(), "République");
     assert!(res[0].admins().is_empty());
+
+    // we also test that all the stops have been imported in the global index
+    let res: Vec<_> = es_wrapper
+        .search_and_filter_on_global_stop_index("*", |_| true)
+        .collect();
+    assert_eq!(res.len(), 6);
+    assert!(res.iter().all(|r| r.is_stop()));
+
+    // we then import another stop fixture
+    ::launch_and_assert(
+        stops2mimir,
+        vec![
+            "--input=./tests/fixtures/stops_dataset2.txt".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+            "--dataset=dataset2".into(),
+        ],
+        &es_wrapper,
+    );
+
+    // we should now have 7 stops as there are 2 stops in dataset2,
+    // but one (SA:known_by_all_dataset) is merged
+    let res: Vec<_> = es_wrapper
+        .search_and_filter_on_global_stop_index("*", |_| true)
+        .collect();
+    assert_eq!(res.len(), 7);
+    for s in res {
+        match s {
+            mimir::Place::Stop(stop) => {
+                match stop.id.as_ref() {
+                    "stop_area:SA:known_by_all_dataset" => {
+                        assert_eq!(stop.coverages, vec!["dataset1", "dataset2"]);
+                        // we don't control which label is taken
+                        assert!(
+                            vec!["All known stop", "All known stop, but different name"]
+                                .contains(&stop.label.as_ref())
+                        );
+                    }
+                    "stop_area:SA:second_station:dataset2" => {
+                        assert_eq!(stop.coverages, vec!["dataset2"])
+                    }
+                    _ => assert_eq!(stop.coverages, vec!["dataset1"]),
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
 }

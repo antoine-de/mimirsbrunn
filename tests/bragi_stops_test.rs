@@ -39,7 +39,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
-    // we the OSM dataset, three-cities bano dataset and a stop file
+    // we import the OSM dataset, three-cities bano dataset and 2 stop files
     // the current dataset are thus (load order matters):
     // - osm_fixture.osm.pbf
     // - bano-three_cities

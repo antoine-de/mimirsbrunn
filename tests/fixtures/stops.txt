@@ -13,3 +13,4 @@ SP:weight_3_station_1,1,"sp weight",47.099758,2.491858,,,SA:weight_3_station,Eur
 SP:weight_3_station_2,1,"sp weight",47.099758,2.491858,,,SA:weight_3_station,Europe/Paris,,BGT,,BGT:19
 SP:weight_3_station_3,1,"sp weight",47.099758,2.491858,,,SA:weight_3_station,Europe/Paris,,BGT,,BGT:19
 SA:weight_3_station,1,"weight three",47.123966,2.402522,,1,,Europe/Paris,,BGT,,BGT:19
+SA:known_by_all_dataset,1,"All known stop, but different name",48.6,2.8,,1,,Europe/Paris,,BGT,,BGT:19
