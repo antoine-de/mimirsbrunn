@@ -219,6 +219,8 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     let all_merged_stops = merge_stops(all_es_stops);
     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
 
+    rubber.create_index(&es_index_name)?;
+
     let nb_stops_added = rubber
         .bulk_index(&es_index_name, all_merged_stops)
         .map_err(|e| e.to_string())?;

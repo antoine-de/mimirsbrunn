@@ -132,7 +132,7 @@ impl Rubber {
         )
     }
 
-    fn create_index(&self, name: &String) -> Result<(), String> {
+    pub fn create_index(&self, name: &String) -> Result<(), String> {
         debug!("creating index");
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
