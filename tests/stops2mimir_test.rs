@@ -81,7 +81,8 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         &es_wrapper,
     );
 
-    // we should now have 7 stops as there are 2 stops in dataset2, but one (SA:known_by_all_dataset) is merged
+    // we should now have 7 stops as there are 2 stops in dataset2,
+    // but one (SA:known_by_all_dataset) is merged
     let res: Vec<_> = es_wrapper
         .search_and_filter_on_global_stop_index("*", |_| true)
         .collect();
