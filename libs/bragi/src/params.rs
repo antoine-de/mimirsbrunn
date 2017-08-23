@@ -42,7 +42,9 @@ const MIN_LON: f64 = -90f64;
 
 
 pub fn dataset_param(params: &mut Builder) {
-    params.opt_typed("pt_dataset", json_dsl::string());
+    params.opt("pt_dataset", |t| {
+        t.coerce(json_dsl::encoded_array(","));
+    });
     params.opt_typed("_all_data", json_dsl::boolean());
 }
 

@@ -224,7 +224,7 @@ fn get_indexes_by_type(a_type: &str) -> String {
 
 fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
     all_data: bool,
-    pt_dataset_index: &Option<String>,
+    pt_datasets: &Option<Vec<&str>>,
     types: &Option<Vec<&str>>,
     mut is_existing_index: F,
 ) -> Result<Vec<String>, EsError> {
@@ -239,22 +239,28 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
         }
         Ok(())
     };
+
+    let mut pt_dataset_indexes: Vec<String> = vec![];
+    if let Some(ref pt_datasets) = *pt_datasets {
+        if pt_datasets.len() == 1 {
+            for pt_dataset_ in pt_datasets.iter() {
+                try!(push(&mut pt_dataset_indexes, format!("munin_stop_{}", pt_dataset_).as_str()));
+            }
+        } else if !pt_datasets.is_empty() {
+            try!(push(&mut pt_dataset_indexes, "munin_global_stops"));
+        }
+    }
+
     if let Some(ref types) = *types {
         for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
             try!(push(&mut result, &get_indexes_by_type(type_)));
         }
-        match *pt_dataset_index {
-            Some(ref index) if types.contains(&"public_transport:stop_area") => {
-                try!(push(&mut result, index));
-            }
-            _ => (),
+        if types.contains(&"public_transport:stop_area") {
+            result.append(&mut pt_dataset_indexes);
         }
     } else {
         try!(push(&mut result, &"munin_geo_data".to_string()));
-
-        if let Some(ref dataset) = *pt_dataset_index {
-            try!(push(&mut result, &dataset.clone()));
-        }
+        result.append(&mut pt_dataset_indexes);
     }
 
     Ok(result)
@@ -262,11 +268,11 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
 
 fn make_indexes(
     all_data: bool,
-    pt_dataset_index: &Option<String>,
+    pt_datasets: &Option<Vec<&str>>,
     types: &Option<Vec<&str>>,
     client: &mut rs_es::Client,
 ) -> Result<Vec<String>, EsError> {
-    make_indexes_impl(all_data, pt_dataset_index, types, |index| {
+    make_indexes_impl(all_data, pt_datasets, types, |index| {
         is_existing_index(client, index)
     })
 }
@@ -287,7 +293,7 @@ fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>,
 
 fn query(
     q: &str,
-    pt_dataset: &Option<&str>,
+    pt_datasets: &Option<Vec<&str>>,
     all_data: bool,
     cnx: &str,
     match_type: MatchType,
@@ -301,10 +307,9 @@ fn query(
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
-    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
     let indexes = try!(make_indexes(
         all_data,
-        &pt_dataset_index,
+        &pt_datasets,
         types,
         &mut client,
     ));
@@ -334,7 +339,7 @@ fn query(
 }
 
 pub fn features(
-    pt_dataset: &Option<&str>,
+    pt_datasets: &Option<Vec<&str>>,
     all_data: bool,
     cnx: &str,
     id: &str,
@@ -348,10 +353,9 @@ pub fn features(
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
-    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
     let indexes = try!(make_indexes(
         all_data,
-        &pt_dataset_index,
+        &pt_datasets,
         &None,
         &mut client,
     ));
@@ -408,7 +412,7 @@ pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsE
 
 pub fn autocomplete(
     q: &str,
-    pt_dataset: &Option<&str>,
+    pt_datasets: &Option<Vec<&str>>,
     all_data: bool,
     offset: u64,
     limit: u64,
@@ -423,11 +427,11 @@ pub fn autocomplete(
         )
     }
 
-    // First we try a prety exact match on the prefix.
+    // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = try!(query(
         &q,
-        &pt_dataset,
+        &pt_datasets,
         all_data,
         cnx,
         MatchType::Prefix,
@@ -440,7 +444,7 @@ pub fn autocomplete(
     if results.is_empty() {
         query(
             &q,
-            &pt_dataset,
+            &pt_datasets,
             all_data,
             cnx,
             MatchType::Fuzzy,

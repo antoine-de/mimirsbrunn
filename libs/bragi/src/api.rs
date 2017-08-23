@@ -151,12 +151,16 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |mut client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
-                    let pt_dataset = params.find("pt_dataset").and_then(|val| val.as_str());
+                    let pt_datasets = params.find("pt_dataset").and_then(|val| val.as_array()).map(
+                        |val| {
+                            val.iter().map(|val| val.as_str().unwrap()).collect()
+                        },
+                    );
                     let all_data = params.find("_all_data").map_or(
                         false,
                         |val| val.as_bool().unwrap(),
                     );
-                    let features = query::features(&pt_dataset, all_data, &cnx, &id);
+                    let features = query::features(&pt_datasets, all_data, &cnx, &id);
                     if features.is_err() {
                         client.set_status(status::StatusCode::NotFound);
                     }
@@ -185,7 +189,11 @@ impl ApiEndPoint {
                         .and_then(|val| val.as_str())
                         .unwrap_or("")
                         .to_string();
-                    let pt_dataset = params.find("pt_dataset").and_then(|val| val.as_str());
+                    let pt_datasets = params.find("pt_dataset").and_then(|val| val.as_array()).map(
+                        |val| {
+                            val.iter().map(|val| val.as_str().unwrap()).collect()
+                        },
+                    );
                     let all_data = params.find("_all_data").map_or(
                         false,
                         |val| val.as_bool().unwrap(),
@@ -219,7 +227,7 @@ impl ApiEndPoint {
                     );
                     let model_autocomplete = query::autocomplete(
                         &q,
-                        &pt_dataset,
+                        &pt_datasets,
                         all_data,
                         offset,
                         limit,
@@ -248,7 +256,11 @@ impl ApiEndPoint {
                         .and_then(|val| val.as_str())
                         .unwrap_or("")
                         .to_string();
-                    let pt_dataset = params.find("pt_dataset").and_then(|val| val.as_str());
+                    let pt_datasets = params.find("pt_dataset").and_then(|val| val.as_array()).map(
+                        |val| {
+                            val.iter().map(|val| val.as_str().unwrap()).collect()
+                        },
+                    );
                     let all_data = params.find("_all_data").map_or(
                         false,
                         |val| val.as_bool().unwrap(),
@@ -280,7 +292,7 @@ impl ApiEndPoint {
 
                     let model_autocomplete = query::autocomplete(
                         &q,
-                        &pt_dataset,
+                        &pt_datasets,
                         all_data,
                         offset,
                         limit,
