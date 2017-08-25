@@ -36,7 +36,7 @@ use valico::json_dsl;
 use super::query;
 use model::v1::*;
 use model;
-use params::{dataset_param, paginate_param, shape_param, types_param, coord_param};
+use params::{dataset_param, paginate_param, shape_param, types_param, coord_param, get_param_array};
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
@@ -151,11 +151,7 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |mut client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
-                    let pt_datasets = params.find("pt_dataset").and_then(|val| val.as_array()).map(
-                        |val| {
-                            val.iter().map(|val| val.as_str().unwrap()).collect()
-                        },
-                    );
+                    let pt_datasets = get_param_array(params, "pt_dataset");
                     let all_data = params.find("_all_data").map_or(
                         false,
                         |val| val.as_bool().unwrap(),
@@ -189,11 +185,7 @@ impl ApiEndPoint {
                         .and_then(|val| val.as_str())
                         .unwrap_or("")
                         .to_string();
-                    let pt_datasets = params.find("pt_dataset").and_then(|val| val.as_array()).map(
-                        |val| {
-                            val.iter().map(|val| val.as_str().unwrap()).collect()
-                        },
-                    );
+                    let pt_datasets = get_param_array(params, "pt_dataset");
                     let all_data = params.find("_all_data").map_or(
                         false,
                         |val| val.as_bool().unwrap(),
@@ -220,11 +212,7 @@ impl ApiEndPoint {
                             ar.as_array().unwrap()[0].as_f64().unwrap(),
                         ));
                     }
-                    let types = params.find("type").and_then(|val| val.as_array()).map(
-                        |val| {
-                            val.iter().map(|val| val.as_str().unwrap()).collect()
-                        },
-                    );
+                    let types = get_param_array(params, "type");
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
@@ -234,7 +222,7 @@ impl ApiEndPoint {
                         None,
                         &cnx,
                         Some(shape),
-                        types,
+                        &types,
                     );
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
@@ -256,11 +244,7 @@ impl ApiEndPoint {
                         .and_then(|val| val.as_str())
                         .unwrap_or("")
                         .to_string();
-                    let pt_datasets = params.find("pt_dataset").and_then(|val| val.as_array()).map(
-                        |val| {
-                            val.iter().map(|val| val.as_str().unwrap()).collect()
-                        },
-                    );
+                    let pt_datasets = get_param_array(params, "pt_dataset");
                     let all_data = params.find("_all_data").map_or(
                         false,
                         |val| val.as_bool().unwrap(),
@@ -284,11 +268,7 @@ impl ApiEndPoint {
                         })
                     });
 
-                    let types = params.find("type").and_then(|val| val.as_array()).map(
-                        |val| {
-                            val.iter().map(|val| val.as_str().unwrap()).collect()
-                        },
-                    );
+                    let types = get_param_array(params, "type");
 
                     let model_autocomplete = query::autocomplete(
                         &q,
@@ -299,7 +279,7 @@ impl ApiEndPoint {
                         coord,
                         &cnx,
                         None,
-                        types,
+                        &types,
                     );
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);

@@ -42,9 +42,10 @@ const MIN_LON: f64 = -90f64;
 
 
 pub fn dataset_param(params: &mut Builder) {
-    params.opt("pt_dataset", |t| {
-        t.coerce(json_dsl::encoded_array(","));
-    });
+    params.opt(
+        "pt_dataset",
+        |t| { t.coerce(json_dsl::encoded_array(",")); },
+    );
     params.opt_typed("_all_data", json_dsl::boolean());
 }
 
@@ -138,6 +139,14 @@ pub fn types_param(params: &mut Builder) {
         t.coerce(json_dsl::encoded_array(","));
         t.validate_with(|val, path| check_type(val.as_array().unwrap(), path));
     });
+}
+
+pub fn get_param_array<'a>(params: &'a JsonValue, param_name: &str) -> Vec<&'a str> {
+    params
+        .find(param_name)
+        .and_then(|val| val.as_array())
+        .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect())
+        .unwrap_or(vec![])
 }
 
 

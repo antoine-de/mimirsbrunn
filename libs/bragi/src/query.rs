@@ -224,8 +224,8 @@ fn get_indexes_by_type(a_type: &str) -> String {
 
 fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
     all_data: bool,
-    pt_datasets: &Option<Vec<&str>>,
-    types: &Option<Vec<&str>>,
+    pt_datasets: &[&str],
+    types: &[&str],
     mut is_existing_index: F,
 ) -> Result<Vec<String>, EsError> {
     if all_data {
@@ -241,26 +241,32 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
     };
 
     let mut pt_dataset_indexes: Vec<String> = vec![];
-    if let Some(ref pt_datasets) = *pt_datasets {
-        if pt_datasets.len() == 1 {
-            for pt_dataset_ in pt_datasets.iter() {
-                try!(push(&mut pt_dataset_indexes, format!("munin_stop_{}", pt_dataset_).as_str()));
+    match pt_datasets.len() {
+        0 => (),
+        1 => {
+            for pt_dataset in pt_datasets.iter() {
+                try!(push(
+                    &mut pt_dataset_indexes,
+                    format!("munin_stop_{}", pt_dataset).as_str(),
+                ))
             }
-        } else if !pt_datasets.is_empty() {
-            try!(push(&mut pt_dataset_indexes, "munin_global_stops"));
         }
-    }
+        _ => try!(push(&mut pt_dataset_indexes, "munin_global_stops")),
+    };
 
-    if let Some(ref types) = *types {
-        for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
-            try!(push(&mut result, &get_indexes_by_type(type_)));
-        }
-        if types.contains(&"public_transport:stop_area") {
+    match types.len() {
+        0 => {
+            try!(push(&mut result, &"munin_geo_data".to_string()));
             result.append(&mut pt_dataset_indexes);
         }
-    } else {
-        try!(push(&mut result, &"munin_geo_data".to_string()));
-        result.append(&mut pt_dataset_indexes);
+        _ => {
+            for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
+                try!(push(&mut result, &get_indexes_by_type(type_)));
+            }
+            if types.contains(&"public_transport:stop_area") {
+                result.append(&mut pt_dataset_indexes);
+            }
+        }
     }
 
     Ok(result)
@@ -268,8 +274,8 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
 
 fn make_indexes(
     all_data: bool,
-    pt_datasets: &Option<Vec<&str>>,
-    types: &Option<Vec<&str>>,
+    pt_datasets: &[&str],
+    types: &[&str],
     client: &mut rs_es::Client,
 ) -> Result<Vec<String>, EsError> {
     make_indexes_impl(all_data, pt_datasets, types, |index| {
@@ -293,7 +299,7 @@ fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>,
 
 fn query(
     q: &str,
-    pt_datasets: &Option<Vec<&str>>,
+    pt_datasets: &[&str],
     all_data: bool,
     cnx: &str,
     match_type: MatchType,
@@ -301,18 +307,13 @@ fn query(
     limit: u64,
     coord: &Option<model::Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
-    types: &Option<Vec<&str>>,
+    types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query = build_query(q, match_type, coord, shape);
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
-    let indexes = try!(make_indexes(
-        all_data,
-        &pt_datasets,
-        types,
-        &mut client,
-    ));
+    let indexes = try!(make_indexes(all_data, &pt_datasets, types, &mut client));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -339,7 +340,7 @@ fn query(
 }
 
 pub fn features(
-    pt_datasets: &Option<Vec<&str>>,
+    pt_datasets: &[&str],
     all_data: bool,
     cnx: &str,
     id: &str,
@@ -353,12 +354,7 @@ pub fn features(
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
-    let indexes = try!(make_indexes(
-        all_data,
-        &pt_datasets,
-        &None,
-        &mut client,
-    ));
+    let indexes = try!(make_indexes(all_data, &pt_datasets, &[], &mut client));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -391,7 +387,7 @@ pub fn features(
 pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsError> {
     let mut client = rs_es::Client::new(cnx).unwrap();
     let types = vec!["house".into(), "street".into()];
-    let indexes = make_indexes(false, &None, &Some(types), &mut client)?;
+    let indexes = make_indexes(false, &[], &types, &mut client)?;
     let distance = rs_u::Distance::new(500., rs_u::DistanceUnit::Meter);
     let geo_distance = Query::build_geo_distance("coord", (coord.lat, coord.lon), distance).build();
     let query = Query::build_bool()
@@ -412,14 +408,14 @@ pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsE
 
 pub fn autocomplete(
     q: &str,
-    pt_datasets: &Option<Vec<&str>>,
+    pt_datasets: &[&str],
     all_data: bool,
     offset: u64,
     limit: u64,
     coord: Option<model::Coord>,
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
-    types: Option<Vec<&str>>,
+    types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape.as_ref().map(
