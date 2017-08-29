@@ -320,7 +320,15 @@ fn test_load_stops() {
         .filter_map(Result::ok)
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
-            stop.try_into()
+            match stop.try_into() {
+                Ok(s) => Some(s),
+                Err(StopConvErr::InvisibleStop) => None,
+                Err(StopConvErr::StopPoint) => None,
+                Err(StopConvErr::InvalidStop(msg)) => {
+                    warn!("skip csv line because: {}", msg);
+                    None
+                }
+            }
         })
         .collect();
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
