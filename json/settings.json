@@ -350,6 +350,10 @@
                   "search_analyzer": "word"
                 }
               }
+            },
+            "coverages": {
+              "type": "string",
+              "index": "not_analyzed"
             }
           }
         }

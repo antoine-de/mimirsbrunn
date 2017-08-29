@@ -86,11 +86,31 @@ fn build_proximity_with_boost(coord: &model::Coord, boost: f64) -> Query {
         .build()
 }
 
+
+// filter to handle PT coverages
+// we either want:
+// * to get objects with no coverage at all (non-PT objects)
+// * or the objects with coverage matching the ones we're allowed to get
+fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
+    Query::build_bool()
+        .with_should(vec![
+            Query::build_bool()
+                .with_must_not(Query::build_exists("coverages").build())
+                .build(),
+            Query::build_terms("coverages")
+                .with_values(pt_datasets)
+                .build(),
+        ])
+        .build()
+}
+
 fn build_query(
     q: &str,
     match_type: MatchType,
     coord: &Option<model::Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
+    pt_datasets: &[&str],
+    all_data: bool,
 ) -> Query {
     use rs_es::query::functions::Function;
 
@@ -140,7 +160,7 @@ fn build_query(
     // we either want:
     // * to exactly match the document house_number
     // * or that the document has no house_number
-    let first_condition = Query::build_bool()
+    let house_number_condition = Query::build_bool()
         .with_should(vec![
             Query::build_bool()
                 .with_must_not(Query::build_exists("house_number").build())
@@ -152,7 +172,7 @@ fn build_query(
 
     use rs_es::query::MinimumShouldMatch;
 
-    let second_condition = match match_type {
+    let matching_condition = match match_type {
         // When the match type is Prefix, we want to use every possible information even though
         // these are not present in label, for instance, the zip_code. The cross_fields match type
         // allows to do the trick.
@@ -187,15 +207,20 @@ fn build_query(
         }
     };
 
-    let mut filter = vec![first_condition, second_condition];
+    let mut filters = vec![house_number_condition, matching_condition];
+
+    // if searching through all data, no coverage filter
+    if !all_data {
+        filters.push(build_coverage_condition(pt_datasets));
+    }
 
     if let Some(s) = shape {
-        filter.push(Query::build_geo_polygon("coord", s).build());
+        filters.push(Query::build_geo_polygon("coord", s).build());
     }
 
     Query::build_bool()
         .with_must(vec![type_query, string_query, importance_query])
-        .with_filter(Query::build_bool().with_must(filter).build())
+        .with_filter(Query::build_bool().with_must(filters).build())
         .build()
 }
 
@@ -224,8 +249,8 @@ fn get_indexes_by_type(a_type: &str) -> String {
 
 fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
     all_data: bool,
-    pt_dataset_index: &Option<String>,
-    types: &Option<Vec<&str>>,
+    pt_datasets: &[&str],
+    types: &[&str],
     mut is_existing_index: F,
 ) -> Result<Vec<String>, EsError> {
     if all_data {
@@ -239,21 +264,33 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
         }
         Ok(())
     };
-    if let Some(ref types) = *types {
-        for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
-            try!(push(&mut result, &get_indexes_by_type(type_)));
-        }
-        match *pt_dataset_index {
-            Some(ref index) if types.contains(&"public_transport:stop_area") => {
-                try!(push(&mut result, index));
-            }
-            _ => (),
-        }
-    } else {
-        try!(push(&mut result, &"munin_geo_data".to_string()));
 
-        if let Some(ref dataset) = *pt_dataset_index {
-            try!(push(&mut result, &dataset.clone()));
+    let mut pt_dataset_indexes: Vec<String> = vec![];
+    match pt_datasets.len() {
+        0 => (),
+        1 => {
+            for pt_dataset in pt_datasets.iter() {
+                try!(push(
+                    &mut pt_dataset_indexes,
+                    format!("munin_stop_{}", pt_dataset).as_str(),
+                ))
+            }
+        }
+        _ => try!(push(&mut pt_dataset_indexes, "munin_global_stops")),
+    };
+
+    match types.len() {
+        0 => {
+            try!(push(&mut result, &"munin_geo_data".to_string()));
+            result.append(&mut pt_dataset_indexes);
+        }
+        _ => {
+            for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
+                try!(push(&mut result, &get_indexes_by_type(type_)));
+            }
+            if types.contains(&"public_transport:stop_area") {
+                result.append(&mut pt_dataset_indexes);
+            }
         }
     }
 
@@ -262,11 +299,11 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
 
 fn make_indexes(
     all_data: bool,
-    pt_dataset_index: &Option<String>,
-    types: &Option<Vec<&str>>,
+    pt_datasets: &[&str],
+    types: &[&str],
     client: &mut rs_es::Client,
 ) -> Result<Vec<String>, EsError> {
-    make_indexes_impl(all_data, pt_dataset_index, types, |index| {
+    make_indexes_impl(all_data, pt_datasets, types, |index| {
         is_existing_index(client, index)
     })
 }
@@ -287,7 +324,7 @@ fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>,
 
 fn query(
     q: &str,
-    pt_dataset: &Option<&str>,
+    pt_datasets: &[&str],
     all_data: bool,
     cnx: &str,
     match_type: MatchType,
@@ -295,19 +332,13 @@ fn query(
     limit: u64,
     coord: &Option<model::Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
-    types: &Option<Vec<&str>>,
+    types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
-    let query = build_query(q, match_type, coord, shape);
+    let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
-    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
-    let indexes = try!(make_indexes(
-        all_data,
-        &pt_dataset_index,
-        types,
-        &mut client,
-    ));
+    let indexes = try!(make_indexes(all_data, &pt_datasets, types, &mut client));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -334,27 +365,25 @@ fn query(
 }
 
 pub fn features(
-    pt_dataset: &Option<&str>,
+    pt_datasets: &[&str],
     all_data: bool,
     cnx: &str,
     id: &str,
 ) -> Result<Vec<mimir::Place>, EsError> {
 
     let val = rs_es::units::JsonVal::String(id.into());
-    let build_ids = Query::build_ids(vec![val]).build();
+    let mut filters = vec![Query::build_ids(vec![val]).build()];
 
-    let filter = Query::build_bool().with_must(vec![build_ids]).build();
+    // if searching through all data, no coverage filter
+    if !all_data {
+        filters.push(build_coverage_condition(pt_datasets));
+    }
+    let filter = Query::build_bool().with_must(filters).build();
     let query = Query::build_bool().with_filter(filter).build();
 
     let mut client = rs_es::Client::new(cnx).unwrap();
 
-    let pt_dataset_index = pt_dataset.map(|d| format!("munin_stop_{}", d));
-    let indexes = try!(make_indexes(
-        all_data,
-        &pt_dataset_index,
-        &None,
-        &mut client,
-    ));
+    let indexes = try!(make_indexes(all_data, &pt_datasets, &[], &mut client));
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -387,7 +416,7 @@ pub fn features(
 pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsError> {
     let mut client = rs_es::Client::new(cnx).unwrap();
     let types = vec!["house".into(), "street".into()];
-    let indexes = make_indexes(false, &None, &Some(types), &mut client)?;
+    let indexes = make_indexes(false, &[], &types, &mut client)?;
     let distance = rs_u::Distance::new(500., rs_u::DistanceUnit::Meter);
     let geo_distance = Query::build_geo_distance("coord", (coord.lat, coord.lon), distance).build();
     let query = Query::build_bool()
@@ -408,14 +437,14 @@ pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsE
 
 pub fn autocomplete(
     q: &str,
-    pt_dataset: &Option<&str>,
+    pt_datasets: &[&str],
     all_data: bool,
     offset: u64,
     limit: u64,
     coord: Option<model::Coord>,
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
-    types: Option<Vec<&str>>,
+    types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape.as_ref().map(
@@ -423,11 +452,11 @@ pub fn autocomplete(
         )
     }
 
-    // First we try a prety exact match on the prefix.
+    // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = try!(query(
         &q,
-        &pt_dataset,
+        &pt_datasets,
         all_data,
         cnx,
         MatchType::Prefix,
@@ -440,7 +469,7 @@ pub fn autocomplete(
     if results.is_empty() {
         query(
             &q,
-            &pt_dataset,
+            &pt_datasets,
             all_data,
             cnx,
             MatchType::Fuzzy,
@@ -462,19 +491,19 @@ fn test_make_indexes_impl() {
     }
     // all_data
     assert_eq!(
-        make_indexes_impl(true, &None, &None, ok_index).unwrap(),
+        make_indexes_impl(true, &[], &[], ok_index).unwrap(),
         vec!["munin"]
     );
 
     // no dataset and no types
     assert_eq!(
-        make_indexes_impl(false, &None, &None, ok_index).unwrap(),
+        make_indexes_impl(false, &[], &[], ok_index).unwrap(),
         vec!["munin_geo_data"]
     );
 
     // dataset fr + no types
     assert_eq!(
-        make_indexes_impl(false, &Some("munin_stop_fr".to_string()), &None, ok_index).unwrap(),
+        make_indexes_impl(false, &["fr"], &[], ok_index).unwrap(),
         vec!["munin_geo_data", "munin_stop_fr"]
     );
 
@@ -483,14 +512,14 @@ fn test_make_indexes_impl() {
     assert_eq!(
         make_indexes_impl(
             false,
-            &None,
-            &Some(vec![
+            &[],
+            &[
                 "poi",
                 "city",
                 "street",
                 "house",
                 "public_transport:stop_area",
-            ]),
+            ],
             ok_index,
         ).unwrap(),
         vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
@@ -498,12 +527,7 @@ fn test_make_indexes_impl() {
 
     // no dataset fr + type public_transport:stop_area only
     assert_eq!(
-        make_indexes_impl(
-            false,
-            &None,
-            &Some(vec!["public_transport:stop_area"]),
-            ok_index,
-        ).unwrap(),
+        make_indexes_impl(false, &[], &["public_transport:stop_area"], ok_index).unwrap(),
         Vec::<String>::new()
     );
 
@@ -511,14 +535,14 @@ fn test_make_indexes_impl() {
     assert_eq!(
         make_indexes_impl(
             false,
-            &Some("munin_stop_fr".to_string()),
-            &Some(vec![
+            &["fr"],
+            &[
                 "poi",
                 "city",
                 "street",
                 "house",
                 "public_transport:stop_area",
-            ]),
+            ],
             ok_index,
         ).unwrap(),
         vec![
@@ -535,8 +559,8 @@ fn test_make_indexes_impl() {
     assert_eq!(
         make_indexes_impl(
             false,
-            &Some("munin_stop_fr".to_string()),
-            &Some(vec!["poi", "city", "street", "house"]),
+            &["fr"],
+            &["poi", "city", "street", "house"],
             ok_index,
         ).unwrap(),
         vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
@@ -545,19 +569,24 @@ fn test_make_indexes_impl() {
     // dataset fr types poi, city, street, house without public_transport:stop_area
     // and the function is_existing_index with a result "false" as non of the index
     // is present in elasticsearch
-    assert_eq!(make_indexes_impl(false,
-                                 &Some("munin_stop_fr".to_string()),
-                                 &Some(vec!["poi", "city", "street", "house"]),
-                                 |_index| Ok::<_, EsError>(false))
-                   .unwrap(),
-               Vec::<String>::new());
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &["fr"],
+            &["poi", "city", "street", "house"],
+            |_index| Ok::<_, EsError>(false),
+        ).unwrap(),
+        Vec::<String>::new()
+    );
 
     // dataset fr types poi, city, street, house without public_transport:stop_area
     // and the function is_existing_index with an error in the result (Elasticsearch is absent..)
-    match make_indexes_impl(false,
-                            &Some("munin_stop_fr".to_string()),
-                            &Some(vec!["poi", "city", "street", "house"]),
-                            |_index| Err::<bool, _>(EsError::EsError("Elasticsearch".into()))) {
+    match make_indexes_impl(
+        false,
+        &["fr"],
+        &["poi", "city", "street", "house"],
+        |_index| Err::<bool, _>(EsError::EsError("Elasticsearch".into())),
+    ) {
         Err(EsError::EsError(e)) => assert_eq!(e, "Elasticsearch"),
         _ => assert!(false),
     }
