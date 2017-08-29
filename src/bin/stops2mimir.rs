@@ -49,6 +49,11 @@ use std::collections::HashMap;
 use structopt::StructOpt;
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
+const MAX_LAT: f64 = 90f64;
+const MIN_LAT: f64 = -90f64;
+
+const MAX_LON: f64 = 180f64;
+const MIN_LON: f64 = -180f64;
 
 #[derive(Debug, StructOpt)]
 struct Args {
@@ -65,6 +70,13 @@ struct Args {
     /// City level to calculate weight.
     #[structopt(short = "C", long = "city-level", default_value = "8")]
     city_level: u32,
+}
+
+#[derive(Deserialize, Debug)]
+enum StopConvErr {
+    InvisibleStop,
+    StopPoint,
+    InvalidStop(String),
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,9 +103,16 @@ impl GtfsStop {
         }
     }
     // to be moved when TryInto is stablilized
-    fn try_into(self) -> Option<mimir::Stop> {
-        if self.location_type == Some(1) && self.visible != Some(0) {
-            Some(mimir::Stop {
+    fn try_into(self) -> Result<mimir::Stop, StopConvErr> {
+        if self.location_type != Some(1) {
+            Err(StopConvErr::StopPoint)
+        } else if self.visible == Some(0){
+        	Err(StopConvErr::InvisibleStop)
+        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT || self.stop_lon <= MIN_LON || self.stop_lon >= MAX_LON {
+         	//Here we return an error message          
+		  	Err(StopConvErr::InvalidStop(format!("Invalid lon or lat for stop {}", self.stop_name).into()))	            
+        } else {
+        	Ok(mimir::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
                 coord: mimir::Coord::new(self.stop_lat, self.stop_lon),
                 label: self.stop_name.clone(),
@@ -103,9 +122,7 @@ impl GtfsStop {
                 name: self.stop_name,
                 coverages: vec![],
             })
-        } else {
-            None
-        }
+        } 
     }
 }
 
@@ -269,7 +286,14 @@ fn main() {
         })
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
-            stop.try_into()
+            match stop.try_into() {
+                Ok(s) => Some(s),
+                Err(StopConvErr::InvisibleStop) | Err(StopConvErr::StopPoint) => None,
+                Err(StopConvErr::InvalidStop(msg)) => {
+                    warn!("skip csv line because: {}", msg);
+                    None
+                }
+            }
         })
         .collect();
 
