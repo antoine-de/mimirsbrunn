@@ -29,6 +29,7 @@
 // www.navitia.io
 
 extern crate bragi;
+extern crate iron;
 extern crate iron_test;
 extern crate serde_json;
 use super::BragiHandler;
@@ -44,6 +45,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     // - osm_fixture.osm.pbf
     // - bano-three_cities
     // - stops.txt
+    // - stops_dataset2.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     ::launch_and_assert(
@@ -92,6 +94,8 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     stop_filtered_by_dataset_test(&bragi);
+    autocomplete_stop_filtered_by_dataset_transcoverage_test(&bragi);
+    features_stop_filtered_by_dataset_transcoverage_test(&bragi);
     stop_all_data_test(&bragi);
     stop_order_by_weight_test(&bragi);
 }
@@ -168,6 +172,152 @@ fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
         get_value(stop, "id"),
         "stop_area:SA:second_station:dataset2"
     );
+}
+
+fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
+    //autocomplete endpoint tests
+    //Search without dataset
+    let response = bragi.get("/autocomplete?q=All known stop");
+    assert_eq!(response.len(), 0);
+
+    //Search on all_data (not munin_global_stops)
+    let response = bragi.get("/autocomplete?q=All known stop&_all_data=true");
+    assert_eq!(response.len(), 2);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    let mut names = vec![get_value(stop, "name")];
+
+    let stop = response.last().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    names.push(get_value(stop, "name"));
+
+    assert!(names.contains(&"All known stop"));
+    assert!(names.contains(&"All known stop, but different name"));
+
+    //classic filter by the dataset1
+    let response = bragi.get("/autocomplete?q=All known stop&pt_dataset[]=dataset1");
+    assert_eq!(response.len(), 1);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    assert_eq!(
+        get_value(stop, "name"),
+        "All known stop, but different name"
+    );
+
+    //classic filter by the dataset2
+    let response = bragi.get("/autocomplete?q=All known stop&pt_dataset[]=dataset2");
+
+    assert_eq!(response.len(), 1);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    assert_eq!(get_value(stop, "name"), "All known stop");
+
+    //filter by multiple datasets (1 matching)
+    let response = bragi.get(
+        "/autocomplete?q=All known stop&pt_dataset[]=dataset2&pt_dataset[]=bobito",
+    );
+    assert_eq!(response.len(), 1);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    assert_eq!(
+        get_value(stop, "name"),
+        "All known stop, but different name"
+    ); //name should be the first binarized
+
+    //filter by multiple datasets (all matching)
+    let response = bragi.get(
+        "/autocomplete?q=All known stop&pt_dataset[]=dataset2&pt_dataset[]=dataset1",
+    );
+    assert_eq!(response.len(), 1);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    assert_eq!(
+        get_value(stop, "name"),
+        "All known stop, but different name"
+    ); //name should be the first binarized
+
+    //filter by multiple datasets (none matching)
+    let response = bragi.get(
+        "/autocomplete?q=All known stop&pt_dataset[]=bobette&pt_dataset[]=bobito",
+    );
+    assert_eq!(response.len(), 0);
+}
+
+fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
+    //no pt_dataset: no chocolate
+    let response = bragi
+        .raw_get("/features/stop_area:SA:known_by_all_dataset")
+        .unwrap();
+    assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
+
+    //wrong pt_dataset
+    let response = bragi
+        .raw_get(
+            "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette",
+        )
+        .unwrap();
+    assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
+
+    //wrong pt_datasets
+    let response = bragi
+        .raw_get(
+            "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette&pt_dataset[]=bobito",
+        )
+        .unwrap();
+    assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
+
+    //one matching dataset, we hit the global one
+    let response = bragi.get(
+        "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=dataset2&pt_dataset[]=bobito",
+    );
+    assert_eq!(response.len(), 1);
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    assert_eq!(
+        get_value(stop, "name"),
+        "All known stop, but different name"
+    );
+
+    //one dataset, we hit it (not the global one)
+    let response = bragi.get(
+        "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=dataset2",
+    );
+    assert_eq!(response.len(), 1);
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    assert_eq!(get_value(stop, "name"), "All known stop");
+
+    //two matching pt_datasets, hitting the global index ()
+    let response = bragi.get(
+        "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=dataset1&pt_dataset[]=dataset2",
+    );
+    assert_eq!(response.len(), 1);
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    assert_eq!(
+        get_value(stop, "name"),
+        "All known stop, but different name"
+    );
+
+    //all_data: hitting all the pt indexes
+    let response = bragi.get("/features/stop_area:SA:known_by_all_dataset?_all_data=true");
+    assert_eq!(response.len(), 2);
+
+    let stop = response.first().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    let mut names = vec![get_value(stop, "name")];
+
+    let stop = response.last().unwrap();
+    assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");
+    names.push(get_value(stop, "name"));
+
+    assert!(names.contains(&"All known stop"));
+    assert!(names.contains(&"All known stop, but different name"));
 }
 
 fn stop_all_data_test(bragi: &BragiHandler) {
