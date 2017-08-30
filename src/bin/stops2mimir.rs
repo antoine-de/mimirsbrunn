@@ -78,7 +78,7 @@ enum StopConversionErr {
     InvisibleStop,
     ///The stop in the line is not a StopArea
     NotStopArea,
-    ///Values of one or more attributs are not valid
+    ///Values of one or more attributes are not valid
     InvalidStop(String),
 }
 
@@ -179,7 +179,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     }
 
     info!(
-        "there is {}/{} stops without any admin",
+        "there are {}/{} stops without any admin",
         nb_unmatched,
         nb_matched + nb_unmatched
     );
@@ -294,9 +294,7 @@ fn main() {
     let mut nb_stop_points = HashMap::new();
 
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
-        .filter_map(|rc| {
-            rc.map_err(|e| warn!("skip csv line because: {}", e)).ok()
-        })
+        .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
             match stop.try_into() {
@@ -339,7 +337,7 @@ fn test_load_stops() {
                 Err(StopConversionErr::InvisibleStop) => None,
                 Err(StopConversionErr::NotStopArea) => None,
                 Err(StopConversionErr::InvalidStop(msg)) => {
-                    warn!("skip csv line because: {}", msg);
+                    warn!("skip csv line: {}", msg);
                     None
                 }
             }
