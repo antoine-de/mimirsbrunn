@@ -98,7 +98,8 @@ impl GtfsStop {
         match (self.location_type, &self.parent_station) {
             (Some(0), &Some(ref id)) |
             (None, &Some(ref id)) if !id.is_empty() => {
-                *nb_stop_points.entry(format!("stop_area:{}", id))
+                *nb_stop_points
+                    .entry(format!("stop_area:{}", id))
                     .or_insert(0) += 1
             }
             _ => (),
@@ -111,14 +112,18 @@ impl GtfsStop {
         } else if self.visible == Some(0) {
             Err(StopConversionErr::InvisibleStop)
         } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT ||
-                  self.stop_lon <= MIN_LON || self.stop_lon >= MAX_LON {
+                   self.stop_lon <= MIN_LON || self.stop_lon >= MAX_LON
+        {
             //Here we return an error message
-            Err(StopConversionErr::InvalidStop(format!("Invalid lon {:?} or lat {:?} for stop \
+            Err(StopConversionErr::InvalidStop(
+                format!(
+                    "Invalid lon {:?} or lat {:?} for stop \
                                                         {:?}",
-                                                       self.stop_lon,
-                                                       self.stop_lat,
-                                                       self.stop_name)
-                .into()))
+                    self.stop_lon,
+                    self.stop_lat,
+                    self.stop_name
+                ).into(),
+            ))
         } else {
             Ok(mimir::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
@@ -145,9 +150,11 @@ fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>, city_level
 /// The admins are loaded from Elasticsearch and stored in a quadtree
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
-fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: It,
-                                                                        rubber: &mut Rubber,
-                                                                        city_level: u32) {
+fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
+    stops: It,
+    rubber: &mut Rubber,
+    city_level: u32,
+) {
     let admins = rubber.get_all_admins().unwrap_or_else(|_| {
         info!("Administratives regions not found in elasticsearch db");
         vec![]
@@ -171,9 +178,11 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(stops: I
         attach_stop(&mut stop, admins, city_level);
     }
 
-    info!("there is {}/{} stops without any admin",
-          nb_unmatched,
-          nb_matched + nb_unmatched);
+    info!(
+        "there is {}/{} stops without any admin",
+        nb_unmatched,
+        nb_matched + nb_unmatched
+    );
 }
 
 // Update weight value for each stop_area from HashMap and stop's coverage
@@ -194,12 +203,14 @@ fn finalize_stop_area<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
 /// merge the stops from all the different indexes
 /// for the moment the merge is very simple and uses only the ID
 /// (and we take the data from the first stop inserted)
-fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(stops: It)
-                                                     -> Box<Iterator<Item = mimir::Stop>> {
+fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
+    stops: It,
+) -> Box<Iterator<Item = mimir::Stop>> {
     let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
     for mut stop in stops.into_iter() {
         let cov = std::mem::replace(&mut stop.coverages, vec![]);
-        stops_by_id.entry(stop.id.clone())
+        stops_by_id
+            .entry(stop.id.clone())
             .or_insert(stop)
             .coverages
             .extend(cov.into_iter());
@@ -208,34 +219,40 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(stops: It)
 }
 
 fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, String> {
-    rubber.get_all_objects_from_index(&index).map_err(|e| e.to_string())
+    rubber.get_all_objects_from_index(&index).map_err(
+        |e| e.to_string(),
+    )
 }
 
-fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(rubber: &mut Rubber,
-                                                                      stops: It,
-                                                                      dataset: &str)
-                                                                      -> Result<String, String> {
-    let dataset_index = mimir::rubber::get_main_type_and_dataset_index(mimir::Stop::doc_type(),
-                                                                       dataset);
-    let stops_indexes =
-        rubber.get_all_aliased_index(&mimir::rubber::get_main_type_index(mimir::Stop::doc_type()))?
-            .into_iter()
-            .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
-            .map(|(index, _)| index);
+fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
+    rubber: &mut Rubber,
+    stops: It,
+    dataset: &str,
+) -> Result<String, String> {
+    let dataset_index =
+        mimir::rubber::get_main_type_and_dataset_index(mimir::Stop::doc_type(), dataset);
+    let stops_indexes = rubber
+        .get_all_aliased_index(&mimir::rubber::get_main_type_index(mimir::Stop::doc_type()))?
+        .into_iter()
+        .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
+        .map(|(index, _)| index);
 
-    let all_other_es_stops: Vec<_> =
-        stops_indexes.map(|index| get_all_stops(rubber, index).unwrap())
-            .flat_map(|stops| stops.into_iter())
-            .collect();
+    let all_other_es_stops: Vec<_> = stops_indexes
+        .map(|index| get_all_stops(rubber, index).unwrap())
+        .flat_map(|stops| stops.into_iter())
+        .collect();
 
-    let all_es_stops = all_other_es_stops.into_iter().chain(stops.into_iter().cloned());
+    let all_es_stops = all_other_es_stops.into_iter().chain(
+        stops.into_iter().cloned(),
+    );
 
     let all_merged_stops = merge_stops(all_es_stops);
     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
 
     rubber.create_index(&es_index_name)?;
 
-    let nb_stops_added = rubber.bulk_index(&es_index_name, all_merged_stops)
+    let nb_stops_added = rubber
+        .bulk_index(&es_index_name, all_merged_stops)
         .map_err(|e| e.to_string())?;
     info!("{} stops added in the global index", nb_stops_added);
     // create global index
@@ -246,14 +263,17 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(rubber: &m
 // publish the global stop index
 // alias the new index to the global stop alias, and remove the old index
 fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(), String> {
-    let last_global_indexes: Vec<_> = rubber.get_all_aliased_index(GLOBAL_STOP_INDEX_NAME)?
+    let last_global_indexes: Vec<_> = rubber
+        .get_all_aliased_index(GLOBAL_STOP_INDEX_NAME)?
         .into_iter()
         .map(|(k, _)| k)
         .filter(|k| k != new_global_index)
         .collect();
-    rubber.alias(GLOBAL_STOP_INDEX_NAME,
-               &vec![new_global_index.to_string()],
-               &last_global_indexes)?;
+    rubber.alias(
+        GLOBAL_STOP_INDEX_NAME,
+        &vec![new_global_index.to_string()],
+        &last_global_indexes,
+    )?;
 
     for index in last_global_indexes {
         rubber.delete_index(&index)?;
@@ -274,7 +294,9 @@ fn main() {
     let mut nb_stop_points = HashMap::new();
 
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
-        .filter_map(|rc| rc.map_err(|e| warn!("skip csv line because: {}", e)).ok())
+        .filter_map(|rc| {
+            rc.map_err(|e| warn!("skip csv line because: {}", e)).ok()
+        })
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
             match stop.try_into() {
@@ -324,14 +346,20 @@ fn test_load_stops() {
         })
         .collect();
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
-    assert_eq!(ids,
-               vec!["stop_area:SA:known_by_all_dataset",
-                    "stop_area:SA:main_station",
-                    "stop_area:SA:second_station",
-                    "stop_area:SA:station_no_city",
-                    "stop_area:SA:weight_1_station",
-                    "stop_area:SA:weight_3_station"]);
+    assert_eq!(
+        ids,
+        vec![
+            "stop_area:SA:known_by_all_dataset",
+            "stop_area:SA:main_station",
+            "stop_area:SA:second_station",
+            "stop_area:SA:station_no_city",
+            "stop_area:SA:weight_1_station",
+            "stop_area:SA:weight_3_station",
+        ]
+    );
     let weights: Vec<_> = ids.iter().map(|id| nb_stop_points.get(id)).collect();
-    assert_eq!(weights,
-               vec![None, Some(&1), Some(&1), None, Some(&1), Some(&3)]);
+    assert_eq!(
+        weights,
+        vec![None, Some(&1), Some(&1), None, Some(&1), Some(&3)]
+    );
 }
