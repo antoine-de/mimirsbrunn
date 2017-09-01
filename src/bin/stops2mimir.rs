@@ -115,15 +115,12 @@ impl GtfsStop {
                    self.stop_lon <= MIN_LON || self.stop_lon >= MAX_LON
         {
             //Here we return an error message
-            Err(StopConversionErr::InvalidStop(
-                format!(
-                    "Invalid lon {:?} or lat {:?} for stop \
-                                                        {:?}",
-                    self.stop_lon,
-                    self.stop_lat,
-                    self.stop_name
-                ).into(),
-            ))
+            Err(StopConversionErr::InvalidStop(format!(
+                "Invalid lon {:?} or lat {:?} for stop {:?}",
+                self.stop_lon,
+                self.stop_lat,
+                self.stop_name
+            )))
         } else {
             Ok(mimir::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
@@ -135,6 +132,17 @@ impl GtfsStop {
                 name: self.stop_name,
                 coverages: vec![],
             })
+        }
+    }
+    fn try_into_with_warn(self) -> Option<mimir::Stop> {
+        match self.try_into() {
+            Ok(s) => Some(s),
+            Err(StopConversionErr::InvisibleStop) => None,
+            Err(StopConversionErr::NotStopArea) => None,
+            Err(StopConversionErr::InvalidStop(msg)) => {
+                warn!("skip csv line: {}", msg);
+                None
+            }
         }
     }
 }
@@ -297,15 +305,7 @@ fn main() {
         .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
-            match stop.try_into() {
-                Ok(s) => Some(s),
-                Err(StopConversionErr::InvisibleStop) |
-                Err(StopConversionErr::NotStopArea) => None,
-                Err(StopConversionErr::InvalidStop(msg)) => {
-                    warn!("skip csv line : {}", msg);
-                    None
-                }
-            }
+            stop.try_into_with_warn()
         })
         .collect();
 
@@ -332,15 +332,7 @@ fn test_load_stops() {
         .filter_map(Result::ok)
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
-            match stop.try_into() {
-                Ok(s) => Some(s),
-                Err(StopConversionErr::InvisibleStop) => None,
-                Err(StopConversionErr::NotStopArea) => None,
-                Err(StopConversionErr::InvalidStop(msg)) => {
-                    warn!("skip csv line: {}", msg);
-                    None
-                }
-            }
+            stop.try_into_with_warn()
         })
         .collect();
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
