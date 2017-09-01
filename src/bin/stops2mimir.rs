@@ -49,6 +49,11 @@ use std::collections::HashMap;
 use structopt::StructOpt;
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
+const MAX_LAT: f64 = 90f64;
+const MIN_LAT: f64 = -90f64;
+
+const MAX_LON: f64 = 180f64;
+const MIN_LON: f64 = -180f64;
 
 #[derive(Debug, StructOpt)]
 struct Args {
@@ -65,6 +70,16 @@ struct Args {
     /// City level to calculate weight.
     #[structopt(short = "C", long = "city-level", default_value = "8")]
     city_level: u32,
+}
+
+#[derive(Deserialize, Debug)]
+enum StopConversionErr {
+    ///StopArea is invisible in Autocomplete
+    InvisibleStop,
+    ///The stop in the line is not a StopArea
+    NotStopArea,
+    ///Values of one or more attributes are not valid
+    InvalidStop(String),
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,9 +106,23 @@ impl GtfsStop {
         }
     }
     // to be moved when TryInto is stablilized
-    fn try_into(self) -> Option<mimir::Stop> {
-        if self.location_type == Some(1) && self.visible != Some(0) {
-            Some(mimir::Stop {
+    fn try_into(self) -> Result<mimir::Stop, StopConversionErr> {
+        if self.location_type != Some(1) {
+            Err(StopConversionErr::NotStopArea)
+        } else if self.visible == Some(0) {
+            Err(StopConversionErr::InvisibleStop)
+        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT ||
+                   self.stop_lon <= MIN_LON || self.stop_lon >= MAX_LON
+        {
+            //Here we return an error message
+            Err(StopConversionErr::InvalidStop(format!(
+                "Invalid lon {:?} or lat {:?} for stop {:?}",
+                self.stop_lon,
+                self.stop_lat,
+                self.stop_name
+            )))
+        } else {
+            Ok(mimir::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
                 coord: mimir::Coord::new(self.stop_lat, self.stop_lon),
                 label: self.stop_name.clone(),
@@ -103,8 +132,17 @@ impl GtfsStop {
                 name: self.stop_name,
                 coverages: vec![],
             })
-        } else {
-            None
+        }
+    }
+    fn try_into_with_warn(self) -> Option<mimir::Stop> {
+        match self.try_into() {
+            Ok(s) => Some(s),
+            Err(StopConversionErr::InvisibleStop) => None,
+            Err(StopConversionErr::NotStopArea) => None,
+            Err(StopConversionErr::InvalidStop(msg)) => {
+                warn!("skip csv line: {}", msg);
+                None
+            }
         }
     }
 }
@@ -149,7 +187,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     }
 
     info!(
-        "there is {}/{} stops without any admin",
+        "there are {}/{} stops without any admin",
         nb_unmatched,
         nb_matched + nb_unmatched
     );
@@ -264,12 +302,10 @@ fn main() {
     let mut nb_stop_points = HashMap::new();
 
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
-        .filter_map(|rc| {
-            rc.map_err(|e| warn!("skip csv line because: {}", e)).ok()
-        })
+        .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
-            stop.try_into()
+            stop.try_into_with_warn()
         })
         .collect();
 
@@ -296,7 +332,7 @@ fn test_load_stops() {
         .filter_map(Result::ok)
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
-            stop.try_into()
+            stop.try_into_with_warn()
         })
         .collect();
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
