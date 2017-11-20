@@ -171,38 +171,34 @@ fn build_query(
         .build();
 
     use rs_es::query::MinimumShouldMatch;
+    use rs_es::query::CombinationMinimumShouldMatch;
 
     let matching_condition = match match_type {
         // When the match type is Prefix, we want to use every possible information even though
-        // these are not present in label, for instance, the zip_code. The cross_fields match type
-        // allows to do the trick.
-        // Ex:
-        //   q : 20 rue hector malot 75012
-        // WITHOUT the cross_fields match type, it will match neither "label" nor "zip_codes" and
-        // the request will be treated by Fuzzy later, it's a pitty, because the adresse is actually
-        // well spelt.
-        // WITH the cross_fields match type, the request will be spilted into terms to match
-        // "label" and "zip_codes"
+        // these are not present in label, for instance, the zip_code.
+        // The field full_label contains all of them and will do the trick.
         MatchType::Prefix => {
-            Query::build_multi_match(
-                vec!["label.prefix".to_string(), "zip_codes".to_string()],
-                q.to_string(),
-            ).with_type(rs_es::query::full_text::MatchQueryType::CrossFields)
+            Query::build_match("full_label.prefix".to_string(), q.to_string())
                 .with_operator("and")
                 .build()
         }
-        // for fuzzy search we lower our expectation & we accept 40% of token match on label.ngram
-        // The "40%" is empirical, it's supposed to be able to manage cases BOTH missspelt one-word
+        // for fuzzy search we lower our expectation & we accept a certain percentage of token match
+        // on full_label.ngram
+        // The values defined here are empirical,
+        // it's supposed to be able to manage cases BOTH missspelt one-word
+        // www.elastic.co/guide/en/elasticsearch/guide/current/match-multi-word.html#match-precision
         // requests AND very long requests.
         // Missspelt one-word request:
         //     Vaureaaal (instead of Vaureal)
         // Very long requests:
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
         MatchType::Fuzzy => {
-            Query::build_multi_match(
-                vec!["label.ngram".to_string(), "zip_codes".to_string()],
-                q.to_string(),
-            ).with_minimum_should_match(MinimumShouldMatch::from(40f64))
+            Query::build_match("full_label.ngram".to_string(), q.to_string())
+                .with_minimum_should_match(MinimumShouldMatch::from(vec![
+                    CombinationMinimumShouldMatch::new(1i64, 75f64),
+                    CombinationMinimumShouldMatch::new(6i64, 60f64),
+                    CombinationMinimumShouldMatch::new(9i64, 40f64),
+                ]))
                 .build()
         }
     };
@@ -309,7 +305,11 @@ fn make_indexes(
 }
 
 fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>, EsError> {
-    debug!("{} documents found", result.hits.total);
+    debug!(
+        "{} documents found in {} ms",
+        result.hits.total,
+        result.took
+    );
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(
