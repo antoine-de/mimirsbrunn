@@ -163,6 +163,29 @@ impl Rubber {
             })
     }
 
+    pub fn create_template(&self, name: &str, settings: &str) -> Result<(), String> {
+        debug!("creating template");
+        self.put(&format!("_template/{}", name), settings)
+            .map_err(|e| {
+                info!("Error while creating template {}", name);
+                e.to_string()
+            })
+            .and_then(|res| if res.status == StatusCode::Ok {
+                Ok(())
+            } else {
+                Err(format!("cannot create template: {:?}", res))
+            })
+    }
+
+    pub fn initialize_templates(&self) -> Result<(), String> {
+        self.create_template(&"template_addr", include_str!("../../../json/addr_settings.json"))?;
+        self.create_template(&"template_stop", include_str!("../../../json/stop_settings.json"))?;
+        self.create_template(&"template_admin", include_str!("../../../json/admin_settings.json"))?;
+        self.create_template(&"template_street", include_str!("../../../json/street_settings.json"))?;
+        self.create_template(&"template_poi", include_str!("../../../json/poi_settings.json"))?;
+        Ok(())
+    }
+
     // get all aliases for a doc_type/dataset
     // return a map with each index as key and all their aliases
     pub fn get_all_aliased_index(
