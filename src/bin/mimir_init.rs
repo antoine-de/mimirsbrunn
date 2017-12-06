@@ -44,8 +44,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 struct Args {
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/")]
+    #[structopt(short = "c", long = "connection-string", default_value = "http://localhost:9200/")]
     connection_string: String,
 }
 

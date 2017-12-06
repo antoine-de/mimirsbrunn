@@ -178,11 +178,26 @@ impl Rubber {
     }
 
     pub fn initialize_templates(&self) -> Result<(), String> {
-        self.create_template(&"template_addr", include_str!("../../../json/addr_settings.json"))?;
-        self.create_template(&"template_stop", include_str!("../../../json/stop_settings.json"))?;
-        self.create_template(&"template_admin", include_str!("../../../json/admin_settings.json"))?;
-        self.create_template(&"template_street", include_str!("../../../json/street_settings.json"))?;
-        self.create_template(&"template_poi", include_str!("../../../json/poi_settings.json"))?;
+        self.create_template(
+            &"template_addr",
+            include_str!("../../../json/addr_settings.json"),
+        )?;
+        self.create_template(
+            &"template_stop",
+            include_str!("../../../json/stop_settings.json"),
+        )?;
+        self.create_template(
+            &"template_admin",
+            include_str!("../../../json/admin_settings.json"),
+        )?;
+        self.create_template(
+            &"template_street",
+            include_str!("../../../json/street_settings.json"),
+        )?;
+        self.create_template(
+            &"template_poi",
+            include_str!("../../../json/poi_settings.json"),
+        )?;
         Ok(())
     }
 
