@@ -125,6 +125,7 @@ where
     I: Iterator<Item = std::path::PathBuf>,
 {
     let mut rubber = Rubber::new(cnx_string);
+    rubber.initialize_templates().unwrap();
 
     let admins = rubber
         .get_admins_from_dataset(dataset)

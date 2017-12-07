@@ -85,6 +85,7 @@ fn main() {
     let mut parsed_pbf = parse_osm_pbf(&args.input);
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.connection_string);
+    rubber.initialize_templates().unwrap();
 
     info!("creating adminstrative regions");
     let admins_geofinder = administrative_regions(&mut parsed_pbf, levels)
