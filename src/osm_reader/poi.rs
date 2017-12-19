@@ -191,6 +191,13 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 }
 "#;
 
+fn make_properties(tags: &osmpbfreader::Tags) -> BTreeMap<String, String>{
+    let mut result = BTreeMap::new();
+    for tag in tags.iter(){
+        result.insert(tag.0.clone(), tag.1.clone());
+    }
+    result
+}
 fn parse_poi(
     osmobj: &osmpbfreader::OsmObj,
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
@@ -250,6 +257,7 @@ fn parse_poi(
         administrative_regions: adms,
         weight: 0.,
         poi_type: poi_type.clone(),
+        properties: make_properties(osmobj.tags())
     })
 }
 

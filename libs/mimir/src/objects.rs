@@ -36,6 +36,7 @@ use serde::ser::{Serializer, SerializeStruct};
 use serde::de::{self, Deserialize, Deserializer, Visitor, SeqAccess, MapAccess};
 use std::cmp::Ordering;
 use std::fmt;
+use std::collections::BTreeMap;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -156,6 +157,7 @@ pub struct Poi {
     pub weight: f64,
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
+    pub properties: BTreeMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
