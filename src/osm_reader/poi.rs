@@ -191,10 +191,13 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 }
 "#;
 
-fn make_properties(tags: &osmpbfreader::Tags) -> BTreeMap<String, String>{
-    let mut result = BTreeMap::new();
+fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Propertie>{
+    let mut result = vec![];
     for tag in tags.iter(){
-        result.insert(tag.0.clone(), tag.1.clone());
+        result.push(mimir::Propertie {
+                key: tag.0.clone(),
+                value: tag.1.clone(),
+        })
     }
     result
 }

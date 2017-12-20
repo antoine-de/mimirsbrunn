@@ -325,6 +325,12 @@
                         "weight": { "type": "double" }
                     }
                 },
+                "properties": {
+                    "properties": {
+                        "key": { "type": "string", "index": "no" },
+                        "value": { "type": "string", "index": "no" }
+                    }
+                },
                 "weight": { "type": "double" },
                 "zip_codes": {
                     "type": "string",

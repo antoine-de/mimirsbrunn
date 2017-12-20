@@ -33,7 +33,6 @@ use mimir;
 use geojson;
 use geo;
 use std::rc::Rc;
-use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Geocoding {
@@ -79,8 +78,8 @@ pub struct GeocodingResponse {
     pub administrative_regions: Vec<Rc<mimir::Admin>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
-    pub properties: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub properties: Vec<mimir::Propertie>,
 }
 
 
@@ -149,7 +148,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             city: None,
             administrative_regions: vec![],
             poi_types: vec![],
-            properties: BTreeMap::new(),
+            properties: vec![],
         }
     }
 }
@@ -200,7 +199,7 @@ impl From<mimir::Street> for GeocodingResponse {
             city: city,
             administrative_regions: admins,
             poi_types: vec![],
-            properties: BTreeMap::new(),
+            properties: vec![],
         }
     }
 }
@@ -238,7 +237,7 @@ impl From<mimir::Addr> for GeocodingResponse {
             city: city,
             administrative_regions: admins,
             poi_types: vec![],
-            properties: BTreeMap::new(),
+            properties: vec![],
         }
     }
 }
@@ -302,7 +301,7 @@ impl From<mimir::Stop> for GeocodingResponse {
             city: city,
             administrative_regions: admins,
             poi_types: vec![],
-            properties: BTreeMap::new(),
+            properties: vec![],
         }
     }
 }
