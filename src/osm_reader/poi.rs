@@ -192,14 +192,10 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 "#;
 
 fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Propertie>{
-    let mut result = vec![];
-    for tag in tags.iter(){
-        result.push(mimir::Propertie {
-                key: tag.0.clone(),
-                value: tag.1.clone(),
-        })
-    }
-    result
+	tags.iter().map(|propretie| mimir::Propertie {
+				key: propretie.0.clone(),
+                value: propretie.1.clone(),
+        }).collect()
 }
 fn parse_poi(
     osmobj: &osmpbfreader::OsmObj,
