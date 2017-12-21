@@ -146,7 +146,7 @@ impl<T: MimirObject> MimirObject for Rc<T> {
     }
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Propertie {
+pub struct Property {
     pub key: String,
     pub value: String,
 }
@@ -160,7 +160,7 @@ pub struct Poi {
     pub weight: f64,
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
-    pub properties: Vec<Propertie>,
+    pub properties: Vec<Property>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

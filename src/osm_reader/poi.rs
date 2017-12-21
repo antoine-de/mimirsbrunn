@@ -191,8 +191,8 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 }
 "#;
 
-fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Propertie>{
-	tags.iter().map(|propretie| mimir::Propertie {
+fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Property>{
+	tags.iter().map(|propretie| mimir::Property {
                 key: propretie.0.to_string(),
                 value: propretie.1.to_string(),
         }).collect()

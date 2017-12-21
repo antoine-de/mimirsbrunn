@@ -79,7 +79,7 @@ pub struct GeocodingResponse {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub properties: Vec<mimir::Propertie>,
+    pub properties: Vec<mimir::Property>,
 }
 
 

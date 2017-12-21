@@ -90,7 +90,12 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
     // the first element returned should be the poi 'Le-Mée-sur-Seine Courtilleraies'
     let poi = geocodings.first().unwrap();
 	let properties = poi.get("properties").and_then(|json| json.as_array()).unwrap();
-	assert_eq!(properties.len(), 9);
+	let keys = ["addr:postcode", "amenity", "atm", "name", "operator", "phone", "ref:FR:LaPoste", "source", "wheelchair"];
+	for p in properties {
+	    let key = p["key"].as_str().unwrap();
+	    keys.contains(&key);
+	}
+	assert_eq!(properties.len(), keys.len());
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "label"), "Le-Mée-sur-Seine Courtilleraies");
     assert_eq!(get_value(poi, "postcode"), "77350");
