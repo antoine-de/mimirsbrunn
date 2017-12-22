@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate bragi;
 #[macro_use]
 extern crate log;
 extern crate mimir;
-extern crate bragi;
 
 fn main() {
     mimir::logger_init().unwrap();

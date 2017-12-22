@@ -28,17 +28,17 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate structopt_derive;
-extern crate structopt;
 extern crate csv;
-extern crate mimir;
 extern crate itertools;
-extern crate mimirsbrunn;
 #[macro_use]
 extern crate log;
+extern crate mimir;
+extern crate mimirsbrunn;
+#[macro_use]
+extern crate serde_derive;
+extern crate structopt;
+#[macro_use]
+extern crate structopt_derive;
 
 use std::rc::Rc;
 use mimir::rubber::Rubber;
@@ -96,8 +96,7 @@ struct GtfsStop {
 impl GtfsStop {
     fn incr_stop_point(&self, nb_stop_points: &mut HashMap<String, u32>) {
         match (self.location_type, &self.parent_station) {
-            (Some(0), &Some(ref id)) |
-            (None, &Some(ref id)) if !id.is_empty() => {
+            (Some(0), &Some(ref id)) | (None, &Some(ref id)) if !id.is_empty() => {
                 *nb_stop_points
                     .entry(format!("stop_area:{}", id))
                     .or_insert(0) += 1
@@ -111,15 +110,13 @@ impl GtfsStop {
             Err(StopConversionErr::NotStopArea)
         } else if self.visible == Some(0) {
             Err(StopConversionErr::InvisibleStop)
-        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT ||
-                   self.stop_lon <= MIN_LON || self.stop_lon >= MAX_LON
+        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT || self.stop_lon <= MIN_LON
+            || self.stop_lon >= MAX_LON
         {
             //Here we return an error message
             Err(StopConversionErr::InvalidStop(format!(
                 "Invalid lon {:?} or lat {:?} for stop {:?}",
-                self.stop_lon,
-                self.stop_lat,
-                self.stop_name
+                self.stop_lon, self.stop_lat, self.stop_name
             )))
         } else {
             Ok(mimir::Stop {
@@ -227,9 +224,9 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
 }
 
 fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, String> {
-    rubber.get_all_objects_from_index(&index).map_err(
-        |e| e.to_string(),
-    )
+    rubber
+        .get_all_objects_from_index(&index)
+        .map_err(|e| e.to_string())
 }
 
 fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
@@ -250,9 +247,9 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
         .flat_map(|stops| stops.into_iter())
         .collect();
 
-    let all_es_stops = all_other_es_stops.into_iter().chain(
-        stops.into_iter().cloned(),
-    );
+    let all_es_stops = all_other_es_stops
+        .into_iter()
+        .chain(stops.into_iter().cloned());
 
     let all_merged_stops = merge_stops(all_es_stops);
     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);

@@ -29,14 +29,13 @@
 // www.navitia.io
 //
 
-extern crate osmpbfreader;
 extern crate mimir;
+extern crate osmpbfreader;
 use std::collections::BTreeMap;
 
 pub fn named_node(lat: f64, lon: f64, name: &'static str) -> (mimir::Coord, Option<String>) {
     (mimir::Coord::new(lon, lat), Some(name.to_string()))
 }
-
 
 pub struct Relation<'a> {
     builder: &'a mut OsmBuilder,
@@ -46,11 +45,10 @@ pub struct Relation<'a> {
 impl<'a> Relation<'a> {
     pub fn outer(&mut self, coords: Vec<(mimir::Coord, Option<String>)>) -> &'a mut Relation {
         let id = self.builder.way(coords);
-        if let &mut osmpbfreader::OsmObj::Relation(ref mut rel) =
-            self.builder
-                .objects
-                .get_mut(&self.relation_id.into())
-                .unwrap()
+        if let &mut osmpbfreader::OsmObj::Relation(ref mut rel) = self.builder
+            .objects
+            .get_mut(&self.relation_id.into())
+            .unwrap()
         {
             rel.refs.push(osmpbfreader::Ref {
                 role: "outer".to_string(),

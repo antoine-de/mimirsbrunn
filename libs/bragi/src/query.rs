@@ -36,7 +36,7 @@ use rs_es::units as rs_u;
 use mimir;
 use serde_json;
 use serde;
-use mimir::objects::{MimirObject, Admin, Addr, Stop, Street, Poi};
+use mimir::objects::{Addr, Admin, MimirObject, Poi, Stop, Street};
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
@@ -85,7 +85,6 @@ fn build_proximity_with_boost(coord: &model::Coord, boost: f64) -> Query {
         )
         .build()
 }
-
 
 // filter to handle PT coverages
 // we either want:
@@ -148,12 +147,10 @@ fn build_query(
     // Priorization by importance
     let importance_query = match coord {
         &Some(ref c) => build_proximity_with_boost(c, 100.),
-        &None => {
-            Query::build_function_score()
-                .with_function(Function::build_field_value_factor("weight").build())
-                .with_boost(30.)
-                .build()
-        }
+        &None => Query::build_function_score()
+            .with_function(Function::build_field_value_factor("weight").build())
+            .with_boost(30.)
+            .build(),
     };
 
     // filter to handle house number
@@ -165,8 +162,7 @@ fn build_query(
             Query::build_bool()
                 .with_must_not(Query::build_exists("house_number").build())
                 .build(),
-            Query::build_match("house_number", q.to_string())
-                .build(),
+            Query::build_match("house_number", q.to_string()).build(),
         ])
         .build();
 
@@ -177,11 +173,9 @@ fn build_query(
         // When the match type is Prefix, we want to use every possible information even though
         // these are not present in label, for instance, the zip_code.
         // The field full_label contains all of them and will do the trick.
-        MatchType::Prefix => {
-            Query::build_match("full_label.prefix".to_string(), q.to_string())
-                .with_operator("and")
-                .build()
-        }
+        MatchType::Prefix => Query::build_match("full_label.prefix".to_string(), q.to_string())
+            .with_operator("and")
+            .build(),
         // for fuzzy search we lower our expectation & we accept a certain percentage of token match
         // on full_label.ngram
         // The values defined here are empirical,
@@ -192,15 +186,13 @@ fn build_query(
         //     Vaureaaal (instead of Vaureal)
         // Very long requests:
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
-        MatchType::Fuzzy => {
-            Query::build_match("full_label.ngram".to_string(), q.to_string())
-                .with_minimum_should_match(MinimumShouldMatch::from(vec![
-                    CombinationMinimumShouldMatch::new(1i64, 75f64),
-                    CombinationMinimumShouldMatch::new(6i64, 60f64),
-                    CombinationMinimumShouldMatch::new(9i64, 40f64),
-                ]))
-                .build()
-        }
+        MatchType::Fuzzy => Query::build_match("full_label.ngram".to_string(), q.to_string())
+            .with_minimum_should_match(MinimumShouldMatch::from(vec![
+                CombinationMinimumShouldMatch::new(1i64, 75f64),
+                CombinationMinimumShouldMatch::new(6i64, 60f64),
+                CombinationMinimumShouldMatch::new(9i64, 40f64),
+            ]))
+            .build(),
     };
 
     let mut filters = vec![house_number_condition, matching_condition];
@@ -264,14 +256,12 @@ fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
     let mut pt_dataset_indexes: Vec<String> = vec![];
     match pt_datasets.len() {
         0 => (),
-        1 => {
-            for pt_dataset in pt_datasets.iter() {
-                try!(push(
-                    &mut pt_dataset_indexes,
-                    format!("munin_stop_{}", pt_dataset).as_str(),
-                ))
-            }
-        }
+        1 => for pt_dataset in pt_datasets.iter() {
+            try!(push(
+                &mut pt_dataset_indexes,
+                format!("munin_stop_{}", pt_dataset).as_str(),
+            ))
+        },
         _ => try!(push(&mut pt_dataset_indexes, "munin_global_stops")),
     };
 
@@ -307,19 +297,16 @@ fn make_indexes(
 fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<mimir::Place>, EsError> {
     debug!(
         "{} documents found in {} ms",
-        result.hits.total,
-        result.took
+        result.hits.total, result.took
     );
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
-    Ok(
-        result
-            .hits
-            .hits
-            .into_iter()
-            .filter_map(|hit| make_place(hit.doc_type, hit.source))
-            .collect(),
-    )
+    Ok(result
+        .hits
+        .hits
+        .into_iter()
+        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .collect())
 }
 
 fn query(
@@ -370,7 +357,6 @@ pub fn features(
     cnx: &str,
     id: &str,
 ) -> Result<Vec<mimir::Place>, EsError> {
-
     let val = rs_es::units::JsonVal::String(id.into());
     let mut filters = vec![Query::build_ids(vec![val]).build()];
 
@@ -447,9 +433,9 @@ pub fn autocomplete(
     types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
-        shape.as_ref().map(
-            |v| v.iter().map(|&l| l.into()).collect(),
-        )
+        shape
+            .as_ref()
+            .map(|v| v.iter().map(|&l| l.into()).collect())
     }
 
     // First we try a pretty exact match on the prefix.

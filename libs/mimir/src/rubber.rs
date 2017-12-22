@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
 use super::objects::{Admin, MimirObject};
 use chrono;
 use hyper;
@@ -127,9 +126,8 @@ impl Rubber {
     pub fn make_index(&self, doc_type: &str, dataset: &str) -> Result<String, String> {
         let index_name = get_date_index_name(&get_main_type_and_dataset_index(doc_type, dataset));
         info!("creating index {}", index_name);
-        self.create_index(&index_name.to_string()).map(
-            |_| index_name,
-        )
+        self.create_index(&index_name.to_string())
+            .map(|_| index_name)
     }
 
     pub fn create_index(&self, name: &String) -> Result<(), String> {
@@ -139,8 +137,7 @@ impl Rubber {
         let analysis = include_str!("../../../json/settings.json");
 
         let mut analysis_json_value = try!(
-            serde_json::from_str::<serde_json::Value>(&analysis)
-                .map_err(|err| format!("{}", err))
+            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| format!("{}", err))
         );
 
         let synonyms: Vec<_> = SYNONYMS
@@ -157,10 +154,12 @@ impl Rubber {
                 info!("Error while creating new index {}", name);
                 e.to_string()
             })
-            .and_then(|res| if res.status == StatusCode::Ok {
-                Ok(())
-            } else {
-                Err(format!("cannot create index: {:?}", res))
+            .and_then(|res| {
+                if res.status == StatusCode::Ok {
+                    Ok(())
+                } else {
+                    Err(format!("cannot create index: {:?}", res))
+                }
             })
     }
 
@@ -176,26 +175,22 @@ impl Rubber {
                 StatusCode::Ok => {
                     let value: serde_json::Value =
                         try!(res.read_response().map_err(|e| e.to_string()));
-                    Ok(
-                        value
-                            .as_object()
-                            .map(|all_aliases| {
-                                all_aliases
-                                    .iter()
-                                    .filter_map(|(i, a)| {
-                                        a.pointer("/aliases").and_then(|a| a.as_object()).map(
-                                        |aliases| {
-                                            (i.clone(), aliases.keys().cloned().collect())
-                                        },
+                    Ok(value
+                        .as_object()
+                        .map(|all_aliases| {
+                            all_aliases
+                                .iter()
+                                .filter_map(|(i, a)| {
+                                    a.pointer("/aliases").and_then(|a| a.as_object()).map(
+                                        |aliases| (i.clone(), aliases.keys().cloned().collect()),
                                     )
-                                    })
-                                    .collect()
-                            })
-                            .unwrap_or_else(|| {
-                                info!("no aliases for {}", base_index);
-                                BTreeMap::new()
-                            }),
-                    )
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_else(|| {
+                            info!("no aliases for {}", base_index);
+                            BTreeMap::new()
+                        }))
                 }
                 StatusCode::NotFound => {
                     info!("impossible to find alias {}", base_index);
@@ -216,13 +211,11 @@ impl Rubber {
     ) -> Result<Vec<String>, String> {
         let base_index = get_main_type_and_dataset_index(doc_type, dataset);
         // we don't want to remove the newly created index
-        Ok(
-            self.get_all_aliased_index(&base_index)?
-                .into_iter()
-                .map(|(k, _)| k)
-                .filter(|i| i.as_str() != new_index)
-                .collect(),
-        )
+        Ok(self.get_all_aliased_index(&base_index)?
+            .into_iter()
+            .map(|(k, _)| k)
+            .filter(|i| i.as_str() != new_index)
+            .collect())
     }
 
     /// publish the index as the new index for this doc_type and this dataset
@@ -239,30 +232,14 @@ impl Rubber {
         let last_indexes = try!(self.get_last_index(&index, doc_type, dataset));
 
         let dataset_index = get_main_type_and_dataset_index(doc_type, dataset);
-        try!(self.alias(
-            &dataset_index,
-            &vec![index.clone()],
-            &last_indexes,
-        ));
+        try!(self.alias(&dataset_index, &vec![index.clone()], &last_indexes,));
 
         let type_index = get_main_type_index(doc_type);
-        try!(self.alias(
-            &type_index,
-            &vec![dataset_index.clone()],
-            &last_indexes,
-        ));
+        try!(self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes,));
 
         if is_geo_data {
-            try!(self.alias(
-                "munin_geo_data",
-                &vec![type_index.to_string()],
-                &vec![],
-            ));
-            try!(self.alias(
-                "munin",
-                &vec!["munin_geo_data".to_string()],
-                &vec![],
-            ));
+            try!(self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![],));
+            try!(self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![],));
         } else {
             try!(self.alias("munin", &vec![type_index.to_string()], &vec![]));
         }
@@ -273,9 +250,9 @@ impl Rubber {
     }
 
     pub fn is_existing_index(&self, name: &String) -> Result<bool, String> {
-        self.get(&name).map_err(|e| e.to_string()).map(|res| {
-            res.status == StatusCode::Ok
-        })
+        self.get(&name)
+            .map_err(|e| e.to_string())
+            .map(|res| res.status == StatusCode::Ok)
     }
 
     /// add a list of new indexes to the alias
@@ -283,44 +260,38 @@ impl Rubber {
     pub fn alias(&self, alias: &str, add: &[String], remove: &[String]) -> Result<(), String> {
         info!(
             "for {}, adding alias {:?}, removing {:?}",
-            alias,
-            add,
-            remove
+            alias, add, remove
         );
-        let add_operations = add.iter().map(|x| {
-            AliasOperation {
-                remove: None,
-                add: Some(AliasParameter {
-                    index: x.clone(),
-                    alias: alias.to_string(),
-                }),
-            }
+        let add_operations = add.iter().map(|x| AliasOperation {
+            remove: None,
+            add: Some(AliasParameter {
+                index: x.clone(),
+                alias: alias.to_string(),
+            }),
         });
-        let remove_operations = remove.iter().map(|x| {
-            AliasOperation {
-                add: None,
-                remove: Some(AliasParameter {
-                    index: x.clone(),
-                    alias: alias.to_string(),
-                }),
-            }
+        let remove_operations = remove.iter().map(|x| AliasOperation {
+            add: None,
+            remove: Some(AliasParameter {
+                index: x.clone(),
+                alias: alias.to_string(),
+            }),
         });
-        let operations =
-            AliasOperations { actions: add_operations.chain(remove_operations).collect() };
+        let operations = AliasOperations {
+            actions: add_operations.chain(remove_operations).collect(),
+        };
         let json = serde_json::to_string(&operations).unwrap();
         self.post("_aliases", &json)
             .map_err(|e| e.to_string())
-            .and_then(|res| if res.status == StatusCode::Ok {
-                Ok(())
-            } else {
-                error!(
-                    "failed to change aliases for {}, es response: {:?}",
-                    alias,
-                    res
-                );
-                Err(
-                    format!("failed to post aliases for {}: {:?}", alias, res).to_string(),
-                )
+            .and_then(|res| {
+                if res.status == StatusCode::Ok {
+                    Ok(())
+                } else {
+                    error!(
+                        "failed to change aliases for {}, es response: {:?}",
+                        alias, res
+                    );
+                    Err(format!("failed to post aliases for {}: {:?}", alias, res).to_string())
+                }
             })
     }
 
@@ -351,9 +322,9 @@ impl Rubber {
         let chunk_size = 1000;
         // fold is used for creating the action and optionally set the id of the object
         let mut actions = iter.map(|v| {
-            v.es_id().into_iter().fold(Action::index(v), |action, id| {
-                action.with_id(id)
-            })
+            v.es_id()
+                .into_iter()
+                .fold(Action::index(v), |action, id| action.with_id(id))
         });
         loop {
             let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
@@ -387,12 +358,7 @@ impl Rubber {
         // TODO better error handling
         let index = try!(self.make_index(T::doc_type(), dataset));
         let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
-        try!(self.publish_index(
-            T::doc_type(),
-            dataset,
-            index,
-            T::is_geo_data(),
-        ));
+        try!(self.publish_index(T::doc_type(), dataset, index, T::is_geo_data(),));
         Ok(nb_elements)
     }
 
@@ -400,9 +366,10 @@ impl Rubber {
         &mut self,
         dataset: &str,
     ) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_all_objects_from_index(
-            &get_main_type_and_dataset_index(Admin::doc_type(), dataset),
-        )
+        self.get_all_objects_from_index(&get_main_type_and_dataset_index(
+            Admin::doc_type(),
+            dataset,
+        ))
     }
 
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {

@@ -28,21 +28,21 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate structopt_derive;
-extern crate structopt;
 extern crate csv;
+extern crate geo;
+#[macro_use]
+extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
-extern crate log;
-extern crate geo;
+extern crate serde_derive;
+extern crate structopt;
+#[macro_use]
+extern crate structopt_derive;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
-use mimir::objects::{Admin, Addr, MimirObject};
+use mimir::objects::{Addr, Admin, MimirObject};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
 use std::rc::Rc;
@@ -94,10 +94,10 @@ impl Bano {
             admins.push(admin.clone());
         }
 
-        let weight = admins.iter().find(|a| a.level == 8).map_or(
-            0.,
-            |a| a.weight.get(),
-        );
+        let weight = admins
+            .iter()
+            .find(|a| a.level == 8)
+            .map_or(0., |a| a.weight.get());
 
         let street = mimir::Street {
             id: street_id,
@@ -126,16 +126,15 @@ where
 {
     let mut rubber = Rubber::new(cnx_string);
 
-    let admins = rubber.get_admins_from_dataset(dataset).unwrap_or_else(
-        |err| {
+    let admins = rubber
+        .get_admins_from_dataset(dataset)
+        .unwrap_or_else(|err| {
             info!(
                 "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset,
-                err
+                dataset, err
             );
             vec![]
-        },
-    );
+        });
     let admins_geofinder = admins.iter().cloned().collect();
     let admins_by_insee = admins
         .into_iter()

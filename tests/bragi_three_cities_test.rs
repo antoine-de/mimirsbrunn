@@ -37,7 +37,6 @@ use super::get_value;
 use super::get_types;
 use super::count_types;
 
-
 pub fn bragi_three_cities_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
@@ -75,15 +74,16 @@ pub fn bragi_three_cities_test(es_wrapper: ::ElasticSearchWrapper) {
     three_cities_shape_test(&bragi);
 }
 
-
 fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
     // we search for a house number with a postcode, we should be able to find
     // the house number with this number in this city
     let all_20 = bragi.get("/autocomplete?q=3 rue 77255");
     assert_eq!(all_20.len(), 1);
-    assert!(get_values(&all_20, "postcode").iter().all(
-        |r| *r == "77255",
-    ));
+    assert!(
+        get_values(&all_20, "postcode")
+            .iter()
+            .all(|r| *r == "77255",)
+    );
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);
@@ -106,9 +106,11 @@ fn three_cities_zip_code_test(bragi: &BragiHandler) {
     // and some street of it (and all on this admin)
     let res = bragi.get("/autocomplete?q=77000");
     assert_eq!(res.len(), 10);
-    assert!(get_values(&res, "postcode").iter().all(
-        |r| r.contains("77000"),
-    ));
+    assert!(
+        get_values(&res, "postcode")
+            .iter()
+            .all(|r| r.contains("77000"),)
+    );
     let types = get_types(&res);
     // since we did not ask for an house number, we should get none
     assert_eq!(count_types(&types, "house"), 0);
@@ -117,9 +119,11 @@ fn three_cities_zip_code_test(bragi: &BragiHandler) {
 fn three_cities_zip_code_address_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77288 2 Rue de la Reine Blanche");
     assert_eq!(all_20.len(), 1);
-    assert!(get_values(&all_20, "postcode").iter().all(
-        |r| *r == "77288",
-    ));
+    assert!(
+        get_values(&all_20, "postcode")
+            .iter()
+            .all(|r| *r == "77288",)
+    );
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);
@@ -135,7 +139,6 @@ fn three_cities_zip_code_address_test(bragi: &BragiHandler) {
         vec!["2 Rue de la Reine Blanche (Melun)"]
     );
 }
-
 
 fn three_cities_shape_test(bragi: &BragiHandler) {
     //      A ---------------------D

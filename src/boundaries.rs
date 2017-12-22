@@ -28,12 +28,12 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 extern crate log;
-extern crate osmpbfreader;
 extern crate mimir;
 extern crate osm_builder;
+extern crate osmpbfreader;
 
 use std::collections::BTreeMap;
-use geo::{Polygon, MultiPolygon, LineString, Coordinate, Point};
+use geo::{Coordinate, LineString, MultiPolygon, Point, Polygon};
 use geo::algorithm::centroid::Centroid;
 
 #[cfg(test)]
@@ -62,12 +62,12 @@ fn get_nodes(
     way.nodes
         .iter()
         .filter_map(|node_id| objects.get(&osmpbfreader::OsmId::Node(*node_id)))
-        .filter_map(|node_obj| if let osmpbfreader::OsmObj::Node(ref node) =
-            *node_obj
-        {
-            Some(node.clone())
-        } else {
-            None
+        .filter_map(|node_obj| {
+            if let osmpbfreader::OsmObj::Node(ref node) = *node_obj {
+                Some(node.clone())
+            } else {
+                None
+            }
         })
         .collect()
 }
@@ -142,8 +142,7 @@ pub fn build_boundary(
             if obj.is_none() {
                 debug!(
                     "missing element {:?} for relation {}",
-                    r.member,
-                    relation.id.0
+                    r.member, relation.id.0
                 );
             }
             obj
@@ -359,7 +358,6 @@ fn test_build_one_boundary_closed() {
         assert!(false); //this should not happen
     }
 }
-
 
 #[test]
 fn test_build_two_opposite_clockwise_boundaries() {

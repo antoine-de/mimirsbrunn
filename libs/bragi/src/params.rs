@@ -33,19 +33,16 @@ use valico::common::error as valico_error;
 use rustless::json::JsonValue;
 use std::str::FromStr;
 
-
 const MAX_LAT: f64 = 180f64;
 const MIN_LAT: f64 = -180f64;
 
 const MAX_LON: f64 = 90f64;
 const MIN_LON: f64 = -90f64;
 
-
 pub fn dataset_param(params: &mut Builder) {
-    params.opt(
-        "pt_dataset",
-        |t| { t.coerce(json_dsl::encoded_array(",")); },
-    );
+    params.opt("pt_dataset", |t| {
+        t.coerce(json_dsl::encoded_array(","));
+    });
     params.opt_typed("_all_data", json_dsl::boolean());
 }
 
@@ -86,7 +83,7 @@ pub fn coord_param(params: &mut Builder, is_opt: bool) {
                         path: path.to_string(),
                         detail: Some(
                             "you need to provide a lon AND a lat \
-                                           if you provide one of them"
+                             if you provide one of them"
                                 .to_string(),
                         ),
                     }),
@@ -149,7 +146,6 @@ pub fn get_param_array<'a>(params: &'a JsonValue, param_name: &str) -> Vec<&'a s
         .unwrap_or(vec![])
 }
 
-
 fn check_bound(
     val: &JsonValue,
     path: &str,
@@ -193,7 +189,6 @@ fn check_coordinates(
     path: &str,
     error_msg: &str,
 ) -> Result<(), valico_error::ValicoErrors> {
-
     if !val.is_array() {
         return Err(vec![
             Box::new(json_dsl::errors::WrongType {
