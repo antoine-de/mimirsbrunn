@@ -7,16 +7,19 @@ rust:
   - stable
   - beta
   - nightly
+env:
+  - NOTHING=INTERESTING
 matrix:
+  include:
+    - rust: nightly
+      env: RUSTFMT=YESPLEASE
+      before_script: cargo install rustfmt-nightly --force
+      script: cargo fmt --all -- --write-mode diff
   allow_failures:
     - rust: nightly
+      env: NOTHING=INTERESTING
 
 script:
-  - cargo fmt -- --write-mode=diff
-  - (cd libs/bragi && cargo fmt -- --write-mode=diff)
-  - (cd libs/docker_wrapper && cargo fmt -- --write-mode=diff)
-  - (cd libs/mimir && cargo fmt -- --write-mode=diff)
-  - (cd libs/osm_builder && cargo fmt -- --write-mode=diff)
   - cargo test --all
 
 services:
