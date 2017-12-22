@@ -93,7 +93,7 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
 	let keys = ["addr:postcode", "amenity", "atm", "name", "operator", "phone", "ref:FR:LaPoste", "source", "wheelchair"];
 	for p in properties {
 	    let key = p["key"].as_str().unwrap();
-	    keys.contains(&key);
+	    assert!(keys.contains(&key));
 	}
 	assert_eq!(properties.len(), keys.len());
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
