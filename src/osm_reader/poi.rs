@@ -191,6 +191,13 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 }
 "#;
 
+fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Property>{
+	tags.iter().map(|property| mimir::Property {
+                key: property.0.to_string(),
+                value: property.1.to_string(),
+        }).collect()
+}
+
 fn parse_poi(
     osmobj: &osmpbfreader::OsmObj,
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
@@ -250,6 +257,7 @@ fn parse_poi(
         administrative_regions: adms,
         weight: 0.,
         poi_type: poi_type.clone(),
+        properties: make_properties(osmobj.tags())
     })
 }
 
