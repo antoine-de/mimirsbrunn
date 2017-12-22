@@ -28,8 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate serde_json;
 extern crate mimir;
+extern crate serde_json;
 
 /// Simple call to a stops2mimir load into ES base
 /// Checks that we are able to find one object (a specific address)

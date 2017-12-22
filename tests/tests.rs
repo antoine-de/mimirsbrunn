@@ -28,21 +28,21 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimir;
+extern crate bragi;
 extern crate docker_wrapper;
 extern crate hyper;
-extern crate rs_es;
-extern crate rustless;
 extern crate iron;
 extern crate iron_test;
-extern crate mime;
-#[macro_use]
-extern crate serde_json;
-extern crate bragi;
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate mdo;
+extern crate mime;
+extern crate mimir;
+extern crate rs_es;
+extern crate rustless;
+#[macro_use]
+extern crate serde_json;
 
 mod bano2mimir_test;
 mod osm2mimir_test;
@@ -76,7 +76,6 @@ impl ToJson for Response {
         }
     }
 }
-
 
 pub struct ElasticSearchWrapper<'a> {
     docker_wrapper: &'a DockerWrapper,
@@ -164,7 +163,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
         use serde_json::value::Value;
-        use serde_json::map::{Map, Entry};
+        use serde_json::map::{Entry, Map};
         fn into_object(json: Value) -> Option<Map<String, Value>> {
             match json {
                 Value::Object(o) => Some(o),
@@ -207,14 +206,14 @@ impl<'a> ElasticSearchWrapper<'a> {
                                     })
                                 })
                                 .filter(predicate),
-                        ) as
-                            Box<Iterator<Item = mimir::Place>>)
+                        )
+                            as Box<Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
             })
-            .unwrap_or(Box::new(None.into_iter()) as
-                Box<Iterator<Item = mimir::Place>>)
+            .unwrap_or(Box::new(None.into_iter())
+                as Box<Iterator<Item = mimir::Place>>)
     }
 }
 
@@ -235,7 +234,9 @@ pub struct BragiHandler {
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
         let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
-        BragiHandler { app: rustless::Application::new(api) }
+        BragiHandler {
+            app: rustless::Application::new(api),
+        }
     }
 
     pub fn raw_get(&self, q: &str) -> iron::IronResult<iron::Response> {
@@ -306,9 +307,7 @@ pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
 
 pub fn filter_by_type<'a>(r: &'a [Map<String, Value>], t: &'a str) -> Vec<Map<String, Value>> {
     r.iter()
-        .filter(|e| {
-            e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t
-        })
+        .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
         .cloned()
         .collect()
 }
@@ -330,9 +329,9 @@ fn all_tests() {
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_test::osm2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     stops2mimir_test::stops2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
-    osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(
-        ElasticSearchWrapper::new(&docker_wrapper),
-    );
+    osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(ElasticSearchWrapper::new(
+        &docker_wrapper,
+    ));
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_ghost_index_cleanup(ElasticSearchWrapper::new(&docker_wrapper));

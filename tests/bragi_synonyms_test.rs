@@ -34,7 +34,6 @@ extern crate serde_json;
 use super::BragiHandler;
 use super::get_values;
 
-
 pub fn bragi_synonyms_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
@@ -80,20 +79,23 @@ pub fn bragi_synonyms_test(es_wrapper: ::ElasticSearchWrapper) {
         &es_wrapper,
     );
 
-
     synonyms_test(&bragi);
 }
 
 fn synonyms_test(bragi: &BragiHandler) {
     // Test that we find Hôtel de Ville
     let response = bragi.get("/autocomplete?q=hotel de ville");
-    assert!(get_values(&response, "label").iter().all(|r| {
-        r.contains("Hôtel de Ville")
-    }));
+    assert!(
+        get_values(&response, "label")
+            .iter()
+            .all(|r| r.contains("Hôtel de Ville"))
+    );
 
     // Test we find the same result as above as mairie is synonym of hotel de ville
     let response = bragi.get("/autocomplete?q=mairie");
-    assert!(get_values(&response, "label").iter().all(|r| {
-        r.contains("Hôtel de Ville")
-    }));
+    assert!(
+        get_values(&response, "label")
+            .iter()
+            .all(|r| r.contains("Hôtel de Ville"))
+    );
 }

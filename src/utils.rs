@@ -39,12 +39,12 @@ pub fn format_label(admins: &[Rc<mimir::Admin>], city_level: u32, name: &str) ->
 }
 
 pub fn get_zip_codes_from_admins(admins: &[Rc<mimir::Admin>]) -> Vec<String> {
-    let level = admins.iter().fold(0, |level, adm| if adm.level > level &&
-        !adm.zip_codes.is_empty()
-    {
-        adm.level
-    } else {
-        level
+    let level = admins.iter().fold(0, |level, adm| {
+        if adm.level > level && !adm.zip_codes.is_empty() {
+            adm.level
+        } else {
+            level
+        }
     });
     if level == 0 {
         return vec![];

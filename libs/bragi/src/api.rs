@@ -30,17 +30,16 @@
 use rustless;
 use serde;
 use serde_json;
-use rustless::server::{status, header};
+use rustless::server::{header, status};
 use rustless::{Api, Nesting};
 use valico::json_dsl;
 use super::query;
 use model::v1::*;
 use model;
-use params::{dataset_param, paginate_param, shape_param, types_param, coord_param, get_param_array};
+use params::{coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param};
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
-
 
 fn render<T>(
     mut client: rustless::Client,
@@ -54,18 +53,18 @@ where
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
-
 pub struct ApiEndPoint {
     pub es_cnx_string: String,
 }
-
 
 impl ApiEndPoint {
     pub fn root(&self) -> rustless::Api {
         Api::build(|api| {
             api.get("", |endpoint| {
                 endpoint.handle(|client, _params| {
-                    let desc = EndPoint { description: "autocomplete service".to_string() };
+                    let desc = EndPoint {
+                        description: "autocomplete service".to_string(),
+                    };
                     render(client, desc)
                 })
             });
@@ -124,7 +123,9 @@ impl ApiEndPoint {
     fn reverse(&self) -> rustless::Api {
         Api::build(|api| {
             api.get("reverse", |endpoint| {
-                endpoint.params(|params| { coord_param(params, false); });
+                endpoint.params(|params| {
+                    coord_param(params, false);
+                });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let coord = model::Coord {
@@ -152,10 +153,9 @@ impl ApiEndPoint {
                 endpoint.handle(move |mut client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
-                    let all_data = params.find("_all_data").map_or(
-                        false,
-                        |val| val.as_bool().unwrap(),
-                    );
+                    let all_data = params
+                        .find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
                     let features = query::features(&pt_datasets, all_data, &cnx, &id);
                     if features.is_err() {
                         client.set_status(status::StatusCode::NotFound);
@@ -186,10 +186,9 @@ impl ApiEndPoint {
                         .unwrap_or("")
                         .to_string();
                     let pt_datasets = get_param_array(params, "pt_dataset");
-                    let all_data = params.find("_all_data").map_or(
-                        false,
-                        |val| val.as_bool().unwrap(),
-                    );
+                    let all_data = params
+                        .find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
                     let offset = params
                         .find("offset")
                         .and_then(|val| val.as_u64())
@@ -245,10 +244,9 @@ impl ApiEndPoint {
                         .unwrap_or("")
                         .to_string();
                     let pt_datasets = get_param_array(params, "pt_dataset");
-                    let all_data = params.find("_all_data").map_or(
-                        false,
-                        |val| val.as_bool().unwrap(),
-                    );
+                    let all_data = params
+                        .find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
                     let offset = params
                         .find("offset")
                         .and_then(|val| val.as_u64())

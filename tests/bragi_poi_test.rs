@@ -39,8 +39,7 @@ use super::get_value;
 use super::get_types;
 use super::count_types;
 use super::filter_by_type;
-use mimir::{Poi, MimirObject};
-
+use mimir::{MimirObject, Poi};
 
 pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
@@ -81,7 +80,6 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     poi_misspelt_one_word_admin_test(&bragi);
 }
 
-
 fn poi_admin_address_test(bragi: &BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies");
     let types = get_types(&geocodings);
@@ -89,13 +87,25 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
 
     // the first element returned should be the poi 'Le-Mée-sur-Seine Courtilleraies'
     let poi = geocodings.first().unwrap();
-	let properties = poi.get("properties").and_then(|json| json.as_array()).unwrap();
-	let keys = ["addr:postcode", "amenity", "atm", "name", "operator", "phone", "ref:FR:LaPoste", "source", "wheelchair"];
-	for p in properties {
-	    let key = p["key"].as_str().unwrap();
-	    assert!(keys.contains(&key));
-	}
-	assert_eq!(properties.len(), keys.len());
+    let properties = poi.get("properties")
+        .and_then(|json| json.as_array())
+        .unwrap();
+    let keys = [
+        "addr:postcode",
+        "amenity",
+        "atm",
+        "name",
+        "operator",
+        "phone",
+        "ref:FR:LaPoste",
+        "source",
+        "wheelchair",
+    ];
+    for p in properties {
+        let key = p["key"].as_str().unwrap();
+        assert!(keys.contains(&key));
+    }
+    assert_eq!(properties.len(), keys.len());
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "label"), "Le-Mée-sur-Seine Courtilleraies");
     assert_eq!(get_value(poi, "postcode"), "77350");
@@ -108,9 +118,7 @@ fn poi_admin_test(bragi: &BragiHandler) {
     let count = count_types(&types, Poi::doc_type());
     assert!(count >= 1);
 
-    assert!(get_values(&geocodings, "label").contains(
-        &"Melun Rp (Melun)",
-    ));
+    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)",));
 
     // when we search for just 'Melun', we should find some places in melun
     let geocodings = bragi.get("/autocomplete?q=Melun");
@@ -195,9 +203,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     // (barycenter not computed so far), it should be filtered.
     let geocodings = bragi.get("/autocomplete?q=ENSE3 site Ampère");
     // we can find other results (due to the fuzzy search, but we can't find the 'site Ampère')
-    assert!(!get_values(&geocodings, "label").contains(
-        &"ENSE3 site Ampère",
-    ));
+    assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère",));
 }
 
 fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
@@ -206,9 +212,7 @@ fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
     let types = get_types(&geocodings);
     let count = count_types(&types, Poi::doc_type());
     assert!(count >= 1);
-    assert!(get_values(&geocodings, "label").contains(
-        &"Melun Rp (Melun)",
-    ));
+    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)",));
 
     // when we search for 'Meluuun', we should find some places in melun
     let geocodings = bragi.get("/autocomplete?q=Meluuun");

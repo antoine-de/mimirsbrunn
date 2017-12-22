@@ -42,8 +42,7 @@ pub struct Geocoding {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Feature {
-    #[serde(rename = "type")]
-    pub feature_type: String,
+    #[serde(rename = "type")] pub feature_type: String,
     pub geometry: geojson::Geometry,
     pub properties: Properties,
 }
@@ -56,19 +55,15 @@ pub struct Properties {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GeocodingResponse {
     pub id: String,
-    #[serde(rename = "type")]
-    pub place_type: String, // FIXME: use an enum?
+    #[serde(rename = "type")] pub place_type: String, // FIXME: use an enum?
     pub label: Option<String>,
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub housenumber: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub street: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub housenumber: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
     pub citycode: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub level: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub level: Option<u32>,
     // pub accuracy: Option<i32>,
     // pub district: Option<String>,
     // pub county: Option<String>,
@@ -76,12 +71,9 @@ pub struct GeocodingResponse {
     // pub country: Option<String>,
     // pub geohash: Option<String>,
     pub administrative_regions: Vec<Rc<mimir::Admin>>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub poi_types: Vec<mimir::PoiType>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub properties: Vec<mimir::Property>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)] pub poi_types: Vec<mimir::PoiType>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)] pub properties: Vec<mimir::Property>,
 }
-
 
 trait ToGeom {
     fn to_geom(&self) -> geojson::Geometry;
@@ -118,7 +110,9 @@ impl From<mimir::Place> for Feature {
         Feature {
             feature_type: "Feature".to_string(),
             geometry: geom,
-            properties: Properties { geocoding: geocoding },
+            properties: Properties {
+                geocoding: geocoding,
+            },
         }
     }
 }
@@ -212,8 +206,7 @@ impl From<mimir::Addr> for GeocodingResponse {
         let street_name = Some(other.street.street_name.to_string());
         let name = Some(format!(
             "{} {}",
-            other.house_number,
-            other.street.street_name
+            other.house_number, other.street.street_name
         ));
         let admins = other.street.administrative_regions;
         let city = get_city_name(&admins);
@@ -308,8 +301,7 @@ impl From<mimir::Stop> for GeocodingResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Autocomplete {
-    #[serde(rename = "type")]
-    format_type: String,
+    #[serde(rename = "type")] format_type: String,
     geocoding: Geocoding,
     features: Vec<Feature>,
 }
@@ -361,7 +353,6 @@ pub mod v1 {
         pub long: String,
     }
 
-
     #[derive(Serialize, Deserialize, Debug)]
     pub enum V1Reponse {
         Error(CustomError),
@@ -372,7 +363,6 @@ pub mod v1 {
         Error(CustomError),
         Autocomplete(super::Autocomplete),
     }
-
 
     use serde;
     impl serde::Serialize for AutocompleteResponse {
@@ -398,12 +388,10 @@ pub mod v1 {
         fn from(r: Result<Vec<mimir::Place>, rs_es::error::EsError>) -> AutocompleteResponse {
             match r {
                 Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
-                Err(e) => {
-                    AutocompleteResponse::Error(CustomError {
-                        short: "query error".to_string(),
-                        long: format!("invalid query {:?}", e),
-                    })
-                }
+                Err(e) => AutocompleteResponse::Error(CustomError {
+                    short: "query error".to_string(),
+                    long: format!("invalid query {:?}", e),
+                }),
             }
         }
     }

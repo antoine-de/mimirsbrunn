@@ -64,12 +64,12 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(first_indexes.len(), 1);
     // our index should be aliased by the master_index + an alias over the document type + dataset
     let aliases = mdo! {
-         s =<< raw_indexes.get(first_indexes.first().unwrap());
-         s =<< s.as_object();
-         s =<< s.get("aliases");
-         s =<< s.as_object();
-         ret ret(s.keys().cloned().collect())
-     }.unwrap_or_else(Vec::new);
+        s =<< raw_indexes.get(first_indexes.first().unwrap());
+        s =<< s.as_object();
+        s =<< s.get("aliases");
+        s =<< s.as_object();
+        ret ret(s.keys().cloned().collect())
+    }.unwrap_or_else(Vec::new);
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(
         aliases,

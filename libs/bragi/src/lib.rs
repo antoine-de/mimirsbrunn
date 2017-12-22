@@ -28,23 +28,23 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate structopt_derive;
-extern crate structopt;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde;
-extern crate serde_json;
-extern crate iron;
-extern crate urlencoded;
-extern crate rustless;
-extern crate valico;
-extern crate mimir;
-extern crate geojson;
 extern crate geo;
-extern crate rs_es;
+extern crate geojson;
+extern crate iron;
 #[macro_use]
 extern crate log;
+extern crate mimir;
+extern crate rs_es;
+extern crate rustless;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+extern crate structopt;
+#[macro_use]
+extern crate structopt_derive;
+extern crate urlencoded;
+extern crate valico;
 
 use structopt::StructOpt;
 use iron::Iron;
@@ -75,9 +75,10 @@ pub fn runserver() {
             args.connection_string = s;
         }
     }
-    let api = api::ApiEndPoint { es_cnx_string: args.connection_string.clone() }.root();
+    let api = api::ApiEndPoint {
+        es_cnx_string: args.connection_string.clone(),
+    }.root();
     let app = Application::new(api);
     println!("listening on {}", args.bind);
     Iron::new(app).http(args.bind.as_str()).unwrap();
-
 }

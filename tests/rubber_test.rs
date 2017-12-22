@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use serde_json::value::Value;
-use mimir::{Street, Admin, Coord, MimirObject};
+use mimir::{Admin, Coord, MimirObject, Street};
 use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
@@ -37,7 +37,7 @@ use hyper;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
-    // we should have our elt
+                                   // we should have our elt
     assert_eq!(search.pointer("/hits/total"), Some(&json!(1)));
     fun(search.pointer("/hits/hits/0").unwrap());
 }
@@ -129,7 +129,6 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         let es_coord = es_bob.pointer("/coord").unwrap();
         assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
         assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
-
     };
     check_has_elt(&es, check_is_bobette);
 }

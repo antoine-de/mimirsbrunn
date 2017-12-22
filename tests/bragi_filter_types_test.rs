@@ -32,10 +32,9 @@ extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
 use super::BragiHandler;
-use super::{count_types, get_types, to_json, get_value};
+use super::{count_types, get_types, get_value, to_json};
 use super::get_values;
 use rustless::server::status::StatusCode::{BadRequest, NotFound};
-
 
 pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
@@ -96,7 +95,6 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     stop_area_that_does_not_exists(&bragi);
 }
 
-
 fn no_type_no_dataset_test(bragi: &BragiHandler) {
     // with this query we should not find any stops
     let response = bragi.get("/autocomplete?q=Parking vélo Saint-Martin");
@@ -107,17 +105,15 @@ fn no_type_no_dataset_test(bragi: &BragiHandler) {
 
 fn type_stop_area_no_dataset_test(bragi: &BragiHandler) {
     // with this query we should return an empty response
-    let response = bragi.get(
-        "/autocomplete?q=Parking vélo Saint-Martin&type[]=public_transport:stop_area",
-    );
+    let response =
+        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&type[]=public_transport:stop_area");
     assert!(response.is_empty());
 }
 
 fn type_poi_and_dataset_test(bragi: &BragiHandler) {
     // with this query we should only find pois
-    let response = bragi.get(
-        "/autocomplete?q=Parking vélo Saint-Martin&pt_dataset=dataset1&type[]=poi",
-    );
+    let response =
+        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&pt_dataset=dataset1&type[]=poi");
     let types = get_types(&response);
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "city"), 0);
@@ -155,7 +151,7 @@ fn type_stop_area_dataset_test(bragi: &BragiHandler) {
     // with this query we should only find stop areas
     let response = bragi.get(
         "/autocomplete?q=Vaux-le-Pénil&pt_dataset=dataset1&type[]=public_transport:\
-                   stop_area",
+         stop_area",
     );
     let types = get_types(&response);
     assert!(count_types(&types, "public_transport:stop_area") > 0);
@@ -214,15 +210,12 @@ fn stop_by_id_test(bragi: &BragiHandler) {
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
-
 }
 
 fn stop_area_that_does_not_exists(bragi: &BragiHandler) {
     // search with id
     let response = bragi
-        .raw_get(
-            "/features/stop_area:SA:second_station::AA?pt_dataset=dataset1",
-        )
+        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1")
         .unwrap();
 
     assert_eq!(response.status, Some(NotFound));

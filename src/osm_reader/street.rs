@@ -33,7 +33,7 @@ extern crate mimir;
 extern crate osmpbfreader;
 
 use admin_geofinder::AdminGeoFinder;
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use utils::{format_label, get_zip_codes_from_admins};
 use super::osm_utils::get_way_coord;
@@ -55,19 +55,15 @@ pub fn streets(
     admins_geofinder: &AdminGeoFinder,
     city_level: u32,
 ) -> StreetsVec {
-
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
-                way.tags.get("highway").map_or(false, |v| !v.is_empty()) &&
-                    way.tags.get("name").map_or(false, |v| !v.is_empty())
+                way.tags.get("highway").map_or(false, |v| !v.is_empty())
+                    && way.tags.get("name").map_or(false, |v| !v.is_empty())
             }
-            osmpbfreader::OsmObj::Relation(ref rel) => {
-                rel.tags.get("type").map_or(
-                    false,
-                    |v| v == "associatedStreet",
-                )
-            }
+            osmpbfreader::OsmObj::Relation(ref rel) => rel.tags
+                .get("type")
+                .map_or(false, |v| v == "associatedStreet"),
             _ => false,
         }
     }
@@ -85,14 +81,12 @@ pub fn streets(
     for rel in objs_map.iter().filter_map(|(_, obj)| obj.relation()) {
         let way_name = rel.tags.get("name");
         for ref_obj in &rel.refs {
-
             use mdo::option::*;
             let objs_map = &objs_map;
             let street_list = &mut street_list;
             let admins_geofinder = &admins_geofinder;
 
-            let inserted =
-                mdo! {
+            let inserted = mdo! {
                 when ref_obj.member.is_way();
                 when ref_obj.role == "street";
                 obj =<< objs_map.get(&ref_obj.member);
@@ -138,9 +132,9 @@ pub fn streets(
             way =<< obj.way();
             let admins: BTreeSet<Rc<mimir::Admin>> = get_street_admin(admins_geofinder,
                 objs_map, way)
-            	.into_iter()
-            	.filter(|admin| admin.level == city_level)
-            	.collect();
+                .into_iter()
+                .filter(|admin| admin.level == city_level)
+                .collect();
 
             way_name =<< way.tags.get("name");
             let key = StreetKey{name: way_name.to_string(), admins: admins};
@@ -184,11 +178,9 @@ fn get_street_admin(
         .iter()
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|node_obj| node_obj.node())
-        .map(|node| {
-            geo::Coordinate {
-                x: node.lat(),
-                y: node.lon(),
-            }
+        .map(|node| geo::Coordinate {
+            x: node.lat(),
+            y: node.lon(),
         })
         .next()
         .map_or(vec![], |c| admins_geofinder.get(&c))

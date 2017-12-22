@@ -32,8 +32,8 @@ use geo;
 use serde;
 use std::rc::Rc;
 use std::cell::Cell;
-use serde::ser::{Serializer, SerializeStruct};
-use serde::de::{self, Deserialize, Deserializer, Visitor, SeqAccess, MapAccess};
+use serde::ser::{SerializeStruct, Serializer};
+use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use std::cmp::Ordering;
 use std::fmt;
 
@@ -199,8 +199,7 @@ pub struct Stop {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
-    #[serde(default)]
-    pub coverages: Vec<String>,
+    #[serde(default)] pub coverages: Vec<String>,
 }
 
 impl MimirObject for Stop {
@@ -246,7 +245,7 @@ fn custom_multi_polygon_serialize<S>(
 where
     S: Serializer,
 {
-    use geojson::{Value, Geometry, GeoJson};
+    use geojson::{GeoJson, Geometry, Value};
     use serde::Serialize;
 
     match *multi_polygon_option {
@@ -404,10 +403,8 @@ pub struct AliasOperations {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AliasOperation {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub add: Option<AliasParameter>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub remove: Option<AliasParameter>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub add: Option<AliasParameter>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub remove: Option<AliasParameter>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -434,8 +431,8 @@ impl Coord {
         self.lat() == 0. && self.lon() == 0.
     }
     pub fn is_valid(&self) -> bool {
-        !self.is_default() && -90. <= self.lat() && self.lat() <= 90. && -180. <= self.lon() &&
-            self.lon() <= 180.
+        !self.is_default() && -90. <= self.lat() && self.lat() <= 90. && -180. <= self.lon()
+            && self.lon() <= 180.
     }
 }
 impl Default for Coord {
@@ -488,12 +485,10 @@ impl<'de> Deserialize<'de> for Coord {
             where
                 V: SeqAccess<'de>,
             {
-                let lat = seq.next_element()?.ok_or_else(
-                    || de::Error::invalid_length(0, &self),
-                )?;
-                let lon = seq.next_element()?.ok_or_else(
-                    || de::Error::invalid_length(1, &self),
-                )?;
+                let lat = seq.next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let lon = seq.next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 Ok(Coord::new(lat, lon))
             }
 

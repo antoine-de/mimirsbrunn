@@ -35,7 +35,6 @@ use super::BragiHandler;
 use super::get_values;
 use super::to_json;
 
-
 pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
@@ -59,7 +58,6 @@ pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
     long_bano_address_test(&bragi);
     reverse_bano_test(&bragi);
 }
-
 
 fn status_test(bragi: &BragiHandler) {
     let resp = bragi.raw_get("/status").unwrap();
@@ -174,7 +172,7 @@ fn long_bano_address_test(bragi: &BragiHandler) {
     // and the "something else" should not disturb the research
     let all_20 = bragi.get(
         "/autocomplete?q=The Marvellous Navitia Developers Kisio Digital 20 rue hector \
-                   malot paris",
+         malot paris",
     );
     assert_eq!(all_20.len(), 1);
     assert_eq!(

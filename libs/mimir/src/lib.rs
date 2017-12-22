@@ -34,15 +34,15 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
+extern crate env_logger;
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 
 extern crate chrono;
-extern crate hyper;
-extern crate rs_es;
 extern crate geo;
 extern crate geojson;
+extern crate hyper;
+extern crate rs_es;
 
 pub mod objects;
 pub mod rubber;

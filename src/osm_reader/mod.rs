@@ -1,5 +1,5 @@
-extern crate osmpbfreader;
 extern crate mimir;
+extern crate osmpbfreader;
 
 use std::fs::File;
 use std::path::Path;
