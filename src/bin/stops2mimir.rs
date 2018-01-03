@@ -294,6 +294,8 @@ fn main() {
 
     info!("creation of indexes");
     let mut rubber = Rubber::new(&args.connection_string);
+    rubber.initialize_templates().unwrap();
+
     let mut rdr = csv::Reader::from_path(args.input).unwrap();
 
     let mut nb_stop_points = HashMap::new();

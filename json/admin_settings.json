@@ -1,0 +1,118 @@
+{
+    "template": "munin_admin_*",
+    "settings": {
+        "number_of_shards": "1",
+        "analysis": {
+            "filter": {
+                "prefix_filter": {
+                    "type":     "edge_ngram",
+                    "min_gram": 1,
+                    "max_gram": 20
+                },
+                "ngram_filter": {
+                    "type": "nGram",
+                    "min_gram": "3",
+                    "max_gram": "3"
+                },
+                "synonym_filter": {
+                    "type": "synonym",
+                    "synonyms": ["hackwillbereplacedatindexcreation,hackwillbereplacedatindexcreation"]
+                }
+            },
+            "analyzer": {
+                "word": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding" ],
+                    "char_filter" : [ ]
+                },
+                "prefix": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
+                    "char_filter" : [ ]
+                },
+                "ngram_with_synonyms": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding", "synonym_filter", "ngram_filter" ],
+                    "char_filter" : [ ]
+                },
+                "ngram": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "lowercase", "asciifolding", "ngram_filter" ],
+                    "char_filter" : [ ]
+                }
+            }
+        }
+    },
+    "mappings": {
+        "admin": {
+            "properties": {
+                "id": { "type": "string", "index": "no" },
+                "level": { "type": "long", "index": "no" },
+                "zip_codes": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "copy_to": "full_label",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        }
+                    }
+                },
+                "coord": {
+                    "type": "geo_point",
+                    "lat_lon": true,
+                    "geohash_prefix": true,
+                    "geohash_precision": "1m"
+                },
+                "label": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "copy_to": "full_label",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        },
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
+                    }
+                },
+                "full_label": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        },
+                        "ngram": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "ngram_with_synonyms",
+                            "search_analyzer": "ngram"
+                        }
+                    }
+                },
+                "weight": { "type": "double" }
+            }
+        }
+    }
+}

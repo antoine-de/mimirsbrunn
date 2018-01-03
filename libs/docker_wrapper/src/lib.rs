@@ -35,6 +35,9 @@ extern crate retry;
 use std::process::Command;
 use std::error::Error;
 
+extern crate mimir;
+use mimir::rubber::Rubber;
+
 /// This struct wraps a docker (for the moment explicitly ElasticSearch)
 /// Allowing to setup a docker, tear it down and to provide its address and port
 pub struct DockerWrapper {
@@ -93,6 +96,8 @@ impl DockerWrapper {
     pub fn new() -> Result<DockerWrapper, Box<Error>> {
         let mut wrapper = DockerWrapper { ip: "".to_string() };
         try!(wrapper.setup());
+        let rubber = Rubber::new(&wrapper.host());
+        rubber.initialize_templates().unwrap();
         Ok(wrapper)
     }
 }
