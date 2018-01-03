@@ -184,7 +184,7 @@ struct Args {
 }
 
 fn main() {
-    mimir::logger_init().unwrap();
+    mimir::logger_init();
     info!("importing bano into Mimir");
 
     let args = Args::from_args();

@@ -5,7 +5,7 @@ authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
 [dependencies]
 hyper = "0.10"
-log = "0.3"
+log = "0.4"
 retry = "*"
 
 [dependencies.mimir]

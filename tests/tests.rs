@@ -322,7 +322,7 @@ pub fn count_types(types: &[&str], value: &str) -> usize {
 /// (ES cleanup is handled by `es_wrapper`)
 #[test]
 fn all_tests() {
-    mimir::logger_init().unwrap();
+    mimir::logger_init();
     let docker_wrapper = DockerWrapper::new().unwrap();
 
     // we call all tests here

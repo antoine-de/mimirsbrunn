@@ -287,7 +287,7 @@ fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(
 }
 
 fn main() {
-    mimir::logger_init().unwrap();
+    mimir::logger_init();
     info!("Launching stops2mimir...");
 
     let args = Args::from_args();

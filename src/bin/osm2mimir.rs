@@ -77,7 +77,7 @@ struct Args {
 }
 
 fn main() {
-    mimir::logger_init().unwrap();
+    mimir::logger_init();
     let args = Args::from_args();
 
     let levels = args.level.iter().cloned().collect();

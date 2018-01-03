@@ -4,8 +4,8 @@ version = "1.2.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 
 [dependencies]
-log = "*"
-env_logger = "*"
+log = "0.4"
+env_logger = "0.5.0-rc.1"
 rs-es = {version = "0.10", default-features = false}
 serde = {version = "1", features = ["rc"]}
 serde_derive = "1"
