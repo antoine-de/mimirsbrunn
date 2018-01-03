@@ -35,7 +35,6 @@ extern crate retry;
 use std::process::Command;
 use std::error::Error;
 
-
 extern crate mimir;
 use mimir::rubber::Rubber;
 

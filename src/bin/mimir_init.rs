@@ -29,17 +29,15 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate structopt_derive;
-extern crate structopt;
+extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
+extern crate structopt;
 #[macro_use]
-extern crate log;
+extern crate structopt_derive;
 
 use mimir::rubber::Rubber;
 use structopt::StructOpt;
-
-
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -56,5 +54,4 @@ fn main() {
 
     let rubber = Rubber::new(&args.connection_string);
     rubber.initialize_templates().unwrap();
-
 }

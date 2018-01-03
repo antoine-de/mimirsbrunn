@@ -170,10 +170,12 @@ impl Rubber {
                 info!("Error while creating template {}", name);
                 e.to_string()
             })
-            .and_then(|res| if res.status == StatusCode::Ok {
-                Ok(())
-            } else {
-                Err(format!("cannot create template: {:?}", res))
+            .and_then(|res| {
+                if res.status == StatusCode::Ok {
+                    Ok(())
+                } else {
+                    Err(format!("cannot create template: {:?}", res))
+                }
             })
     }
 
