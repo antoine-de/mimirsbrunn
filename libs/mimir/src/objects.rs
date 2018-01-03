@@ -191,6 +191,18 @@ impl Members for Poi {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CommercialMode {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PhysicalMode {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Stop {
     pub id: String,
     pub label: String,
@@ -199,6 +211,8 @@ pub struct Stop {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
+    #[serde(default)] pub commercial_modes: Vec<CommercialMode>,
+    #[serde(default)] pub physical_modes: Vec<PhysicalMode>,
     #[serde(default)] pub coverages: Vec<String>,
 }
 

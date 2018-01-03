@@ -123,6 +123,8 @@ impl GtfsStop {
                 administrative_regions: vec![],
                 name: self.stop_name,
                 coverages: vec![],
+                commercial_modes: vec![],
+                physical_modes: vec![],
             })
         }
     }

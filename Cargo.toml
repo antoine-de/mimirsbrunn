@@ -23,6 +23,7 @@ gst = "0.1"
 ordered-float = "0.0.2"
 mdo = "*"
 itertools = "*"
+navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 
 [dev-dependencies]
 hyper = "0.10"
