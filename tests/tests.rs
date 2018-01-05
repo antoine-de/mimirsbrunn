@@ -56,6 +56,7 @@ mod bragi_poi_test;
 mod bragi_stops_test;
 mod bragi_filter_types_test;
 mod bragi_synonyms_test;
+mod openaddresses2mimir_test;
 
 use docker_wrapper::*;
 use serde_json::Map;
@@ -343,4 +344,5 @@ fn all_tests() {
     bragi_stops_test::bragi_stops_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_filter_types_test::bragi_filter_types_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_synonyms_test::bragi_synonyms_test(ElasticSearchWrapper::new(&docker_wrapper));
+    openaddresses2mimir_test::oa2mimir_simple_test(ElasticSearchWrapper::new(&docker_wrapper));
 }
