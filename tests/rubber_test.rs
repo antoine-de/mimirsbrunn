@@ -235,3 +235,14 @@ fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
     let raw_indexes = json.as_object().unwrap();
     raw_indexes.keys().cloned().collect()
 }
+
+pub fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
+    // we don't want an empty bulk to crash
+    info!("running rubber_empty_bulk");
+    let dataset = "my_dataset";
+    // we index nothing
+    let result = es.rubber
+        .bulk_index(&dataset.into(), std::iter::empty::<Admin>());
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0); // we have indexed nothing, but it's ok
+}
