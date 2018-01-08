@@ -125,10 +125,10 @@ where
             .has_headers(true)
             .from_path(&f)
             .unwrap();
-
-        let iter = rdr.deserialize().map(|r| {
-            let b: OpenAddresse = r.unwrap();
-            b.into_addr(&admins_geofinder)
+        let iter = rdr.deserialize().filter_map(|r| {
+            r.map_err(|e| info!("impossible to read line, error: {}", e))
+                .ok()
+                .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
         });
         match rubber.bulk_index(&addr_index, iter) {
             Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
