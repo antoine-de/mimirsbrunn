@@ -46,7 +46,9 @@ pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
         &es_wrapper,
     );
 
-    let res: Vec<_> = es_wrapper.search_and_filter("72 Otto-Braun-Straße", |_| true).collect();
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("72 Otto-Braun-Straße", |_| true)
+        .collect();
     assert_eq!(res.len(), 1);
 
     // after an import, we should have 1 index, and some aliases to this index
@@ -64,12 +66,12 @@ pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // our index should be aliased by the master_index + an alias over the document type + dataset
     let aliases = mdo! {
-         s =<< raw_indexes.get(first_indexes.first().unwrap());
-         s =<< s.as_object();
-         s =<< s.get("aliases");
-         s =<< s.as_object();
-         ret ret(s.keys().cloned().collect())
-     }.unwrap_or_else(Vec::new);
+        s =<< raw_indexes.get(first_indexes.first().unwrap());
+        s =<< s.as_object();
+        s =<< s.get("aliases");
+        s =<< s.as_object();
+        ret ret(s.keys().cloned().collect())
+    }.unwrap_or_else(Vec::new);
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(
         aliases,
