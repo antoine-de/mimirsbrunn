@@ -368,6 +368,10 @@ impl Rubber {
         });
         loop {
             let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
+
+            if chunk.is_empty() {
+                break;
+            }
             nb += chunk.len();
             try!(
                 self.es_client
