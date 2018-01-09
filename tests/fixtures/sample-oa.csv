@@ -8,4 +8,5 @@ LON,LAT,NUMBER,STREET,UNIT,CITY,DISTRICT,REGION,POSTCODE,ID,HASH
 13.3891903,52.518889,34,Dorotheenstraße,,Berlin,,,10117,,6e93eaafadd1a45c
 13.3897137,52.5186699,35,Dorotheenstraße,,Berlin,,,10117,,025c011f388aa2b2
 13.3894677,52.5186535,37,Dorotheenstraße,,Berlin,,,10117,,d76a05fc52856e17
+13.3894677,52.518658,42,Dorotheenstraße,,Berlin,,,10117,line_without_hash_should_work,
 ,,,,,,,,,badly_formated_line,

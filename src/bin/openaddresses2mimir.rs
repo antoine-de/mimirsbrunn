@@ -58,7 +58,7 @@ pub struct OpenAddresse {
     pub city: String,
     pub number: String,
     pub unit: String,
-    pub hash: String,
+    pub hash: Option<String>,
     pub lat: f64,
     pub lon: f64,
 }
