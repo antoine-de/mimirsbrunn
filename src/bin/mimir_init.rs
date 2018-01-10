@@ -47,7 +47,7 @@ struct Args {
 }
 
 fn main() {
-    mimir::logger_init().unwrap();
+    mimir::logger_init();
     info!("creating templates");
 
     let args = Args::from_args();

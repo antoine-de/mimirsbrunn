@@ -34,7 +34,7 @@ extern crate log;
 extern crate mimir;
 
 fn main() {
-    mimir::logger_init().unwrap();
+    mimir::logger_init();
     debug!("running bragi webserver");
     bragi::runserver();
 }

@@ -47,4 +47,5 @@ extern crate serde_json;
 pub mod boundaries;
 pub mod admin_geofinder;
 pub mod osm_reader;
+pub mod stops;
 pub mod utils;
