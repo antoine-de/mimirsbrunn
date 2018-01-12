@@ -58,13 +58,12 @@ pub struct OpenAddresse {
     pub city: String,
     pub number: String,
     pub unit: String,
-    pub hash: Option<String>,
     pub lat: f64,
     pub lon: f64,
 }
 
 impl OpenAddresse {
-    pub fn into_addr(self, admins_geofinder: &AdminGeoFinder) -> mimir::Addr {
+    pub fn into_addr(self, admins_geofinder: &AdminGeoFinder, city_level: u32) -> mimir::Addr {
         let street_name = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.number, self.street);
         let addr_label = format!("{} ({})", addr_name, self.city);
@@ -76,7 +75,7 @@ impl OpenAddresse {
 
         let weight = admins
             .iter()
-            .find(|a| a.level == 8)
+            .find(|a| a.level == city_level)
             .map_or(0., |a| a.weight.get());
 
         let street = mimir::Street {
@@ -100,7 +99,7 @@ impl OpenAddresse {
     }
 }
 
-fn index_oa<I>(cnx_string: &str, dataset: &str, files: I)
+fn index_oa<I>(cnx_string: &str, dataset: &str, city_level: u32, files: I)
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
@@ -115,7 +114,7 @@ where
             );
             vec![]
         });
-    let admins_geofinder = admins.iter().cloned().collect();
+    let admins_geofinder = admins.into_iter().collect();
 
     let addr_index = rubber.make_index(Addr::doc_type(), dataset).unwrap();
     info!("Add data in elasticsearch db.");
@@ -128,7 +127,7 @@ where
         let iter = rdr.deserialize().filter_map(|r| {
             r.map_err(|e| info!("impossible to read line, error: {}", e))
                 .ok()
-                .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
+                .map(|v: OpenAddresse| v.into_addr(&admins_geofinder, city_level))
         });
         match rubber.bulk_index(&addr_index, iter) {
             Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
@@ -152,6 +151,9 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
+    /// City level to  calculate weight.
+    #[structopt(short = "C", long = "city-level", default_value = "8")]
+    city_level: u32,
 }
 
 fn main() {
@@ -166,12 +168,14 @@ fn main() {
         index_oa(
             &args.connection_string,
             &args.dataset,
+            args.city_level,
             paths.map(|p| p.unwrap().path()),
         );
     } else {
         index_oa(
             &args.connection_string,
             &args.dataset,
+            args.city_level,
             std::iter::once(std::path::PathBuf::from(&args.input)),
         );
     }
