@@ -157,7 +157,7 @@ struct Args {
 }
 
 fn main() {
-    mimir::logger_init().unwrap();
+    mimir::logger_init();
     info!("importing open addresses into Mimir");
 
     let args = Args::from_args();
