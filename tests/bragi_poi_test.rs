@@ -79,7 +79,7 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     poi_from_osm_test(&bragi);
     poi_misspelt_one_word_admin_test(&bragi);
     poi_from_osm_with_address_addr_test(&bragi);
-    
+
 }
 
 fn poi_admin_address_test(bragi: &BragiHandler) {

@@ -128,7 +128,7 @@ fn main() {
         compute_poi_weight(&mut pois, city_level);
 
         info!("Adding addresss in poi");
-        add_address(&mut pois, &mut rubber);        
+        add_address(&mut pois, &mut rubber);
 
         info!("Importing pois into Mimir");
         let nb_pois = rubber.index(&args.dataset, pois.iter()).unwrap();
