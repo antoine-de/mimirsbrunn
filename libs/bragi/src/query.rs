@@ -397,30 +397,6 @@ pub fn features(
     }
 }
 
-/// Reverse geocoding request, that returns the house or street the
-/// closest to the given `coord`.
-pub fn reverse(coord: &model::Coord, cnx: &str) -> Result<Vec<mimir::Place>, EsError> {
-    let mut client = rs_es::Client::new(cnx).unwrap();
-    let types = vec!["house".into(), "street".into()];
-    let indexes = make_indexes(false, &[], &types, &mut client)?;
-    let distance = rs_u::Distance::new(500., rs_u::DistanceUnit::Meter);
-    let geo_distance = Query::build_geo_distance("coord", (coord.lat, coord.lon), distance).build();
-    let query = Query::build_bool()
-        .with_should(build_proximity_with_boost(coord, 1.))
-        .with_must(geo_distance)
-        .build();
-    let result: SearchResult<serde_json::Value> = client
-        .search_query()
-        .with_indexes(&indexes
-            .iter()
-            .map(|index| index.as_str())
-            .collect::<Vec<_>>())
-        .with_query(&query)
-        .with_size(1)
-        .send()?;
-    collect(result)
-}
-
 pub fn autocomplete(
     q: &str,
     pt_datasets: &[&str],

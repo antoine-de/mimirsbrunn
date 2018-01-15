@@ -37,6 +37,7 @@ use super::query;
 use model::v1::*;
 use model;
 use params::{coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param};
+use mimir::rubber::Rubber;
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
@@ -128,11 +129,12 @@ impl ApiEndPoint {
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let coord = model::Coord {
-                        lon: params.find("lon").and_then(|p| p.as_f64()).unwrap(),
-                        lat: params.find("lat").and_then(|p| p.as_f64()).unwrap(),
-                    };
-                    let model_autocomplete = query::reverse(&coord, &cnx);
+                    let coord = ::mimir::Coord::new(
+                        params.find("lat").and_then(|p| p.as_f64()).unwrap(),
+                        params.find("lon").and_then(|p| p.as_f64()).unwrap(),
+                    );
+                    let mut rubber = Rubber::new(&cnx);
+                    let model_autocomplete = rubber.get_address(&coord);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)

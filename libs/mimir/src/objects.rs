@@ -52,6 +52,13 @@ pub enum Place {
     Stop(Stop),
 }
 
+/// Object stored in elastic search
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Address {
+    Street(Street),
+    Addr(Addr),
+}
+
 impl Place {
     pub fn is_admin(&self) -> bool {
         match *self {
@@ -109,6 +116,16 @@ impl Place {
             Place::Stop(ref o) => o.admins(),
         }
     }
+    
+    pub fn address(&self) -> Option<Address> {
+        match *self {
+            Place::Admin(_) => None,
+            Place::Street(ref o) =>Some(Address::Street(o.clone())),
+            Place::Addr(ref o) => Some(Address::Addr(o.clone())),
+            Place::Poi(_) => None,
+            Place::Stop(_) => None,
+        }
+    }
 }
 
 pub trait MimirObject: serde::Serialize {
@@ -161,6 +178,7 @@ pub struct Poi {
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
     pub properties: Vec<Property>,
+    pub address : Option<Address>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
