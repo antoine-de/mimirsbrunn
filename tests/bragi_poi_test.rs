@@ -59,7 +59,7 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
         ],
         &es_wrapper,
     );
-    
+
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     ::launch_and_assert(
         osm2mimir,
@@ -79,7 +79,6 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     poi_from_osm_test(&bragi);
     poi_misspelt_one_word_admin_test(&bragi);
     poi_from_osm_with_address_addr_test(&bragi);
-
 }
 
 fn poi_admin_address_test(bragi: &BragiHandler) {
@@ -249,9 +248,18 @@ fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
     assert_eq!(get_value(poi, "id"), "poi:osm:way:112361498");
     assert_eq!(get_value(poi, "label"), "Hôtel de Ville (Melun)");
     assert_eq!(get_poi_type_ids(poi), &["poi_type:amenity:townhall"]);
-    
-    assert_eq!(poi.get("address").and_then(|a| a.pointer("/Addr/house_number")), Some(&json!("2")));
-    assert_eq!(poi.get("address").and_then(|a| a.pointer("/Addr/id")), Some(&json!("addr:2.65801;48.53685")));
-    assert_eq!(poi.get("address").and_then(|a| a.pointer("/Addr/label")), Some(&json!("2 Rue de la Reine Blanche (Melun)")));
-    
+
+    assert_eq!(
+        poi.get("address")
+            .and_then(|a| a.pointer("/Addr/house_number")),
+        Some(&json!("2"))
+    );
+    assert_eq!(
+        poi.get("address").and_then(|a| a.pointer("/Addr/id")),
+        Some(&json!("addr:2.65801;48.53685"))
+    );
+    assert_eq!(
+        poi.get("address").and_then(|a| a.pointer("/Addr/label")),
+        Some(&json!("2 Rue de la Reine Blanche (Melun)"))
+    );
 }

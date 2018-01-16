@@ -40,7 +40,7 @@ use boundaries::{build_boundary, make_centroid};
 use utils::{format_label, get_zip_codes_from_admins};
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
-use mimir::{Poi, PoiType, rubber};
+use mimir::{rubber, Poi, PoiType};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {
@@ -291,18 +291,19 @@ pub fn compute_poi_weight(pois_vec: &mut [Poi], city_level: u32) {
 
 pub fn add_address(pois_vec: &mut [Poi], rubber: &mut rubber::Rubber) {
     for poi in pois_vec {
-		poi.address = match rubber.get_address(&poi.coord) {
-		    Ok(addr) => {
-		        if addr.len() == 1 {
-		            addr[0].address()
-	            }
-		        else {None}
-        	},
-		    _ => {
-            	warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
-            	None
-		    }
-		};
+        poi.address = match rubber.get_address(&poi.coord) {
+            Ok(addr) => {
+                if addr.len() == 1 {
+                    addr[0].address()
+                } else {
+                    None
+                }
+            }
+            _ => {
+                warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
+                None
+            }
+        };
     }
 }
 

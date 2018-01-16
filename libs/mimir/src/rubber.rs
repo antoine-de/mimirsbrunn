@@ -40,7 +40,7 @@ use rs_es::operations::search::ScanResult;
 use serde;
 use std;
 use std::collections::BTreeMap;
-use super::objects::{AliasOperation, AliasOperations, AliasParameter, Place, Coord};
+use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use rs_es::units::Duration;
 use rs_es::units as rs_u;
 use rs_es::query::Query;
@@ -107,19 +107,16 @@ pub fn get_indexes_by_type(a_type: &str) -> String {
 pub fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<Place>, EsError> {
     debug!(
         "{} documents found in {} ms",
-        result.hits.total,
-        result.took
+        result.hits.total, result.took
     );
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
-    Ok(
-        result
-            .hits
-            .hits
-            .into_iter()
-            .filter_map(|hit| make_place(hit.doc_type, hit.source))
-            .collect(),
-    )
+    Ok(result
+        .hits
+        .hits
+        .into_iter()
+        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .collect())
 }
 
 /// takes a ES json blob and build a Place from it
@@ -208,14 +205,12 @@ pub fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
     let mut pt_dataset_indexes: Vec<String> = vec![];
     match pt_datasets.len() {
         0 => (),
-        1 => {
-            for pt_dataset in pt_datasets.iter() {
-                try!(push(
-                    &mut pt_dataset_indexes,
-                    format!("munin_stop_{}", pt_dataset).as_str(),
-                ))
-            }
-        }
+        1 => for pt_dataset in pt_datasets.iter() {
+            try!(push(
+                &mut pt_dataset_indexes,
+                format!("munin_stop_{}", pt_dataset).as_str(),
+            ))
+        },
         _ => try!(push(&mut pt_dataset_indexes, "munin_global_stops")),
     };
 
@@ -404,28 +399,29 @@ impl Rubber {
             .filter(|i| i.as_str() != new_index)
             .collect())
     }
-    
-    pub fn get_address(&mut self,  coord: &Coord) -> Result<Vec<Place>, EsError> {
-    	let types = vec!["house".into(), "street".into()];
-    	let indexes = make_indexes(false, &[], &types, &mut self.es_client)?;
-    	let distance = rs_u::Distance::new(1000., rs_u::DistanceUnit::Meter);
-    	let geo_distance = Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance).build();
-    	let query = Query::build_bool()
-			.with_should(build_proximity_with_boost(coord, 1.))
-        	.with_must(geo_distance)
-        	.build();
-    	
-    	let result: SearchResult<serde_json::Value> = self.es_client
-        	.search_query()
-        	.with_indexes(&indexes
-            	.iter()
-            	.map(|index| index.as_str())
-            	.collect::<Vec<_>>())
-        	.with_query(&query)
-        	.with_size(1)
-        	.send()?;
-    	collect(result)
-	}
+
+    pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
+        let types = vec!["house".into(), "street".into()];
+        let indexes = make_indexes(false, &[], &types, &mut self.es_client)?;
+        let distance = rs_u::Distance::new(1000., rs_u::DistanceUnit::Meter);
+        let geo_distance =
+            Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance).build();
+        let query = Query::build_bool()
+            .with_should(build_proximity_with_boost(coord, 1.))
+            .with_must(geo_distance)
+            .build();
+
+        let result: SearchResult<serde_json::Value> = self.es_client
+            .search_query()
+            .with_indexes(&indexes
+                .iter()
+                .map(|index| index.as_str())
+                .collect::<Vec<_>>())
+            .with_query(&query)
+            .with_size(1)
+            .send()?;
+        collect(result)
+    }
 
     /// publish the index as the new index for this doc_type and this dataset
     /// move the index alias of the doc_type and the dataset to point to this indexes

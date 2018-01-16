@@ -116,11 +116,11 @@ impl Place {
             Place::Stop(ref o) => o.admins(),
         }
     }
-    
+
     pub fn address(&self) -> Option<Address> {
         match *self {
             Place::Admin(_) => None,
-            Place::Street(ref o) =>Some(Address::Street(o.clone())),
+            Place::Street(ref o) => Some(Address::Street(o.clone())),
             Place::Addr(ref o) => Some(Address::Addr(o.clone())),
             Place::Poi(_) => None,
             Place::Stop(_) => None,
@@ -178,7 +178,7 @@ pub struct Poi {
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
     pub properties: Vec<Property>,
-    pub address : Option<Address>,
+    pub address: Option<Address>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

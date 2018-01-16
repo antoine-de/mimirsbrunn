@@ -80,8 +80,8 @@ pub struct GeocodingResponse {
     pub poi_types: Vec<mimir::PoiType>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub properties: Vec<mimir::Property>,
-	#[serde(skip_serializing_if = "Option::is_none")] 
-	pub address: Option<mimir::Address>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<mimir::Address>,
 }
 
 trait ToGeom {

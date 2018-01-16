@@ -39,7 +39,7 @@ extern crate structopt_derive;
 use structopt::StructOpt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
-use mimirsbrunn::osm_reader::poi::{compute_poi_weight, pois, PoiConfig, add_address};
+use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
 use mimirsbrunn::osm_reader::parse_osm_pbf;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
