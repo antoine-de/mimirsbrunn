@@ -173,7 +173,7 @@ pub fn is_existing_index(client: &mut rs_es::Client, index: &str) -> Result<bool
     }
 }
 
-pub fn make_indexes(
+pub fn get_indexes(
     all_data: bool,
     pt_datasets: &[&str],
     types: &[&str],
@@ -402,7 +402,7 @@ impl Rubber {
 
     pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
         let types = vec!["house".into(), "street".into()];
-        let indexes = make_indexes(false, &[], &types, &mut self.es_client)?;
+        let indexes = get_indexes(false, &[], &types, &mut self.es_client)?;
         let distance = rs_u::Distance::new(1000., rs_u::DistanceUnit::Meter);
         let geo_distance =
             Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance).build();
@@ -628,4 +628,112 @@ pub fn test_valid_url() {
 #[should_panic]
 pub fn test_invalid_url_no_port() {
     Rubber::new("localhost");
+}
+
+#[test]
+fn test_make_indexes_impl() {
+    fn ok_index(_index: &str) -> Result<bool, EsError> {
+        Ok(true)
+    }
+    // all_data
+    assert_eq!(
+        make_indexes_impl(true, &[], &[], ok_index).unwrap(),
+        vec!["munin"]
+    );
+
+    // no dataset and no types
+    assert_eq!(
+        make_indexes_impl(false, &[], &[], ok_index).unwrap(),
+        vec!["munin_geo_data"]
+    );
+
+    // dataset fr + no types
+    assert_eq!(
+        make_indexes_impl(false, &["fr"], &[], ok_index).unwrap(),
+        vec!["munin_geo_data", "munin_stop_fr"]
+    );
+
+    // no dataset + types poi, city, street, house and public_transport:stop_area
+    // => munin_stop is not included
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &[],
+            &[
+                "poi",
+                "city",
+                "street",
+                "house",
+                "public_transport:stop_area",
+            ],
+            ok_index,
+        ).unwrap(),
+        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+    );
+
+    // no dataset fr + type public_transport:stop_area only
+    assert_eq!(
+        make_indexes_impl(false, &[], &["public_transport:stop_area"], ok_index).unwrap(),
+        Vec::<String>::new()
+    );
+
+    // dataset fr + types poi, city, street, house and public_transport:stop_area
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &["fr"],
+            &[
+                "poi",
+                "city",
+                "street",
+                "house",
+                "public_transport:stop_area",
+            ],
+            ok_index,
+        ).unwrap(),
+        vec![
+            "munin_poi",
+            "munin_admin",
+            "munin_street",
+            "munin_addr",
+            "munin_stop_fr",
+        ]
+    );
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    //  => munin_stop_fr is not included
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &["fr"],
+            &["poi", "city", "street", "house"],
+            ok_index,
+        ).unwrap(),
+        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+    );
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with a result "false" as non of the index
+    // is present in elasticsearch
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &["fr"],
+            &["poi", "city", "street", "house"],
+            |_index| Ok::<_, EsError>(false),
+        ).unwrap(),
+        Vec::<String>::new()
+    );
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with an error in the result (Elasticsearch is absent..)
+    match make_indexes_impl(
+        false,
+        &["fr"],
+        &["poi", "city", "street", "house"],
+        |_index| Err::<bool, _>(EsError::EsError("Elasticsearch".into())),
+    ) {
+        Err(EsError::EsError(e)) => assert_eq!(e, "Elasticsearch"),
+        _ => assert!(false),
+    }
 }
