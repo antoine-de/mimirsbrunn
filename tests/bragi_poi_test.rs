@@ -250,16 +250,15 @@ fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
     assert_eq!(get_poi_type_ids(poi), &["poi_type:amenity:townhall"]);
 
     assert_eq!(
-        poi.get("address")
-            .and_then(|a| a.pointer("/Addr/house_number")),
+        poi.get("address").and_then(|a| a.pointer("/house_number")),
         Some(&json!("2"))
     );
     assert_eq!(
-        poi.get("address").and_then(|a| a.pointer("/Addr/id")),
+        poi.get("address").and_then(|a| a.pointer("/id")),
         Some(&json!("addr:2.65801;48.53685"))
     );
     assert_eq!(
-        poi.get("address").and_then(|a| a.pointer("/Addr/label")),
+        poi.get("address").and_then(|a| a.pointer("/label")),
         Some(&json!("2 Rue de la Reine Blanche (Melun)"))
     );
 }

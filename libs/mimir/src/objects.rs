@@ -54,6 +54,7 @@ pub enum Place {
 
 /// Object stored in elastic search
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum Address {
     Street(Street),
     Addr(Addr),
