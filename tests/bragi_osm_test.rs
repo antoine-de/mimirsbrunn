@@ -88,7 +88,10 @@ fn zip_code_street_test(bragi: &BragiHandler) {
     assert_eq!(res.len(), 1);
     let le_clos = &res[0];
     assert_eq!(le_clos["postcode"], "77000");
-    assert_eq!(le_clos["label"], "Lotissement le Clos de Givry (Livry-sur-Seine)");
+    assert_eq!(
+        le_clos["label"],
+        "Lotissement le Clos de Givry (Livry-sur-Seine)"
+    );
     assert_eq!(le_clos["name"], "Lotissement le Clos de Givry");
     assert_eq!(le_clos["street"], "Lotissement le Clos de Givry");
 
