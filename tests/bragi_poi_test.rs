@@ -235,7 +235,7 @@ fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
     let poi = geocodings.first().unwrap();
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "id"), "poi:osm:way:112361498");
-    
+
     assert_eq!(
         poi.get("address").and_then(|a| a.pointer("/housenumber")),
         Some(&json!("2"))

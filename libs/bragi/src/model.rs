@@ -277,7 +277,9 @@ impl From<mimir::Poi> for GeocodingResponse {
             properties: other.properties,
             address: match other.address {
                 Some(mimir::Address::Addr(addr)) => Some(Box::new(GeocodingResponse::from(addr))),
-                Some(mimir::Address::Street(street)) => Some(Box::new(GeocodingResponse::from(street))),
+                Some(mimir::Address::Street(street)) => {
+                    Some(Box::new(GeocodingResponse::from(street)))
+                }
                 _ => None,
             },
         }
