@@ -84,28 +84,22 @@ fn zip_code_test(bragi: &BragiHandler) {
 }
 
 fn zip_code_street_test(bragi: &BragiHandler) {
-    let all_20 = bragi.get("/autocomplete?q=77000 Lotissement le Clos de Givry");
-    assert_eq!(all_20.len(), 1);
-    assert!(
-        get_values(&all_20, "postcode")
-            .iter()
-            .all(|r| *r == "77000",)
+    let res = bragi.get("/autocomplete?q=77000 Lotissement le Clos de Givry");
+    assert_eq!(res.len(), 1);
+    let le_clos = &res[0];
+    assert_eq!(le_clos["postcode"], "77000");
+    assert_eq!(
+        le_clos["label"],
+        "Lotissement le Clos de Givry (Livry-sur-Seine)"
     );
+    assert_eq!(le_clos["name"], "Lotissement le Clos de Givry");
+    assert_eq!(le_clos["street"], "Lotissement le Clos de Givry");
 
-    let boundary = all_20[0]["administrative_regions"].pointer("/0/boundary");
+    let boundary = le_clos["administrative_regions"].pointer("/0/boundary");
     assert_eq!(boundary, None);
 
-    let types = get_types(&all_20);
-    let count = count_types(&types, "street");
-    assert_eq!(count, 1);
-    let first_street = all_20.iter().find(|e| get_value(e, "type") == "street");
-    assert_eq!(get_value(first_street.unwrap(), "citycode"), "77255");
-
-    let count = count_types(&types, "city");
-    assert_eq!(count, 0);
-
-    let count = count_types(&types, "house");
-    assert_eq!(count, 0);
+    assert_eq!(le_clos["type"], "street");
+    assert_eq!(le_clos["citycode"], "77255");
 }
 
 fn zip_code_admin_test(bragi: &BragiHandler) {
