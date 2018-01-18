@@ -45,10 +45,10 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
-    // We load the OSM dataset (with the POIs) and three-cities bano dataset
+    // We load three-cities bano dataset and then the OSM dataset (with the POIs)
     // the current dataset are thus (load order matters):
-    // - osm_fixture.osm.pbf (including ways and pois)
     // - bano-three_cities
+    // - osm_fixture.osm.pbf (including ways and pois)
     // ******************************************
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
     ::launch_and_assert(
@@ -228,17 +228,6 @@ fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
 }
 
 fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
-    // search poi: Poi as a relation in osm data
-    let geocodings = bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)");
-    let types = get_types(&geocodings);
-    assert_eq!(count_types(&types, Poi::doc_type()), 1);
-    let first_poi = geocodings
-        .iter()
-        .find(|e| get_value(e, "type") == Poi::doc_type())
-        .unwrap();
-    assert_eq!(get_value(first_poi, "citycode"), "91179");
-    assert_eq!(get_poi_type_ids(first_poi), &["poi_type:amenity:parking"]);
-
     // search poi: Poi as a way in osm data
     let geocodings = bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)");
     let types = get_types(&geocodings);
@@ -246,11 +235,9 @@ fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
     let poi = geocodings.first().unwrap();
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "id"), "poi:osm:way:112361498");
-    assert_eq!(get_value(poi, "label"), "Hôtel de Ville (Melun)");
-    assert_eq!(get_poi_type_ids(poi), &["poi_type:amenity:townhall"]);
-
+    
     assert_eq!(
-        poi.get("address").and_then(|a| a.pointer("/house_number")),
+        poi.get("address").and_then(|a| a.pointer("/housenumber")),
         Some(&json!("2"))
     );
     assert_eq!(

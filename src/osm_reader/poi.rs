@@ -291,19 +291,14 @@ pub fn compute_poi_weight(pois_vec: &mut [Poi], city_level: u32) {
 
 pub fn add_address(pois_vec: &mut [Poi], rubber: &mut rubber::Rubber) {
     for poi in pois_vec {
-        poi.address = match rubber.get_address(&poi.coord) {
-            Ok(addr) => {
-                if addr.len() == 1 {
-                    addr[0].address()
-                } else {
-                    None
-                }
-            }
-            _ => {
-                warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
-                None
-            }
-        };
+        poi.address = rubber
+			.get_address(&poi.coord)
+        	.ok()
+        	.and_then(|addrs| addrs.into_iter().next())
+        	.map(|addr| addr.address().unwrap());
+        if poi.address.is_none() {
+            warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
+        }
     }
 }
 
