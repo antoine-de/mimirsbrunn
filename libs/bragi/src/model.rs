@@ -80,6 +80,8 @@ pub struct GeocodingResponse {
     pub poi_types: Vec<mimir::PoiType>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub properties: Vec<mimir::Property>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<Box<GeocodingResponse>>,
 }
 
 trait ToGeom {
@@ -150,6 +152,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             administrative_regions: vec![],
             poi_types: vec![],
             properties: vec![],
+            address: None,
         }
     }
 }
@@ -201,6 +204,7 @@ impl From<mimir::Street> for GeocodingResponse {
             administrative_regions: admins,
             poi_types: vec![],
             properties: vec![],
+            address: None,
         }
     }
 }
@@ -238,6 +242,7 @@ impl From<mimir::Addr> for GeocodingResponse {
             administrative_regions: admins,
             poi_types: vec![],
             properties: vec![],
+            address: None,
         }
     }
 }
@@ -270,6 +275,13 @@ impl From<mimir::Poi> for GeocodingResponse {
             administrative_regions: admins,
             poi_types: vec![other.poi_type],
             properties: other.properties,
+            address: match other.address {
+                Some(mimir::Address::Addr(addr)) => Some(Box::new(GeocodingResponse::from(addr))),
+                Some(mimir::Address::Street(street)) => {
+                    Some(Box::new(GeocodingResponse::from(street)))
+                }
+                _ => None,
+            },
         }
     }
 }
@@ -302,6 +314,7 @@ impl From<mimir::Stop> for GeocodingResponse {
             administrative_regions: admins,
             poi_types: vec![],
             properties: vec![],
+            address: None,
         }
     }
 }

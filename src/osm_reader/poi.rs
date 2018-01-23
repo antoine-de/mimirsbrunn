@@ -40,7 +40,7 @@ use boundaries::{build_boundary, make_centroid};
 use utils::{format_label, get_zip_codes_from_admins};
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
-use mimir::{Poi, PoiType};
+use mimir::{rubber, Poi, PoiType};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {
@@ -256,6 +256,7 @@ fn parse_poi(
         weight: 0.,
         poi_type: poi_type.clone(),
         properties: make_properties(osmobj.tags()),
+        address: None,
     })
 }
 
@@ -284,6 +285,19 @@ pub fn compute_poi_weight(pois_vec: &mut [Poi], city_level: u32) {
                 poi.weight = admin.weight.get();
                 break;
             }
+        }
+    }
+}
+
+pub fn add_address(pois_vec: &mut [Poi], rubber: &mut rubber::Rubber) {
+    for poi in pois_vec {
+        poi.address = rubber
+            .get_address(&poi.coord)
+            .ok()
+            .and_then(|addrs| addrs.into_iter().next())
+            .map(|addr| addr.address().unwrap());
+        if poi.address.is_none() {
+            warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
         }
     }
 }
