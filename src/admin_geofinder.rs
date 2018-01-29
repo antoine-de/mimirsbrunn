@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use mimir::Admin;
-use mimir::AdminType;
 use geo::contains::Contains;
 use geo;
 use std::iter::FromIterator;
@@ -184,6 +183,7 @@ fn test_up_down() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mimir::AdminType;
 
     fn p(x: f64, y: f64) -> ::geo::Point<f64> {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
