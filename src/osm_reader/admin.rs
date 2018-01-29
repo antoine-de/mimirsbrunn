@@ -66,7 +66,11 @@ impl AdminMatcher {
     }
 }
 
-pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> Vec<mimir::Admin> {
+pub fn administrative_regions(
+    pbf: &mut OsmPbfReader,
+    levels: BTreeSet<u32>,
+    city_level: u32,
+) -> Vec<mimir::Admin> {
     let mut administrative_regions = Vec::<mimir::Admin>::new();
     let mut insee_inserted = BTreeSet::default();
     let matcher = AdminMatcher::new(levels);
@@ -146,6 +150,11 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 .map(|s| s.to_string())
                 .sorted();
             let boundary = build_boundary(relation, &objects);
+            let admin_type = if level == city_level {
+                mimir::AdminType::City
+            } else {
+                mimir::AdminType::Unknown
+            };
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -156,6 +165,7 @@ pub fn administrative_regions(pbf: &mut OsmPbfReader, levels: BTreeSet<u32>) -> 
                 weight: Cell::new(0.),
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
+                admin_type: admin_type,
             };
             administrative_regions.push(admin);
         }

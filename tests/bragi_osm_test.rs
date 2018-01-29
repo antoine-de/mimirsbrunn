@@ -58,6 +58,7 @@ pub fn bragi_osm_test(es_wrapper: ::ElasticSearchWrapper) {
     zip_code_test(&bragi);
     zip_code_street_test(&bragi);
     zip_code_admin_test(&bragi);
+    city_admin_test(&bragi);
 }
 
 fn zip_code_test(bragi: &BragiHandler) {
@@ -121,4 +122,11 @@ fn zip_code_admin_test(bragi: &BragiHandler) {
 
     let count = count_types(&types, "house");
     assert_eq!(count, 0);
+}
+
+fn city_admin_test(bragi: &BragiHandler) {
+    let all_melun = bragi.get("/autocomplete?q=Melun Rp");
+    let types = get_types(&all_melun);
+    let count = count_types(&types, "city");
+    assert!(count > 0);
 }

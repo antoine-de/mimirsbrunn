@@ -205,7 +205,6 @@ fn parse_poi(
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
     matcher: &PoiConfig,
     admins_geofinder: &AdminGeoFinder,
-    city_level: u32,
 ) -> Option<mimir::Poi> {
     let poi_type = match matcher.get_poi_type(osmobj.tags()) {
         Some(poi_type) => poi_type,
@@ -249,7 +248,7 @@ fn parse_poi(
     Some(mimir::Poi {
         id: id,
         name: name.to_string(),
-        label: format_label(&adms, city_level, name),
+        label: format_label(&adms, name),
         coord: coord,
         zip_codes: zip_codes,
         administrative_regions: adms,
@@ -268,20 +267,19 @@ pub fn pois(
     pbf: &mut OsmPbfReader,
     matcher: &PoiConfig,
     admins_geofinder: &AdminGeoFinder,
-    city_level: u32,
 ) -> Vec<Poi> {
     let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o.tags())).unwrap();
     objects
         .iter()
         .filter(|&(_, obj)| matcher.is_poi(obj.tags()))
-        .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder, city_level))
+        .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder))
         .collect()
 }
 
-pub fn compute_poi_weight(pois_vec: &mut [Poi], city_level: u32) {
+pub fn compute_poi_weight(pois_vec: &mut [Poi]) {
     for poi in pois_vec {
         for admin in &mut poi.administrative_regions {
-            if admin.level == city_level {
+            if admin.is_city() {
                 poi.weight = admin.weight.get();
                 break;
             }

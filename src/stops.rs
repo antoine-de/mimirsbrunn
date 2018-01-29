@@ -52,17 +52,12 @@ where
     }
 }
 
-pub fn import_stops(
-    mut stops: Vec<mimir::Stop>,
-    connection_string: &str,
-    city_level: u32,
-    dataset: &str,
-) {
+pub fn import_stops(mut stops: Vec<mimir::Stop>, connection_string: &str, dataset: &str) {
     info!("creation of indexes");
     let mut rubber = Rubber::new(connection_string);
     rubber.initialize_templates().unwrap();
 
-    attach_stops_to_admins(stops.iter_mut(), &mut rubber, city_level);
+    attach_stops_to_admins(stops.iter_mut(), &mut rubber);
 
     for stop in &mut stops {
         stop.coverages.push(dataset.to_string());
@@ -77,9 +72,9 @@ pub fn import_stops(
     publish_global_index(&mut rubber, &global_index).unwrap();
 }
 
-fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>, city_level: u32) {
+fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>) {
     stop.administrative_regions = admins;
-    stop.label = format_label(&stop.administrative_regions, city_level, &stop.name);
+    stop.label = format_label(&stop.administrative_regions, &stop.name);
     stop.zip_codes = get_zip_codes_from_admins(&stop.administrative_regions);
 }
 
@@ -91,7 +86,6 @@ fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>, city_level
 fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     stops: It,
     rubber: &mut Rubber,
-    city_level: u32,
 ) {
     let admins = rubber.get_all_admins().unwrap_or_else(|_| {
         info!("Administratives regions not found in elasticsearch db");
@@ -113,7 +107,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
             nb_matched += 1;
         }
 
-        attach_stop(&mut stop, admins, city_level);
+        attach_stop(&mut stop, admins);
     }
 
     info!(

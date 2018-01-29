@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use mimir::Admin;
+use mimir::AdminType;
 use geo::contains::Contains;
 use geo;
 use std::iter::FromIterator;
@@ -216,6 +217,7 @@ mod tests {
             coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
+            admin_type: AdminType::City,
         }
     }
 

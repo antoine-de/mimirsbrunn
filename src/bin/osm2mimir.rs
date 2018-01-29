@@ -88,18 +88,18 @@ fn main() {
     rubber.initialize_templates().unwrap();
 
     info!("creating adminstrative regions");
-    let admins_geofinder = administrative_regions(&mut parsed_pbf, levels)
+    let admins_geofinder = administrative_regions(&mut parsed_pbf, levels, city_level)
         .into_iter()
         .collect::<AdminGeoFinder>();
     {
         info!("Extracting streets from osm");
-        let mut streets = streets(&mut parsed_pbf, &admins_geofinder, city_level);
+        let mut streets = streets(&mut parsed_pbf, &admins_geofinder);
 
         info!("computing city weight");
         compute_admin_weight(&mut streets, &admins_geofinder);
 
         info!("computing street weight");
-        compute_street_weight(&mut streets, city_level);
+        compute_street_weight(&mut streets);
 
         if args.import_way {
             info!("importing streets into Mimir");
@@ -122,10 +122,10 @@ fn main() {
             }
         };
         info!("Extracting pois from osm");
-        let mut pois = pois(&mut parsed_pbf, &matcher, &admins_geofinder, city_level);
+        let mut pois = pois(&mut parsed_pbf, &matcher, &admins_geofinder);
 
         info!("computing poi weight");
-        compute_poi_weight(&mut pois, city_level);
+        compute_poi_weight(&mut pois);
 
         info!("Adding addresss in poi");
         add_address(&mut pois, &mut rubber);

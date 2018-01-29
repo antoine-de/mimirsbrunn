@@ -50,11 +50,7 @@ pub struct StreetKey {
     pub admins: AdminSet,
 }
 
-pub fn streets(
-    pbf: &mut OsmPbfReader,
-    admins_geofinder: &AdminGeoFinder,
-    city_level: u32,
-) -> StreetsVec {
+pub fn streets(pbf: &mut OsmPbfReader, admins_geofinder: &AdminGeoFinder) -> StreetsVec {
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
@@ -96,7 +92,7 @@ pub fn streets(
                 ret ret(street_list.push(mimir::Street {
                     id: way.id.0.to_string(),
                     street_name: way_name.to_string(),
-                    label: format_label(&admin, city_level, way_name),
+                    label: format_label(&admin, way_name),
                     weight: 0.,
                     zip_codes: get_zip_codes_from_admins(&admin),
                     administrative_regions: admin,
@@ -133,7 +129,7 @@ pub fn streets(
             let admins: BTreeSet<Rc<mimir::Admin>> = get_street_admin(admins_geofinder,
                 objs_map, way)
                 .into_iter()
-                .filter(|admin| admin.level == city_level)
+                .filter(|admin| admin.is_city())
                 .collect();
 
             way_name =<< way.tags.get("name");
@@ -156,7 +152,7 @@ pub fn streets(
             ret ret(street_list.push(mimir::Street {
                 id: way.id.0.to_string(),
                 street_name: way_name.to_string(),
-                label: format_label(&admins, city_level, way_name),
+                label: format_label(&admins, way_name),
                 weight: 0.,
                 zip_codes: get_zip_codes_from_admins(&admins),
                 administrative_regions: admins,
@@ -186,10 +182,10 @@ fn get_street_admin(
         .map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
-pub fn compute_street_weight(streets: &mut StreetsVec, city_level: u32) {
+pub fn compute_street_weight(streets: &mut StreetsVec) {
     for st in streets {
         for admin in &mut st.administrative_regions {
-            if admin.level == city_level {
+            if admin.is_city() {
                 st.weight = admin.weight.get();
                 break;
             }

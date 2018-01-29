@@ -62,9 +62,9 @@ struct Args {
     #[structopt(short = "c", long = "connection-string",
                 default_value = "http://localhost:9200/munin")]
     connection_string: String,
-    /// City level to calculate weight.
-    #[structopt(short = "C", long = "city-level", default_value = "8")]
-    city_level: u32,
+    /// Deprecated option.
+    #[structopt(short = "C", long = "city-level")]
+    city_level: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -146,6 +146,9 @@ fn main() {
     info!("Launching stops2mimir...");
 
     let args = Args::from_args();
+    if args.city_level.is_some() {
+        warn!("city-level option is deprecated, it now has no effect.");
+    }
 
     let mut rdr = csv::Reader::from_path(args.input).unwrap();
     let mut nb_stop_points = HashMap::new();
@@ -157,12 +160,7 @@ fn main() {
         })
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(
-        stops,
-        &args.connection_string,
-        args.city_level,
-        &args.dataset,
-    );
+    import_stops(stops, &args.connection_string, &args.dataset);
 }
 
 #[test]

@@ -30,6 +30,7 @@
 
 use serde_json::value::Value;
 use mimir::{Admin, Coord, MimirObject, Street};
+use mimir::AdminType::City;
 use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
@@ -147,6 +148,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         weight: Cell::new(0.42),
         coord: Coord::new(48.5110722f64, 2.68326290f64),
         boundary: None,
+        admin_type: City,
     };
 
     // we index our admin
@@ -206,6 +208,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         weight: Cell::new(0.42),
         coord: Coord::new(48.5110722f64, 2.68326290f64),
         boundary: None,
+        admin_type: City,
     };
 
     // we index our admin

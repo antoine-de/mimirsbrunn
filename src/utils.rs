@@ -31,8 +31,8 @@
 use mimir;
 use std::rc::Rc;
 
-pub fn format_label(admins: &[Rc<mimir::Admin>], city_level: u32, name: &str) -> String {
-    match admins.iter().position(|adm| adm.level == city_level) {
+pub fn format_label(admins: &[Rc<mimir::Admin>], name: &str) -> String {
+    match admins.iter().position(|adm| adm.is_city()) {
         Some(idx) => format!("{} ({})", name, admins[idx].name),
         None => name.to_string(),
     }
