@@ -175,8 +175,8 @@ fn get_street_admin(
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|node_obj| node_obj.node())
         .map(|node| geo::Coordinate {
-            x: node.lat(),
-            y: node.lon(),
+            x: node.lon(),
+            y: node.lat(),
         })
         .next()
         .map_or(vec![], |c| admins_geofinder.get(&c))

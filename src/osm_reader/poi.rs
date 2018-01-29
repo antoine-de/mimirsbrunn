@@ -219,7 +219,7 @@ fn parse_poi(
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => (
             format_poi_id("node", node.id.0),
-            mimir::Coord::new(node.lat(), node.lon()),
+            mimir::Coord::new(node.lon(), node.lat()),
         ),
         osmpbfreader::OsmObj::Way(ref way) => {
             (format_poi_id("way", way.id.0), get_way_coord(obj_map, way))

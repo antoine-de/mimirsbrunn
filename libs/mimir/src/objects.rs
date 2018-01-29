@@ -486,13 +486,13 @@ pub struct AliasParameter {
 #[derive(Debug, Clone)]
 pub struct Coord(pub geo::Coordinate<f64>);
 impl Coord {
-    pub fn new(lat: f64, lon: f64) -> Coord {
-        Coord(geo::Coordinate { x: lat, y: lon })
-    }
-    pub fn lat(&self) -> f64 {
-        self.x
+    pub fn new(lon: f64, lat: f64) -> Coord {
+        Coord(geo::Coordinate { x: lon, y: lat })
     }
     pub fn lon(&self) -> f64 {
+        self.x
+    }
+    pub fn lat(&self) -> f64 {
         self.y
     }
     pub fn is_default(&self) -> bool {
@@ -522,8 +522,8 @@ impl serde::Serialize for Coord {
         S: serde::Serializer,
     {
         let mut ser = serializer.serialize_struct("Coord", 2)?;
-        ser.serialize_field("lat", &self.0.x)?;
-        ser.serialize_field("lon", &self.0.y)?;
+        ser.serialize_field("lon", &self.0.x)?;
+        ser.serialize_field("lat", &self.0.y)?;
         ser.end()
     }
 }
@@ -536,8 +536,8 @@ impl<'de> Deserialize<'de> for Coord {
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "lowercase")]
         enum Field {
-            Lat,
             Lon,
+            Lat,
         };
 
         struct CoordVisitor;
@@ -553,11 +553,11 @@ impl<'de> Deserialize<'de> for Coord {
             where
                 V: SeqAccess<'de>,
             {
-                let lat = seq.next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let lon = seq.next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let lat = seq.next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-                Ok(Coord::new(lat, lon))
+                Ok(Coord::new(lon, lat))
             }
 
             fn visit_map<V>(self, mut map: V) -> Result<Coord, V::Error>
@@ -584,7 +584,7 @@ impl<'de> Deserialize<'de> for Coord {
                 }
                 let lat = lat.ok_or_else(|| de::Error::missing_field("lat"))?;
                 let lon = lon.ok_or_else(|| de::Error::missing_field("lon"))?;
-                Ok(Coord::new(lat, lon))
+                Ok(Coord::new(lon, lat))
             }
         }
 

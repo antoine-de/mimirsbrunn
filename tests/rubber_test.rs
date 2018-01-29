@@ -92,7 +92,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         administrative_regions: vec![],
         weight: 0.24,
         zip_codes: vec![],
-        coord: Coord::new(48.5110722f64, 2.68326290f64),
+        coord: Coord::new(2.68326290f64, 48.5110722f64),
     };
 
     info!("inserting bobette");
@@ -146,7 +146,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: Cell::new(0.42),
-        coord: Coord::new(48.5110722f64, 2.68326290f64),
+        coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
         admin_type: City,
     };
@@ -206,7 +206,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: Cell::new(0.42),
-        coord: Coord::new(48.5110722f64, 2.68326290f64),
+        coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
         admin_type: City,
     };

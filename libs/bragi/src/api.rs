@@ -130,8 +130,8 @@ impl ApiEndPoint {
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let coord = ::mimir::Coord::new(
-                        params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                         params.find("lon").and_then(|p| p.as_f64()).unwrap(),
+                        params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
                     let mut rubber = Rubber::new(&cnx);
                     let model_autocomplete = rubber.get_address(&coord);

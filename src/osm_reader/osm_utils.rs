@@ -41,7 +41,7 @@ pub fn get_way_coord(
         .iter()
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|obj| obj.node())
-        .map(|node| mimir::Coord::new(node.lat(), node.lon()))
+        .map(|node| mimir::Coord::new(node.lon(), node.lat()))
         .next()
         .unwrap_or_else(mimir::Coord::default)
 }

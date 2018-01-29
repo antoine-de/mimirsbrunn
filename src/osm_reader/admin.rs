@@ -118,7 +118,7 @@ pub fn administrative_regions(
                 .find(|r| r.role == "admin_centre")
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
-                .map(|node| mimir::Coord::new(node.lat(), node.lon()));
+                .map(|node| mimir::Coord::new(node.lon(), node.lat()));
             let (admin_id, insee_id) = match relation
                 .tags
                 .get("ref:INSEE")
