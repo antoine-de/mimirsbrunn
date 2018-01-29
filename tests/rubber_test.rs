@@ -35,6 +35,7 @@ use mimir::rubber::Rubber;
 use std;
 use std::cell::Cell;
 use hyper;
+use geo;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
@@ -137,6 +138,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
 pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     info!("running rubber_custom_id");
     let dataset = "my_dataset";
+    let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
 
     let admin = Admin {
         id: "admin:bob".to_string(),
@@ -147,7 +149,18 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         zip_codes: vec!["zip_code".to_string()],
         weight: Cell::new(0.42),
         coord: Coord::new(2.68326290f64, 48.5110722f64),
-        boundary: None,
+        boundary: Some(geo::MultiPolygon(vec![
+            geo::Polygon::new(
+                geo::LineString(vec![
+                    p(2., 48.),
+                    p(2., 49.),
+                    p(3., 49.),
+                    p(3., 48.),
+                    p(2., 48.),
+                ]),
+                vec![],
+            ),
+        ])),
         admin_type: City,
     };
 
@@ -172,6 +185,26 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         let es_coord = es_source.pointer("/coord").unwrap();
         assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
         assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
+
+        assert_eq!(
+            es_source.pointer("/boundary/type"),
+            Some(&json!("MultiPolygon"))
+        );
+        let es_boundary = es_source.pointer("/boundary/coordinates").unwrap();
+        assert_eq!(es_boundary.pointer("/0/0/0/0"), Some(&json!(2.0))); //first lon, then lat
+        assert_eq!(es_boundary.pointer("/0/0/0/1"), Some(&json!(48.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/1/0"), Some(&json!(2.0)));
+        assert_eq!(es_boundary.pointer("/0/0/1/1"), Some(&json!(49.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/2/0"), Some(&json!(3.0)));
+        assert_eq!(es_boundary.pointer("/0/0/2/1"), Some(&json!(49.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/3/0"), Some(&json!(3.0)));
+        assert_eq!(es_boundary.pointer("/0/0/3/1"), Some(&json!(48.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/4/0"), Some(&json!(2.0)));
+        assert_eq!(es_boundary.pointer("/0/0/4/1"), Some(&json!(48.0)));
     };
     check_has_elt(&es, check_admin);
 }
