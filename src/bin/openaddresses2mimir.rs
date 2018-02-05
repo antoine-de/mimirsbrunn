@@ -69,8 +69,8 @@ impl OpenAddresse {
         let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.id); // TODO check if thats ok
         let admins = admins_geofinder.get(&geo::Coordinate {
-            x: self.lat,
-            y: self.lon,
+            x: self.lon,
+            y: self.lat,
         });
 
         let weight = admins
@@ -85,14 +85,14 @@ impl OpenAddresse {
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
-            coord: mimir::Coord::new(self.lat, self.lon),
+            coord: mimir::Coord::new(self.lon, self.lat),
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
             house_number: self.number,
             street: street,
             label: addr_label,
-            coord: mimir::Coord::new(self.lat, self.lon),
+            coord: mimir::Coord::new(self.lon, self.lat),
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
         }

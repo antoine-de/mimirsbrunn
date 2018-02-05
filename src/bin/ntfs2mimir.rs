@@ -85,7 +85,7 @@ fn to_mimir(
         id: format!("stop_area:{}", stop_area.id),
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
-        coord: mimir::Coord::new(stop_area.coord.lat, stop_area.coord.lon),
+        coord: mimir::Coord::new(stop_area.coord.lon, stop_area.coord.lat),
         commercial_modes: commercial_modes,
         physical_modes: physical_modes,
         administrative_regions: vec![],

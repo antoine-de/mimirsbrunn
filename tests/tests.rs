@@ -30,6 +30,7 @@
 
 extern crate bragi;
 extern crate docker_wrapper;
+extern crate geo;
 extern crate hyper;
 extern crate iron;
 extern crate iron_test;
@@ -67,6 +68,7 @@ use std::process::Command;
 trait ToJson {
     fn to_json(self) -> Value;
 }
+
 impl ToJson for Response {
     fn to_json(self) -> Value {
         match serde_json::from_reader(self) {

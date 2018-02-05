@@ -190,8 +190,8 @@ pub fn build_boundary(
                     .iter()
                     .map(|n| {
                         Point(Coordinate {
-                            x: n.lat(),
-                            y: n.lon(),
+                            x: n.lon(),
+                            y: n.lat(),
                         })
                     })
                     .collect();
@@ -202,8 +202,8 @@ pub fn build_boundary(
                 use geo::haversine_distance::HaversineDistance;
                 let p = |n: &osmpbfreader::Node| {
                     Point(Coordinate {
-                        x: n.lat(),
-                        y: n.lon(),
+                        x: n.lon(),
+                        y: n.lat(),
                     })
                 };
                 let distance =

@@ -82,8 +82,8 @@ impl Bano {
         let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let mut admins = admins_geofinder.get(&geo::Coordinate {
-            x: self.lat,
-            y: self.lon,
+            x: self.lon,
+            y: self.lat,
         });
 
         // If we have an admin corresponding to the INSEE, we know
@@ -106,14 +106,14 @@ impl Bano {
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.zip.clone()],
-            coord: mimir::Coord::new(self.lat, self.lon),
+            coord: mimir::Coord::new(self.lon, self.lat),
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
             house_number: self.nb,
             street: street,
             label: addr_label,
-            coord: mimir::Coord::new(self.lat, self.lon),
+            coord: mimir::Coord::new(self.lon, self.lat),
             weight: weight,
             zip_codes: vec![self.zip.clone()],
         }
