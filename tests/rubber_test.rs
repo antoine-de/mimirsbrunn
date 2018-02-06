@@ -31,7 +31,7 @@
 use serde_json::value::Value;
 use mimir::{Admin, Coord, MimirObject, Street};
 use mimir::AdminType::City;
-use mimir::rubber::Rubber;
+use mimir::rubber::{self, Rubber};
 use std;
 use std::cell::Cell;
 use hyper;
@@ -272,13 +272,13 @@ fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
     raw_indexes.keys().cloned().collect()
 }
 
-pub fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
+fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
     // we don't want an empty bulk to crash
     info!("running rubber_empty_bulk");
-    let dataset = "my_dataset";
+    let dataset = rubber::TypedIndex::<Admin>::new("my_dataset".into());
     // we index nothing
     let result = es.rubber
-        .bulk_index(&dataset.into(), std::iter::empty::<Admin>());
+        .bulk_index(&dataset, std::iter::empty::<Admin>());
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0); // we have indexed nothing, but it's ok
 }

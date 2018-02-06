@@ -29,9 +29,9 @@
 // www.navitia.io
 
 use std::rc::Rc;
-use mimir::rubber::Rubber;
+use mimir::rubber::{Rubber, TypedIndex};
 use utils::{format_label, get_zip_codes_from_admins};
-use mimir::{self, MimirObject};
+use mimir;
 use admin_geofinder::AdminGeoFinder;
 use std::collections::HashMap;
 use std::mem::replace;
@@ -147,9 +147,9 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     dataset: &str,
 ) -> Result<String, String> {
     let dataset_index =
-        mimir::rubber::get_main_type_and_dataset_index(mimir::Stop::doc_type(), dataset);
+        mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
     let stops_indexes = rubber
-        .get_all_aliased_index(&mimir::rubber::get_main_type_index(mimir::Stop::doc_type()))?
+        .get_all_aliased_index(&mimir::rubber::get_main_type_index::<mimir::Stop>())?
         .into_iter()
         .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
         .map(|(index, _)| index);
@@ -167,14 +167,15 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
 
     rubber.create_index(&es_index_name)?;
+    let typed_index = TypedIndex::new(es_index_name);
 
     let nb_stops_added = rubber
-        .bulk_index(&es_index_name, all_merged_stops)
+        .bulk_index(&typed_index, all_merged_stops)
         .map_err(|e| e.to_string())?;
     info!("{} stops added in the global index", nb_stops_added);
     // create global index
     // fill structure for each stop indexes
-    Ok(es_index_name)
+    Ok(typed_index.name)
 }
 
 // publish the global stop index

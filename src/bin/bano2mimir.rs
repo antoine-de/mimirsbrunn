@@ -42,7 +42,7 @@ extern crate structopt_derive;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
-use mimir::objects::{Addr, Admin, MimirObject};
+use mimir::objects::{Addr, Admin};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
 use std::rc::Rc;
@@ -146,7 +146,7 @@ where
         })
         .collect();
 
-    let addr_index = rubber.make_index(Addr::doc_type(), dataset).unwrap();
+    let addr_index = rubber.make_index::<Addr>(dataset).unwrap();
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -165,7 +165,7 @@ where
         }
     }
     rubber
-        .publish_index(Addr::doc_type(), dataset, addr_index, Addr::is_geo_data())
+        .publish_index(dataset, addr_index)
         .unwrap();
 }
 
