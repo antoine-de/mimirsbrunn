@@ -134,9 +134,7 @@ where
             Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
         }
     }
-    rubber
-        .publish_index(dataset, addr_index)
-        .unwrap();
+    rubber.publish_index(dataset, addr_index).unwrap();
 }
 
 #[derive(StructOpt, Debug)]

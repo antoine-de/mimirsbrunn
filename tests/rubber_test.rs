@@ -277,8 +277,7 @@ fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
     info!("running rubber_empty_bulk");
     let dataset = rubber::TypedIndex::<Admin>::new("my_dataset".into());
     // we index nothing
-    let result = es.rubber
-        .bulk_index(&dataset, std::iter::empty::<Admin>());
+    let result = es.rubber.bulk_index(&dataset, std::iter::empty::<Admin>());
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 0); // we have indexed nothing, but it's ok
 }

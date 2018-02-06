@@ -76,14 +76,14 @@ pub struct Rubber {
 
 pub struct TypedIndex<T> {
     pub name: String,
-    _type: PhantomData<T>
+    _type: PhantomData<T>,
 }
 
 impl<T> TypedIndex<T> {
     pub fn new(name: String) -> TypedIndex<T> {
         TypedIndex {
             name: name,
-            _type: PhantomData
+            _type: PhantomData,
         }
     }
 }
@@ -443,7 +443,7 @@ impl Rubber {
     pub fn publish_index<T: MimirObject>(
         &mut self,
         dataset: &str,
-        index: TypedIndex<T>
+        index: TypedIndex<T>,
     ) -> Result<(), String> {
         debug!("publishing index");
         let last_indexes = try!(self.get_last_index(&index, dataset));
@@ -587,9 +587,7 @@ impl Rubber {
         &mut self,
         dataset: &str,
     ) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_all_objects_from_index(&get_main_type_and_dataset_index::<Admin>(
-            dataset,
-        ))
+        self.get_all_objects_from_index(&get_main_type_and_dataset_index::<Admin>(dataset))
     }
 
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {

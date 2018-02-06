@@ -146,8 +146,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     stops: It,
     dataset: &str,
 ) -> Result<String, String> {
-    let dataset_index =
-        mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
+    let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
     let stops_indexes = rubber
         .get_all_aliased_index(&mimir::rubber::get_main_type_index::<mimir::Stop>())?
         .into_iter()
