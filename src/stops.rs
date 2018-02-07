@@ -166,7 +166,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
 
     rubber.create_index(&es_index_name)?;
-    let typed_index = TypedIndex::new(es_index_name);
+    let typed_index = TypedIndex::new(es_index_name.clone());
 
     let nb_stops_added = rubber
         .bulk_index(&typed_index, all_merged_stops)
@@ -174,7 +174,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     info!("{} stops added in the global index", nb_stops_added);
     // create global index
     // fill structure for each stop indexes
-    Ok(typed_index.name)
+    Ok(es_index_name)
 }
 
 // publish the global stop index

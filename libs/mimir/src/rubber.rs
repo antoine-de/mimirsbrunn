@@ -75,7 +75,7 @@ pub struct Rubber {
 }
 
 pub struct TypedIndex<T> {
-    pub name: String,
+    name: String,
     _type: PhantomData<T>,
 }
 
@@ -579,7 +579,7 @@ impl Rubber {
         // TODO better error handling
         let index = self.make_index(dataset)?;
         let nb_elements = self.bulk_index(&index, iter).map_err(|e| e.to_string())?;
-        self.publish_index::<T>(dataset, index)?;
+        self.publish_index(dataset, index)?;
         Ok(nb_elements)
     }
 

@@ -42,7 +42,7 @@ extern crate structopt_derive;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
-use mimir::objects::{Addr, Admin};
+use mimir::objects::Admin;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
 use std::rc::Rc;
