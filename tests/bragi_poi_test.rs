@@ -65,6 +65,7 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--import-admin".into(),
             "--import-way".into(),
             "--import-poi".into(),
             "--level=8".into(),

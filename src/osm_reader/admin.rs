@@ -68,7 +68,7 @@ impl AdminMatcher {
     }
 }
 
-pub fn administrative_regions(
+pub fn read_administrative_regions(
     pbf: &mut OsmPbfReader,
     levels: BTreeSet<u32>,
     city_level: u32,
@@ -79,13 +79,11 @@ pub fn administrative_regions(
     info!("reading pbf...");
     let objects = pbf.get_objs_and_deps(|o| matcher.is_admin(o)).unwrap();
     info!("reading pbf done.");
-
     // load administratives regions
     for obj in objects.values() {
         if !matcher.is_admin(obj) {
             continue;
         }
-
         if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
             let level = relation
                 .tags
@@ -123,11 +121,7 @@ pub fn administrative_regions(
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
                 .map(|node| mimir::Coord::new(node.lon(), node.lat()));
-            let (admin_id, insee_id) = match relation
-                .tags
-                .get("ref:INSEE")
-                .map(|v| v.trim_left_matches('0'))
-            {
+            let (admin_id, insee_id) = match read_insee(&relation.tags) {
                 Some(val) if !insee_inserted.contains(val) => {
                     insee_inserted.insert(val.to_string());
                     (format!("admin:fr:{}", val), val)
@@ -143,18 +137,9 @@ pub fn administrative_regions(
                 None => (format!("admin:osm:{}", relation.id.0), ""),
             };
 
-            let admin_type = get_admin_type(level, city_level);
-            let zip_code = relation
-                .tags
-                .get("addr:postcode")
-                .or_else(|| relation.tags.get("postal_code"))
-                .map_or("", |val| &val[..]);
-            let zip_codes = zip_code
-                .split(';')
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .sorted();
+            let zip_codes = read_zip_codes(&relation.tags);
             let boundary = build_boundary(relation, &objects);
+            let admin_type = get_admin_type(level, city_level);
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -195,7 +180,7 @@ pub fn compute_admin_weight(streets: &StreetsVec, admins_geofinder: &AdminGeoFin
     }
 }
 
-fn format_zip_codes(zip_codes: &[String]) -> String {
+pub fn format_zip_codes(zip_codes: &[String]) -> String {
     match zip_codes.len() {
         0 => "".to_string(),
         1 => format!(" ({})", zip_codes.first().unwrap()),
@@ -205,6 +190,21 @@ fn format_zip_codes(zip_codes: &[String]) -> String {
             zip_codes.last().unwrap()
         ),
     }
+}
+
+pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
+    let zip_code = tags.get("addr:postcode")
+        .or_else(|| tags.get("postal_code"))
+        .map_or("", |val| &val[..]);
+    zip_code
+        .split(';')
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .sorted()
+}
+
+pub fn read_insee(tags: &osmpbfreader::Tags) -> Option<&str> {
+    tags.get("ref:INSEE").map(|v| v.trim_left_matches('0'))
 }
 
 #[cfg(test)]

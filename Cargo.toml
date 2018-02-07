@@ -29,6 +29,8 @@ itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = "0.2"
 failure = "0.1"
+#cosmogony = { git = "https://github.com/osm-without-borders/cosmogony" }
+cosmogony = { git = "https://github.com/antoine-de/cosmogony", branch = "deser" }
 
 [dev-dependencies]
 hyper = "0.10"
