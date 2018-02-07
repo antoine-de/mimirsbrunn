@@ -42,7 +42,6 @@ extern crate structopt_derive;
 
 use std::path::Path;
 use mimir::rubber::Rubber;
-use mimir::objects::{Addr, MimirObject};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
 use structopt::StructOpt;
@@ -116,7 +115,7 @@ where
         });
     let admins_geofinder = admins.into_iter().collect();
 
-    let addr_index = rubber.make_index(Addr::doc_type(), dataset).unwrap();
+    let addr_index = rubber.make_index(dataset).unwrap();
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -134,9 +133,7 @@ where
             Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
         }
     }
-    rubber
-        .publish_index(Addr::doc_type(), dataset, addr_index, Addr::is_geo_data())
-        .unwrap();
+    rubber.publish_index(dataset, addr_index).unwrap();
 }
 
 #[derive(StructOpt, Debug)]

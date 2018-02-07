@@ -40,6 +40,7 @@ use rs_es::operations::search::ScanResult;
 use serde;
 use std;
 use std::collections::BTreeMap;
+use std::marker::PhantomData;
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use rs_es::units::Duration;
 use rs_es::units as rs_u;
@@ -73,16 +74,30 @@ pub struct Rubber {
     http_client: hyper::client::Client,
 }
 
+pub struct TypedIndex<T> {
+    name: String,
+    _type: PhantomData<T>,
+}
+
+impl<T> TypedIndex<T> {
+    pub fn new(name: String) -> TypedIndex<T> {
+        TypedIndex {
+            name: name,
+            _type: PhantomData,
+        }
+    }
+}
+
 /// return the index associated to the given type and dataset
 /// this will be an alias over another real index
-pub fn get_main_type_and_dataset_index(doc_type: &str, dataset: &str) -> String {
-    format!("munin_{}_{}", doc_type, dataset)
+pub fn get_main_type_and_dataset_index<T: MimirObject>(dataset: &str) -> String {
+    format!("munin_{}_{}", T::doc_type(), dataset)
 }
 
 /// return the index associated to the given type
 /// this will be an alias over another real index
-pub fn get_main_type_index(doc_type: &str) -> String {
-    format!("munin_{}", doc_type)
+pub fn get_main_type_index<T: MimirObject>() -> String {
+    format!("munin_{}", T::doc_type())
 }
 
 pub fn get_date_index_name(base_index_name: &str) -> String {
@@ -265,11 +280,11 @@ impl Rubber {
         rs_es::do_req(result)
     }
 
-    pub fn make_index(&self, doc_type: &str, dataset: &str) -> Result<String, String> {
-        let index_name = get_date_index_name(&get_main_type_and_dataset_index(doc_type, dataset));
+    pub fn make_index<T: MimirObject>(&self, dataset: &str) -> Result<TypedIndex<T>, String> {
+        let index_name = get_date_index_name(&get_main_type_and_dataset_index::<T>(dataset));
         info!("creating index {}", index_name);
-        self.create_index(&index_name.to_string())
-            .map(|_| index_name)
+        self.create_index(&index_name.to_string())?;
+        Ok(TypedIndex::new(index_name))
     }
 
     pub fn create_index(&self, name: &String) -> Result<(), String> {
@@ -385,18 +400,17 @@ impl Rubber {
     // get the last indexes for this doc_type/dataset
     // Note: to be resilient to ghost ES indexes, we return all indexes for this doc_type/dataset
     // but the new index
-    fn get_last_index(
+    fn get_last_index<T: MimirObject>(
         &self,
-        new_index: &str,
-        doc_type: &str,
+        new_index: &TypedIndex<T>,
         dataset: &str,
     ) -> Result<Vec<String>, String> {
-        let base_index = get_main_type_and_dataset_index(doc_type, dataset);
+        let base_index = get_main_type_and_dataset_index::<T>(dataset);
         // we don't want to remove the newly created index
         Ok(self.get_all_aliased_index(&base_index)?
             .into_iter()
             .map(|(k, _)| k)
-            .filter(|i| i.as_str() != new_index)
+            .filter(|i| i.as_str() != new_index.name)
             .collect())
     }
 
@@ -426,23 +440,21 @@ impl Rubber {
     /// publish the index as the new index for this doc_type and this dataset
     /// move the index alias of the doc_type and the dataset to point to this indexes
     /// and remove the old index
-    pub fn publish_index(
+    pub fn publish_index<T: MimirObject>(
         &mut self,
-        doc_type: &str,
         dataset: &str,
-        index: String,
-        is_geo_data: bool,
+        index: TypedIndex<T>,
     ) -> Result<(), String> {
         debug!("publishing index");
-        let last_indexes = try!(self.get_last_index(&index, doc_type, dataset));
+        let last_indexes = try!(self.get_last_index(&index, dataset));
 
-        let dataset_index = get_main_type_and_dataset_index(doc_type, dataset);
-        try!(self.alias(&dataset_index, &vec![index.clone()], &last_indexes,));
+        let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
+        try!(self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes,));
 
-        let type_index = get_main_type_index(doc_type);
+        let type_index = get_main_type_index::<T>();
         try!(self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes,));
 
-        if is_geo_data {
+        if T::is_geo_data() {
             try!(self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![],));
             try!(self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![],));
         } else {
@@ -515,7 +527,7 @@ impl Rubber {
 
     pub fn bulk_index<T, I>(
         &mut self,
-        index: &String,
+        index: &TypedIndex<T>,
         iter: I,
     ) -> Result<usize, rs_es::error::EsError>
     where
@@ -541,7 +553,7 @@ impl Rubber {
             try!(
                 self.es_client
                     .bulk(&chunk)
-                    .with_index(&index)
+                    .with_index(&index.name)
                     .with_doc_type(T::doc_type())
                     .send()
             );
@@ -565,9 +577,9 @@ impl Rubber {
         I: Iterator<Item = T>,
     {
         // TODO better error handling
-        let index = try!(self.make_index(T::doc_type(), dataset));
-        let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
-        try!(self.publish_index(T::doc_type(), dataset, index, T::is_geo_data(),));
+        let index = self.make_index(dataset)?;
+        let nb_elements = self.bulk_index(&index, iter).map_err(|e| e.to_string())?;
+        self.publish_index(dataset, index)?;
         Ok(nb_elements)
     }
 
@@ -575,14 +587,11 @@ impl Rubber {
         &mut self,
         dataset: &str,
     ) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_all_objects_from_index(&get_main_type_and_dataset_index(
-            Admin::doc_type(),
-            dataset,
-        ))
+        self.get_all_objects_from_index(&get_main_type_and_dataset_index::<Admin>(dataset))
     }
 
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_all_objects_from_index(&get_main_type_index(Admin::doc_type()))
+        self.get_all_objects_from_index(&get_main_type_index::<Admin>())
     }
 
     pub fn get_all_objects_from_index<T>(
