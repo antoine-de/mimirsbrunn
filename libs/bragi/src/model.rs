@@ -82,6 +82,10 @@ pub struct GeocodingResponse {
     pub properties: Vec<mimir::Property>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<Box<GeocodingResponse>>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub commercial_modes: Vec<mimir::CommercialMode>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub physical_modes: Vec<mimir::PhysicalMode>,
 }
 
 trait ToGeom {
@@ -153,6 +157,8 @@ impl From<mimir::Admin> for GeocodingResponse {
             poi_types: vec![],
             properties: vec![],
             address: None,
+            commercial_modes: vec![],
+            physical_modes: vec![],
         }
     }
 }
@@ -205,6 +211,8 @@ impl From<mimir::Street> for GeocodingResponse {
             poi_types: vec![],
             properties: vec![],
             address: None,
+            commercial_modes: vec![],
+            physical_modes: vec![],
         }
     }
 }
@@ -243,6 +251,8 @@ impl From<mimir::Addr> for GeocodingResponse {
             poi_types: vec![],
             properties: vec![],
             address: None,
+            commercial_modes: vec![],
+            physical_modes: vec![],
         }
     }
 }
@@ -282,6 +292,8 @@ impl From<mimir::Poi> for GeocodingResponse {
                 }
                 _ => None,
             },
+            commercial_modes: vec![],
+            physical_modes: vec![],
         }
     }
 }
@@ -315,6 +327,8 @@ impl From<mimir::Stop> for GeocodingResponse {
             poi_types: vec![],
             properties: vec![],
             address: None,
+            commercial_modes: other.commercial_modes,
+            physical_modes: other.physical_modes,
         }
     }
 }
