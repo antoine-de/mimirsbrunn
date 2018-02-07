@@ -272,7 +272,7 @@ fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
     raw_indexes.keys().cloned().collect()
 }
 
-fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
+pub fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
     // we don't want an empty bulk to crash
     info!("running rubber_empty_bulk");
     let dataset = rubber::TypedIndex::<Admin>::new("my_dataset".into());

@@ -146,7 +146,7 @@ where
         })
         .collect();
 
-    let addr_index = rubber.make_index::<Addr>(dataset).unwrap();
+    let addr_index = rubber.make_index(dataset).unwrap();
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
