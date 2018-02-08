@@ -32,6 +32,8 @@ extern crate mimir;
 extern crate osmpbfreader;
 
 use std::collections::BTreeMap;
+use geo::MultiPolygon;
+use geo::centroid::Centroid;
 
 pub fn get_way_coord(
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
@@ -44,4 +46,16 @@ pub fn get_way_coord(
         .map(|node| mimir::Coord::new(node.lon(), node.lat()))
         .next()
         .unwrap_or_else(mimir::Coord::default)
+}
+
+pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> mimir::Coord {
+    let coord = boundary
+        .as_ref()
+        .and_then(|b| b.centroid().map(|c| mimir::Coord::new(c.x(), c.y())))
+        .unwrap_or_else(|| mimir::Coord::default());
+    if coord.is_valid() {
+        coord
+    } else {
+        mimir::Coord::default()
+    }
 }

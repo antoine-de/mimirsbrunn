@@ -24,6 +24,7 @@ ordered-float = "0.0.2"
 mdo = "*"
 itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
+osm_boundaries_utils = { git = "https://github.com/QwantResearch/osm_boundaries_utils_rs", branch = "init" }
 
 [dev-dependencies]
 hyper = "0.10"
@@ -37,9 +38,6 @@ path = "libs/bragi"
 
 [dependencies.mimir]
 path = "libs/mimir"
-
-[dependencies.osm_builder]
-path = "libs/osm_builder"
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"

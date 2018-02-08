@@ -29,10 +29,12 @@
 // www.navitia.io
 
 extern crate mimir;
+extern crate osm_boundaries_utils;
 extern crate osmpbfreader;
 
 use admin_geofinder::AdminGeoFinder;
-use boundaries::{build_boundary, make_centroid};
+use osm_reader::osm_utils::make_centroid;
+use self::osm_boundaries_utils::build_boundary;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use itertools::Itertools;
