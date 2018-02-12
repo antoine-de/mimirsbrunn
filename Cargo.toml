@@ -24,7 +24,7 @@ ordered-float = "0.0.2"
 mdo = "*"
 itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
-osm_boundaries_utils = { git = "https://github.com/QwantResearch/osm_boundaries_utils_rs", branch = "init" }
+osm_boundaries_utils = { git = "https://github.com/QwantResearch/osm_boundaries_utils_rs", version = "0.1" }
 
 [dev-dependencies]
 hyper = "0.10"
