@@ -32,10 +32,10 @@
 extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
-extern crate structopt;
 #[macro_use]
-extern crate structopt_derive;
+extern crate structopt;
 
+use std::path::PathBuf;
 use structopt::StructOpt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
@@ -47,8 +47,8 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 #[derive(StructOpt, Debug)]
 struct Args {
     /// OSM PBF file.
-    #[structopt(short = "i", long = "input")]
-    input: String,
+    #[structopt(short = "i", long = "input", parse(from_os_str))]
+    input: PathBuf,
     /// Admin levels to keep.
     #[structopt(short = "l", long = "level")]
     level: Vec<u32>,
@@ -72,8 +72,8 @@ struct Args {
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// POI configuration.
-    #[structopt(short = "j", long = "poi-config")]
-    poi_config: Option<String>,
+    #[structopt(short = "j", long = "poi-config", parse(from_os_str))]
+    poi_config: Option<PathBuf>,
 }
 
 fn main() {
@@ -81,14 +81,13 @@ fn main() {
     let args = Args::from_args();
 
     let levels = args.level.iter().cloned().collect();
-    let city_level = args.city_level;
     let mut parsed_pbf = parse_osm_pbf(&args.input);
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.connection_string);
     rubber.initialize_templates().unwrap();
 
     info!("creating adminstrative regions");
-    let admins_geofinder = administrative_regions(&mut parsed_pbf, levels, city_level)
+    let admins_geofinder = administrative_regions(&mut parsed_pbf, levels, args.city_level)
         .into_iter()
         .collect::<AdminGeoFinder>();
     {
@@ -115,8 +114,7 @@ fn main() {
     if args.import_poi {
         let matcher = match args.poi_config {
             None => PoiConfig::default(),
-            Some(filename) => {
-                let path = std::path::Path::new(&filename);
+            Some(path) => {
                 let r = std::fs::File::open(&path).unwrap();
                 PoiConfig::from_reader(r).unwrap()
             }

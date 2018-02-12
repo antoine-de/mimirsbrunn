@@ -8,8 +8,7 @@ build = "build.rs"
 
 [dependencies]
 log = "0.4"
-structopt = "0.1"
-structopt-derive = "0.1"
+structopt = "0.2"
 csv = "1.0.0-beta.4"
 rs-es = {version = "0.10", default-features = false}
 regex = "*"

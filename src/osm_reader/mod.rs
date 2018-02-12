@@ -11,7 +11,6 @@ pub mod street;
 
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<File>;
 
-pub fn parse_osm_pbf(path: &str) -> OsmPbfReader {
-    let path = Path::new(&path);
+pub fn parse_osm_pbf(path: &Path) -> OsmPbfReader {
     osmpbfreader::OsmPbfReader::new(File::open(&path).unwrap())
 }

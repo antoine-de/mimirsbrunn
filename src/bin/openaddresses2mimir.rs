@@ -36,11 +36,10 @@ extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
 extern crate serde_derive;
-extern crate structopt;
 #[macro_use]
-extern crate structopt_derive;
+extern crate structopt;
 
-use std::path::Path;
+use std::path::PathBuf;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
@@ -139,8 +138,8 @@ where
 #[derive(StructOpt, Debug)]
 struct Args {
     /// openaddresses files. Can be either a directory or a file.
-    #[structopt(short = "i", long = "input")]
-    input: String,
+    #[structopt(short = "i", long = "input", parse(from_os_str))]
+    input: PathBuf,
     /// Elasticsearch parameters.
     #[structopt(short = "c", long = "connection-string",
                 default_value = "http://localhost:9200/munin")]
@@ -162,8 +161,7 @@ fn main() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
-    let file_path = Path::new(&args.input);
-    if file_path.is_dir() {
+    if args.input.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.input).unwrap();
         index_oa(
             &args.connection_string,
@@ -174,7 +172,7 @@ fn main() {
         index_oa(
             &args.connection_string,
             &args.dataset,
-            std::iter::once(std::path::PathBuf::from(&args.input)),
+            std::iter::once(args.input),
         );
     }
 }
