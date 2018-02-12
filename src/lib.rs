@@ -37,14 +37,12 @@ extern crate log;
 extern crate mdo;
 extern crate mimir;
 extern crate ordered_float;
-extern crate osm_builder;
 extern crate osmpbfreader;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 
-pub mod boundaries;
 pub mod admin_geofinder;
 pub mod osm_reader;
 pub mod stops;

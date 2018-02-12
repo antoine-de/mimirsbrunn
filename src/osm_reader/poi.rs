@@ -29,6 +29,7 @@
 // www.navitia.io
 
 extern crate mimir;
+extern crate osm_boundaries_utils;
 extern crate osmpbfreader;
 
 use std::collections::BTreeMap;
@@ -36,7 +37,8 @@ use std::io;
 use std::error::Error;
 use serde_json;
 use admin_geofinder::AdminGeoFinder;
-use boundaries::{build_boundary, make_centroid};
+use super::osm_utils::make_centroid;
+use self::osm_boundaries_utils::build_boundary;
 use utils::{format_label, get_zip_codes_from_admins};
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
