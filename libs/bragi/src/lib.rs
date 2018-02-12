@@ -32,6 +32,8 @@ extern crate geo;
 extern crate geojson;
 extern crate iron;
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate log;
 extern crate mimir;
 extern crate rs_es;
@@ -40,9 +42,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate structopt;
 #[macro_use]
-extern crate structopt_derive;
+extern crate structopt;
 extern crate urlencoded;
 extern crate valico;
 
@@ -55,28 +56,25 @@ pub mod query;
 mod model;
 mod params;
 
+lazy_static! {
+    static ref BRAGI_ES: String = std::env::var("BRAGI_ES")
+        .unwrap_or_else(|_| "http://localhost:9200/munin".into());
+}
+
 #[derive(StructOpt, Debug)]
 pub struct Args {
     /// Address to bind.
     #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:4000")]
     bind: String,
     /// Elasticsearch parameters, override BRAGI_ES environment variable.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(short = "c", long = "connection-string", raw(default_value = "&BRAGI_ES"))]
     connection_string: String,
 }
 
 pub fn runserver() {
-    let matches = Args::clap().get_matches();
-    let connection_string_is_present = matches.occurrences_of("connection_string") != 0;
-    let mut args = Args::from_clap(matches);
-    if !connection_string_is_present {
-        if let Ok(s) = std::env::var("BRAGI_ES") {
-            args.connection_string = s;
-        }
-    }
+    let args = Args::from_args();
     let api = api::ApiEndPoint {
-        es_cnx_string: args.connection_string.clone(),
+        es_cnx_string: args.connection_string,
     }.root();
     let app = Application::new(api);
     println!("listening on {}", args.bind);

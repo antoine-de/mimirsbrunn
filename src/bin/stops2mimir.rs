@@ -36,13 +36,13 @@ extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
 extern crate serde_derive;
-extern crate structopt;
 #[macro_use]
-extern crate structopt_derive;
+extern crate structopt;
 
 use std::collections::HashMap;
 use structopt::StructOpt;
 use mimirsbrunn::stops::*;
+use std::path::PathBuf;
 
 const MAX_LAT: f64 = 90f64;
 const MIN_LAT: f64 = -90f64;
@@ -53,8 +53,8 @@ const MIN_LON: f64 = -180f64;
 #[derive(Debug, StructOpt)]
 struct Args {
     /// NTFS stops.txt file.
-    #[structopt(short = "i", long = "input")]
-    input: String,
+    #[structopt(short = "i", long = "input", parse(from_os_str))]
+    input: PathBuf,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
@@ -150,7 +150,7 @@ fn main() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
-    let mut rdr = csv::Reader::from_path(args.input).unwrap();
+    let mut rdr = csv::Reader::from_path(&args.input).unwrap();
     let mut nb_stop_points = HashMap::new();
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
         .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())

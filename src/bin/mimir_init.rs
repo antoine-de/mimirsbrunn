@@ -31,10 +31,8 @@
 #[macro_use]
 extern crate log;
 extern crate mimir;
-extern crate mimirsbrunn;
-extern crate structopt;
 #[macro_use]
-extern crate structopt_derive;
+extern crate structopt;
 
 use mimir::rubber::Rubber;
 use structopt::StructOpt;

@@ -4,8 +4,7 @@ version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
 [dependencies]
-structopt = "0.1"
-structopt-derive = "0.1"
+structopt = "0.2"
 iron = "0.4"
 log = "0.4"
 rustless = "0.10"
@@ -17,6 +16,7 @@ serde_json = "1"
 serde_derive = "1"
 geojson = "0.8"
 geo = "0.4.7"
+lazy_static = "1"
 
 [dependencies.mimir]
 path = "../mimir"
