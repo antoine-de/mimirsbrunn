@@ -42,7 +42,8 @@ pub struct Geocoding {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Feature {
-    #[serde(rename = "type")] pub feature_type: String,
+    #[serde(rename = "type")]
+    pub feature_type: String,
     pub geometry: geojson::Geometry,
     pub properties: Properties,
 }
@@ -55,15 +56,19 @@ pub struct Properties {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GeocodingResponse {
     pub id: String,
-    #[serde(rename = "type")] pub place_type: String, // FIXME: use an enum?
+    #[serde(rename = "type")]
+    pub place_type: String, // FIXME: use an enum?
     pub label: Option<String>,
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub housenumber: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub street: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub housenumber: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub street: Option<String>,
     pub postcode: Option<String>,
     pub city: Option<String>,
     pub citycode: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub level: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub level: Option<u32>,
     // pub accuracy: Option<i32>,
     // pub district: Option<String>,
     // pub county: Option<String>,
@@ -71,9 +76,12 @@ pub struct GeocodingResponse {
     // pub country: Option<String>,
     // pub geohash: Option<String>,
     pub administrative_regions: Vec<Rc<mimir::Admin>>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)] pub poi_types: Vec<mimir::PoiType>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)] pub properties: Vec<mimir::Property>,
-    #[serde(skip_serializing_if = "Option::is_none")] pub address: Option<Box<GeocodingResponse>>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub poi_types: Vec<mimir::PoiType>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub properties: Vec<mimir::Property>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<Box<GeocodingResponse>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub commercial_modes: Vec<mimir::CommercialMode>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -327,7 +335,8 @@ impl From<mimir::Stop> for GeocodingResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Autocomplete {
-    #[serde(rename = "type")] format_type: String,
+    #[serde(rename = "type")]
+    format_type: String,
     geocoding: Geocoding,
     features: Vec<Feature>,
 }
