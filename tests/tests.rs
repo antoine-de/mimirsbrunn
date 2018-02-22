@@ -35,8 +35,6 @@ extern crate hyper;
 extern crate iron;
 extern crate iron_test;
 #[macro_use]
-extern crate log;
-#[macro_use]
 extern crate mdo;
 extern crate mime;
 extern crate mimir;
@@ -44,6 +42,10 @@ extern crate rs_es;
 extern crate rustless;
 #[macro_use]
 extern crate serde_json;
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 
 mod bano2mimir_test;
 mod osm2mimir_test;
@@ -216,7 +218,8 @@ impl<'a> ElasticSearchWrapper<'a> {
                     _ => None,
                 }
             })
-            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+            .unwrap_or(Box::new(None.into_iter())
+                as Box<Iterator<Item = mimir::Place>>)
     }
 }
 
@@ -325,7 +328,7 @@ pub fn count_types(types: &[&str], value: &str) -> usize {
 /// (ES cleanup is handled by `es_wrapper`)
 #[test]
 fn all_tests() {
-    mimir::logger_init();
+    let _guard = mimir::logger_init();
     let docker_wrapper = DockerWrapper::new().unwrap();
 
     // we call all tests here

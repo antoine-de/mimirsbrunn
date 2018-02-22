@@ -28,9 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate log;
 extern crate mimir;
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
@@ -45,7 +47,7 @@ struct Args {
 }
 
 fn main() {
-    mimir::logger_init();
+    let _guard = mimir::logger_init();
     info!("creating templates");
 
     let args = Args::from_args();

@@ -29,7 +29,10 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate log;
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
+
 extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
@@ -77,7 +80,7 @@ struct Args {
 }
 
 fn main() {
-    mimir::logger_init();
+    let _guard = mimir::logger_init();
     let args = Args::from_args();
 
     let levels = args.level.iter().cloned().collect();

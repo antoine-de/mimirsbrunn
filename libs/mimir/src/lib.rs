@@ -34,9 +34,14 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-extern crate env_logger;
 #[macro_use]
-extern crate log;
+extern crate slog;
+extern crate slog_async;
+extern crate slog_envlogger;
+extern crate slog_json;
+#[macro_use]
+extern crate slog_scope;
+extern crate slog_term;
 
 extern crate chrono;
 extern crate geo;
@@ -48,39 +53,40 @@ pub mod objects;
 pub mod rubber;
 
 pub use objects::*;
-use chrono::Local;
 use std::env;
-use std::io::Write;
 
-pub fn logger_init() {
-    let mut builder = env_logger::Builder::new();
+use slog::Drain;
+use slog::Never;
 
-    if env::var("LOG_TIME").ok().map_or(false, |s| s == "1") {
-        builder.format(|formater, record| {
-            write!(
-                formater,
-                "[{time}] [{lvl}] [{loc}] {msg}\n",
-                time = Local::now(),
-                lvl = record.level(),
-                loc = record.module_path().unwrap_or("unknown"),
-                msg = record.args()
-            )
-        });
+pub fn logger_init() -> slog_scope::GlobalLoggerGuard {
+    if let Ok(s) = env::var("RUST_LOG_JSON") {
+        let mut drain = slog_json::Json::new(std::io::stdout()).add_default_keys();
+        if s == "pretty" {
+            drain = drain.set_pretty(true);
+        }
+        configure_logger(drain.build().fuse())
     } else {
-        builder.format(|formater, record| {
-            write!(
-                formater,
-                "[{lvl}] [{loc}] {msg}\n",
-                lvl = record.level(),
-                loc = record.module_path().unwrap_or("unknown"),
-                msg = record.args()
-            )
-        });
+        configure_logger(
+            slog_term::CompactFormat::new(slog_term::TermDecorator::new().stderr().build())
+                .build()
+                .fuse(),
+        )
     }
+}
 
-    builder.filter(None, log::LevelFilter::Info);
-    if let Ok(s) = env::var("RUST_LOG") {
-        builder.parse(&s);
-    }
-    builder.init()
+fn configure_logger<T>(drain: T) -> slog_scope::GlobalLoggerGuard
+where
+    T: Drain<Ok = (), Err = Never> + Send + 'static,
+{
+    //by default we log for info
+    let builder = slog_envlogger::LogBuilder::new(drain).filter(None, slog::FilterLevel::Info);
+    let builder = if let Ok(s) = env::var("RUST_LOG") {
+        builder.parse(&s)
+    } else {
+        builder
+    };
+    let drain = slog_async::Async::default(builder.build());
+
+    let log = slog::Logger::root(drain.fuse(), slog_o!());
+    slog_scope::set_global_logger(log)
 }

@@ -28,11 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
 extern crate navitia_model;
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
@@ -95,7 +97,7 @@ fn to_mimir(
 }
 
 fn main() {
-    mimir::logger_init();
+    let _guard = mimir::logger_init();
     info!("Launching ntfs2mimir...");
 
     let args = Args::from_args();

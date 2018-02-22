@@ -7,7 +7,10 @@ build = "build.rs"
 [workspace]
 
 [dependencies]
-log = "0.4"
+slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4.0"
+slog-envlogger = "2.1.0"
+slog-async = "2.2.0"
 structopt = "0.2"
 csv = "1.0.0-beta.4"
 rs-es = {version = "0.10", default-features = false}
