@@ -86,7 +86,6 @@ fn gare_de_lyon(bragi: &BragiHandler) {
             {"name": "source", "value": "stop_area:GDL"},
         ])
     );
-    println!("{:?}", stop);
     assert_eq!(
         stop.get("properties").unwrap(),
         &json!([
