@@ -41,6 +41,7 @@ extern crate slog_envlogger;
 extern crate slog_json;
 #[macro_use]
 extern crate slog_scope;
+extern crate slog_stdlog;
 extern crate slog_term;
 
 extern crate chrono;
@@ -58,7 +59,7 @@ use std::env;
 use slog::Drain;
 use slog::Never;
 
-pub fn logger_init() -> slog_scope::GlobalLoggerGuard {
+pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {
     if let Ok(s) = env::var("RUST_LOG_JSON") {
         let mut drain = slog_json::Json::new(std::io::stdout()).add_default_keys();
         if s == "pretty" {
@@ -74,7 +75,7 @@ pub fn logger_init() -> slog_scope::GlobalLoggerGuard {
     }
 }
 
-fn configure_logger<T>(drain: T) -> slog_scope::GlobalLoggerGuard
+fn configure_logger<T>(drain: T) -> (slog_scope::GlobalLoggerGuard, ())
 where
     T: Drain<Ok = (), Err = Never> + Send + 'static,
 {
@@ -88,5 +89,7 @@ where
     let drain = slog_async::Async::default(builder.build());
 
     let log = slog::Logger::root(drain.fuse(), slog_o!());
-    slog_scope::set_global_logger(log)
+    let _scope_guard = slog_scope::set_global_logger(log);
+    let _log_guard = slog_stdlog::init().unwrap();
+    (_scope_guard, _log_guard)
 }
