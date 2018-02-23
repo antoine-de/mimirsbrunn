@@ -33,8 +33,6 @@ extern crate geojson;
 extern crate iron;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate log;
 extern crate mimir;
 extern crate rs_es;
 extern crate rustless;
@@ -46,6 +44,11 @@ extern crate serde_json;
 extern crate structopt;
 extern crate urlencoded;
 extern crate valico;
+
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 
 use structopt::StructOpt;
 use iron::Iron;

@@ -6,7 +6,8 @@ authors = ["dt.ro <dt.ro@canaltp.fr>"]
 [dependencies]
 structopt = "0.2"
 iron = "0.4"
-log = "0.4"
+slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4.0"
 rustless = "0.10"
 urlencoded = "0.4"
 valico = "1.0"
