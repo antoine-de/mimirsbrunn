@@ -125,6 +125,9 @@ impl GtfsStop {
                 coverages: vec![],
                 commercial_modes: vec![],
                 physical_modes: vec![],
+                timezone: format!(""),
+                codes: vec![],
+                properties: vec![],
             })
         }
     }
