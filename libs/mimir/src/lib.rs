@@ -86,7 +86,9 @@ where
     } else {
         builder
     };
-    let drain = slog_async::Async::default(builder.build());
+    let drain = slog_async::Async::new(builder.build())
+        .chan_size(100 * 1024)
+        .build();
 
     let log = slog::Logger::root(drain.fuse(), slog_o!());
     let _scope_guard = slog_scope::set_global_logger(log);
