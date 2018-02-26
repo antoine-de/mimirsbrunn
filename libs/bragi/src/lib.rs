@@ -52,12 +52,16 @@ extern crate slog_scope;
 
 use structopt::StructOpt;
 use iron::Iron;
+use iron::prelude::Chain;
 use rustless::Application;
+
+extern crate logger;
 
 pub mod api;
 pub mod query;
 mod model;
 mod params;
+use logger::Logger;
 
 lazy_static! {
     static ref BRAGI_ES: String = std::env::var("BRAGI_ES")
@@ -80,6 +84,16 @@ pub fn runserver() {
         es_cnx_string: args.connection_string,
     }.root();
     let app = Application::new(api);
+
+    let (logger_before, logger_after) = Logger::new(None);
+
+    let mut chain = Chain::new(app);
+    // Link logger_before as your first before middleware.
+    chain.link_before(logger_before);
+
+    // Link logger_after as your *last* after middleware.
+    chain.link_after(logger_after);
+
     println!("listening on {}", args.bind);
-    Iron::new(app).http(args.bind.as_str()).unwrap();
+    Iron::new(chain).http(args.bind.as_str()).unwrap();
 }
