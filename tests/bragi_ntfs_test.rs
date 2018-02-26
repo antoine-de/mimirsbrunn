@@ -62,6 +62,7 @@ fn gare_de_lyon(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "label"), "Gare de Lyon");
     assert_eq!(get_value(stop, "name"), "Gare de Lyon");
     assert_eq!(get_value(stop, "id"), "stop_area:GDL");
+    assert_eq!(get_value(stop, "timezone"), "Europe/Paris");
     assert_eq!(
         stop.get("physical_modes").unwrap(),
         &json!([
@@ -76,6 +77,19 @@ fn gare_de_lyon(bragi: &BragiHandler) {
             {"id": "commercial_mode:Bus", "name": "Bus"},
             {"id": "commercial_mode:Metro", "name": "Metro"},
             {"id": "commercial_mode:RER", "name": "Réseau Express Régional (RER)"}
+        ])
+    );
+    assert_eq!(
+        stop.get("codes").unwrap(),
+        &json!([
+            {"name": "navitia1", "value": "424242"},
+            {"name": "source", "value": "stop_area:GDL"},
+        ])
+    );
+    assert_eq!(
+        stop.get("properties").unwrap(),
+        &json!([
+            {"key": "awesome_system", "value": "id:4242"},
         ])
     );
 }

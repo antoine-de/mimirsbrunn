@@ -222,6 +222,12 @@ pub struct PhysicalMode {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Code {
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Stop {
     pub id: String,
     pub label: String,
@@ -236,6 +242,12 @@ pub struct Stop {
     pub physical_modes: Vec<PhysicalMode>,
     #[serde(default)]
     pub coverages: Vec<String>,
+    #[serde(default)]
+    pub timezone: String,
+    #[serde(default)]
+    pub codes: Vec<Code>,
+    #[serde(default)]
+    pub properties: Vec<Property>,
 }
 
 impl MimirObject for Stop {

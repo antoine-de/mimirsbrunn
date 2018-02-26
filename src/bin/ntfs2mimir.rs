@@ -93,6 +93,23 @@ fn to_mimir(
         weight: 0.,
         zip_codes: vec![],
         coverages: vec![],
+        timezone: stop_area.timezone.clone().unwrap_or(format!("")),
+        codes: stop_area
+            .codes
+            .iter()
+            .map(|&(ref t, ref v)| mimir::Code {
+                name: t.clone(),
+                value: v.clone(),
+            })
+            .collect(),
+        properties: stop_area
+            .object_properties
+            .iter()
+            .map(|&(ref k, ref v)| mimir::Property {
+                key: k.clone(),
+                value: v.clone(),
+            })
+            .collect(),
     }
 }
 

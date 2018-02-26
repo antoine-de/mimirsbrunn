@@ -53,7 +53,7 @@ pub struct Properties {
     pub geocoding: GeocodingResponse,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct GeocodingResponse {
     pub id: String,
     #[serde(rename = "type")]
@@ -86,6 +86,10 @@ pub struct GeocodingResponse {
     pub commercial_modes: Vec<mimir::CommercialMode>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub physical_modes: Vec<mimir::PhysicalMode>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub timezone: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub codes: Vec<mimir::Code>,
 }
 
 trait ToGeom {
@@ -150,15 +154,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             name: name,
             postcode: postcode,
             label: label,
-            housenumber: None,
-            street: None,
-            city: None,
-            administrative_regions: vec![],
-            poi_types: vec![],
-            properties: vec![],
-            address: None,
-            commercial_modes: vec![],
-            physical_modes: vec![],
+            ..Default::default()
         }
     }
 }
@@ -199,20 +195,14 @@ impl From<mimir::Street> for GeocodingResponse {
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
-            level: None,
             place_type: type_,
             name: name.clone(),
             postcode: postcode,
             label: label,
-            housenumber: None,
             street: name,
             city: city,
             administrative_regions: admins,
-            poi_types: vec![],
-            properties: vec![],
-            address: None,
-            commercial_modes: vec![],
-            physical_modes: vec![],
+            ..Default::default()
         }
     }
 }
@@ -239,7 +229,6 @@ impl From<mimir::Addr> for GeocodingResponse {
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
-            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
@@ -248,11 +237,7 @@ impl From<mimir::Addr> for GeocodingResponse {
             street: street_name,
             city: city,
             administrative_regions: admins,
-            poi_types: vec![],
-            properties: vec![],
-            address: None,
-            commercial_modes: vec![],
-            physical_modes: vec![],
+            ..Default::default()
         }
     }
 }
@@ -274,13 +259,10 @@ impl From<mimir::Poi> for GeocodingResponse {
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
-            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
             label: label,
-            housenumber: None,
-            street: None,
             city: city,
             administrative_regions: admins,
             poi_types: vec![other.poi_type],
@@ -292,8 +274,7 @@ impl From<mimir::Poi> for GeocodingResponse {
                 }
                 _ => None,
             },
-            commercial_modes: vec![],
-            physical_modes: vec![],
+            ..Default::default()
         }
     }
 }
@@ -315,20 +296,18 @@ impl From<mimir::Stop> for GeocodingResponse {
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
-            level: None,
             place_type: type_,
             name: name,
             postcode: postcode,
             label: label,
-            housenumber: None,
-            street: None,
             city: city,
             administrative_regions: admins,
-            poi_types: vec![],
-            properties: vec![],
-            address: None,
             commercial_modes: other.commercial_modes,
             physical_modes: other.physical_modes,
+            timezone: Some(other.timezone),
+            codes: other.codes,
+            properties: other.properties,
+            ..Default::default()
         }
     }
 }
