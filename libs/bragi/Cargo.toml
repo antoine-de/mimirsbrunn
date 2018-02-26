@@ -19,5 +19,8 @@ geojson = "0.8"
 geo = "0.4.7"
 lazy_static = "1"
 
+[dependencies.logger]
+git = "https://github.com/iron/logger.git"
+
 [dependencies.mimir]
 path = "../mimir"
