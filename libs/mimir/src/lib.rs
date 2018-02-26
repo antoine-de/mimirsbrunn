@@ -61,7 +61,7 @@ use slog::Never;
 
 pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {
     if let Ok(s) = env::var("RUST_LOG_JSON") {
-        let mut drain = slog_json::Json::new(std::io::stdout())
+        let mut drain = slog_json::Json::new(std::io::stderr())
             .add_default_keys()
             .add_key_value(o!(
                     "module" => slog::FnValue(|rinfo : &slog::Record| {
@@ -97,7 +97,7 @@ where
         .build();
 
     let log = slog::Logger::root(drain.fuse(), slog_o!());
-    let _scope_guard = slog_scope::set_global_logger(log);
-    let _log_guard = slog_stdlog::init().unwrap();
-    (_scope_guard, _log_guard)
+    let scope_guard = slog_scope::set_global_logger(log);
+    let log_guard = slog_stdlog::init().unwrap();
+    (scope_guard, log_guard)
 }
