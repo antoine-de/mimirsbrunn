@@ -28,9 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 extern crate hyper;
-#[macro_use]
-extern crate log;
 extern crate retry;
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 
 use std::process::Command;
 use std::error::Error;

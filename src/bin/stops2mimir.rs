@@ -30,12 +30,14 @@
 
 extern crate csv;
 extern crate itertools;
-#[macro_use]
-extern crate log;
 extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
@@ -142,7 +144,7 @@ impl GtfsStop {
 }
 
 fn main() {
-    mimir::logger_init();
+    let _guard = mimir::logger_init();
     info!("Launching stops2mimir...");
 
     let args = Args::from_args();

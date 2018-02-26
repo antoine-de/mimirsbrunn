@@ -29,12 +29,15 @@
 // www.navitia.io
 
 extern crate bragi;
-#[macro_use]
-extern crate log;
 extern crate mimir;
 
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
+
 fn main() {
-    mimir::logger_init();
+    let _guard = mimir::logger_init();
     debug!("running bragi webserver");
     bragi::runserver();
 }

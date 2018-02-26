@@ -31,8 +31,12 @@
 extern crate geo;
 extern crate gst;
 extern crate itertools;
+
 #[macro_use]
-extern crate log;
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
+
 #[macro_use]
 extern crate mdo;
 extern crate mimir;
