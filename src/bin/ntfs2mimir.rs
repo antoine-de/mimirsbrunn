@@ -121,8 +121,15 @@ fn main() {
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
-
-    let navitia = navitia_model::ntfs::read(&args.input);
+    if let Err(err) = run(args) {
+        for cause in err.causes() {
+            eprintln!("{}", cause);
+        }
+        std::process::exit(1);
+    }
+}
+fn run(args: Args) -> Result<(), navitia_model::Error> {
+    let navitia = navitia_model::ntfs::read(&args.input)?;
     let nb_stop_points = navitia
         .stop_areas
         .iter()
@@ -141,4 +148,5 @@ fn main() {
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
     import_stops(stops, &args.connection_string, &args.dataset);
+    Ok(())
 }
