@@ -55,13 +55,13 @@ lazy_static! {
     static ref HTTP_COUNTER: prometheus::CounterVec = register_counter_vec!(
             "bragi_http_requests_total",
             "Total number of HTTP requests made.",
-            &["status"]
+            &["handler", "method", "status"]
     ).unwrap();
 
     static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
         "bragi_http_request_duration_seconds",
         "The HTTP request latencies in seconds.",
-        &["handler"],
+        &["handler", "method"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
     ).unwrap();
 
@@ -121,7 +121,10 @@ impl ApiEndPoint {
             api.before(|client, _params| {
                 client.ext.insert::<Timer>(
                     HTTP_REQ_HISTOGRAM
-                        .with_label_values(&[&client.endpoint.path.path])
+                        .with_label_values(&[
+                            &client.endpoint.path.path,
+                            &format!("{}", &client.endpoint.method),
+                        ])
                         .start_timer(),
                 );
                 Ok(())
@@ -129,7 +132,11 @@ impl ApiEndPoint {
 
             api.after(|client, _params| {
                 HTTP_COUNTER
-                    .with_label_values(&[client.status().canonical_reason().unwrap()])
+                    .with_label_values(&[
+                        &client.endpoint.path.path,
+                        &format!("{}", &client.endpoint.method),
+                        &format!("{}", client.status()),
+                    ])
                     .inc();
                 let histo_timer: prometheus::HistogramTimer = client.ext.remove::<Timer>().unwrap();
                 histo_timer.observe_duration();
@@ -145,7 +152,7 @@ impl ApiEndPoint {
             api.mount(self.autocomplete());
             api.mount(self.features());
             api.mount(self.reverse());
-            api.mount(self.prometheus());
+            api.mount(self.metrics());
         })
     }
 
@@ -165,7 +172,7 @@ impl ApiEndPoint {
         })
     }
 
-    fn prometheus(&self) -> rustless::Api {
+    fn metrics(&self) -> rustless::Api {
         Api::build(|api| {
             api.get("metrics", |endpoint| {
                 endpoint.handle(move |mut client, _params| {
