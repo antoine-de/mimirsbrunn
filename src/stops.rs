@@ -117,6 +117,38 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     );
 }
 
+fn merge_codes(es_stop: &mut mimir::Stop, codes: Vec<mimir::Code>) {
+	let filtered_codes;
+	{
+		let is_not_existent = |code: &mimir::Code| -> bool {
+			for es_code in &es_stop.codes {
+				if code.name == es_code.name && code.value == es_code.value {
+					return true
+				}
+			}
+			return true
+		};
+		filtered_codes = codes.into_iter().filter(is_not_existent).collect::<Vec<mimir::Code>>();
+	}
+	es_stop.codes.extend(filtered_codes.into_iter());	
+}
+
+fn merge_physical_modes(es_stop: &mut mimir::Stop, modes: Vec<mimir::PhysicalMode>) {
+	let filtered_modes;
+	{
+		let is_not_existent = |code: &mimir::PhysicalMode| -> bool {
+			for es_code in &es_stop.physical_modes {
+				if code.id == es_code.id && code.name == es_code.name {
+					return true
+				}
+			}
+			return true
+		};
+		filtered_modes = modes.into_iter().filter(is_not_existent).collect::<Vec<mimir::PhysicalMode>>();
+	}
+	es_stop.physical_modes.extend(filtered_modes.into_iter());	
+}
+
 /// merge the stops from all the different indexes
 /// for the moment the merge is very simple and uses only the ID
 /// (and we take the data from the first stop inserted)
@@ -126,10 +158,17 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
     for mut stop in stops.into_iter() {
         let cov = replace(&mut stop.coverages, vec![]);
-        stops_by_id
+        let mut codes = replace(&mut stop.codes, vec![]);
+        let mut physical_modes = replace(&mut stop.physical_modes, vec![]);
+        
+        let mut stop_in_map = stops_by_id
             .entry(stop.id.clone())
-            .or_insert(stop)
-            .coverages
+            .or_insert(stop);
+		
+		merge_codes(stop_in_map, codes);
+		merge_physical_modes(stop_in_map, physical_modes);
+		
+        stop_in_map.coverages
             .extend(cov.into_iter());
     }
     Box::new(stops_by_id.into_iter().map(|(_, v)| v))
