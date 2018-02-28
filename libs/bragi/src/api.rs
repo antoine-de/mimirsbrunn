@@ -38,9 +38,34 @@ use model::v1::*;
 use model;
 use params::{coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param};
 use mimir::rubber::Rubber;
+use prometheus;
+use prometheus::Encoder;
+use iron::typemap::Key;
+use hyper::mime::Mime;
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
+
+struct Timer;
+impl Key for Timer {
+    type Value = prometheus::HistogramTimer;
+}
+
+lazy_static! {
+    static ref HTTP_COUNTER: prometheus::CounterVec = register_counter_vec!(
+            "bragi_http_requests_total",
+            "Total number of HTTP requests made.",
+            &["status"]
+    ).unwrap();
+
+    static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
+        "bragi_http_request_duration_seconds",
+        "The HTTP request latencies in seconds.",
+        &["handler"],
+        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+    ).unwrap();
+
+}
 
 fn render<T>(
     mut client: rustless::Client,
@@ -92,6 +117,24 @@ impl ApiEndPoint {
                 resp.set_json_content_type();
                 Some(resp)
             });
+
+            api.before(|client, _params| {
+                client.ext.insert::<Timer>(
+                    HTTP_REQ_HISTOGRAM
+                        .with_label_values(&[&client.endpoint.path.path])
+                        .start_timer(),
+                );
+                Ok(())
+            });
+
+            api.after(|client, _params| {
+                HTTP_COUNTER
+                    .with_label_values(&[client.status().canonical_reason().unwrap()])
+                    .inc();
+                let histo_timer: prometheus::HistogramTimer = client.ext.remove::<Timer>().unwrap();
+                histo_timer.observe_duration();
+                Ok(())
+            });
             api.mount(self.v1());
         })
     }
@@ -102,6 +145,7 @@ impl ApiEndPoint {
             api.mount(self.autocomplete());
             api.mount(self.features());
             api.mount(self.reverse());
+            api.mount(self.prometheus());
         })
     }
 
@@ -116,6 +160,21 @@ impl ApiEndPoint {
                         status: "good".to_string(),
                     };
                     render(client, status)
+                })
+            });
+        })
+    }
+
+    fn prometheus(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("metrics", |endpoint| {
+                endpoint.handle(move |mut client, _params| {
+                    let encoder = prometheus::TextEncoder::new();
+                    let metric_familys = prometheus::gather();
+                    let mut buffer = vec![];
+                    encoder.encode(&metric_familys, &mut buffer).unwrap();
+                    client.set_content_type(encoder.format_type().parse::<Mime>().unwrap());
+                    client.text(String::from_utf8(buffer).unwrap())
                 })
             });
         })
@@ -225,7 +284,6 @@ impl ApiEndPoint {
                         Some(shape),
                         &types,
                     );
-
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
                 })

@@ -18,6 +18,8 @@ serde_derive = "1"
 geojson = "0.8"
 geo = "0.4.7"
 lazy_static = "1"
+prometheus = "0.3"
+hyper = "0.10"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"

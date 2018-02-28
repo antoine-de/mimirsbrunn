@@ -28,6 +28,8 @@ mdo = "*"
 itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = { git = "https://github.com/QwantResearch/osm_boundaries_utils_rs", version = "0.1" }
+prometheus = "0.3"
+lazy_static = "1.0"
 
 [dev-dependencies]
 hyper = "0.10"
