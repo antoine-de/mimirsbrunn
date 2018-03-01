@@ -116,37 +116,14 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
         nb_matched + nb_unmatched
     );
 }
-
-fn merge_codes(es_stop: &mut mimir::Stop, codes: Vec<mimir::Code>) {
-	let filtered_codes;
-	{
-		let is_not_existent = |code: &mimir::Code| -> bool {
-			for es_code in &es_stop.codes {
-				if code.name == es_code.name && code.value == es_code.value {
-					return true
-				}
-			}
-			return true
-		};
-		filtered_codes = codes.into_iter().filter(is_not_existent).collect::<Vec<mimir::Code>>();
-	}
-	es_stop.codes.extend(filtered_codes.into_iter());	
-}
-
-fn merge_physical_modes(es_stop: &mut mimir::Stop, modes: Vec<mimir::PhysicalMode>) {
-	let filtered_modes;
-	{
-		let is_not_existent = |code: &mimir::PhysicalMode| -> bool {
-			for es_code in &es_stop.physical_modes {
-				if code.id == es_code.id && code.name == es_code.name {
-					return true
-				}
-			}
-			return true
-		};
-		filtered_modes = modes.into_iter().filter(is_not_existent).collect::<Vec<mimir::PhysicalMode>>();
-	}
-	es_stop.physical_modes.extend(filtered_modes.into_iter());	
+fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
+    use std::collections::BTreeSet;
+    let tmp = replace(target, vec![]);
+    *target = tmp.into_iter()
+        .chain(source)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
 }
 
 /// merge the stops from all the different indexes
@@ -160,16 +137,16 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
         let cov = replace(&mut stop.coverages, vec![]);
         let mut codes = replace(&mut stop.codes, vec![]);
         let mut physical_modes = replace(&mut stop.physical_modes, vec![]);
-        
-        let mut stop_in_map = stops_by_id
-            .entry(stop.id.clone())
-            .or_insert(stop);
-		
-		merge_codes(stop_in_map, codes);
-		merge_physical_modes(stop_in_map, physical_modes);
-		
-        stop_in_map.coverages
-            .extend(cov.into_iter());
+        let mut commercial_modes = replace(&mut stop.commercial_modes, vec![]);
+        let mut properties = replace(&mut stop.properties, vec![]);
+
+        let mut stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
+
+        merge_collection(&mut stop_in_map.codes, codes);
+        merge_collection(&mut stop_in_map.physical_modes, physical_modes);
+        merge_collection(&mut stop_in_map.commercial_modes, commercial_modes);
+        merge_collection(&mut stop_in_map.coverages, cov);
+        merge_collection(&mut stop_in_map.properties, properties);
     }
     Box::new(stops_by_id.into_iter().map(|(_, v)| v))
 }
