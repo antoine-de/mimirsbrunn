@@ -135,10 +135,10 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
     for mut stop in stops.into_iter() {
         let cov = replace(&mut stop.coverages, vec![]);
-        let mut codes = replace(&mut stop.codes, vec![]);
-        let mut physical_modes = replace(&mut stop.physical_modes, vec![]);
-        let mut commercial_modes = replace(&mut stop.commercial_modes, vec![]);
-        let mut properties = replace(&mut stop.properties, vec![]);
+        let codes = replace(&mut stop.codes, vec![]);
+        let physical_modes = replace(&mut stop.physical_modes, vec![]);
+        let commercial_modes = replace(&mut stop.commercial_modes, vec![]);
+        let properties = replace(&mut stop.properties, vec![]);
 
         let mut stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
 
