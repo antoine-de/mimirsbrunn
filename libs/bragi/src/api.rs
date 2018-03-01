@@ -124,13 +124,15 @@ impl ApiEndPoint {
                     .get_metric_with(&labels!{
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
-                }).and_then(|timer| {
+                    })
+                    .and_then(|timer| {
                         client.ext.insert::<Timer>(timer.start_timer());
                         Ok(())
-                }).or_else(|err|{
-                    error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
-                    Ok(())
-                })
+                    })
+                    .or_else(|err| {
+                        error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
+                        Ok(())
+                    })
             });
 
             api.after(|client, _params| {
@@ -142,20 +144,28 @@ impl ApiEndPoint {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
                         "status" => code.as_str(),
-                }).and_then(|counter|{
-                    counter.inc();
-                    Ok(())
-                }).or_else(|err| -> Result<(), ()>{
-                    error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
-                    Ok(())
-                }).unwrap();
-                client.ext.remove::<Timer>().ok_or("").and_then(|timer| {
-                    timer.observe_duration();
-                    Ok(())
-                }).or_else(|_err|{
-                    error!("impossible to get timers from typemap");
-                    Ok(())
-                })
+                    })
+                    .and_then(|counter| {
+                        counter.inc();
+                        Ok(())
+                    })
+                    .or_else(|err| -> Result<(), ()> {
+                        error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
+                        Ok(())
+                    })
+                    .unwrap();
+                client
+                    .ext
+                    .remove::<Timer>()
+                    .ok_or("")
+                    .and_then(|timer| {
+                        timer.observe_duration();
+                        Ok(())
+                    })
+                    .or_else(|_err| {
+                        error!("impossible to get timers from typemap");
+                        Ok(())
+                    })
             });
             api.mount(self.v1());
         })
