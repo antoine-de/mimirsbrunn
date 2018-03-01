@@ -144,21 +144,15 @@ impl ApiEndPoint {
                         "method" => method.as_str(),
                         "status" => code.as_str(),
                     })
-                    .map(|counter| {
-                        counter.inc();
-                    })
+                    .map(|counter| counter.inc())
                     .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
                     });
                 client
                     .ext
                     .remove::<Timer>()
-                    .map(|timer| {
-                        timer.observe_duration();
-                    })
-                    .unwrap_or_else(|| {
-                        error!("impossible to get timers from typemap");
-                    });
+                    .map(|timer| timer.observe_duration())
+                    .unwrap_or_else(|| error!("impossible to get timers from typemap"));
                 Ok(())
             });
             api.mount(self.v1());
