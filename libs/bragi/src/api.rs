@@ -125,14 +125,13 @@ impl ApiEndPoint {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
                     })
-                    .and_then(|timer| {
+                    .map(|timer| {
                         client.ext.insert::<Timer>(timer.start_timer());
-                        Ok(())
                     })
-                    .or_else(|err| {
+                    .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
-                        Ok(())
-                    })
+                    });
+                    Ok(())
             });
 
             api.after(|client, _params| {
@@ -145,27 +144,22 @@ impl ApiEndPoint {
                         "method" => method.as_str(),
                         "status" => code.as_str(),
                     })
-                    .and_then(|counter| {
+                    .map(|counter| {
                         counter.inc();
-                        Ok(())
                     })
-                    .or_else(|err| -> Result<(), ()> {
+                    .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
-                        Ok(())
-                    })
-                    .unwrap();
+                    });
                 client
                     .ext
                     .remove::<Timer>()
-                    .ok_or("")
-                    .and_then(|timer| {
+                    .map(|timer| {
                         timer.observe_duration();
-                        Ok(())
                     })
-                    .or_else(|_err| {
+                    .unwrap_or_else(|| {
                         error!("impossible to get timers from typemap");
-                        Ok(())
-                    })
+                    });
+                    Ok(())
             });
             api.mount(self.v1());
         })
