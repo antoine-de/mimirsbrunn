@@ -38,6 +38,17 @@ use serde_json;
 use serde;
 use mimir::objects::{Addr, Admin, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{collect, get_indexes};
+use prometheus;
+use std::fmt;
+
+lazy_static! {
+    static ref ES_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
+        "bragi_elasticsearch_request_duration_seconds",
+        "The elasticsearch request latencies in seconds.",
+        &["search_type"],
+        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+    ).unwrap();
+}
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
@@ -70,6 +81,16 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
 enum MatchType {
     Prefix,
     Fuzzy,
+}
+
+impl fmt::Display for MatchType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let printable = match *self {
+            MatchType::Prefix => "prefix",
+            MatchType::Fuzzy => "fuzzy",
+        };
+        write!(f, "{}", printable)
+    }
 }
 
 /// Create a `rs_es::Query` that boosts results according to the
@@ -225,6 +246,7 @@ fn query(
     shape: Option<Vec<rs_es::units::Location>>,
     types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
+    let query_type = match_type.to_string();
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
 
     let mut client = rs_es::Client::new(cnx).unwrap();
@@ -238,6 +260,13 @@ fn query(
         // but we want to return empty response in this case.
         return Ok(vec![]);
     }
+    let timer = ES_REQ_HISTOGRAM
+        .get_metric_with_label_values(&[query_type.as_str()])
+        .map(|h| Some(h.start_timer()))
+        .unwrap_or_else(|err| {
+            error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string());
+            None
+        });
 
     let result: SearchResult<serde_json::Value> = try!(
         client
@@ -251,6 +280,7 @@ fn query(
             .with_size(limit)
             .send()
     );
+    timer.map(|t| t.observe_duration());
 
     collect(result)
 }

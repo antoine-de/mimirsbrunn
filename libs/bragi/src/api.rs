@@ -131,7 +131,7 @@ impl ApiEndPoint {
                     .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
                     });
-                    Ok(())
+                Ok(())
             });
 
             api.after(|client, _params| {
@@ -159,7 +159,7 @@ impl ApiEndPoint {
                     .unwrap_or_else(|| {
                         error!("impossible to get timers from typemap");
                     });
-                    Ok(())
+                Ok(())
             });
             api.mount(self.v1());
         })
