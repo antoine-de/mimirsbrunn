@@ -64,7 +64,6 @@ lazy_static! {
         &["handler", "method"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
     ).unwrap();
-
 }
 
 fn render<T>(
@@ -119,28 +118,44 @@ impl ApiEndPoint {
             });
 
             api.before(|client, _params| {
-                client.ext.insert::<Timer>(
-                    HTTP_REQ_HISTOGRAM
-                        .with_label_values(&[
-                            &client.endpoint.path.path,
-                            &format!("{}", &client.endpoint.method),
-                        ])
-                        .start_timer(),
-                );
-                Ok(())
+                let method = client.endpoint.method.to_string();
+
+                HTTP_REQ_HISTOGRAM
+                    .get_metric_with(&labels!{
+                        "handler" => client.endpoint.path.path.as_str(),
+                        "method" => method.as_str(),
+                }).and_then(|timer| {
+                        client.ext.insert::<Timer>(timer.start_timer());
+                        Ok(())
+                }).or_else(|err|{
+                    error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
+                    Ok(())
+                })
             });
 
             api.after(|client, _params| {
+                let method = client.endpoint.method.to_string();
+                let code = client.status().to_string();
+
                 HTTP_COUNTER
-                    .with_label_values(&[
-                        &client.endpoint.path.path,
-                        &format!("{}", &client.endpoint.method),
-                        &format!("{}", client.status()),
-                    ])
-                    .inc();
-                let histo_timer: prometheus::HistogramTimer = client.ext.remove::<Timer>().unwrap();
-                histo_timer.observe_duration();
-                Ok(())
+                    .get_metric_with(&labels!{
+                        "handler" => client.endpoint.path.path.as_str(),
+                        "method" => method.as_str(),
+                        "status" => code.as_str(),
+                }).and_then(|counter|{
+                    counter.inc();
+                    Ok(())
+                }).or_else(|err| -> Result<(), ()>{
+                    error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
+                    Ok(())
+                }).unwrap();
+                client.ext.remove::<Timer>().ok_or("").and_then(|timer| {
+                    timer.observe_duration();
+                    Ok(())
+                }).or_else(|_err|{
+                    error!("impossible to get timers from typemap");
+                    Ok(())
+                })
             });
             api.mount(self.v1());
         })
