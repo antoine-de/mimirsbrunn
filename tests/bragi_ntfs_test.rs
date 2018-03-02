@@ -50,6 +50,19 @@ pub fn bragi_ntfs_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     gare_de_lyon(&bragi);
+
+    let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");
+    ::launch_and_assert(
+        ntfs2mimir,
+        vec![
+            "--input=./tests/fixtures/ntfs2/".into(),
+            "--dataset=dataset2".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
+
+    gare_de_lyon_with_two_datasets(&bragi);
 }
 
 fn gare_de_lyon(bragi: &BragiHandler) {
@@ -90,6 +103,54 @@ fn gare_de_lyon(bragi: &BragiHandler) {
         stop.get("properties").unwrap(),
         &json!([
             {"key": "awesome_system", "value": "id:4242"},
+        ])
+    );
+}
+
+fn gare_de_lyon_with_two_datasets(bragi: &BragiHandler) {
+    // with this query we should find only one response, a stop
+    let response =
+        bragi.get("/autocomplete?q=gare de lyon&pt_dataset=dataset1&pt_dataset=dataset2");
+    assert_eq!(response.len(), 1);
+    let stop = response.first().unwrap();
+
+    assert_eq!(get_value(stop, "type"), "public_transport:stop_area");
+    assert_eq!(get_value(stop, "label"), "Gare de Lyon");
+    assert_eq!(get_value(stop, "name"), "Gare de Lyon");
+    assert_eq!(get_value(stop, "id"), "stop_area:GDL");
+    assert_eq!(get_value(stop, "timezone"), "Europe/Paris");
+
+    assert_eq!(
+        stop.get("physical_modes").unwrap(),
+        &json!([
+            {"id": "physical_mode:Bus", "name": "Bus"},
+            {"id": "physical_mode:Metro", "name": "Metro"},
+            {"id": "physical_mode:Metro", "name": "Underground"}, // From dataset2
+            {"id": "physical_mode:RapidTransit", "name": "Rapid Transit"}
+        ])
+    );
+    assert_eq!(
+        stop.get("commercial_modes").unwrap(),
+        &json!([
+            {"id": "commercial_mode:Bus", "name": "Bus"},
+            {"id": "commercial_mode:Metro", "name": "Metro"},
+            {"id": "commercial_mode:Metro", "name": "Underground"}, // From dataset2
+            {"id": "commercial_mode:RER", "name": "Réseau Express Régional (RER)"}
+        ])
+    );
+    assert_eq!(
+        stop.get("codes").unwrap(),
+        &json!([
+            {"name": "navitia1", "value": "424242"},
+            {"name": "navitia2", "value": "434343"}, // From dataset2
+            {"name": "source", "value": "stop_area:GDL"},
+        ])
+    );
+    assert_eq!(
+        stop.get("properties").unwrap(),
+        &json!([
+            {"key": "awesome_system", "value": "id:4242"},
+            {"key": "super_awesome_system", "value": "id:4343"}, // From dataset2
         ])
     );
 }

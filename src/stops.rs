@@ -116,6 +116,15 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
         nb_matched + nb_unmatched
     );
 }
+fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
+    use std::collections::BTreeSet;
+    let tmp = replace(target, vec![]);
+    *target = tmp.into_iter()
+        .chain(source)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+}
 
 /// merge the stops from all the different indexes
 /// for the moment the merge is very simple and uses only the ID
@@ -126,11 +135,18 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
     for mut stop in stops.into_iter() {
         let cov = replace(&mut stop.coverages, vec![]);
-        stops_by_id
-            .entry(stop.id.clone())
-            .or_insert(stop)
-            .coverages
-            .extend(cov.into_iter());
+        let codes = replace(&mut stop.codes, vec![]);
+        let physical_modes = replace(&mut stop.physical_modes, vec![]);
+        let commercial_modes = replace(&mut stop.commercial_modes, vec![]);
+        let properties = replace(&mut stop.properties, vec![]);
+
+        let mut stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
+
+        merge_collection(&mut stop_in_map.codes, codes);
+        merge_collection(&mut stop_in_map.physical_modes, physical_modes);
+        merge_collection(&mut stop_in_map.commercial_modes, commercial_modes);
+        merge_collection(&mut stop_in_map.coverages, cov);
+        merge_collection(&mut stop_in_map.properties, properties);
     }
     Box::new(stops_by_id.into_iter().map(|(_, v)| v))
 }
