@@ -262,11 +262,11 @@ fn query(
     }
     let timer = ES_REQ_HISTOGRAM
         .get_metric_with_label_values(&[query_type.as_str()])
-        .map(|h| Some(h.start_timer()))
-        .unwrap_or_else(|err| {
-            error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string());
-            None
-        });
+        .map(|h| h.start_timer())
+        .map_err(
+            |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
+        )
+        .ok();
 
     let result: SearchResult<serde_json::Value> = try!(
         client
