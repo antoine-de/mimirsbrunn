@@ -57,6 +57,11 @@ use rustless::Application;
 
 extern crate logger;
 
+#[macro_use]
+extern crate prometheus;
+
+extern crate hyper;
+
 pub mod api;
 pub mod query;
 mod model;

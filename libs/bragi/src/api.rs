@@ -38,9 +38,33 @@ use model::v1::*;
 use model;
 use params::{coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param};
 use mimir::rubber::Rubber;
+use prometheus;
+use prometheus::Encoder;
+use iron::typemap::Key;
+use hyper::mime::Mime;
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
+
+struct Timer;
+impl Key for Timer {
+    type Value = prometheus::HistogramTimer;
+}
+
+lazy_static! {
+    static ref HTTP_COUNTER: prometheus::CounterVec = register_counter_vec!(
+            "bragi_http_requests_total",
+            "Total number of HTTP requests made.",
+            &["handler", "method", "status"]
+    ).unwrap();
+
+    static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
+        "bragi_http_request_duration_seconds",
+        "The HTTP request latencies in seconds.",
+        &["handler", "method"],
+        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+    ).unwrap();
+}
 
 fn render<T>(
     mut client: rustless::Client,
@@ -92,6 +116,45 @@ impl ApiEndPoint {
                 resp.set_json_content_type();
                 Some(resp)
             });
+
+            api.before(|client, _params| {
+                let method = client.endpoint.method.to_string();
+
+                HTTP_REQ_HISTOGRAM
+                    .get_metric_with(&labels!{
+                        "handler" => client.endpoint.path.path.as_str(),
+                        "method" => method.as_str(),
+                    })
+                    .map(|timer| {
+                        client.ext.insert::<Timer>(timer.start_timer());
+                    })
+                    .unwrap_or_else(|err| {
+                        error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
+                    });
+                Ok(())
+            });
+
+            api.after(|client, _params| {
+                let method = client.endpoint.method.to_string();
+                let code = client.status().to_string();
+
+                HTTP_COUNTER
+                    .get_metric_with(&labels!{
+                        "handler" => client.endpoint.path.path.as_str(),
+                        "method" => method.as_str(),
+                        "status" => code.as_str(),
+                    })
+                    .map(|counter| counter.inc())
+                    .unwrap_or_else(|err| {
+                        error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
+                    });
+                client
+                    .ext
+                    .remove::<Timer>()
+                    .map(|timer| timer.observe_duration())
+                    .unwrap_or_else(|| error!("impossible to get timers from typemap"));
+                Ok(())
+            });
             api.mount(self.v1());
         })
     }
@@ -102,6 +165,7 @@ impl ApiEndPoint {
             api.mount(self.autocomplete());
             api.mount(self.features());
             api.mount(self.reverse());
+            api.mount(self.metrics());
         })
     }
 
@@ -116,6 +180,21 @@ impl ApiEndPoint {
                         status: "good".to_string(),
                     };
                     render(client, status)
+                })
+            });
+        })
+    }
+
+    fn metrics(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("metrics", |endpoint| {
+                endpoint.handle(move |mut client, _params| {
+                    let encoder = prometheus::TextEncoder::new();
+                    let metric_familys = prometheus::gather();
+                    let mut buffer = vec![];
+                    encoder.encode(&metric_familys, &mut buffer).unwrap();
+                    client.set_content_type(encoder.format_type().parse::<Mime>().unwrap());
+                    client.text(String::from_utf8(buffer).unwrap())
                 })
             });
         })
@@ -225,7 +304,6 @@ impl ApiEndPoint {
                         Some(shape),
                         &types,
                     );
-
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
                 })
