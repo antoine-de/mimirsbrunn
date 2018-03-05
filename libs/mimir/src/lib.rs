@@ -74,7 +74,7 @@ pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {
         configure_logger(drain.build().fuse())
     } else {
         configure_logger(
-            slog_term::CompactFormat::new(slog_term::TermDecorator::new().stderr().build())
+            slog_term::CompactFormat::new(slog_term::PlainDecorator::new(std::io::stderr()))
                 .build()
                 .fuse(),
         )
