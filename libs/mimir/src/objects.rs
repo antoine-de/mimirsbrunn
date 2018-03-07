@@ -244,20 +244,13 @@ pub struct Stop {
     pub administrative_regions: Vec<Rc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
-    #[serde(default)]
-    pub commercial_modes: Vec<CommercialMode>,
-    #[serde(default)]
-    pub physical_modes: Vec<PhysicalMode>,
-    #[serde(default)]
-    pub coverages: Vec<String>,
-    #[serde(default)]
-    pub timezone: String,
-    #[serde(default)]
-    pub codes: Vec<Code>,
-    #[serde(default)]
-    pub properties: Vec<Property>,
-    #[serde(default)]
-    pub feed_publishers: Vec<FeedPublisher>,
+    #[serde(default)] pub commercial_modes: Vec<CommercialMode>,
+    #[serde(default)] pub physical_modes: Vec<PhysicalMode>,
+    #[serde(default)] pub coverages: Vec<String>,
+    #[serde(default)] pub timezone: String,
+    #[serde(default)] pub codes: Vec<Code>,
+    #[serde(default)] pub properties: Vec<Property>,
+    #[serde(default)] pub feed_publishers: Vec<FeedPublisher>,
 }
 
 impl MimirObject for Stop {
@@ -309,8 +302,7 @@ pub struct Admin {
             deserialize_with = "custom_multi_polygon_deserialize",
             skip_serializing_if = "Option::is_none", default)]
     pub boundary: Option<geo::MultiPolygon<f64>>,
-    #[serde(default = "default_admin_city")]
-    pub admin_type: AdminType,
+    #[serde(default = "default_admin_city")] pub admin_type: AdminType,
 }
 
 fn default_admin_city() -> AdminType {
@@ -491,10 +483,8 @@ pub struct AliasOperations {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AliasOperation {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub add: Option<AliasParameter>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub remove: Option<AliasParameter>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub add: Option<AliasParameter>,
+    #[serde(skip_serializing_if = "Option::is_none")] pub remove: Option<AliasParameter>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -218,7 +218,8 @@ impl<'a> ElasticSearchWrapper<'a> {
                     _ => None,
                 }
             })
-            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+            .unwrap_or(Box::new(None.into_iter())
+                as Box<Iterator<Item = mimir::Place>>)
     }
 }
 

@@ -105,6 +105,13 @@ fn gare_de_lyon(bragi: &BragiHandler) {
             {"key": "awesome_system", "value": "id:4242"},
         ])
     );
+    assert_eq!(
+        stop.get("feed_publishers").unwrap(),
+        &json!([
+            {"id": "TGC", "license": "DoWhattheFuckYouWantToPublicLicense",
+             "name": "The Great Contributor", "url": "http://the-great-contributor.com"},
+        ])
+    );
 }
 
 fn gare_de_lyon_with_two_datasets(bragi: &BragiHandler) {
@@ -151,6 +158,15 @@ fn gare_de_lyon_with_two_datasets(bragi: &BragiHandler) {
         &json!([
             {"key": "awesome_system", "value": "id:4242"},
             {"key": "super_awesome_system", "value": "id:4343"}, // From dataset2
+        ])
+    );
+    assert_eq!(
+        stop.get("feed_publishers").unwrap(),
+        &json!([
+            {"id": "TGC", "license": "DoWhattheFuckYouWantToPublicLicense",
+             "name": "The Great Contributor", "url": "http://the-great-contributor.com"},
+            {"id": "TSC", "license": "DoWhattheFuckYouWantToPublicLicense",
+             "name": "The Super Contributor", "url": "http://the-super-contributor.com"},
         ])
     );
 }
