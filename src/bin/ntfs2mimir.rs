@@ -92,11 +92,11 @@ fn to_mimir(
             license: navitia.contributors[contrib_idx]
                 .license
                 .clone()
-                .unwrap_or(format!("")),
+                .unwrap_or_else(|| "".into()),
             url: navitia.contributors[contrib_idx]
                 .website
                 .clone()
-                .unwrap_or(format!("")),
+                .unwrap_or_else(|| "".into()),
         })
         .collect();
 

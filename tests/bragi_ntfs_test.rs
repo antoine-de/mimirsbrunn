@@ -108,7 +108,7 @@ fn gare_de_lyon(bragi: &BragiHandler) {
     assert_eq!(
         stop.get("feed_publishers").unwrap(),
         &json!([
-            {"id": "TGC", "license": "DoWhattheFuckYouWantToPublicLicense",
+            {"id": "TGC", "license": "DoWhattheFuckYouWanttoPublicLicense",
              "name": "The Great Contributor", "url": "http://the-great-contributor.com"},
         ])
     );
@@ -163,9 +163,9 @@ fn gare_de_lyon_with_two_datasets(bragi: &BragiHandler) {
     assert_eq!(
         stop.get("feed_publishers").unwrap(),
         &json!([
-            {"id": "TGC", "license": "DoWhattheFuckYouWantToPublicLicense",
+            {"id": "TGC", "license": "DoWhattheFuckYouWanttoPublicLicense",
              "name": "The Great Contributor", "url": "http://the-great-contributor.com"},
-            {"id": "TSC", "license": "DoWhattheFuckYouWantToPublicLicense",
+            {"id": "TSC", "license": "DoWhattheFuckYouWanttoPublicLicense",
              "name": "The Super Contributor", "url": "http://the-super-contributor.com"},
         ])
     );

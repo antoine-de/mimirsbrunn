@@ -1,2 +1,2 @@
 contributor_id,contributor_name,contributor_website,contributor_license
-TSC,The Super Contributor,http://the-super-contributor.com,DoWhattheFuckYouWantToPublicLicense
+TSC,The Super Contributor,http://the-super-contributor.com,DoWhattheFuckYouWanttoPublicLicense
