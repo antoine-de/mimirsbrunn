@@ -227,6 +227,14 @@ pub struct Code {
     pub value: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct FeedPublisher {
+    pub id: String,
+    pub license: String,
+    pub name: String,
+    pub url: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Stop {
     pub id: String,
@@ -248,6 +256,8 @@ pub struct Stop {
     pub codes: Vec<Code>,
     #[serde(default)]
     pub properties: Vec<Property>,
+    #[serde(default)]
+    pub feed_publishers: Vec<FeedPublisher>,
 }
 
 impl MimirObject for Stop {

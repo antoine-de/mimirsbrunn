@@ -82,6 +82,24 @@ fn to_mimir(
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
         .collect();
+
+    let feed_publishers = navitia
+        .get_corresponding_from_idx(idx)
+        .into_iter()
+        .map(|contrib_idx| mimir::FeedPublisher {
+            id: format!("physical_mode:{}", navitia.contributors[contrib_idx].id),
+            name: navitia.contributors[contrib_idx].name.clone(),
+            license: navitia.contributors[contrib_idx]
+                .license
+                .clone()
+                .unwrap_or(format!("")),
+            url: navitia.contributors[contrib_idx]
+                .website
+                .clone()
+                .unwrap_or(format!("")),
+        })
+        .collect();
+
     mimir::Stop {
         id: format!("stop_area:{}", stop_area.id),
         label: stop_area.name.clone(),
@@ -110,6 +128,7 @@ fn to_mimir(
                 value: v.clone(),
             })
             .collect(),
+        feed_publishers: feed_publishers,
     }
 }
 

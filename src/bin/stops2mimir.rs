@@ -130,6 +130,7 @@ impl GtfsStop {
                 timezone: format!(""),
                 codes: vec![],
                 properties: vec![],
+                feed_publishers: vec![],
             })
         }
     }
