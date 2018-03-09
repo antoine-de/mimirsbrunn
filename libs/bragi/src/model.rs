@@ -90,6 +90,8 @@ pub struct GeocodingResponse {
     pub timezone: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub codes: Vec<mimir::Code>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub feed_publishers: Vec<mimir::FeedPublisher>,
 }
 
 trait ToGeom {
@@ -307,6 +309,7 @@ impl From<mimir::Stop> for GeocodingResponse {
             timezone: Some(other.timezone),
             codes: other.codes,
             properties: other.properties,
+            feed_publishers: other.feed_publishers,
             ..Default::default()
         }
     }

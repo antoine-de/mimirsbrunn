@@ -139,6 +139,7 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
         let physical_modes = replace(&mut stop.physical_modes, vec![]);
         let commercial_modes = replace(&mut stop.commercial_modes, vec![]);
         let properties = replace(&mut stop.properties, vec![]);
+        let feed_publishers = replace(&mut stop.feed_publishers, vec![]);
 
         let mut stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
 
@@ -147,6 +148,7 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
         merge_collection(&mut stop_in_map.commercial_modes, commercial_modes);
         merge_collection(&mut stop_in_map.coverages, cov);
         merge_collection(&mut stop_in_map.properties, properties);
+        merge_collection(&mut stop_in_map.feed_publishers, feed_publishers);
     }
     Box::new(stops_by_id.into_iter().map(|(_, v)| v))
 }
