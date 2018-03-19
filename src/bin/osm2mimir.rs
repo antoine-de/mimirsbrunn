@@ -41,10 +41,11 @@ extern crate structopt;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use mimir::rubber::Rubber;
+
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
-use mimirsbrunn::osm_reader::parse_osm_pbf;
+use mimirsbrunn::osm_reader::make_osm_reader;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 
 #[derive(StructOpt, Debug)]
@@ -79,23 +80,23 @@ struct Args {
     poi_config: Option<PathBuf>,
 }
 
-fn main() {
-    let _guard = mimir::logger_init();
-    let args = Args::from_args();
+fn run(args: Args) -> Result<(), mimirsbrunn::Error>{
+
 
     let levels = args.level.iter().cloned().collect();
-    let mut parsed_pbf = parse_osm_pbf(&args.input);
+
+    let mut osm_reader = make_osm_reader(&args.input)?;
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.connection_string);
-    rubber.initialize_templates().unwrap();
+    rubber.initialize_templates()?;
 
     info!("creating adminstrative regions");
-    let admins_geofinder = administrative_regions(&mut parsed_pbf, levels, args.city_level)
+    let admins_geofinder = administrative_regions(&mut osm_reader, levels, args.city_level)
         .into_iter()
         .collect::<AdminGeoFinder>();
     {
         info!("Extracting streets from osm");
-        let mut streets = streets(&mut parsed_pbf, &admins_geofinder);
+        let mut streets = streets(&mut osm_reader, &admins_geofinder)?;
 
         info!("computing city weight");
         compute_admin_weight(&mut streets, &admins_geofinder);
@@ -105,7 +106,7 @@ fn main() {
 
         if args.import_way {
             info!("importing streets into Mimir");
-            let nb_streets = rubber.index(&args.dataset, streets.into_iter()).unwrap();
+            let nb_streets = rubber.index(&args.dataset, streets.into_iter())?;
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
@@ -113,7 +114,7 @@ fn main() {
         .index(&args.dataset, admins_geofinder.admins())
         .unwrap();
     info!("Nb of indexed admin: {}", nb_admins);
-
+        
     if args.import_poi {
         let matcher = match args.poi_config {
             None => PoiConfig::default(),
@@ -123,7 +124,7 @@ fn main() {
             }
         };
         info!("Extracting pois from osm");
-        let mut pois = pois(&mut parsed_pbf, &matcher, &admins_geofinder);
+        let mut pois = pois(&mut osm_reader, &matcher, &admins_geofinder);
 
         info!("computing poi weight");
         compute_poi_weight(&mut pois);
@@ -132,8 +133,20 @@ fn main() {
         add_address(&mut pois, &mut rubber);
 
         info!("Importing pois into Mimir");
-        let nb_pois = rubber.index(&args.dataset, pois.iter()).unwrap();
+        let nb_pois = rubber.index(&args.dataset, pois.iter())?;
 
         info!("Nb of indexed pois: {}", nb_pois);
+    }
+	Ok(())
+}
+
+fn main() {
+	let _guard = mimir::logger_init(); 
+    let args = Args::from_args();
+	if let Err(err) = run(args) {
+        for cause in err.causes() {
+            eprintln!("{}", cause);
+        }
+        std::process::exit(1);
     }
 }

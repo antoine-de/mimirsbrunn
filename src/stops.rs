@@ -35,6 +35,7 @@ use mimir;
 use admin_geofinder::AdminGeoFinder;
 use std::collections::HashMap;
 use std::mem::replace;
+use failure;
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
 
@@ -52,10 +53,10 @@ where
     }
 }
 
-pub fn import_stops(mut stops: Vec<mimir::Stop>, connection_string: &str, dataset: &str) {
+pub fn import_stops(mut stops: Vec<mimir::Stop>, connection_string: &str, dataset: &str) -> Result<(), failure::Error>{
     info!("creation of indexes");
     let mut rubber = Rubber::new(connection_string);
-    rubber.initialize_templates().unwrap();
+    rubber.initialize_templates()?;
 
     attach_stops_to_admins(stops.iter_mut(), &mut rubber);
 
@@ -63,13 +64,13 @@ pub fn import_stops(mut stops: Vec<mimir::Stop>, connection_string: &str, datase
         stop.coverages.push(dataset.to_string());
     }
 
-    let global_index = update_global_stop_index(&mut rubber, stops.iter(), dataset).unwrap();
+    let global_index = update_global_stop_index(&mut rubber, stops.iter(), dataset)?;
 
     info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.index(dataset, stops.iter()).unwrap();
+    let nb_stops = rubber.index(dataset, stops.iter())?;
     info!("Nb of indexed stops: {}", nb_stops);
 
-    publish_global_index(&mut rubber, &global_index).unwrap();
+    publish_global_index(&mut rubber, &global_index)
 }
 
 fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>) {
@@ -163,7 +164,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     rubber: &mut Rubber,
     stops: It,
     dataset: &str,
-) -> Result<String, String> {
+) -> Result<String, failure::Error> {
     let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
     let stops_indexes = rubber
         .get_all_aliased_index(&mimir::rubber::get_main_type_index::<mimir::Stop>())?
@@ -188,7 +189,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
 
     let nb_stops_added = rubber
         .bulk_index(&typed_index, all_merged_stops)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format_err!("{}", e.to_string()))?;
     info!("{} stops added in the global index", nb_stops_added);
     // create global index
     // fill structure for each stop indexes
@@ -197,7 +198,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
 
 // publish the global stop index
 // alias the new index to the global stop alias, and remove the old index
-fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(), String> {
+fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(), failure::Error> {
     let last_global_indexes: Vec<_> = rubber
         .get_all_aliased_index(GLOBAL_STOP_INDEX_NAME)?
         .into_iter()

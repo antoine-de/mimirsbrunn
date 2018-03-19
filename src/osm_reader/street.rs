@@ -38,6 +38,7 @@ use std::rc::Rc;
 use utils::{format_label, get_zip_codes_from_admins};
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
+use Error;
 
 pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
@@ -50,7 +51,7 @@ pub struct StreetKey {
     pub admins: AdminSet,
 }
 
-pub fn streets(pbf: &mut OsmPbfReader, admins_geofinder: &AdminGeoFinder) -> StreetsVec {
+pub fn streets(pbf: &mut OsmPbfReader, admins_geofinder: &AdminGeoFinder) -> Result<StreetsVec, Error> {
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
@@ -64,7 +65,7 @@ pub fn streets(pbf: &mut OsmPbfReader, admins_geofinder: &AdminGeoFinder) -> Str
         }
     }
     info!("reading pbf...");
-    let objs_map = pbf.get_objs_and_deps(is_valid_obj).unwrap();
+    let objs_map = pbf.get_objs_and_deps(is_valid_obj)?;
     info!("reading pbf done.");
     let mut street_rel: StreetWithRelationSet = BTreeSet::new();
     let mut street_list: StreetsVec = vec![];
@@ -161,7 +162,7 @@ pub fn streets(pbf: &mut OsmPbfReader, admins_geofinder: &AdminGeoFinder) -> Str
         };
     }
 
-    street_list
+    Ok(street_list)
 }
 
 fn get_street_admin(

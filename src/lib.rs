@@ -31,6 +31,8 @@
 extern crate geo;
 extern crate gst;
 extern crate itertools;
+#[macro_use]
+extern crate failure;
 
 #[macro_use]
 extern crate slog;
@@ -51,3 +53,4 @@ pub mod admin_geofinder;
 pub mod osm_reader;
 pub mod stops;
 pub mod utils;
+pub type Error = failure::Error;

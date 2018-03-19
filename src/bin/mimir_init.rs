@@ -35,6 +35,7 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate failure;
 
 use mimir::rubber::Rubber;
 use structopt::StructOpt;
@@ -46,12 +47,21 @@ struct Args {
     connection_string: String,
 }
 
+pub fn  run() -> Result<(), failure::Error> {
+	let args = Args::from_args();
+
+    let rubber = Rubber::new(&args.connection_string);
+    rubber.initialize_templates()
+}
+
 fn main() {
     let _guard = mimir::logger_init();
     info!("creating templates");
-
-    let args = Args::from_args();
-
-    let rubber = Rubber::new(&args.connection_string);
-    rubber.initialize_templates().unwrap();
+    
+    if let Err(err) = run() {
+        for cause in err.causes() {
+            eprintln!("{}", cause);
+        }
+        std::process::exit(1);
+    }
 }

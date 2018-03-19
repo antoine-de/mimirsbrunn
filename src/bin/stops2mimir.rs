@@ -40,6 +40,7 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate failure;
 
 use std::collections::HashMap;
 use structopt::StructOpt;
@@ -147,15 +148,7 @@ impl GtfsStop {
     }
 }
 
-fn main() {
-    let _guard = mimir::logger_init();
-    info!("Launching stops2mimir...");
-
-    let args = Args::from_args();
-    if args.city_level.is_some() {
-        warn!("city-level option is deprecated, it now has no effect.");
-    }
-
+fn run(args: Args) -> Result<(), failure::Error> {
     let mut rdr = csv::Reader::from_path(&args.input).unwrap();
     let mut nb_stop_points = HashMap::new();
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
@@ -166,7 +159,24 @@ fn main() {
         })
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset);
+    import_stops(stops, &args.connection_string, &args.dataset)
+}
+
+fn main() {
+    let _guard = mimir::logger_init();
+    info!("Launching stops2mimir...");
+
+    let args = Args::from_args();
+    if args.city_level.is_some() {
+        warn!("city-level option is deprecated, it now has no effect.");
+    }
+	if let Err(err) = run(args) {
+        for cause in err.causes() {
+            eprintln!("{}", cause);
+        }
+        std::process::exit(1);
+    }
+;
 }
 
 #[test]

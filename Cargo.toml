@@ -28,7 +28,7 @@ mdo = "*"
 itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = { git = "https://github.com/QwantResearch/osm_boundaries_utils_rs", version = "0.1" }
-
+failure = "*"
 [dev-dependencies]
 hyper = "0.10"
 iron-test = "0.4"

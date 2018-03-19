@@ -166,6 +166,6 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset);
+    import_stops(stops, &args.connection_string, &args.dataset)?;
     Ok(())
 }

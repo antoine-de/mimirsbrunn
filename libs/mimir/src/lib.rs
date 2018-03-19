@@ -49,6 +49,8 @@ extern crate geo;
 extern crate geojson;
 extern crate hyper;
 extern crate rs_es;
+#[macro_use] 
+extern crate failure;
 
 pub mod objects;
 pub mod rubber;
