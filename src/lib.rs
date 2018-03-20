@@ -28,11 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+#[macro_use]
+extern crate failure;
 extern crate geo;
 extern crate gst;
 extern crate itertools;
-#[macro_use]
-extern crate failure;
 
 #[macro_use]
 extern crate slog;

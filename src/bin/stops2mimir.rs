@@ -29,6 +29,7 @@
 // www.navitia.io
 
 extern crate csv;
+extern crate failure;
 extern crate itertools;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -40,7 +41,6 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
-extern crate failure;
 
 use std::collections::HashMap;
 use structopt::StructOpt;
@@ -170,13 +170,12 @@ fn main() {
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
-	if let Err(err) = run(args) {
+    if let Err(err) = run(args) {
         for cause in err.causes() {
             eprintln!("{}", cause);
         }
         std::process::exit(1);
-    }
-;
+    };
 }
 
 #[test]

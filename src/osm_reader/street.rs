@@ -51,7 +51,10 @@ pub struct StreetKey {
     pub admins: AdminSet,
 }
 
-pub fn streets(pbf: &mut OsmPbfReader, admins_geofinder: &AdminGeoFinder) -> Result<StreetsVec, Error> {
+pub fn streets(
+    pbf: &mut OsmPbfReader,
+    admins_geofinder: &AdminGeoFinder,
+) -> Result<StreetsVec, Error> {
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {

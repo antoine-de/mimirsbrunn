@@ -33,11 +33,11 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
+extern crate failure;
 extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
 extern crate structopt;
-extern crate failure;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -82,14 +82,15 @@ struct Args {
     poi_config: Option<PathBuf>,
 }
 
-fn run(args: Args) -> Result<(), mimirsbrunn::Error>{
-
+fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let levels = args.level.iter().cloned().collect();
 
     let mut osm_reader = make_osm_reader(&args.input)?;
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.connection_string);
-    rubber.initialize_templates().context("Error occurred when initializing templates")?;
+    rubber
+        .initialize_templates()
+        .context("Error occurred when initializing templates")?;
 
     info!("creating adminstrative regions");
     let admins_geofinder = administrative_regions(&mut osm_reader, levels, args.city_level)
@@ -111,10 +112,9 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error>{
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
-    let nb_admins = rubber
-        .index(&args.dataset, admins_geofinder.admins())?;
+    let nb_admins = rubber.index(&args.dataset, admins_geofinder.admins())?;
     info!("Nb of indexed admin: {}", nb_admins);
-        
+
     if args.import_poi {
         let matcher = match args.poi_config {
             None => PoiConfig::default(),
@@ -133,17 +133,19 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error>{
         add_address(&mut pois, &mut rubber);
 
         info!("Importing pois into Mimir");
-        let nb_pois = rubber.index(&args.dataset, pois.iter()).context("Importing pois into Mimir")?;
+        let nb_pois = rubber
+            .index(&args.dataset, pois.iter())
+            .context("Importing pois into Mimir")?;
 
         info!("Nb of indexed pois: {}", nb_pois);
     }
-	Ok(())
+    Ok(())
 }
 
 fn main() {
-	let _guard = mimir::logger_init(); 
+    let _guard = mimir::logger_init();
     let args = Args::from_args();
-	if let Err(err) = run(args) {
+    if let Err(err) = run(args) {
         for cause in err.causes() {
             eprintln!("{}", cause);
         }

@@ -53,7 +53,11 @@ where
     }
 }
 
-pub fn import_stops(mut stops: Vec<mimir::Stop>, connection_string: &str, dataset: &str) -> Result<(), failure::Error>{
+pub fn import_stops(
+    mut stops: Vec<mimir::Stop>,
+    connection_string: &str,
+    dataset: &str,
+) -> Result<(), failure::Error> {
     info!("creation of indexes");
     let mut rubber = Rubber::new(connection_string);
     rubber.initialize_templates()?;
@@ -154,10 +158,10 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     Box::new(stops_by_id.into_iter().map(|(_, v)| v))
 }
 
-fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, String> {
+fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, failure::Error> {
     rubber
         .get_all_objects_from_index(&index)
-        .map_err(|e| e.to_string())
+        .map_err(|e| format_err!("Getting all stops {}", e.to_string()))
 }
 
 fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
@@ -172,13 +176,11 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
         .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
         .map(|(index, _)| index);
 
-    let all_other_es_stops: Vec<_> = stops_indexes
-        .map(|index| get_all_stops(rubber, index).unwrap())
-        .flat_map(|stops| stops.into_iter())
-        .collect();
-
-    let all_es_stops = all_other_es_stops
+    let all_es_stops = stops_indexes
+        .map(|index| get_all_stops(rubber, index))
+        .collect::<Result<Vec<_>, _>>()?
         .into_iter()
+        .flat_map(|stops| stops.into_iter())
         .chain(stops.into_iter().cloned());
 
     let all_merged_stops = merge_stops(all_es_stops);

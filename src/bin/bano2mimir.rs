@@ -29,6 +29,7 @@
 // www.navitia.io
 
 extern crate csv;
+extern crate failure;
 extern crate geo;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -40,7 +41,6 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
-extern crate failure;
 
 use std::path::PathBuf;
 use mimir::rubber::Rubber;
@@ -128,7 +128,7 @@ where
     I: Iterator<Item = std::path::PathBuf>,
 {
     let mut rubber = Rubber::new(cnx_string);
-    rubber.initialize_templates().unwrap();
+    rubber.initialize_templates()?;
 
     let admins = rubber
         .get_admins_from_dataset(dataset)
@@ -153,15 +153,14 @@ where
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(false)
-            .from_path(&f)?;
+        let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
 
         let iter = rdr.deserialize().map(|r| {
             let b: Bano = r.unwrap();
             b.into_addr(&admins_by_insee, &admins_geofinder)
         });
-        let nb = rubber.bulk_index(&addr_index, iter)
+        let nb = rubber
+            .bulk_index(&addr_index, iter)
             .context(format!("failed to bulk insert file {:?}", &f))?;
         info!("importing {:?}: {} addresses added.", &f, nb);
     }
@@ -203,7 +202,7 @@ fn main() {
     info!("importing bano into Mimir");
 
     let args = Args::from_args();
-	    if let Err(err) = run(args) {
+    if let Err(err) = run(args) {
         for cause in err.causes() {
             eprintln!("{}", cause);
         }

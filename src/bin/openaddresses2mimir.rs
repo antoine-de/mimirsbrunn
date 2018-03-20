@@ -29,6 +29,7 @@
 // www.navitia.io
 
 extern crate csv;
+extern crate failure;
 extern crate geo;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -40,7 +41,6 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
-extern crate failure;
 
 use std::path::PathBuf;
 use mimir::rubber::Rubber;
@@ -122,16 +122,15 @@ where
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(&f)?;
+        let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
         let iter = rdr.deserialize().filter_map(|r| {
             r.map_err(|e| info!("impossible to read line, error: {}", e))
                 .ok()
                 .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
         });
-        let nb = rubber.bulk_index(&addr_index, iter)
-	        .context(format!("failed to bulk insert file {:?}", &f))?;
+        let nb = rubber
+            .bulk_index(&addr_index, iter)
+            .context(format!("failed to bulk insert file {:?}", &f))?;
         info!("importing {:?}: {} addresses added.", &f, nb);
     }
     rubber.publish_index(dataset, addr_index)

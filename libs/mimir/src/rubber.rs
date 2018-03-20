@@ -47,7 +47,8 @@ use rs_es::units as rs_u;
 use rs_es::query::Query;
 use rs_es::operations::search::SearchResult;
 use failure;
-    
+use failure::ResultExt;
+
 const SYNONYMS: [&'static str; 17] = [
     "cc,centre commercial",
     "hotel de ville,mairie",
@@ -281,7 +282,10 @@ impl Rubber {
         rs_es::do_req(result)
     }
 
-    pub fn make_index<T: MimirObject>(&self, dataset: &str) -> Result<TypedIndex<T>, failure::Error> {
+    pub fn make_index<T: MimirObject>(
+        &self,
+        dataset: &str,
+    ) -> Result<TypedIndex<T>, failure::Error> {
         let index_name = get_date_index_name(&get_main_type_and_dataset_index::<T>(dataset));
         info!("creating index {}", index_name);
         self.create_index(&index_name.to_string())?;
@@ -295,8 +299,11 @@ impl Rubber {
         let analysis = include_str!("../../../json/settings.json");
 
         let mut analysis_json_value = try!(
-            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| 
-            	format_err!("{}", err))
+            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| format_err!(
+                "Error occurred when creating index: {} err: {}",
+                name,
+                err
+            ))
         );
 
         let synonyms: Vec<_> = SYNONYMS
@@ -310,8 +317,11 @@ impl Rubber {
 
         self.put(name, &analysis_json_value.to_string())
             .map_err(|e| {
-                format_err!("Error: {},  while creating new index {}, ", name, 
-                	e.to_string())
+                format_err!(
+                    "Error: {},  while creating new index {}, ",
+                    name,
+                    e.to_string()
+                )
             })
             .and_then(|res| {
                 if res.status == StatusCode::Ok {
@@ -360,7 +370,7 @@ impl Rubber {
             include_str!("../../../json/poi_settings.json"),
         )?;
         Ok(())
-    } 
+    }
 
     // get all aliases for a doc_type/dataset
     // return a map with each index as key and all their aliases
@@ -368,32 +378,36 @@ impl Rubber {
         &self,
         base_index: &str,
     ) -> Result<BTreeMap<String, Vec<String>>, failure::Error> {
-        let res = self.get(&format!("{}*/_aliases", base_index))?;
+        let res = self.get(&format!("{}*/_aliases", base_index))
+            .context(format!(
+                "Error occurred when getting {}*/_aliases",
+                base_index
+            ))?;
         match res.status {
-                StatusCode::Ok => {
-                    let value: serde_json::Value = res.read_response()?;
-                    Ok(value
-                        .as_object()
-                        .map(|all_aliases| {
-                            all_aliases
-                                .iter()
-                                .filter_map(|(i, a)| {
-                                    a.pointer("/aliases").and_then(|a| a.as_object()).map(
-                                        |aliases| (i.clone(), aliases.keys().cloned().collect()),
-                                    )
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_else(|| {
-                            info!("no aliases for {}", base_index);
-                            BTreeMap::new()
-                        }))
-                }
-                StatusCode::NotFound => {
-                    info!("impossible to find alias {}", base_index);
-                    Ok(BTreeMap::new())
-                }
-                _ => Err(format_err!("invalid elasticsearch response: {:?}", res)),
+            StatusCode::Ok => {
+                let value: serde_json::Value = res.read_response()?;
+                Ok(value
+                    .as_object()
+                    .map(|all_aliases| {
+                        all_aliases
+                            .iter()
+                            .filter_map(|(i, a)| {
+                                a.pointer("/aliases")
+                                    .and_then(|a| a.as_object())
+                                    .map(|aliases| (i.clone(), aliases.keys().cloned().collect()))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_else(|| {
+                        info!("no aliases for {}", base_index);
+                        BTreeMap::new()
+                    }))
+            }
+            StatusCode::NotFound => {
+                info!("impossible to find alias {}", base_index);
+                Ok(BTreeMap::new())
+            }
+            _ => Err(format_err!("invalid elasticsearch response: {:?}", res)),
         }
     }
 
@@ -449,19 +463,28 @@ impl Rubber {
         let last_indexes = try!(self.get_last_index(&index, dataset));
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
-        self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes,)?;
+        self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes)
+            .context(format!(
+                "Error occurred when making alias: {}",
+                dataset_index
+            ))?;
 
         let type_index = get_main_type_index::<T>();
-        self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes,)?;
+        self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
+            .context(format!("Error occurred when making alias: {}", type_index))?;
 
         if T::is_geo_data() {
-            self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![],)?;
-            self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![],)?;
+            self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
+                .context("Error occurred when making alias: munin_geo_data")?;
+            self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
+                .context("Error occurred when making alias: munin")?;
         } else {
-            self.alias("munin", &vec![type_index.to_string()], &vec![])?;
+            self.alias("munin", &vec![type_index.to_string()], &vec![])
+                .context("Error occurred when making alias: munin")?;
         }
         for i in last_indexes {
-            self.delete_index(&i)?;
+            self.delete_index(&i)
+                .context(format!("Error occurred when deleting index: {}", i))?;
         }
         Ok(())
     }
@@ -474,7 +497,12 @@ impl Rubber {
 
     /// add a list of new indexes to the alias
     /// remove a list of indexes from the alias
-    pub fn alias(&self, alias: &str, add: &[String], remove: &[String]) -> Result<(), failure::Error> {
+    pub fn alias(
+        &self,
+        alias: &str,
+        add: &[String],
+        remove: &[String],
+    ) -> Result<(), failure::Error> {
         info!(
             "for {}, adding alias {:?}, removing {:?}",
             alias, add, remove
@@ -496,20 +524,23 @@ impl Rubber {
         let operations = AliasOperations {
             actions: add_operations.chain(remove_operations).collect(),
         };
-        let json = serde_json::to_string(&operations).unwrap();
-		let res = self.post("_aliases", &json)?;
-		match res.status {
-			StatusCode::Ok => { 
-				Ok(()) 
-			}
-			_ => {
-			        error!(
-                        "failed to change aliases for {}, es response: {:?}",
-                        alias, res
-                    );
-                    Err(format_err!("failed to post aliases for {}: {:?}", alias, res))
-			}
-		}
+        let json = serde_json::to_string(&operations)?;
+        let res = self.post("_aliases", &json)
+            .context("Error occurred when POSTing: _alias")?;
+        match res.status {
+            StatusCode::Ok => Ok(()),
+            _ => {
+                error!(
+                    "failed to change aliases for {}, es response: {:?}",
+                    alias, res
+                );
+                Err(format_err!(
+                    "failed to post aliases for {}: {:?}",
+                    alias,
+                    res
+                ))
+            }
+        }
     }
 
     pub fn delete_index(&mut self, index: &String) -> Result<(), failure::Error> {
@@ -577,8 +608,9 @@ impl Rubber {
         I: Iterator<Item = T>,
     {
         // TODO better error handling
-        let index = self.make_index(dataset)?;
-        let nb_elements = self.bulk_index(&index, iter).map_err(|e| format_err!("{}", e.to_string()))?;
+        let index = self.make_index(dataset).context(format!("Error occurred when making index: {}", dataset))?;
+        let nb_elements = self.bulk_index(&index, iter)
+            .map_err(|e| format_err!("{}", e.to_string()))?;
         self.publish_index(dataset, index)?;
         Ok(nb_elements)
     }
