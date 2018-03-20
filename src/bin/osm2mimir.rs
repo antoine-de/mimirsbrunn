@@ -108,11 +108,21 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
         if args.import_way {
             info!("importing streets into Mimir");
-            let nb_streets = rubber.index(&args.dataset, streets.into_iter())?;
+            let nb_streets = rubber
+                .index(&args.dataset, streets.into_iter())
+                .context(format!(
+                    "Error occurred when requesting street number in {}",
+                    args.dataset
+                ))?;
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
-    let nb_admins = rubber.index(&args.dataset, admins_geofinder.admins())?;
+    let nb_admins = rubber
+        .index(&args.dataset, admins_geofinder.admins())
+        .context(format!(
+            "Error occurred when requesting admin number in {}",
+            args.dataset
+        ))?;
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.import_poi {

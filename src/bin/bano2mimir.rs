@@ -128,7 +128,10 @@ where
     I: Iterator<Item = std::path::PathBuf>,
 {
     let mut rubber = Rubber::new(cnx_string);
-    rubber.initialize_templates()?;
+    rubber.initialize_templates().context(format!(
+        "Error occurred when initializing template: {}",
+        cnx_string
+    ))?;
 
     let admins = rubber
         .get_admins_from_dataset(dataset)
@@ -149,7 +152,9 @@ where
         })
         .collect();
 
-    let addr_index = rubber.make_index(dataset).unwrap();
+    let addr_index = rubber
+        .make_index(dataset)
+        .context(format!("Error occurred when making index {}", dataset))?;
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);

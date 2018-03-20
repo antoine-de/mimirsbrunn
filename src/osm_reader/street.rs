@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate failure;
 extern crate geo;
 extern crate mimir;
 extern crate osmpbfreader;
@@ -39,6 +40,7 @@ use utils::{format_label, get_zip_codes_from_admins};
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use Error;
+use failure::ResultExt;
 
 pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
@@ -68,7 +70,8 @@ pub fn streets(
         }
     }
     info!("reading pbf...");
-    let objs_map = pbf.get_objs_and_deps(is_valid_obj)?;
+    let objs_map = pbf.get_objs_and_deps(is_valid_obj)
+        .context("Error occurred when reading pbf")?;
     info!("reading pbf done.");
     let mut street_rel: StreetWithRelationSet = BTreeSet::new();
     let mut street_list: StreetsVec = vec![];

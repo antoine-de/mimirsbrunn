@@ -608,7 +608,8 @@ impl Rubber {
         I: Iterator<Item = T>,
     {
         // TODO better error handling
-        let index = self.make_index(dataset).context(format!("Error occurred when making index: {}", dataset))?;
+        let index = self.make_index(dataset)
+            .context(format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)
             .map_err(|e| format_err!("{}", e.to_string()))?;
         self.publish_index(dataset, index)?;

@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate failure;
 extern crate mimir;
 extern crate mimirsbrunn;
 extern crate navitia_model;
@@ -43,6 +44,7 @@ use structopt::StructOpt;
 use mimirsbrunn::stops::*;
 use navitia_model::objects as navitia;
 use navitia_model::collection::Idx;
+use failure::ResultExt;
 
 #[derive(Debug, StructOpt)]
 struct Args {
@@ -166,6 +168,9 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset)?;
+    import_stops(stops, &args.connection_string, &args.dataset).context(format!(
+        "Error occurred when importing stops into {} on {}",
+        args.dataset, args.connection_string
+    ))?;
     Ok(())
 }

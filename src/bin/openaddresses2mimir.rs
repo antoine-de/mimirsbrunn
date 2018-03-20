@@ -118,7 +118,9 @@ where
         });
     let admins_geofinder = admins.into_iter().collect();
 
-    let addr_index = rubber.make_index(dataset)?;
+    let addr_index = rubber
+        .make_index(dataset)
+        .context(format!("error occureed when making index for {}", dataset))?;
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
