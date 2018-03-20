@@ -149,7 +149,7 @@ impl GtfsStop {
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
-    let mut rdr = csv::Reader::from_path(&args.input).unwrap();
+    let mut rdr = csv::Reader::from_path(&args.input)?;
     let mut nb_stop_points = HashMap::new();
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
         .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())

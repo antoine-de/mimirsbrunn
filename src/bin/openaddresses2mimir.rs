@@ -40,12 +40,14 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate failure;
 
 use std::path::PathBuf;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
 use structopt::StructOpt;
+use failure::ResultExt;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -99,7 +101,7 @@ impl OpenAddresse {
     }
 }
 
-fn index_oa<I>(cnx_string: &str, dataset: &str, files: I)
+fn index_oa<I>(cnx_string: &str, dataset: &str, files: I) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
@@ -116,25 +118,23 @@ where
         });
     let admins_geofinder = admins.into_iter().collect();
 
-    let addr_index = rubber.make_index(dataset).unwrap();
+    let addr_index = rubber.make_index(dataset)?;
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(true)
-            .from_path(&f)
-            .unwrap();
+            .from_path(&f)?;
         let iter = rdr.deserialize().filter_map(|r| {
             r.map_err(|e| info!("impossible to read line, error: {}", e))
                 .ok()
                 .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
         });
-        match rubber.bulk_index(&addr_index, iter) {
-            Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
-            Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
-        }
+        let nb = rubber.bulk_index(&addr_index, iter)
+	        .context(format!("failed to bulk insert file {:?}", &f))?;
+        info!("importing {:?}: {} addresses added.", &f, nb);
     }
-    rubber.publish_index(dataset, addr_index).unwrap();
+    rubber.publish_index(dataset, addr_index)
 }
 
 #[derive(StructOpt, Debug)]
@@ -154,27 +154,36 @@ struct Args {
     city_level: Option<String>,
 }
 
-fn main() {
-    let _guard = mimir::logger_init();
-    info!("importing open addresses into Mimir");
-
-    let args = Args::from_args();
+fn run(args: Args) -> Result<(), failure::Error> {
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
     if args.input.is_dir() {
-        let paths: std::fs::ReadDir = fs::read_dir(&args.input).unwrap();
+        let paths: std::fs::ReadDir = fs::read_dir(&args.input)?;
         index_oa(
             &args.connection_string,
             &args.dataset,
             paths.map(|p| p.unwrap().path()),
-        );
+        )
     } else {
         index_oa(
             &args.connection_string,
             &args.dataset,
             std::iter::once(args.input),
-        );
+        )
+    }
+}
+
+fn main() {
+    let _guard = mimir::logger_init();
+    info!("importing open addresses into Mimir");
+
+    let args = Args::from_args();
+    if let Err(err) = run(args) {
+        for cause in err.causes() {
+            eprintln!("{}", cause);
+        }
+        std::process::exit(1);
     }
 }

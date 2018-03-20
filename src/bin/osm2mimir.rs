@@ -37,10 +37,12 @@ extern crate mimir;
 extern crate mimirsbrunn;
 #[macro_use]
 extern crate structopt;
+extern crate failure;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
 use mimir::rubber::Rubber;
+use failure::ResultExt;
 
 use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
@@ -82,13 +84,12 @@ struct Args {
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error>{
 
-
     let levels = args.level.iter().cloned().collect();
 
     let mut osm_reader = make_osm_reader(&args.input)?;
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.connection_string);
-    rubber.initialize_templates()?;
+    rubber.initialize_templates().context("Error occurred when initializing templates")?;
 
     info!("creating adminstrative regions");
     let admins_geofinder = administrative_regions(&mut osm_reader, levels, args.city_level)
@@ -111,15 +112,14 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error>{
         }
     }
     let nb_admins = rubber
-        .index(&args.dataset, admins_geofinder.admins())
-        .unwrap();
+        .index(&args.dataset, admins_geofinder.admins())?;
     info!("Nb of indexed admin: {}", nb_admins);
         
     if args.import_poi {
         let matcher = match args.poi_config {
             None => PoiConfig::default(),
             Some(path) => {
-                let r = std::fs::File::open(&path).unwrap();
+                let r = std::fs::File::open(&path)?;
                 PoiConfig::from_reader(r).unwrap()
             }
         };
@@ -133,7 +133,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error>{
         add_address(&mut pois, &mut rubber);
 
         info!("Importing pois into Mimir");
-        let nb_pois = rubber.index(&args.dataset, pois.iter())?;
+        let nb_pois = rubber.index(&args.dataset, pois.iter()).context("Importing pois into Mimir")?;
 
         info!("Nb of indexed pois: {}", nb_pois);
     }

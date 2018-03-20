@@ -40,6 +40,7 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate failure;
 
 use std::path::PathBuf;
 use mimir::rubber::Rubber;
@@ -49,6 +50,7 @@ use std::fs;
 use std::rc::Rc;
 use std::collections::BTreeMap;
 use structopt::StructOpt;
+use failure::ResultExt;
 
 type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
 
@@ -121,7 +123,7 @@ impl Bano {
     }
 }
 
-fn index_bano<I>(cnx_string: &str, dataset: &str, files: I)
+fn index_bano<I>(cnx_string: &str, dataset: &str, files: I) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
@@ -153,19 +155,17 @@ where
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
-            .from_path(&f)
-            .unwrap();
+            .from_path(&f)?;
 
         let iter = rdr.deserialize().map(|r| {
             let b: Bano = r.unwrap();
             b.into_addr(&admins_by_insee, &admins_geofinder)
         });
-        match rubber.bulk_index(&addr_index, iter) {
-            Err(e) => panic!("failed to bulk insert file {:?} because: {}", &f, e),
-            Ok(nb) => info!("importing {:?}: {} addresses added.", &f, nb),
-        }
+        let nb = rubber.bulk_index(&addr_index, iter)
+            .context(format!("failed to bulk insert file {:?}", &f))?;
+        info!("importing {:?}: {} addresses added.", &f, nb);
     }
-    rubber.publish_index(dataset, addr_index).unwrap();
+    rubber.publish_index(dataset, addr_index)
 }
 
 #[derive(StructOpt, Debug)]
@@ -182,24 +182,31 @@ struct Args {
     dataset: String,
 }
 
-fn main() {
-    let _guard = mimir::logger_init();
-    info!("importing bano into Mimir");
-
-    let args = Args::from_args();
-
+fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     if args.input.is_dir() {
-        let paths: std::fs::ReadDir = fs::read_dir(&args.input).unwrap();
+        let paths: std::fs::ReadDir = fs::read_dir(&args.input)?;
         index_bano(
             &args.connection_string,
             &args.dataset,
             paths.map(|p| p.unwrap().path()),
-        );
+        )
     } else {
         index_bano(
             &args.connection_string,
             &args.dataset,
             std::iter::once(args.input),
-        );
+        )
+    }
+}
+fn main() {
+    let _guard = mimir::logger_init();
+    info!("importing bano into Mimir");
+
+    let args = Args::from_args();
+	    if let Err(err) = run(args) {
+        for cause in err.causes() {
+            eprintln!("{}", cause);
+        }
+        std::process::exit(1);
     }
 }
