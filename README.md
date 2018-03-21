@@ -25,7 +25,7 @@ cargo build --release
 
 To use the Mimirsbrunn components you will need an elasticsearch database.
 
-The elasticsearch version need to be >= 2.0
+The elasticsearch version need to be 2.x
 
 ### test
 
