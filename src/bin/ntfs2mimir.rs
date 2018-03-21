@@ -188,8 +188,14 @@ fn test_bad_connection_string() {
             .into_iter()
             .map(|cause| format!("{}", cause))
             .collect::<Vec<String>>();
-        assert!(causes == vec!["Error occurred when importing stops into bob on http://localhost:4242".to_string(), 
-				"Error: Connection refused (os error 111) while creating template template_addr".to_string()]);
+        assert_eq!(
+            causes,
+            [
+                "Error occurred when importing stops into bob on http://localhost:4242".to_string(),
+                "Error: Connection refused (os error 111) while creating template template_addr"
+                    .to_string()
+            ]
+        );
     }
 }
 
@@ -206,12 +212,12 @@ fn test_bad_file() {
             .into_iter()
             .map(|cause| format!("{}", cause))
             .collect::<Vec<String>>();
-        assert!(
-            causes
-                == vec![
-                    "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
-                    "No such file or directory (os error 2)",
-                ]
+        assert_eq!(
+            causes,
+            [
+                "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
+                "No such file or directory (os error 2)",
+            ]
         );
     }
 }
