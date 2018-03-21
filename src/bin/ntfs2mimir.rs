@@ -174,3 +174,44 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
     ))?;
     Ok(())
 }
+
+#[test]
+fn test_bad_connection_string() {
+    let args = Args {
+        input: PathBuf::from("./tests/fixtures/ntfs"),
+        connection_string: "http://localhost:4242".to_string(),
+        dataset: "bob".to_string(),
+        city_level: None,
+    };
+    if let Err(err) = run(args) {
+        let causes = err.causes()
+            .into_iter()
+            .map(|cause| format!("{}", cause))
+            .collect::<Vec<String>>();
+        assert!(causes == vec!["Error occurred when importing stops into bob on http://localhost:4242".to_string(), 
+				"Error: Connection refused (os error 111) while creating template template_addr".to_string()]);
+    }
+}
+
+#[test]
+fn test_bad_file() {
+    let args = Args {
+        input: PathBuf::from("./tests/fixtures/not_exist"),
+        connection_string: "http://localhost:9200".to_string(),
+        dataset: "bob".to_string(),
+        city_level: None,
+    };
+    if let Err(err) = run(args) {
+        let causes = err.causes()
+            .into_iter()
+            .map(|cause| format!("{}", cause))
+            .collect::<Vec<String>>();
+        assert!(
+            causes
+                == vec![
+                    "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
+                    "No such file or directory (os error 2)",
+                ]
+        );
+    }
+}
