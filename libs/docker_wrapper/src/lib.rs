@@ -90,7 +90,7 @@ impl DockerWrapper {
                     .unwrap_or(false)
             },
         ) {
-            | Ok(_) => Ok(()),
+            Ok(_) => Ok(()),
             Err(_) => Err("ES is down".into()),
         }
     }
