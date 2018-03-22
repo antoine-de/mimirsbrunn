@@ -88,9 +88,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let mut osm_reader = make_osm_reader(&args.input)?;
     debug!("creation of indexes");
     let mut rubber = Rubber::new(&args.connection_string);
-    rubber
-        .initialize_templates()
-        .context("Error occurred when initializing templates")?;
+    rubber.initialize_templates()?;
 
     info!("creating adminstrative regions");
     let admins_geofinder = administrative_regions(&mut osm_reader, levels, args.city_level)
@@ -110,26 +108,32 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             info!("importing streets into Mimir");
             let nb_streets = rubber
                 .index(&args.dataset, streets.into_iter())
-                .context(format!(
-                    "Error occurred when requesting street number in {}",
-                    args.dataset
-                ))?;
+                .with_context(|_| {
+                    format!(
+                        "Error occurred when requesting street number in {}",
+                        args.dataset
+                    )
+                })?;
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
     let nb_admins = rubber
         .index(&args.dataset, admins_geofinder.admins())
-        .context(format!(
-            "Error occurred when requesting admin number in {}",
-            args.dataset
-        ))?;
+        .with_context(|_| {
+            format!(
+                "Error occurred when requesting admin number in {}",
+                args.dataset
+            )
+        })?;
     info!("Nb of indexed admin: {}", nb_admins);
 
     if args.import_poi {
         let matcher = match args.poi_config {
             None => PoiConfig::default(),
             Some(path) => {
-                let r = std::fs::File::open(&path)?;
+                let r = std::fs::File::open(&path).with_context(|_| {
+                    format!("Error while opening configuration file {:?}", path)
+                })?;
                 PoiConfig::from_reader(r).unwrap()
             }
         };

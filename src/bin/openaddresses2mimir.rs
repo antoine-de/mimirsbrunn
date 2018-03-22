@@ -120,7 +120,7 @@ where
 
     let addr_index = rubber
         .make_index(dataset)
-        .context(format!("error occureed when making index for {}", dataset))?;
+        .with_context(|_| format!("error occureed when making index for {}", dataset))?;
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -132,7 +132,7 @@ where
         });
         let nb = rubber
             .bulk_index(&addr_index, iter)
-            .context(format!("failed to bulk insert file {:?}", &f))?;
+            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
         info!("importing {:?}: {} addresses added.", &f, nb);
     }
     rubber.publish_index(dataset, addr_index)

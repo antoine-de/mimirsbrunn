@@ -168,10 +168,12 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset).context(format!(
-        "Error occurred when importing stops into {} on {}",
-        args.dataset, args.connection_string
-    ))?;
+    import_stops(stops, &args.connection_string, &args.dataset).with_context(|_| {
+        format!(
+            "Error occurred when importing stops into {} on {}",
+            args.dataset, args.connection_string
+        )
+    })?;
     Ok(())
 }
 
@@ -183,20 +185,20 @@ fn test_bad_connection_string() {
         dataset: "bob".to_string(),
         city_level: None,
     };
-    if let Err(err) = run(args) {
-        let causes = err.causes()
-            .into_iter()
-            .map(|cause| format!("{}", cause))
-            .collect::<Vec<String>>();
-        assert_eq!(
-            causes,
-            [
-                "Error occurred when importing stops into bob on http://localhost:4242".to_string(),
-                "Error: Connection refused (os error 111) while creating template template_addr"
-                    .to_string()
-            ]
-        );
-    }
+    let causes = run(args)
+        .unwrap_err()
+        .causes()
+        .into_iter()
+        .map(|cause| format!("{}", cause))
+        .collect::<Vec<String>>();
+    assert_eq!(
+        causes,
+        [
+            "Error occurred when importing stops into bob on http://localhost:4242".to_string(),
+            "Error: Connection refused (os error 111) while creating template template_addr"
+                .to_string()
+        ]
+    );
 }
 
 #[test]
@@ -207,17 +209,17 @@ fn test_bad_file() {
         dataset: "bob".to_string(),
         city_level: None,
     };
-    if let Err(err) = run(args) {
-        let causes = err.causes()
-            .into_iter()
-            .map(|cause| format!("{}", cause))
-            .collect::<Vec<String>>();
-        assert_eq!(
-            causes,
-            [
-                "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
-                "No such file or directory (os error 2)",
-            ]
-        );
-    }
+    let causes = run(args)
+        .unwrap_err()
+        .causes()
+        .into_iter()
+        .map(|cause| format!("{}", cause))
+        .collect::<Vec<String>>();
+    assert_eq!(
+        causes,
+        [
+            "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
+            "No such file or directory (os error 2)",
+        ]
+    );
 }

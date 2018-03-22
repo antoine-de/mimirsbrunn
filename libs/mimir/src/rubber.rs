@@ -46,8 +46,7 @@ use rs_es::units::Duration;
 use rs_es::units as rs_u;
 use rs_es::query::Query;
 use rs_es::operations::search::SearchResult;
-use failure;
-use failure::ResultExt;
+use failure::{Error, ResultExt};
 
 const SYNONYMS: [&'static str; 17] = [
     "cc,centre commercial",
@@ -282,17 +281,14 @@ impl Rubber {
         rs_es::do_req(result)
     }
 
-    pub fn make_index<T: MimirObject>(
-        &self,
-        dataset: &str,
-    ) -> Result<TypedIndex<T>, failure::Error> {
+    pub fn make_index<T: MimirObject>(&self, dataset: &str) -> Result<TypedIndex<T>, Error> {
         let index_name = get_date_index_name(&get_main_type_and_dataset_index::<T>(dataset));
         info!("creating index {}", index_name);
         self.create_index(&index_name.to_string())?;
         Ok(TypedIndex::new(index_name))
     }
 
-    pub fn create_index(&self, name: &String) -> Result<(), failure::Error> {
+    pub fn create_index(&self, name: &String) -> Result<(), Error> {
         debug!("creating index");
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
@@ -332,7 +328,7 @@ impl Rubber {
             })
     }
 
-    pub fn create_template(&self, name: &str, settings: &str) -> Result<(), failure::Error> {
+    pub fn create_template(&self, name: &str, settings: &str) -> Result<(), Error> {
         debug!("creating template");
         self.put(&format!("_template/{}", name), settings)
             .map_err(|e| {
@@ -348,7 +344,7 @@ impl Rubber {
             })
     }
 
-    pub fn initialize_templates(&self) -> Result<(), failure::Error> {
+    pub fn initialize_templates(&self) -> Result<(), Error> {
         self.create_template(
             &"template_addr",
             include_str!("../../../json/addr_settings.json"),
@@ -377,12 +373,9 @@ impl Rubber {
     pub fn get_all_aliased_index(
         &self,
         base_index: &str,
-    ) -> Result<BTreeMap<String, Vec<String>>, failure::Error> {
+    ) -> Result<BTreeMap<String, Vec<String>>, Error> {
         let res = self.get(&format!("{}*/_aliases", base_index))
-            .context(format!(
-                "Error occurred when getting {}*/_aliases",
-                base_index
-            ))?;
+            .with_context(|_| format!("Error occurred when getting {}*/_aliases", base_index))?;
         match res.status {
             StatusCode::Ok => {
                 let value: serde_json::Value = res.read_response()?;
@@ -418,7 +411,7 @@ impl Rubber {
         &self,
         new_index: &TypedIndex<T>,
         dataset: &str,
-    ) -> Result<Vec<String>, failure::Error> {
+    ) -> Result<Vec<String>, Error> {
         let base_index = get_main_type_and_dataset_index::<T>(dataset);
         // we don't want to remove the newly created index
         Ok(self.get_all_aliased_index(&base_index)?
@@ -458,20 +451,17 @@ impl Rubber {
         &mut self,
         dataset: &str,
         index: TypedIndex<T>,
-    ) -> Result<(), failure::Error> {
+    ) -> Result<(), Error> {
         debug!("publishing index");
         let last_indexes = try!(self.get_last_index(&index, dataset));
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
         self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes)
-            .context(format!(
-                "Error occurred when making alias: {}",
-                dataset_index
-            ))?;
+            .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
 
         let type_index = get_main_type_index::<T>();
         self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
-            .context(format!("Error occurred when making alias: {}", type_index))?;
+            .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
 
         if T::is_geo_data() {
             self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
@@ -484,7 +474,7 @@ impl Rubber {
         }
         for i in last_indexes {
             self.delete_index(&i)
-                .context(format!("Error occurred when deleting index: {}", i))?;
+                .with_context(|_| format!("Error occurred when deleting index: {}", i))?;
         }
         Ok(())
     }
@@ -497,12 +487,7 @@ impl Rubber {
 
     /// add a list of new indexes to the alias
     /// remove a list of indexes from the alias
-    pub fn alias(
-        &self,
-        alias: &str,
-        add: &[String],
-        remove: &[String],
-    ) -> Result<(), failure::Error> {
+    pub fn alias(&self, alias: &str, add: &[String], remove: &[String]) -> Result<(), Error> {
         info!(
             "for {}, adding alias {:?}, removing {:?}",
             alias, add, remove
@@ -529,28 +514,18 @@ impl Rubber {
             .context("Error occurred when POSTing: _alias")?;
         match res.status {
             StatusCode::Ok => Ok(()),
-            _ => {
-                error!(
-                    "failed to change aliases for {}, es response: {:?}",
-                    alias, res
-                );
-                Err(format_err!(
-                    "failed to post aliases for {}: {:?}",
-                    alias,
-                    res
-                ))
-            }
+            _ => bail!("failed to post aliases for {}: {:?}", alias, res),
         }
     }
 
-    pub fn delete_index(&mut self, index: &String) -> Result<(), failure::Error> {
+    pub fn delete_index(&mut self, index: &String) -> Result<(), Error> {
         debug!("deleting index {}", &index);
         let res = self.es_client
             .delete_index(&index)
             .map(|res| res.acknowledged)
             .unwrap_or(false);
         if !res {
-            Err(format_err!("Error deleting index {}", &index).into())
+            bail!("Error deleting index {}", &index)
         } else {
             Ok(())
         }
@@ -602,16 +577,15 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, failure::Error>
+    pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, Error>
     where
         T: MimirObject,
         I: Iterator<Item = T>,
     {
         // TODO better error handling
         let index = self.make_index(dataset)
-            .context(format!("Error occurred when making index: {}", dataset))?;
-        let nb_elements = self.bulk_index(&index, iter)
-            .map_err(|e| format_err!("{}", e.to_string()))?;
+            .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
+        let nb_elements = self.bulk_index(&index, iter)?;
         self.publish_index(dataset, index)?;
         Ok(nb_elements)
     }

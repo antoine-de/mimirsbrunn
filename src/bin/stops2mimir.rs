@@ -46,6 +46,7 @@ use std::collections::HashMap;
 use structopt::StructOpt;
 use mimirsbrunn::stops::*;
 use std::path::PathBuf;
+use failure::ResultExt;
 
 const MAX_LAT: f64 = 90f64;
 const MIN_LAT: f64 = -90f64;
@@ -160,6 +161,8 @@ fn run(args: Args) -> Result<(), failure::Error> {
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
     import_stops(stops, &args.connection_string, &args.dataset)
+        .context("Error while importing stops")?;
+    Ok(())
 }
 
 fn main() {

@@ -128,10 +128,7 @@ where
     I: Iterator<Item = std::path::PathBuf>,
 {
     let mut rubber = Rubber::new(cnx_string);
-    rubber.initialize_templates().context(format!(
-        "Error occurred when initializing template: {}",
-        cnx_string
-    ))?;
+    rubber.initialize_templates()?;
 
     let admins = rubber
         .get_admins_from_dataset(dataset)
@@ -154,7 +151,7 @@ where
 
     let addr_index = rubber
         .make_index(dataset)
-        .context(format!("Error occurred when making index {}", dataset))?;
+        .with_context(|_| format!("Error occurred when making index {}", dataset))?;
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -166,10 +163,13 @@ where
         });
         let nb = rubber
             .bulk_index(&addr_index, iter)
-            .context(format!("failed to bulk insert file {:?}", &f))?;
+            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
         info!("importing {:?}: {} addresses added.", &f, nb);
     }
-    rubber.publish_index(dataset, addr_index)
+    rubber
+        .publish_index(dataset, addr_index)
+        .context("Error while publishing the index")?;
+    Ok(())
 }
 
 #[derive(StructOpt, Debug)]
