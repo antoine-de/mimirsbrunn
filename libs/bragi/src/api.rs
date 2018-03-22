@@ -53,11 +53,10 @@ impl Key for Timer {
 
 lazy_static! {
     static ref HTTP_COUNTER: prometheus::CounterVec = register_counter_vec!(
-            "bragi_http_requests_total",
-            "Total number of HTTP requests made.",
-            &["handler", "method", "status"]
+        "bragi_http_requests_total",
+        "Total number of HTTP requests made.",
+        &["handler", "method", "status"]
     ).unwrap();
-
     static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
         "bragi_http_request_duration_seconds",
         "The HTTP request latencies in seconds.",

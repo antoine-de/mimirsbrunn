@@ -131,6 +131,7 @@ impl GtfsStop {
                 codes: vec![],
                 properties: vec![],
                 feed_publishers: vec![],
+                comments: vec![],
             })
         }
     }

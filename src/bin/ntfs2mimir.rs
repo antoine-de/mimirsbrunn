@@ -82,6 +82,13 @@ fn to_mimir(
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
         .collect();
+    let mut comments: Vec<mimir::Comment> = vec![];
+    for comment in navitia.comments.iter_from(&stop_area.comment_links) {
+        comments.push(mimir::Comment {
+            id: format!("comments:{}", comment.id),
+            name: comment.name.clone(),
+        })
+    }
 
     let feed_publishers = navitia
         .get_corresponding_from_idx(idx)
@@ -111,6 +118,7 @@ fn to_mimir(
         weight: 0.,
         zip_codes: vec![],
         coverages: vec![],
+        comments: comments,
         timezone: stop_area.timezone.clone().unwrap_or(format!("")),
         codes: stop_area
             .codes

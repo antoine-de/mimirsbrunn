@@ -69,8 +69,8 @@ mod params;
 use logger::Logger;
 
 lazy_static! {
-    static ref BRAGI_ES: String = std::env::var("BRAGI_ES")
-        .unwrap_or_else(|_| "http://localhost:9200/munin".into());
+    static ref BRAGI_ES: String =
+        std::env::var("BRAGI_ES").unwrap_or_else(|_| "http://localhost:9200/munin".into());
 }
 
 #[derive(StructOpt, Debug)]
