@@ -368,7 +368,7 @@ dependencies = [
 [[package]]
 name = "get-corresponding-derive"
 version = "0.1.0"
-source = "git+https://github.com/CanalTP/navitia_model#f84223d652bd0a82f619c32fd9f4866a6c75341f"
+source = "git+https://github.com/CanalTP/navitia_model#54f536da8fae7110383fb4da59fd1c9cb73e379a"
 dependencies = [
  "quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.11.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -710,7 +710,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "navitia_model"
 version = "0.1.0"
-source = "git+https://github.com/CanalTP/navitia_model#f84223d652bd0a82f619c32fd9f4866a6c75341f"
+source = "git+https://github.com/CanalTP/navitia_model#54f536da8fae7110383fb4da59fd1c9cb73e379a"
 dependencies = [
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "csv 1.0.0-beta.5 (registry+https://github.com/rust-lang/crates.io-index)",
