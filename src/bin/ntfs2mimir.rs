@@ -86,7 +86,6 @@ fn to_mimir(
         .comments
         .iter_from(&stop_area.comment_links)
         .map(|comment| mimir::Comment {
-            id: format!("comments:{}", comment.id),
             name: comment.name.clone(),
         })
         .collect();

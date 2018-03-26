@@ -237,7 +237,6 @@ pub struct FeedPublisher {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Comment {
-    pub id: String,
     pub name: String,
 }
 
