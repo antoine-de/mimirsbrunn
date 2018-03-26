@@ -38,11 +38,11 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
+use mimirsbrunn::stops::*;
+use navitia_model::collection::Idx;
+use navitia_model::objects as navitia;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use mimirsbrunn::stops::*;
-use navitia_model::objects as navitia;
-use navitia_model::collection::Idx;
 
 #[derive(Debug, StructOpt)]
 struct Args {

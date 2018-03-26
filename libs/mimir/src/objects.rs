@@ -30,12 +30,12 @@
 
 use geo;
 use serde;
-use std::rc::Rc;
-use std::cell::Cell;
-use serde::ser::{SerializeStruct, Serializer};
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::ser::{SerializeStruct, Serializer};
+use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt;
+use std::rc::Rc;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -358,8 +358,8 @@ where
     D: serde::de::Deserializer<'de>,
 {
     use geojson;
-    use serde::Deserialize;
     use geojson::conversion::TryInto;
+    use serde::Deserialize;
 
     Option::<geojson::GeoJson>::deserialize(d).map(|option| {
         option.and_then(|geojson| match geojson {

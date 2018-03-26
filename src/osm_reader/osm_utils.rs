@@ -31,9 +31,9 @@
 extern crate mimir;
 extern crate osmpbfreader;
 
-use std::collections::BTreeMap;
 use geo::MultiPolygon;
 use geo::centroid::Centroid;
+use std::collections::BTreeMap;
 
 pub fn get_way_coord(
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,

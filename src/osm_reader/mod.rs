@@ -4,8 +4,8 @@ extern crate osmpbfreader;
 use std::fs::File;
 use std::path::Path;
 
-pub mod osm_utils;
 pub mod admin;
+pub mod osm_utils;
 pub mod poi;
 pub mod street;
 

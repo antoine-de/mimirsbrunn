@@ -29,23 +29,23 @@
 // www.navitia.io
 
 use super::objects::{Admin, MimirObject};
+use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use chrono;
 use hyper;
 use hyper::status::StatusCode;
-use rs_es::error::EsError;
 use rs_es;
 use rs_es::EsResponse;
-use serde_json;
+use rs_es::error::EsError;
 use rs_es::operations::search::ScanResult;
+use rs_es::operations::search::SearchResult;
+use rs_es::query::Query;
+use rs_es::units as rs_u;
+use rs_es::units::Duration;
 use serde;
+use serde_json;
 use std;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
-use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
-use rs_es::units::Duration;
-use rs_es::units as rs_u;
-use rs_es::query::Query;
-use rs_es::operations::search::SearchResult;
 
 const SYNONYMS: [&'static str; 17] = [
     "cc,centre commercial",

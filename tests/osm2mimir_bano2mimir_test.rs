@@ -28,9 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use super::ToJson;
 use hyper;
 use hyper::client::Client;
-use super::ToJson;
 
 pub fn osm2mimir_bano2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");

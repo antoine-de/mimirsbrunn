@@ -28,17 +28,17 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::model;
-use rs_es;
-use rs_es::error::EsError;
-use rs_es::query::Query;
-use rs_es::operations::search::SearchResult;
-use rs_es::units as rs_u;
 use mimir;
-use serde_json;
-use serde;
 use mimir::objects::{Addr, Admin, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{collect, get_indexes};
 use prometheus;
+use rs_es;
+use rs_es::error::EsError;
+use rs_es::operations::search::SearchResult;
+use rs_es::query::Query;
+use rs_es::units as rs_u;
+use serde;
+use serde_json;
 use std::fmt;
 
 lazy_static! {
@@ -188,8 +188,8 @@ fn build_query(
         ])
         .build();
 
-    use rs_es::query::MinimumShouldMatch;
     use rs_es::query::CombinationMinimumShouldMatch;
+    use rs_es::query::MinimumShouldMatch;
 
     let matching_condition = match match_type {
         // When the match type is Prefix, we want to use every possible information even though
