@@ -236,6 +236,11 @@ pub struct FeedPublisher {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Comment {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Stop {
     pub id: String,
     pub label: String,
@@ -250,6 +255,8 @@ pub struct Stop {
     pub physical_modes: Vec<PhysicalMode>,
     #[serde(default)]
     pub coverages: Vec<String>,
+    #[serde(default)]
+    pub comments: Vec<Comment>,
     #[serde(default)]
     pub timezone: String,
     #[serde(default)]
