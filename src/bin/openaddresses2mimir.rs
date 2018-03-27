@@ -46,7 +46,6 @@ use std::path::PathBuf;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
-use structopt::StructOpt;
 use failure::ResultExt;
 
 #[derive(Serialize, Deserialize)]
@@ -156,6 +155,8 @@ struct Args {
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
+    info!("importing open addresses into Mimir");
+
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
@@ -177,14 +178,5 @@ fn run(args: Args) -> Result<(), failure::Error> {
 }
 
 fn main() {
-    let _guard = mimir::logger_init();
-    info!("importing open addresses into Mimir");
-
-    let args = Args::from_args();
-    if let Err(err) = run(args) {
-        for cause in err.causes() {
-            eprintln!("{}", cause);
-        }
-        std::process::exit(1);
-    }
+    mimirsbrunn::utils::launch_run(run);
 }

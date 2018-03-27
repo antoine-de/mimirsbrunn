@@ -40,7 +40,6 @@ extern crate mimirsbrunn;
 extern crate structopt;
 
 use std::path::PathBuf;
-use structopt::StructOpt;
 use mimir::rubber::Rubber;
 use failure::ResultExt;
 
@@ -157,12 +156,5 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 }
 
 fn main() {
-    let _guard = mimir::logger_init();
-    let args = Args::from_args();
-    if let Err(err) = run(args) {
-        for cause in err.causes() {
-            eprintln!("{}", cause);
-        }
-        std::process::exit(1);
-    }
+    mimirsbrunn::utils::launch_run(run);
 }

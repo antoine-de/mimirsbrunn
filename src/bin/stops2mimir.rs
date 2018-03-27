@@ -43,7 +43,6 @@ extern crate slog_scope;
 extern crate structopt;
 
 use std::collections::HashMap;
-use structopt::StructOpt;
 use mimirsbrunn::stops::*;
 use std::path::PathBuf;
 use failure::ResultExt;
@@ -150,6 +149,11 @@ impl GtfsStop {
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
+    info!("Launching stops2mimir...");
+    if args.city_level.is_some() {
+        warn!("city-level option is deprecated, it now has no effect.");
+    }
+
     let mut rdr = csv::Reader::from_path(&args.input)?;
     let mut nb_stop_points = HashMap::new();
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
@@ -166,19 +170,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
 }
 
 fn main() {
-    let _guard = mimir::logger_init();
-    info!("Launching stops2mimir...");
-
-    let args = Args::from_args();
-    if args.city_level.is_some() {
-        warn!("city-level option is deprecated, it now has no effect.");
-    }
-    if let Err(err) = run(args) {
-        for cause in err.causes() {
-            eprintln!("{}", cause);
-        }
-        std::process::exit(1);
-    };
+    mimirsbrunn::utils::launch_run(run);
 }
 
 #[test]

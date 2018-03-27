@@ -49,7 +49,6 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
 use std::rc::Rc;
 use std::collections::BTreeMap;
-use structopt::StructOpt;
 use failure::ResultExt;
 
 type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
@@ -187,6 +186,7 @@ struct Args {
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
+    info!("importing bano into Mimir");
     if args.input.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.input)?;
         index_bano(
@@ -203,14 +203,5 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     }
 }
 fn main() {
-    let _guard = mimir::logger_init();
-    info!("importing bano into Mimir");
-
-    let args = Args::from_args();
-    if let Err(err) = run(args) {
-        for cause in err.causes() {
-            eprintln!("{}", cause);
-        }
-        std::process::exit(1);
-    }
+    mimirsbrunn::utils::launch_run(run);
 }

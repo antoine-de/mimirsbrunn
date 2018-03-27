@@ -40,7 +40,6 @@ extern crate slog_scope;
 extern crate structopt;
 
 use std::path::PathBuf;
-use structopt::StructOpt;
 use mimirsbrunn::stops::*;
 use navitia_model::objects as navitia;
 use navitia_model::collection::Idx;
@@ -135,21 +134,15 @@ fn to_mimir(
 }
 
 fn main() {
-    let _guard = mimir::logger_init();
+    mimirsbrunn::utils::launch_run(run);
+}
+fn run(args: Args) -> Result<(), navitia_model::Error> {
     info!("Launching ntfs2mimir...");
 
-    let args = Args::from_args();
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
-    if let Err(err) = run(args) {
-        for cause in err.causes() {
-            eprintln!("{}", cause);
-        }
-        std::process::exit(1);
-    }
-}
-fn run(args: Args) -> Result<(), navitia_model::Error> {
+
     let navitia = navitia_model::ntfs::read(&args.input)?;
     let nb_stop_points = navitia
         .stop_areas
@@ -181,7 +174,7 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
 fn test_bad_connection_string() {
     let args = Args {
         input: PathBuf::from("./tests/fixtures/ntfs"),
-        connection_string: "http://localhost:4242".to_string(),
+        connection_string: "http://localhost:1".to_string(),
         dataset: "bob".to_string(),
         city_level: None,
     };
@@ -194,7 +187,7 @@ fn test_bad_connection_string() {
     assert_eq!(
         causes,
         [
-            "Error occurred when importing stops into bob on http://localhost:4242".to_string(),
+            "Error occurred when importing stops into bob on http://localhost:1".to_string(),
             "Error: Connection refused (os error 111) while creating template template_addr"
                 .to_string()
         ]
