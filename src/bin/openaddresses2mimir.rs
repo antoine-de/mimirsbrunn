@@ -41,10 +41,10 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
-use std::path::PathBuf;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Serialize, Deserialize)]

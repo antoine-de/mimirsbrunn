@@ -34,8 +34,8 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-use std::process::Command;
 use std::error::Error;
+use std::process::Command;
 
 extern crate mimir;
 use mimir::rubber::Rubber;
@@ -79,7 +79,7 @@ impl DockerWrapper {
         self.ip = container_ip.to_string();
 
         info!("Waiting for ES in docker to be up and running...");
-        match retry::retry(
+        let retry = retry::retry(
             200,
             100,
             || hyper::client::Client::new().get(&self.host()).send(),
@@ -89,7 +89,8 @@ impl DockerWrapper {
                     .map(|res| res.status == hyper::Ok)
                     .unwrap_or(false)
             },
-        ) {
+        );
+        match retry {
             Ok(_) => Ok(()),
             Err(_) => Err("ES is down".into()),
         }

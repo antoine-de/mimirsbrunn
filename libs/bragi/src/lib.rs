@@ -50,10 +50,10 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-use structopt::StructOpt;
 use iron::Iron;
 use iron::prelude::Chain;
 use rustless::Application;
+use structopt::StructOpt;
 
 extern crate logger;
 
@@ -63,14 +63,14 @@ extern crate prometheus;
 extern crate hyper;
 
 pub mod api;
-pub mod query;
 mod model;
 mod params;
+pub mod query;
 use logger::Logger;
 
 lazy_static! {
-    static ref BRAGI_ES: String = std::env::var("BRAGI_ES")
-        .unwrap_or_else(|_| "http://localhost:9200/munin".into());
+    static ref BRAGI_ES: String =
+        std::env::var("BRAGI_ES").unwrap_or_else(|_| "http://localhost:9200/munin".into());
 }
 
 #[derive(StructOpt, Debug)]

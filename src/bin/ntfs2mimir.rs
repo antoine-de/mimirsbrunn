@@ -38,11 +38,11 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
+use mimirsbrunn::stops::*;
+use navitia_model::collection::Idx;
+use navitia_model::objects as navitia;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use mimirsbrunn::stops::*;
-use navitia_model::objects as navitia;
-use navitia_model::collection::Idx;
 
 #[derive(Debug, StructOpt)]
 struct Args {
@@ -82,7 +82,13 @@ fn to_mimir(
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
         .collect();
-
+    let comments = navitia
+        .comments
+        .iter_from(&stop_area.comment_links)
+        .map(|comment| mimir::Comment {
+            name: comment.name.clone(),
+        })
+        .collect();
     let feed_publishers = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
@@ -111,6 +117,7 @@ fn to_mimir(
         weight: 0.,
         zip_codes: vec![],
         coverages: vec![],
+        comments: comments,
         timezone: stop_area.timezone.clone().unwrap_or(format!("")),
         codes: stop_area
             .codes

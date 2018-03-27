@@ -41,10 +41,10 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
-use std::collections::HashMap;
-use structopt::StructOpt;
 use mimirsbrunn::stops::*;
+use std::collections::HashMap;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 const MAX_LAT: f64 = 90f64;
 const MIN_LAT: f64 = -90f64;
@@ -131,6 +131,7 @@ impl GtfsStop {
                 codes: vec![],
                 properties: vec![],
                 feed_publishers: vec![],
+                comments: vec![],
             })
         }
     }

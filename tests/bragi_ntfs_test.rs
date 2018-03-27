@@ -77,6 +77,12 @@ fn gare_de_lyon(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "id"), "stop_area:GDL");
     assert_eq!(get_value(stop, "timezone"), "Europe/Paris");
     assert_eq!(
+        stop.get("comments").unwrap(),
+        &json!([
+            {"name": "Ligne en travaux"}
+        ])
+    );
+    assert_eq!(
         stop.get("physical_modes").unwrap(),
         &json!([
             {"id": "physical_mode:Bus", "name": "Bus"},

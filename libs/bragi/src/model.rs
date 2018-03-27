@@ -30,8 +30,8 @@
 
 use mimir;
 
-use geojson;
 use geo;
+use geojson;
 use std::rc::Rc;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -84,6 +84,8 @@ pub struct GeocodingResponse {
     pub address: Option<Box<GeocodingResponse>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub commercial_modes: Vec<mimir::CommercialMode>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub comments: Vec<mimir::Comment>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub physical_modes: Vec<mimir::PhysicalMode>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -306,6 +308,7 @@ impl From<mimir::Stop> for GeocodingResponse {
             administrative_regions: admins,
             commercial_modes: other.commercial_modes,
             physical_modes: other.physical_modes,
+            comments: other.comments,
             timezone: Some(other.timezone),
             codes: other.codes,
             properties: other.properties,

@@ -48,24 +48,24 @@ extern crate slog;
 extern crate slog_scope;
 
 mod bano2mimir_test;
-mod osm2mimir_test;
-mod stops2mimir_test;
-mod osm2mimir_bano2mimir_test;
-mod rubber_test;
 mod bragi_bano_test;
+mod bragi_filter_types_test;
+mod bragi_ntfs_test;
 mod bragi_osm_test;
-mod bragi_three_cities_test;
 mod bragi_poi_test;
 mod bragi_stops_test;
-mod bragi_ntfs_test;
-mod bragi_filter_types_test;
 mod bragi_synonyms_test;
+mod bragi_three_cities_test;
 mod openaddresses2mimir_test;
+mod osm2mimir_bano2mimir_test;
+mod osm2mimir_test;
+mod rubber_test;
+mod stops2mimir_test;
 
 use docker_wrapper::*;
+use hyper::client::response::Response;
 use serde_json::Map;
 use serde_json::value::Value;
-use hyper::client::response::Response;
 use std::process::Command;
 
 trait ToJson {
@@ -168,8 +168,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
-        use serde_json::value::Value;
         use serde_json::map::{Entry, Map};
+        use serde_json::value::Value;
         fn into_object(json: Value) -> Option<Map<String, Value>> {
             match json {
                 Value::Object(o) => Some(o),

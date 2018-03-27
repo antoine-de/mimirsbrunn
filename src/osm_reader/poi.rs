@@ -32,17 +32,17 @@ extern crate mimir;
 extern crate osm_boundaries_utils;
 extern crate osmpbfreader;
 
-use std::collections::BTreeMap;
-use std::io;
-use std::error::Error;
-use serde_json;
-use admin_geofinder::AdminGeoFinder;
-use super::osm_utils::make_centroid;
 use self::osm_boundaries_utils::build_boundary;
-use utils::{format_label, get_zip_codes_from_admins};
-use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
+use super::osm_utils::get_way_coord;
+use super::osm_utils::make_centroid;
+use admin_geofinder::AdminGeoFinder;
 use mimir::{rubber, Poi, PoiType};
+use serde_json;
+use std::collections::BTreeMap;
+use std::error::Error;
+use std::io;
+use utils::{format_label, get_zip_codes_from_admins};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {
