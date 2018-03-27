@@ -42,11 +42,11 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
-use std::path::PathBuf;
+use failure::ResultExt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
-use failure::ResultExt;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

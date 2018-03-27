@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use valico::json_dsl::{self, Builder, Param};
-use valico::common::error as valico_error;
 use rustless::json::JsonValue;
 use std::str::FromStr;
+use valico::common::error as valico_error;
+use valico::json_dsl::{self, Builder, Param};
 
 const MAX_LAT: f64 = 180f64;
 const MIN_LAT: f64 = -180f64;

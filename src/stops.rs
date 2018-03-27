@@ -28,14 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use std::rc::Rc;
-use mimir::rubber::{Rubber, TypedIndex};
-use utils::{format_label, get_zip_codes_from_admins};
-use mimir;
 use admin_geofinder::AdminGeoFinder;
+use failure::{Error, ResultExt};
+use mimir;
+use mimir::rubber::{Rubber, TypedIndex};
 use std::collections::HashMap;
 use std::mem::replace;
-use failure::{Error, ResultExt};
+use std::rc::Rc;
+use utils::{format_label, get_zip_codes_from_admins};
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
 

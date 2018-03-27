@@ -32,13 +32,13 @@ extern crate mimir;
 extern crate osm_boundaries_utils;
 extern crate osmpbfreader;
 
-use admin_geofinder::AdminGeoFinder;
-use osm_reader::osm_utils::make_centroid;
 use self::osm_boundaries_utils::build_boundary;
+use super::OsmPbfReader;
+use admin_geofinder::AdminGeoFinder;
+use itertools::Itertools;
+use osm_reader::osm_utils::make_centroid;
 use std::cell::Cell;
 use std::collections::BTreeSet;
-use itertools::Itertools;
-use super::OsmPbfReader;
 pub type StreetsVec = Vec<mimir::Street>;
 
 #[derive(Debug)]

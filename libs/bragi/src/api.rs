@@ -27,21 +27,21 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use rustless;
-use serde;
-use serde_json;
-use rustless::server::{header, status};
-use rustless::{Api, Nesting};
-use valico::json_dsl;
 use super::query;
-use model::v1::*;
-use model;
-use params::{coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param};
+use hyper::mime::Mime;
+use iron::typemap::Key;
 use mimir::rubber::Rubber;
+use model;
+use model::v1::*;
+use params::{coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param};
 use prometheus;
 use prometheus::Encoder;
-use iron::typemap::Key;
-use hyper::mime::Mime;
+use rustless;
+use rustless::server::{header, status};
+use rustless::{Api, Nesting};
+use serde;
+use serde_json;
+use valico::json_dsl;
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;

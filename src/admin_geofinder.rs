@@ -27,13 +27,13 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use mimir::Admin;
-use geo::contains::Contains;
 use geo;
+use geo::contains::Contains;
+use gst::rtree::{RTree, Rect};
+use mimir::Admin;
+use std;
 use std::iter::FromIterator;
 use std::rc::Rc;
-use gst::rtree::{RTree, Rect};
-use std;
 
 /// We want to strip the admin's boundary for the objects referencing it (for performance purpose)
 /// thus in the `AdminGeoFinder` we store an Admin without the boundary (the option is emptied)

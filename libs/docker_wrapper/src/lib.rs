@@ -34,8 +34,8 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-use std::process::Command;
 use std::error::Error;
+use std::process::Command;
 
 extern crate mimir;
 use mimir::rubber::Rubber;

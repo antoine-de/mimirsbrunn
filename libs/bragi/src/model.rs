@@ -30,8 +30,8 @@
 
 use mimir;
 
-use geojson;
 use geo;
+use geojson;
 use std::rc::Rc;
 
 #[derive(Serialize, Deserialize, Debug)]

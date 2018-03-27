@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use super::ToJson;
 use hyper;
 use hyper::client::Client;
 use mdo::option::{bind, ret};
-use super::ToJson;
 
 /// Simple call to a OA load into ES base
 /// Checks that we are able to find one object (a specific address)

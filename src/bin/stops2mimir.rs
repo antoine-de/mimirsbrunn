@@ -42,10 +42,10 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
-use std::collections::HashMap;
-use mimirsbrunn::stops::*;
-use std::path::PathBuf;
 use failure::ResultExt;
+use mimirsbrunn::stops::*;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 const MAX_LAT: f64 = 90f64;
 const MIN_LAT: f64 = -90f64;

@@ -31,15 +31,15 @@
 extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
-use serde_json::Map;
-use serde_json::Value;
 use super::BragiHandler;
-use super::get_values;
-use super::get_value;
-use super::get_types;
 use super::count_types;
 use super::filter_by_type;
+use super::get_types;
+use super::get_value;
+use super::get_values;
 use mimir::{MimirObject, Poi};
+use serde_json::Map;
+use serde_json::Value;
 
 pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));

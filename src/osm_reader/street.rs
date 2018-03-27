@@ -33,14 +33,14 @@ extern crate geo;
 extern crate mimir;
 extern crate osmpbfreader;
 
+use super::OsmPbfReader;
+use super::osm_utils::get_way_coord;
+use Error;
 use admin_geofinder::AdminGeoFinder;
+use failure::ResultExt;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 use utils::{format_label, get_zip_codes_from_admins};
-use super::osm_utils::get_way_coord;
-use super::OsmPbfReader;
-use Error;
-use failure::ResultExt;
 
 pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;

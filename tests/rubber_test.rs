@@ -28,14 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use serde_json::value::Value;
-use mimir::{Admin, Coord, MimirObject, Street};
+use geo;
+use hyper;
 use mimir::AdminType::City;
 use mimir::rubber::{self, Rubber};
+use mimir::{Admin, Coord, MimirObject, Street};
+use serde_json::value::Value;
 use std;
 use std::cell::Cell;
-use hyper;
-use geo;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base

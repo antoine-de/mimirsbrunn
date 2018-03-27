@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use mimir;
-use std::rc::Rc;
 use Error;
+use mimir;
 use std::process::exit;
+use std::rc::Rc;
 use structopt::StructOpt;
 
 pub fn format_label(admins: &[Rc<mimir::Admin>], name: &str) -> String {

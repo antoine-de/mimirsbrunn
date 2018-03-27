@@ -42,14 +42,14 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
-use std::path::PathBuf;
-use mimir::rubber::Rubber;
-use mimir::objects::Admin;
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use std::fs;
-use std::rc::Rc;
-use std::collections::BTreeMap;
 use failure::ResultExt;
+use mimir::objects::Admin;
+use mimir::rubber::Rubber;
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::PathBuf;
+use std::rc::Rc;
 
 type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
 
