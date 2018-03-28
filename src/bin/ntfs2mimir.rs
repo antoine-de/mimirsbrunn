@@ -65,7 +65,7 @@ struct Args {
 fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
-    navitia: &navitia_model::PtObjects,
+    navitia: &navitia_model::Model,
 ) -> mimir::Stop {
     let commercial_modes = navitia
         .get_corresponding_from_idx(idx)
