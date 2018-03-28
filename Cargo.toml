@@ -21,13 +21,13 @@ chrono = "0.4"
 serde = {version = "1", features = ["rc"]}
 serde_derive = "1"
 serde_json = "1"
-geo = "0.4.7"
+geo = "0.6"
 gst = "0.1"
 ordered-float = "0.0.2"
 mdo = "*"
 itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
-osm_boundaries_utils = { git = "https://github.com/QwantResearch/osm_boundaries_utils_rs", version = "0.1" }
+osm_boundaries_utils = "0.2"
 failure = "0.1"
 
 [dev-dependencies]
