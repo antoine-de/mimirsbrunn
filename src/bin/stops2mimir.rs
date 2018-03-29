@@ -29,6 +29,7 @@
 // www.navitia.io
 
 extern crate csv;
+extern crate failure;
 extern crate itertools;
 extern crate mimir;
 extern crate mimirsbrunn;
@@ -41,10 +42,10 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
+use failure::ResultExt;
 use mimirsbrunn::stops::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 const MAX_LAT: f64 = 90f64;
 const MIN_LAT: f64 = -90f64;
@@ -148,16 +149,13 @@ impl GtfsStop {
     }
 }
 
-fn main() {
-    let _guard = mimir::logger_init();
+fn run(args: Args) -> Result<(), failure::Error> {
     info!("Launching stops2mimir...");
-
-    let args = Args::from_args();
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
-    let mut rdr = csv::Reader::from_path(&args.input).unwrap();
+    let mut rdr = csv::Reader::from_path(&args.input)?;
     let mut nb_stop_points = HashMap::new();
     let mut stops: Vec<mimir::Stop> = rdr.deserialize()
         .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())
@@ -167,7 +165,13 @@ fn main() {
         })
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset);
+    import_stops(stops, &args.connection_string, &args.dataset)
+        .context("Error while importing stops")?;
+    Ok(())
+}
+
+fn main() {
+    mimirsbrunn::utils::launch_run(run);
 }
 
 #[test]

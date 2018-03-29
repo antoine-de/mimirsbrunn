@@ -1,6 +1,8 @@
+extern crate failure;
 extern crate mimir;
 extern crate osmpbfreader;
 
+use Error;
 use std::fs::File;
 use std::path::Path;
 
@@ -11,6 +13,6 @@ pub mod street;
 
 pub type OsmPbfReader = osmpbfreader::OsmPbfReader<File>;
 
-pub fn parse_osm_pbf(path: &Path) -> OsmPbfReader {
-    osmpbfreader::OsmPbfReader::new(File::open(&path).unwrap())
+pub fn make_osm_reader(path: &Path) -> Result<OsmPbfReader, Error> {
+    Ok(osmpbfreader::OsmPbfReader::new(File::open(&path)?))
 }

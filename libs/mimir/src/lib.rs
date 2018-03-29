@@ -45,6 +45,8 @@ extern crate slog_stdlog;
 extern crate slog_term;
 
 extern crate chrono;
+#[macro_use]
+extern crate failure;
 extern crate geo;
 extern crate geojson;
 extern crate hyper;

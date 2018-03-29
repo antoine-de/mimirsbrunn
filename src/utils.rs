@@ -28,8 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use Error;
 use mimir;
+use std::process::exit;
 use std::rc::Rc;
+use structopt::StructOpt;
 
 pub fn format_label(admins: &[Rc<mimir::Admin>], name: &str) -> String {
     match admins.iter().position(|adm| adm.is_city()) {
@@ -54,4 +57,18 @@ pub fn get_zip_codes_from_admins(admins: &[Rc<mimir::Admin>]) -> Vec<String> {
         .filter(|adm| adm.level == level)
         .flat_map(|adm| adm.zip_codes.iter().cloned())
         .collect()
+}
+
+pub fn launch_run<O, F>(run: F)
+where
+    F: FnOnce(O) -> Result<(), Error>,
+    O: StructOpt,
+{
+    let _guard = mimir::logger_init();
+    if let Err(err) = run(O::from_args()) {
+        for cause in err.causes() {
+            error!("{}", cause);
+        }
+        exit(1);
+    }
 }

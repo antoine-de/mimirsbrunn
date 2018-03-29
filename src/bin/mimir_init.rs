@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate failure;
 extern crate mimir;
 #[macro_use]
 extern crate slog;
@@ -35,9 +36,9 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate mimirsbrunn;
 
 use mimir::rubber::Rubber;
-use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -46,12 +47,12 @@ struct Args {
     connection_string: String,
 }
 
-fn main() {
-    let _guard = mimir::logger_init();
+fn run(args: Args) -> Result<(), failure::Error> {
     info!("creating templates");
-
-    let args = Args::from_args();
-
     let rubber = Rubber::new(&args.connection_string);
-    rubber.initialize_templates().unwrap();
+    rubber.initialize_templates()
+}
+
+fn main() {
+    mimirsbrunn::utils::launch_run(run);
 }

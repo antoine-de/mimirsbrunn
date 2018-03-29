@@ -28,15 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+#[macro_use]
+extern crate failure;
 extern crate geo;
 extern crate gst;
 extern crate itertools;
-
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-
 #[macro_use]
 extern crate mdo;
 extern crate mimir;
@@ -46,8 +46,10 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+extern crate structopt;
 
 pub mod admin_geofinder;
 pub mod osm_reader;
 pub mod stops;
 pub mod utils;
+pub type Error = failure::Error;

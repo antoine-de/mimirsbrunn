@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate failure;
 extern crate mimir;
 extern crate mimirsbrunn;
 extern crate navitia_model;
@@ -38,11 +39,11 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 
+use failure::ResultExt;
 use mimirsbrunn::stops::*;
 use navitia_model::collection::Idx;
 use navitia_model::objects as navitia;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Args {
@@ -64,7 +65,7 @@ struct Args {
 fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
-    navitia: &navitia_model::PtObjects,
+    navitia: &navitia_model::Model,
 ) -> mimir::Stop {
     let commercial_modes = navitia
         .get_corresponding_from_idx(idx)
@@ -140,21 +141,15 @@ fn to_mimir(
 }
 
 fn main() {
-    let _guard = mimir::logger_init();
+    mimirsbrunn::utils::launch_run(run);
+}
+fn run(args: Args) -> Result<(), navitia_model::Error> {
     info!("Launching ntfs2mimir...");
 
-    let args = Args::from_args();
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
-    if let Err(err) = run(args) {
-        for cause in err.causes() {
-            eprintln!("{}", cause);
-        }
-        std::process::exit(1);
-    }
-}
-fn run(args: Args) -> Result<(), navitia_model::Error> {
+
     let navitia = navitia_model::ntfs::read(&args.input)?;
     let nb_stop_points = navitia
         .stop_areas
@@ -173,6 +168,58 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset);
+    import_stops(stops, &args.connection_string, &args.dataset).with_context(|_| {
+        format!(
+            "Error occurred when importing stops into {} on {}",
+            args.dataset, args.connection_string
+        )
+    })?;
     Ok(())
+}
+
+#[test]
+fn test_bad_connection_string() {
+    let args = Args {
+        input: PathBuf::from("./tests/fixtures/ntfs"),
+        connection_string: "http://localhost:1".to_string(),
+        dataset: "bob".to_string(),
+        city_level: None,
+    };
+    let causes = run(args)
+        .unwrap_err()
+        .causes()
+        .into_iter()
+        .map(|cause| format!("{}", cause))
+        .collect::<Vec<String>>();
+    assert_eq!(
+        causes,
+        [
+            "Error occurred when importing stops into bob on http://localhost:1".to_string(),
+            "Error: Connection refused (os error 111) while creating template template_addr"
+                .to_string()
+        ]
+    );
+}
+
+#[test]
+fn test_bad_file() {
+    let args = Args {
+        input: PathBuf::from("./tests/fixtures/not_exist"),
+        connection_string: "http://localhost:9200".to_string(),
+        dataset: "bob".to_string(),
+        city_level: None,
+    };
+    let causes = run(args)
+        .unwrap_err()
+        .causes()
+        .into_iter()
+        .map(|cause| format!("{}", cause))
+        .collect::<Vec<String>>();
+    assert_eq!(
+        causes,
+        [
+            "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
+            "No such file or directory (os error 2)",
+        ]
+    );
 }
