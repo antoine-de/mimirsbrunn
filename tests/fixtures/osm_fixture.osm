@@ -6904,4 +6904,44 @@
     <tag k='start_date' v='2016-01-01' />
     <tag k='type' v='boundary' />
   </relation>
+  <node id="26692001" version="26" timestamp="2017-10-24T13:04:02Z" uid="6797352" user="Serbian OSM Lint bot" changeset="53207917" lat="48.7830727" lon="2.4518371">
+    <tag k="capital" v="6"/>
+    <tag k="name" v="Créteil"/>
+    <tag k="name:ar" v="كريتيل"/>
+    <tag k="name:fa" v="کرتی"/>
+    <tag k="name:he" v="קרטיי"/>
+    <tag k="name:ja" v="クレテイユ"/>
+    <tag k="name:lt" v="Kretėjus"/>
+    <tag k="name:pnb" v="کریٹیل"/>
+    <tag k="name:ru" v="Кретей"/>
+    <tag k="name:sr" v="Кретеј"/>
+    <tag k="name:uk" v="Кретей"/>
+    <tag k="name:zh" v="克雷泰伊"/>
+    <tag k="place" v="town"/>
+    <tag k="population" v="89985"/>
+    <tag k="postal_code" v="94000"/>
+    <tag k="ref:FR:SIREN" v="219400280"/>
+    <tag k="ref:INSEE" v="94028"/>
+    <tag k="source:population" v="INSEE 2013"/>
+    <tag k="wikidata" v="Q46135"/>
+    <tag k="wikipedia" v="fr:Créteil"/>
+  </node>
+  <relation id="1636480" version="27" timestamp="2017-01-25T13:18:42Z" uid="90780" user="Verdy_p" changeset="45475347">
+    <member type='node' ref='26692001' role='admin_centre' />
+    <member type='way' ref='31861203' role='outer' />
+    <member type='way' ref='31320795' role='outer' />
+    <member type='way' ref='38625921' role='outer' />
+    <member type='way' ref='23088473' role='outer' />
+    <member type='way' ref='35150662' role='outer' />
+    <member type='way' ref='35305052' role='outer' />
+    <member type='way' ref='31861201' role='outer' />
+    <member type='way' ref='31861202' role='outer' />
+    <tag k="name" v="Créteil"/>
+    <tag k="type" v="boundary"/>
+    <tag k="boundary" v="administrative"/>
+    <tag k="wikidata" v="Q701072"/>
+    <tag k="ref:INSEE" v="941"/>
+    <tag k="wikipedia" v="fr:Arrondissement de Créteil"/>
+    <tag k="admin_level" v="7"/>
+  </relation>
 </osm>

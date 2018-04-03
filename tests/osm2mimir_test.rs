@@ -45,10 +45,12 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
             "--import-admin".into(),
             "--import-poi".into(),
             "--level=8".into(),
+            "--level=7".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
+
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Livry-sur-Seine", |_| true)
@@ -69,6 +71,21 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     assert!(res.iter().any(|r| r.is_admin()));
 
+    // Test that Créteil (admin_level 7) is an AdminRegion and not treated as a city (level 8)
+    let admin_regions : Vec<_> = es_wrapper
+        .search_and_filter("admin_type:AdminRegion", |_|true)
+        .filter_map( |admin| { 
+            match admin {
+                mimir::Place::Admin(admin) => 
+                    if admin.name == "Créteil" { Some(admin) }
+                    else { None },
+                _ => None
+            }
+        }).collect();    
+    assert!(admin_regions.len() >= 1);
+    assert_eq!(admin_regions[0].level, 7);
+    assert_eq!(admin_regions[0].admin_type, mimir::AdminType::AdminRegion);
+    
     // Test: search for "Rue des Près"
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Rue des Près", |_| true)
