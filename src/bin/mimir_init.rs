@@ -30,13 +30,13 @@
 
 extern crate failure;
 extern crate mimir;
+extern crate mimirsbrunn;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
-extern crate mimirsbrunn;
 
 use mimir::rubber::Rubber;
 

@@ -59,9 +59,7 @@ impl AdminMatcher {
                 rel.tags
                     .get("boundary")
                     .map_or(false, |v| v == "administrative")
-                && rel.tags
-                    .get("admin_level")
-                    .map_or(false, |lvl| {
+                    && rel.tags.get("admin_level").map_or(false, |lvl| {
                         self.admin_levels.contains(&lvl.parse::<u32>().unwrap_or(0))
                     })
             }
@@ -87,7 +85,7 @@ pub fn administrative_regions(
         if !matcher.is_admin(obj) {
             continue;
         }
-            
+
         if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
             let level = relation
                 .tags
@@ -214,9 +212,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn should_return_correct_admin_type() 
-    {
-        assert_eq!(get_admin_type(1 /*level*/, 1 /*city level*/), mimir::AdminType::City);
+    fn should_return_correct_admin_type() {
+        assert_eq!(
+            get_admin_type(1 /*level*/, 1 /*city level*/),
+            mimir::AdminType::City
+        );
         assert_eq!(get_admin_type(2, 1), mimir::AdminType::AdminRegion);
     }
 }
