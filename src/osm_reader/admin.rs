@@ -177,7 +177,7 @@ pub fn get_admin_type(level: u32, city_lvl: u32) -> mimir::AdminType {
     if level == city_lvl {
         mimir::AdminType::City
     } else {
-        mimir::AdminType::AdminRegion
+        mimir::AdminType::Unknown
     }
 }
 
@@ -217,6 +217,6 @@ mod tests {
             get_admin_type(1 /*level*/, 1 /*city level*/),
             mimir::AdminType::City
         );
-        assert_eq!(get_admin_type(2, 1), mimir::AdminType::AdminRegion);
+        assert_eq!(get_admin_type(2, 1), mimir::AdminType::Unknown);
     }
 }
