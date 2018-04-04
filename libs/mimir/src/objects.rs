@@ -291,7 +291,6 @@ impl Members for Stop {
 pub enum AdminType {
     City,
     AdminRegion,
-    Unknown,
 }
 
 impl fmt::Display for AdminType {
@@ -299,7 +298,6 @@ impl fmt::Display for AdminType {
         match *self {
             AdminType::City => write!(f, "city"),
             AdminType::AdminRegion => write!(f, "administrative_region"),
-            AdminType::Unknown => write!(f, "unknown"),
         }
     }
 }

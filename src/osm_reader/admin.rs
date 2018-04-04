@@ -177,9 +177,10 @@ pub fn administrative_regions(
 
 pub fn get_admin_type(level: u32, city_lvl: u32) -> mimir::AdminType {
     if level == city_lvl {
-        return mimir::AdminType::City
+        mimir::AdminType::City
+    } else {
+        mimir::AdminType::AdminRegion
     }
-    mimir::AdminType::AdminRegion
 }
 
 pub fn compute_admin_weight(streets: &StreetsVec, admins_geofinder: &AdminGeoFinder) {
