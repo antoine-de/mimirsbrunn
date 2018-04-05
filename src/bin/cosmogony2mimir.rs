@@ -53,11 +53,7 @@ impl IntoAdmin for Zone {
     fn into_admin(self) -> Admin {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
-        let label = format!(
-            "{}{}",
-            self.name.to_string(),
-            admin::format_zip_codes(&zip_codes)
-        ); //TODO do better
+        let label = self.label;
         let weight = Cell::new(0.); //TODO, what do we want ?
         let admin_type = AdminType::City; //TODO use ZoneType
         let center = self.center.map_or(mimir::Coord::default(), |c| {

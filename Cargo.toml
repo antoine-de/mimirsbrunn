@@ -16,7 +16,7 @@ structopt = "0.2"
 csv = "1.0.0-beta.4"
 rs-es = {version = "0.10", default-features = false}
 regex = "*"
-osmpbfreader = "*"
+osmpbfreader = "^0.11.2"
 chrono = "0.4"
 serde = {version = "1", features = ["rc"]}
 serde_derive = "1"
@@ -29,8 +29,7 @@ itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = "0.2"
 failure = "0.1"
-#cosmogony = { git = "https://github.com/osm-without-borders/cosmogony" }
-cosmogony = { git = "https://github.com/antoine-de/cosmogony", branch = "deser" }
+cosmogony = { git = "https://github.com/antoine-de/cosmogony", branch = "labels"}
 
 [dev-dependencies]
 hyper = "0.10"

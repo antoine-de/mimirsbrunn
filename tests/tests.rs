@@ -56,6 +56,7 @@ mod bragi_poi_test;
 mod bragi_stops_test;
 mod bragi_synonyms_test;
 mod bragi_three_cities_test;
+mod cosmogony2mimir_test;
 mod openaddresses2mimir_test;
 mod osm2mimir_bano2mimir_test;
 mod osm2mimir_test;
@@ -350,4 +351,5 @@ fn all_tests() {
     bragi_filter_types_test::bragi_filter_types_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_synonyms_test::bragi_synonyms_test(ElasticSearchWrapper::new(&docker_wrapper));
     openaddresses2mimir_test::oa2mimir_simple_test(ElasticSearchWrapper::new(&docker_wrapper));
+    cosmogony2mimir_test::cosmogony2mimir_test(ElasticSearchWrapper::new(&docker_wrapper));
 }
