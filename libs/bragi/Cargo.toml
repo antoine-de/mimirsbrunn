@@ -24,5 +24,8 @@ hyper = "0.10"
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"
 
+[build-dependencies]
+git-version = "0.2"
+
 [dependencies.mimir]
 path = "../mimir"

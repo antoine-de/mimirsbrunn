@@ -295,11 +295,9 @@ impl Rubber {
         let analysis = include_str!("../../../json/settings.json");
 
         let mut analysis_json_value = try!(
-            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| format_err!(
-                "Error occurred when creating index: {} err: {}",
-                name,
-                err
-            ))
+            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| {
+                format_err!("Error occurred when creating index: {} err: {}", name, err)
+            })
         );
 
         let synonyms: Vec<_> = SYNONYMS
