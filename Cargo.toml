@@ -37,6 +37,9 @@ rustless = "*"
 iron = "0.4"
 mime = "0.2"
 
+[build-dependencies]
+git-version = "0.2"
+
 [dependencies.bragi]
 path = "libs/bragi"
 
