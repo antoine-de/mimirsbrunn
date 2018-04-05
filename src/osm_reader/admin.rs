@@ -173,7 +173,7 @@ pub fn administrative_regions(
     administrative_regions
 }
 
-pub fn get_admin_type(level: u32, city_lvl: u32) -> mimir::AdminType {
+fn get_admin_type(level: u32, city_lvl: u32) -> mimir::AdminType {
     if level == city_lvl {
         mimir::AdminType::City
     } else {
