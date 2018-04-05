@@ -287,7 +287,7 @@ impl Members for Stop {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AdminType {
     City,
     Unknown,
@@ -297,7 +297,7 @@ impl fmt::Display for AdminType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             AdminType::City => write!(f, "city"),
-            AdminType::Unknown => write!(f, "unknown"),
+            AdminType::Unknown => write!(f, "administrative_region"),
         }
     }
 }
