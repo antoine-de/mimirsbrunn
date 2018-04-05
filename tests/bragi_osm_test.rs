@@ -50,6 +50,7 @@ pub fn bragi_osm_test(es_wrapper: ::ElasticSearchWrapper) {
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-way".into(),
             "--level=8".into(),
+            "--level=7".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
@@ -59,6 +60,7 @@ pub fn bragi_osm_test(es_wrapper: ::ElasticSearchWrapper) {
     zip_code_street_test(&bragi);
     zip_code_admin_test(&bragi);
     city_admin_test(&bragi);
+    administrative_region_test(&bragi);
 }
 
 fn zip_code_test(bragi: &BragiHandler) {
@@ -129,4 +131,11 @@ fn city_admin_test(bragi: &BragiHandler) {
     let types = get_types(&all_melun);
     let count = count_types(&types, "city");
     assert!(count > 0);
+}
+
+fn administrative_region_test(bragi: &BragiHandler) {
+    let all_creteil = bragi.get("/autocomplete?q=Créteil");
+    let types = get_types(&all_creteil);
+    let count = count_types(&types, "administrative_region");
+    assert_eq!(count, 1);
 }
