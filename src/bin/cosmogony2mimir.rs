@@ -38,12 +38,12 @@ extern crate serde_json;
 #[macro_use]
 extern crate structopt;
 
-use mimir::rubber::Rubber;
-use mimir::objects::{Admin, AdminType};
-use failure::Error;
 use cosmogony::{Cosmogony, Zone};
-use std::cell::Cell;
+use failure::Error;
+use mimir::objects::{Admin, AdminType};
+use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin;
+use std::cell::Cell;
 
 trait IntoAdmin {
     fn into_admin(self) -> Admin;
