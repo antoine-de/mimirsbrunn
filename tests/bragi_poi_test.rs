@@ -31,13 +31,13 @@
 extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
-use super::BragiHandler;
 use super::count_types;
 use super::filter_by_type;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
 use super::get_values;
+use super::BragiHandler;
 use mimir::{MimirObject, Poi};
 use serde_json::Map;
 use serde_json::Value;

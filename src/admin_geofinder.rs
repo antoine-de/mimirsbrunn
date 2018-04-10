@@ -183,6 +183,7 @@ fn test_up_down() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cosmogony::ZoneType;
     use mimir::AdminType;
 
     fn p(x: f64, y: f64) -> ::geo::Point<f64> {
@@ -218,6 +219,7 @@ mod tests {
             boundary: Some(boundary),
             insee: "outlook".to_string(),
             admin_type: AdminType::City,
+            zone_type: Some(ZoneType::City),
         }
     }
 

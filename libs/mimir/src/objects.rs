@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use cosmogony::ZoneType;
 use geo;
 use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
@@ -287,6 +288,7 @@ impl Members for Stop {
     }
 }
 
+#[deprecated]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AdminType {
     City,
@@ -312,23 +314,35 @@ pub struct Admin {
     pub zip_codes: Vec<String>,
     pub weight: Cell<f64>,
     pub coord: Coord,
-    #[serde(serialize_with = "custom_multi_polygon_serialize",
-            deserialize_with = "custom_multi_polygon_deserialize",
-            skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        serialize_with = "custom_multi_polygon_serialize",
+        deserialize_with = "custom_multi_polygon_deserialize",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub boundary: Option<geo::MultiPolygon<f64>>,
     #[serde(default = "default_admin_city")]
-    pub admin_type: AdminType,
+    pub admin_type: AdminType, // deprecated, to be removed after the new zone_type deployment
+    #[serde(default)]
+    pub zone_type: Option<ZoneType>,
 }
 
 fn default_admin_city() -> AdminType {
-    AdminType::City
+    AdminType::Unknown //this way an Admin with no ZoneType won't be a city
 }
 
 impl Admin {
     pub fn is_city(&self) -> bool {
-        match self.admin_type {
-            AdminType::City => true,
-            _ => false,
+        match self.zone_type {
+            Some(ZoneType::City) => true,
+            Some(_) => false,
+            None => {
+                // maintain the retrocompatibility for the moment, but this should be removed
+                match self.admin_type {
+                    AdminType::City => true,
+                    _ => false,
+                }
+            }
         }
     }
 }

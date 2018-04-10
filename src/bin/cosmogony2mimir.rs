@@ -38,7 +38,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate structopt;
 
-use cosmogony::{Cosmogony, Zone};
+use cosmogony::{Cosmogony, Zone, ZoneType};
 use failure::Error;
 use mimir::objects::{Admin, AdminType};
 use mimir::rubber::Rubber;
@@ -55,7 +55,11 @@ impl IntoAdmin for Zone {
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
         let weight = Cell::new(0.); //TODO, what do we want ?
-        let admin_type = AdminType::City; //TODO use ZoneType
+        let admin_type = if self.zone_type == Some(ZoneType::City) {
+            AdminType::City
+        } else {
+            AdminType::Unknown
+        };
         let center = self.center.map_or(mimir::Coord::default(), |c| {
             mimir::Coord::new(c.lng(), c.lat())
         });
@@ -70,6 +74,7 @@ impl IntoAdmin for Zone {
             boundary: self.boundary,
             coord: center,
             admin_type: admin_type,
+            zone_type: self.zone_type,
         }
     }
 }
@@ -107,8 +112,9 @@ struct Args {
     #[structopt(short = "i", long = "input")]
     input: String,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]

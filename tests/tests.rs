@@ -46,6 +46,7 @@ extern crate serde_json;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+extern crate cosmogony;
 
 mod bano2mimir_test;
 mod bragi_bano_test;
@@ -66,8 +67,8 @@ mod stops2mimir_test;
 
 use docker_wrapper::*;
 use hyper::client::response::Response;
-use serde_json::Map;
 use serde_json::value::Value;
+use serde_json::Map;
 use std::process::Command;
 
 trait ToJson {

@@ -60,8 +60,9 @@ struct Args {
     #[structopt(short = "C", long = "city-level", default_value = "8")]
     city_level: u32,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Import ways.
     #[structopt(short = "w", long = "import-way")]

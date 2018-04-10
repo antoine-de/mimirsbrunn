@@ -46,6 +46,7 @@ extern crate serde_json;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+extern crate cosmogony;
 extern crate structopt;
 
 pub mod admin_geofinder;

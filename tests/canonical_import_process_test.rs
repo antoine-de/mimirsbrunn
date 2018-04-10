@@ -30,12 +30,12 @@
 
 extern crate mimir;
 extern crate serde_json;
-use super::BragiHandler;
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
 use super::get_values;
+use super::BragiHandler;
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
 /// and test thourgh bragi in the end
@@ -124,7 +124,7 @@ fn melun_test(bragi: &BragiHandler) {
         "Melun (77000-CP77001), Fausse Seine-et-Marne, France hexagonale"
     );
     assert_eq!(cityhall_admins[0]["name"], "Melun");
-    assert_eq!(cityhall_admins[0]["admin_type"], "City");
+    assert_eq!(cityhall_admins[0]["zone_type"], "city");
 
     assert_eq!(cityhall_admins[1]["id"], "admin:osm:relation:424253843");
     assert_eq!(cityhall_admins[1]["insee"], "77");
@@ -133,12 +133,12 @@ fn melun_test(bragi: &BragiHandler) {
         "Fausse Seine-et-Marne, France hexagonale"
     );
     assert_eq!(cityhall_admins[1]["name"], "Fausse Seine-et-Marne");
-    assert_eq!(cityhall_admins[1]["admin_type"], "City"); //TODO
+    assert_eq!(cityhall_admins[1]["zone_type"], "state_district");
 
     assert_eq!(cityhall_admins[2]["id"], "admin:osm:relation:424256272");
     assert_eq!(cityhall_admins[2]["label"], "France hexagonale");
     assert_eq!(cityhall_admins[2]["name"], "France hexagonale");
-    assert_eq!(cityhall_admins[2]["admin_type"], "City"); //TODO
+    assert_eq!(cityhall_admins[2]["zone_type"], "country");
 
     // the poi should have been associated to an address
     let poi_addr = cityhall["address"].as_object().unwrap();

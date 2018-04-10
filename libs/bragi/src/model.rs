@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use mimir;
-
 use geo;
 use geojson;
+use heck::SnakeCase;
+use mimir;
 use std::rc::Rc;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -140,7 +140,7 @@ impl From<mimir::Place> for Feature {
 
 impl From<mimir::Admin> for GeocodingResponse {
     fn from(other: mimir::Admin) -> GeocodingResponse {
-        let type_ = other.admin_type.to_string();
+        let type_ = get_admin_type(&other);
         let name = Some(other.name);
         let insee = Some(other.insee);
         let level = Some(other.level); //might be used for type_ and become useless
@@ -160,6 +160,13 @@ impl From<mimir::Admin> for GeocodingResponse {
             label: label,
             ..Default::default()
         }
+    }
+}
+
+fn get_admin_type(adm: &mimir::Admin) -> String {
+    match adm.zone_type {
+        Some(t) => format!("{:?}", t).to_snake_case(),
+        None => adm.admin_type.to_string(), // TODO return administrative_region when admin_type is removed
     }
 }
 

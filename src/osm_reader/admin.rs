@@ -40,6 +40,7 @@ use osm_reader::osm_utils::make_centroid;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 pub type StreetsVec = Vec<mimir::Street>;
+use cosmogony::ZoneType;
 
 #[derive(Debug)]
 pub struct AdminMatcher {
@@ -139,7 +140,12 @@ pub fn read_administrative_regions(
 
             let zip_codes = read_zip_codes(&relation.tags);
             let boundary = build_boundary(relation, &objects);
-            let admin_type = get_admin_type(level, city_level);
+            let zone_type = get_zone_type(level, city_level);
+            let admin_type = if zone_type == Some(ZoneType::City) {
+                mimir::AdminType::City
+            } else {
+                mimir::AdminType::Unknown
+            };
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -151,6 +157,7 @@ pub fn read_administrative_regions(
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
                 admin_type: admin_type,
+                zone_type: zone_type,
             };
             administrative_regions.push(admin);
         }
@@ -158,11 +165,11 @@ pub fn read_administrative_regions(
     administrative_regions
 }
 
-fn get_admin_type(level: u32, city_lvl: u32) -> mimir::AdminType {
+fn get_zone_type(level: u32, city_lvl: u32) -> Option<ZoneType> {
     if level == city_lvl {
-        mimir::AdminType::City
+        Some(ZoneType::City)
     } else {
-        mimir::AdminType::Unknown
+        None
     }
 }
 
@@ -214,9 +221,9 @@ mod tests {
     #[test]
     fn should_return_correct_admin_type() {
         assert_eq!(
-            get_admin_type(1 /*level*/, 1 /*city level*/),
-            mimir::AdminType::City
+            get_zone_type(1 /*level*/, 1 /*city level*/),
+            Some(ZoneType::City)
         );
-        assert_eq!(get_admin_type(2, 1), mimir::AdminType::Unknown);
+        assert_eq!(get_zone_type(2, 1), None);
     }
 }

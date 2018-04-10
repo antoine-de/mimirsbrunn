@@ -28,8 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimir;
-extern crate serde_json;
+use cosmogony::ZoneType;
+use mimir;
 
 /// load a cosmogony file in mimir.
 /// The cosmogony file has been generated using the osm_fixture.osm.pbf file
@@ -75,6 +75,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(livry_sur_seine.weight.get(), 0f64);
             assert!(livry_sur_seine.coord.is_valid());
             assert_eq!(livry_sur_seine.admin_type, mimir::AdminType::City);
+            assert_eq!(livry_sur_seine.zone_type, Some(ZoneType::City));
         }
         _ => panic!("should be an admin"),
     }
@@ -96,7 +97,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(sem.zip_codes, Vec::<String>::new());
             assert_eq!(sem.weight.get(), 0f64);
             assert!(sem.coord.is_valid());
-            assert_eq!(sem.admin_type, mimir::AdminType::City); //TODO change
+            assert_eq!(sem.zone_type, Some(ZoneType::StateDistrict));
         }
         _ => panic!("should be an admin"),
     }
@@ -118,7 +119,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(fr.zip_codes, Vec::<String>::new());
             assert_eq!(fr.weight.get(), 0f64);
             assert!(fr.coord.is_valid());
-            assert_eq!(fr.admin_type, mimir::AdminType::City); //TODO change
+            assert_eq!(fr.zone_type, Some(ZoneType::Country));
         }
         _ => panic!("should be an admin"),
     }
