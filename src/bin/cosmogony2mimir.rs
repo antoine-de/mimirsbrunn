@@ -79,6 +79,7 @@ where
     I: Iterator<Item = Admin>,
 {
     let mut rubber = Rubber::new(cnx_string);
+    rubber.initialize_templates()?;
     let nb_admins = rubber.index(dataset, admins)?;
     info!("{} admins added.", nb_admins);
     Ok(())
