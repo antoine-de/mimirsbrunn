@@ -5604,6 +5604,8 @@
     <tag k='name' v='Livry-sur-Seine' />
     <tag k='ref:INSEE' v='77255' />
     <tag k='type' v='boundary' />
+    <tag k='population' v='1919' />
+    <tag k='source:population' v='INSEE 2013' />
     <tag k='wikipedia' v='fr:Livry-sur-Seine' />
   </relation>
   <relation id='386891' timestamp='2016-06-08T03:49:19Z' uid='37548' user='Marcussacapuces91' version='293' changeset='39875365'>
