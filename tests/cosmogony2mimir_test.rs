@@ -72,7 +72,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(livry_sur_seine.insee, "77255");
             assert_eq!(livry_sur_seine.level, 8);
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
-            assert_eq!(livry_sur_seine.weight.get(), 0f64);
+            assert_eq!(livry_sur_seine.weight.get(), 1919f64);
             assert!(livry_sur_seine.coord.is_valid());
             assert_eq!(livry_sur_seine.admin_type, mimir::AdminType::City);
             assert_eq!(livry_sur_seine.zone_type, Some(ZoneType::City));
@@ -93,7 +93,6 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(sem.name, "Fausse Seine-et-Marne");
             assert_eq!(sem.label, "Fausse Seine-et-Marne, France hexagonale");
             assert_eq!(sem.insee, "77");
-            assert_eq!(sem.level, 6);
             assert_eq!(sem.zip_codes, Vec::<String>::new());
             assert_eq!(sem.weight.get(), 0f64);
             assert!(sem.coord.is_valid());

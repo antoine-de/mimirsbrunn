@@ -37,6 +37,7 @@ extern crate mimirsbrunn;
 extern crate serde_json;
 #[macro_use]
 extern crate structopt;
+extern crate osmpbfreader;
 
 use cosmogony::{Cosmogony, Zone, ZoneType};
 use failure::Error;
@@ -49,12 +50,18 @@ trait IntoAdmin {
     fn into_admin(self) -> Admin;
 }
 
+fn get_weight(tags: &osmpbfreader::Tags) -> f64 {
+    // to have an admin weight we use the osm 'population' tag to priorize the big zones over the small one
+    // Note: this tags is not often filled , so only some zones will have a weight (but the main cities have it)
+    tags.get("population").and_then(|p| p.parse().ok()).unwrap_or(0.)
+}
+
 impl IntoAdmin for Zone {
     fn into_admin(self) -> Admin {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
-        let weight = Cell::new(0.); //TODO, what do we want ?
+        let weight = Cell::new(get_weight(&self.tags));
         let admin_type = if self.zone_type == Some(ZoneType::City) {
             AdminType::City
         } else {
