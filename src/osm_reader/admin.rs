@@ -40,6 +40,7 @@ use osm_reader::osm_utils::make_centroid;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 pub type StreetsVec = Vec<mimir::Street>;
+use cosmogony::ZoneType;
 
 #[derive(Debug)]
 pub struct AdminMatcher {
@@ -68,7 +69,7 @@ impl AdminMatcher {
     }
 }
 
-pub fn administrative_regions(
+pub fn read_administrative_regions(
     pbf: &mut OsmPbfReader,
     levels: BTreeSet<u32>,
     city_level: u32,
@@ -79,13 +80,11 @@ pub fn administrative_regions(
     info!("reading pbf...");
     let objects = pbf.get_objs_and_deps(|o| matcher.is_admin(o)).unwrap();
     info!("reading pbf done.");
-
     // load administratives regions
     for obj in objects.values() {
         if !matcher.is_admin(obj) {
             continue;
         }
-
         if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
             let level = relation
                 .tags
@@ -123,11 +122,7 @@ pub fn administrative_regions(
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
                 .map(|node| mimir::Coord::new(node.lon(), node.lat()));
-            let (admin_id, insee_id) = match relation
-                .tags
-                .get("ref:INSEE")
-                .map(|v| v.trim_left_matches('0'))
-            {
+            let (admin_id, insee_id) = match read_insee(&relation.tags) {
                 Some(val) if !insee_inserted.contains(val) => {
                     insee_inserted.insert(val.to_string());
                     (format!("admin:fr:{}", val), val)
@@ -143,18 +138,14 @@ pub fn administrative_regions(
                 None => (format!("admin:osm:{}", relation.id.0), ""),
             };
 
-            let admin_type = get_admin_type(level, city_level);
-            let zip_code = relation
-                .tags
-                .get("addr:postcode")
-                .or_else(|| relation.tags.get("postal_code"))
-                .map_or("", |val| &val[..]);
-            let zip_codes = zip_code
-                .split(';')
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .sorted();
+            let zip_codes = read_zip_codes(&relation.tags);
             let boundary = build_boundary(relation, &objects);
+            let zone_type = get_zone_type(level, city_level);
+            let admin_type = if zone_type == Some(ZoneType::City) {
+                mimir::AdminType::City
+            } else {
+                mimir::AdminType::Unknown
+            };
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -166,6 +157,7 @@ pub fn administrative_regions(
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
                 admin_type: admin_type,
+                zone_type: zone_type,
             };
             administrative_regions.push(admin);
         }
@@ -173,11 +165,11 @@ pub fn administrative_regions(
     administrative_regions
 }
 
-fn get_admin_type(level: u32, city_lvl: u32) -> mimir::AdminType {
+fn get_zone_type(level: u32, city_lvl: u32) -> Option<ZoneType> {
     if level == city_lvl {
-        mimir::AdminType::City
+        Some(ZoneType::City)
     } else {
-        mimir::AdminType::Unknown
+        None
     }
 }
 
@@ -195,7 +187,7 @@ pub fn compute_admin_weight(streets: &StreetsVec, admins_geofinder: &AdminGeoFin
     }
 }
 
-fn format_zip_codes(zip_codes: &[String]) -> String {
+pub fn format_zip_codes(zip_codes: &[String]) -> String {
     match zip_codes.len() {
         0 => "".to_string(),
         1 => format!(" ({})", zip_codes.first().unwrap()),
@@ -207,6 +199,21 @@ fn format_zip_codes(zip_codes: &[String]) -> String {
     }
 }
 
+pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
+    let zip_code = tags.get("addr:postcode")
+        .or_else(|| tags.get("postal_code"))
+        .map_or("", |val| &val[..]);
+    zip_code
+        .split(';')
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .sorted()
+}
+
+pub fn read_insee(tags: &osmpbfreader::Tags) -> Option<&str> {
+    tags.get("ref:INSEE").map(|v| v.trim_left_matches('0'))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,9 +221,9 @@ mod tests {
     #[test]
     fn should_return_correct_admin_type() {
         assert_eq!(
-            get_admin_type(1 /*level*/, 1 /*city level*/),
-            mimir::AdminType::City
+            get_zone_type(1 /*level*/, 1 /*city level*/),
+            Some(ZoneType::City)
         );
-        assert_eq!(get_admin_type(2, 1), mimir::AdminType::Unknown);
+        assert_eq!(get_zone_type(2, 1), None);
     }
 }

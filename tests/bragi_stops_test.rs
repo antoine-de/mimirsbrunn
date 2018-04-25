@@ -32,8 +32,8 @@ extern crate bragi;
 extern crate iron;
 extern crate iron_test;
 extern crate serde_json;
-use super::BragiHandler;
 use super::get_value;
+use super::BragiHandler;
 
 pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
@@ -51,6 +51,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--import-admin".into(),
             "--level=8".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],

@@ -28,10 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use cosmogony::ZoneType;
 use geo;
 use hyper;
-use mimir::AdminType::City;
 use mimir::rubber::{self, Rubber};
+use mimir::AdminType::City;
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
 use std;
@@ -149,19 +150,18 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         zip_codes: vec!["zip_code".to_string()],
         weight: Cell::new(0.42),
         coord: Coord::new(2.68326290f64, 48.5110722f64),
-        boundary: Some(geo::MultiPolygon(vec![
-            geo::Polygon::new(
-                geo::LineString(vec![
-                    p(2., 48.),
-                    p(2., 49.),
-                    p(3., 49.),
-                    p(3., 48.),
-                    p(2., 48.),
-                ]),
-                vec![],
-            ),
-        ])),
+        boundary: Some(geo::MultiPolygon(vec![geo::Polygon::new(
+            geo::LineString(vec![
+                p(2., 48.),
+                p(2., 49.),
+                p(3., 49.),
+                p(3., 48.),
+                p(2., 48.),
+            ]),
+            vec![],
+        )])),
         admin_type: City,
+        zone_type: Some(ZoneType::City),
     };
 
     // we index our admin
@@ -242,6 +242,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
         admin_type: City,
+        zone_type: Some(ZoneType::City),
     };
 
     // we index our admin

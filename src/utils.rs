@@ -28,11 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use Error;
 use mimir;
 use std::process::exit;
 use std::rc::Rc;
 use structopt::StructOpt;
+use Error;
 
 pub fn format_label(admins: &[Rc<mimir::Admin>], name: &str) -> String {
     match admins.iter().position(|adm| adm.is_city()) {

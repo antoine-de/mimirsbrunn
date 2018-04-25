@@ -46,6 +46,7 @@ extern crate serde_json;
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
+extern crate cosmogony;
 
 mod bano2mimir_test;
 mod bragi_bano_test;
@@ -56,6 +57,8 @@ mod bragi_poi_test;
 mod bragi_stops_test;
 mod bragi_synonyms_test;
 mod bragi_three_cities_test;
+mod canonical_import_process_test;
+mod cosmogony2mimir_test;
 mod openaddresses2mimir_test;
 mod osm2mimir_bano2mimir_test;
 mod osm2mimir_test;
@@ -64,8 +67,8 @@ mod stops2mimir_test;
 
 use docker_wrapper::*;
 use hyper::client::response::Response;
-use serde_json::Map;
 use serde_json::value::Value;
+use serde_json::Map;
 use std::process::Command;
 
 trait ToJson {
@@ -321,6 +324,18 @@ pub fn count_types(types: &[&str], value: &str) -> usize {
     types.iter().filter(|&t| *t == value).count()
 }
 
+fn get_poi_type_ids(e: &Map<String, Value>) -> Vec<&str> {
+    let array = match e.get("poi_types").and_then(|json| json.as_array()) {
+        None => return vec![],
+        Some(array) => array,
+    };
+    array
+        .iter()
+        .filter_map(|v| v.as_object().and_then(|o| o.get("id")))
+        .filter_map(|o| o.as_str())
+        .collect()
+}
+
 /// Main test method (regroups all tests)
 /// All tests are done sequentially,
 /// and use the same docker in order to avoid multiple inits
@@ -350,4 +365,8 @@ fn all_tests() {
     bragi_filter_types_test::bragi_filter_types_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_synonyms_test::bragi_synonyms_test(ElasticSearchWrapper::new(&docker_wrapper));
     openaddresses2mimir_test::oa2mimir_simple_test(ElasticSearchWrapper::new(&docker_wrapper));
+    cosmogony2mimir_test::cosmogony2mimir_test(ElasticSearchWrapper::new(&docker_wrapper));
+    canonical_import_process_test::canonical_import_process_test(ElasticSearchWrapper::new(
+        &docker_wrapper,
+    ));
 }

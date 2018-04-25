@@ -62,8 +62,9 @@ struct Args {
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]

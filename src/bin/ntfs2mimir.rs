@@ -54,8 +54,9 @@ struct Args {
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
@@ -196,7 +197,7 @@ fn test_bad_connection_string() {
         [
             "Error occurred when importing stops into bob on http://localhost:1".to_string(),
             "Error: Connection refused (os error 111) while creating template template_addr"
-                .to_string()
+                .to_string(),
         ]
     );
 }

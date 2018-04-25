@@ -47,6 +47,7 @@ extern crate slog_term;
 extern crate chrono;
 #[macro_use]
 extern crate failure;
+extern crate cosmogony;
 extern crate geo;
 extern crate geojson;
 extern crate hyper;

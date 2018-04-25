@@ -42,7 +42,7 @@ extern crate structopt;
 use failure::ResultExt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::osm_reader::admin::{administrative_regions, compute_admin_weight};
+use mimirsbrunn::osm_reader::admin::{compute_admin_weight, read_administrative_regions};
 use mimirsbrunn::osm_reader::make_osm_reader;
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
@@ -60,8 +60,9 @@ struct Args {
     #[structopt(short = "C", long = "city-level", default_value = "8")]
     city_level: u32,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Import ways.
     #[structopt(short = "w", long = "import-way")]
@@ -82,6 +83,7 @@ struct Args {
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let levels = args.level.iter().cloned().collect();
+    let city_level = args.city_level;
 
     let mut osm_reader = make_osm_reader(&args.input)?;
     debug!("creation of indexes");
@@ -89,9 +91,12 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     rubber.initialize_templates()?;
 
     info!("creating adminstrative regions");
-    let admins_geofinder = administrative_regions(&mut osm_reader, levels, args.city_level)
-        .into_iter()
-        .collect::<AdminGeoFinder>();
+    let admins = if args.import_admin {
+        read_administrative_regions(&mut osm_reader, levels, city_level)
+    } else {
+        rubber.get_admins_from_dataset(&args.dataset)?
+    };
+    let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
     {
         info!("Extracting streets from osm");
         let mut streets = streets(&mut osm_reader, &admins_geofinder)?;
@@ -115,15 +120,17 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             info!("Nb of indexed street: {}", nb_streets);
         }
     }
-    let nb_admins = rubber
-        .index(&args.dataset, admins_geofinder.admins())
-        .with_context(|_| {
-            format!(
-                "Error occurred when requesting admin number in {}",
-                args.dataset
-            )
-        })?;
-    info!("Nb of indexed admin: {}", nb_admins);
+    if args.import_admin {
+        let nb_admins = rubber
+            .index(&args.dataset, admins_geofinder.admins())
+            .with_context(|_| {
+                format!(
+                    "Error occurred when requesting admin number in {}",
+                    args.dataset
+                )
+            })?;
+        info!("Nb of indexed admin: {}", nb_admins);
+    }
 
     if args.import_poi {
         let matcher = match args.poi_config {

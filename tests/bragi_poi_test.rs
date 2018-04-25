@@ -31,12 +31,13 @@
 extern crate bragi;
 extern crate iron_test;
 extern crate serde_json;
-use super::BragiHandler;
 use super::count_types;
 use super::filter_by_type;
+use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
 use super::get_values;
+use super::BragiHandler;
 use mimir::{MimirObject, Poi};
 use serde_json::Map;
 use serde_json::Value;
@@ -65,6 +66,7 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--import-admin".into(),
             "--import-way".into(),
             "--import-poi".into(),
             "--level=8".into(),
@@ -157,18 +159,6 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
 
     let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=10");
     assert_eq!(all_20.len(), 2);
-}
-
-fn get_poi_type_ids(e: &Map<String, Value>) -> Vec<&str> {
-    let array = match e.get("poi_types").and_then(|json| json.as_array()) {
-        None => return vec![],
-        Some(array) => array,
-    };
-    array
-        .iter()
-        .filter_map(|v| v.as_object().and_then(|o| o.get("id")))
-        .filter_map(|o| o.as_str())
-        .collect()
 }
 
 fn poi_from_osm_test(bragi: &BragiHandler) {

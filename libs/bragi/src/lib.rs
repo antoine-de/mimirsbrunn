@@ -42,6 +42,7 @@ extern crate serde_derive;
 extern crate serde_json;
 #[macro_use]
 extern crate structopt;
+extern crate heck;
 extern crate urlencoded;
 extern crate valico;
 
@@ -50,8 +51,8 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-use iron::Iron;
 use iron::prelude::Chain;
+use iron::Iron;
 use rustless::Application;
 use structopt::StructOpt;
 
