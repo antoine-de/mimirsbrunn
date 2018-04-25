@@ -53,7 +53,9 @@ trait IntoAdmin {
 fn get_weight(tags: &osmpbfreader::Tags) -> f64 {
     // to have an admin weight we use the osm 'population' tag to priorize the big zones over the small one
     // Note: this tags is not often filled , so only some zones will have a weight (but the main cities have it)
-    tags.get("population").and_then(|p| p.parse().ok()).unwrap_or(0.)
+    tags.get("population")
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(0.)
 }
 
 impl IntoAdmin for Zone {
@@ -86,13 +88,10 @@ impl IntoAdmin for Zone {
     }
 }
 
-fn send_to_es<I>(admins: I, cnx_string: &str, dataset: &str) -> Result<(), Error>
-where
-    I: Iterator<Item = Admin>,
-{
+fn send_to_es(admins: &[Admin], cnx_string: &str, dataset: &str) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, admins)?;
+    let nb_admins = rubber.index(dataset, admins.iter())?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }
@@ -102,13 +101,26 @@ fn load_cosmogony(input: &str) -> Result<Cosmogony, Error> {
         .map_err(|e| failure::err_msg(e.to_string()))
 }
 
+fn normalize_weight(admins: &mut [Admin]) {
+    let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight.get()));
+    for ref mut a in admins {
+        a.weight.set(a.weight.get() / max);
+    }
+}
+
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("importing cosmogony into Mimir");
     let cosmogony = load_cosmogony(&args.input)?;
 
-    let admins = cosmogony.zones.into_iter().map(|z| z.into_admin());
+    let mut admins: Vec<_> = cosmogony
+        .zones
+        .into_iter()
+        .map(|z| z.into_admin())
+        .collect();
 
-    send_to_es(admins, &args.connection_string, &args.dataset)?;
+    normalize_weight(&mut admins);
+
+    send_to_es(&admins, &args.connection_string, &args.dataset)?;
 
     Ok(())
 }

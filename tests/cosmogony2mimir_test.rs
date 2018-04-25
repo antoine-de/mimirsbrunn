@@ -72,7 +72,8 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(livry_sur_seine.insee, "77255");
             assert_eq!(livry_sur_seine.level, 8);
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
-            assert_eq!(livry_sur_seine.weight.get(), 1919f64);
+            // the weight is 1 because it's the more important town around
+            assert_eq!(livry_sur_seine.weight.get(), 1f64);
             assert!(livry_sur_seine.coord.is_valid());
             assert_eq!(livry_sur_seine.admin_type, mimir::AdminType::City);
             assert_eq!(livry_sur_seine.zone_type, Some(ZoneType::City));
