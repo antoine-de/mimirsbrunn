@@ -154,6 +154,7 @@ fn build_query(
 
     // Priorization by query string
     let mut string_should = vec![
+        Query::build_match("name", q).with_boost(1.).build(),
         Query::build_match("label", q).with_boost(1.).build(),
         Query::build_match("label.prefix", q).with_boost(1.).build(),
         Query::build_match("zip_codes", q).with_boost(1.).build(),
