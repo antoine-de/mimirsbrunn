@@ -52,7 +52,7 @@ fn check_has_bob(es: &::ElasticSearchWrapper) {
         );
         let es_bob = es_elt.pointer("/_source").unwrap();
         assert_eq!(es_bob.pointer("/id"), Some(&json!("bob")));
-        assert_eq!(es_bob.pointer("/street_name"), Some(&json!("bob's street")));
+        assert_eq!(es_bob.pointer("/name"), Some(&json!("bob's street")));
         assert_eq!(es_bob.pointer("/label"), Some(&json!("bob's name")));
         assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.42)));
     };
@@ -69,6 +69,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     let bob = Street {
         id: "bob".to_string(),
         street_name: "bob's street".to_string(),
+        name: "bob's street".to_string(),
         label: "bob's name".to_string(),
         administrative_regions: vec![],
         weight: 0.42,
@@ -89,6 +90,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     let bobette = Street {
         id: "bobette".to_string(),
         street_name: "bobette's street".to_string(),
+        name: "bobette's street".to_string(),
         label: "bobette's name".to_string(),
         administrative_regions: vec![],
         weight: 0.24,
@@ -121,10 +123,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         );
         let es_bob = es_elt.pointer("/_source").unwrap();
         assert_eq!(es_bob.pointer("/id"), Some(&json!("bobette")));
-        assert_eq!(
-            es_bob.pointer("/street_name"),
-            Some(&json!("bobette's street"))
-        );
+        assert_eq!(es_bob.pointer("/name"), Some(&json!("bobette's street")));
         assert_eq!(es_bob.pointer("/label"), Some(&json!("bobette's name")));
         assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.24)));
 
