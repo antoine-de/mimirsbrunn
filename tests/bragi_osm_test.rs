@@ -103,6 +103,7 @@ fn zip_code_street_test(bragi: &BragiHandler) {
     assert_eq!(boundary, None);
 
     assert_eq!(le_clos["type"], "street");
+    assert_eq!(le_clos["city"], "Livry-sur-Seine");
     assert_eq!(le_clos["citycode"], "77255");
 }
 

@@ -171,21 +171,16 @@ fn get_admin_type(adm: &mimir::Admin) -> String {
 }
 
 fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
-    // for the moment for the 'postcode' and the 'city', we take first admin
-    // that has a postcode
-    // TODO: change this (with a 'city tag in the admin ?')
     admins
         .iter()
-        .find(|a| !a.zip_codes.is_empty())
-        .or_else(|| admins.iter().next())
+        .find(|a| a.is_city())
         .map(|admin| admin.name.clone())
 }
 
 fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
     admins
         .iter()
-        .find(|a| !a.zip_codes.is_empty())
-        .or_else(|| admins.iter().next())
+        .find(|a| a.is_city())
         .map(|admin| admin.insee.clone())
 }
 
