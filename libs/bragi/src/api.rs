@@ -33,7 +33,9 @@ use iron::typemap::Key;
 use mimir::rubber::Rubber;
 use model;
 use model::v1::*;
-use params::{coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param};
+use params::{
+    coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param,
+};
 use prometheus;
 use prometheus::Encoder;
 use rustless;
