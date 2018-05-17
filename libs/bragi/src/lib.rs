@@ -86,9 +86,7 @@ pub struct Args {
 
 pub fn runserver() {
     let args = Args::from_args();
-    let api = api::ApiEndPoint {
-        es_cnx_string: args.connection_string,
-    }.root();
+    let api = api::ApiEndPoint { es_cnx_string: args.connection_string }.root();
     let app = Application::new(api);
 
     let (logger_before, logger_after) = Logger::new(None);

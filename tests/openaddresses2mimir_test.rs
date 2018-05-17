@@ -114,7 +114,8 @@ pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
         vec!["munin", "munin_addr", "munin_addr_fr", "munin_geo_data"]
     );
 
-    // we should have imported 10 elements (we should have the one without hash, but not the badly formated line)
+    // we should have imported 10 elements
+    // (we should have the one without hash, but not the badly formated line)
     let res: Vec<_> = es_wrapper.search_and_filter("*.*", |_| true).collect();
     assert_eq!(res.len(), 10);
 }

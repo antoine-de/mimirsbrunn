@@ -75,11 +75,13 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     let admin_regions: Vec<_> = es_wrapper
         .search_and_filter("admin_type:Unknown", |_| true)
         .filter_map(|admin| match admin {
-            mimir::Place::Admin(admin) => if admin.name == "Créteil" {
-                Some(admin)
-            } else {
-                None
-            },
+            mimir::Place::Admin(admin) => {
+                if admin.name == "Créteil" {
+                    Some(admin)
+                } else {
+                    None
+                }
+            }
             _ => None,
         })
         .collect();
@@ -99,15 +101,17 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     // And there should be only ONE "Rue des Près"
     assert_eq!(
         res.iter()
-            .filter(|place| place.is_street() && place.label() == "Rue des Près (Livry-sur-Seine)")
+            .filter(|place| {
+                place.is_street() && place.label() == "Rue des Près (Livry-sur-Seine)"
+            })
             .count(),
         1
     );
 
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
     let place_filter = |place: &mimir::Place| {
-        place.is_street() && place.label() == "Rue du Four à Chaux (Livry-sur-Seine)"
-            && place
+        place.is_street() && place.label() == "Rue du Four à Chaux (Livry-sur-Seine)" &&
+            place
                 .admins()
                 .first()
                 .map(|admin| admin.label() == "Livry-sur-Seine (77000)")
@@ -122,8 +126,8 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
-        place.is_street() && place.label() == "Rue du Port (Melun)"
-            && place
+        place.is_street() && place.label() == "Rue du Port (Melun)" &&
+            place
                 .admins()
                 .first()
                 .map(|admin| admin.label() == "Melun (77000-CP77001)")
@@ -142,8 +146,10 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     let poi_type_post_office = "poi_type:amenity:post_office";
     assert!(res.iter().any(|r| {
-        r.poi()
-            .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)
+        r.poi().map_or(
+            false,
+            |poi| poi.poi_type.id == poi_type_post_office,
+        )
     }));
 
     let res: Vec<_> = es_wrapper
@@ -151,7 +157,9 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         .collect();
     assert!(res.len() != 0);
     assert!(res.iter().any(|r| {
-        r.poi()
-            .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)
+        r.poi().map_or(
+            false,
+            |poi| poi.poi_type.id == poi_type_post_office,
+        )
     }));
 }

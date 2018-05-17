@@ -84,14 +84,14 @@ impl PoiConfig {
         self.rules
             .iter()
             .find(|rule| {
-                rule.osm_tags_filters
-                    .iter()
-                    .all(|f| tags.get(&f.key).map_or(false, |v| v == &f.value))
+                rule.osm_tags_filters.iter().all(|f| {
+                    tags.get(&f.key).map_or(false, |v| v == &f.value)
+                })
             })
             .and_then(|rule| {
-                self.poi_types
-                    .iter()
-                    .find(|poi_type| poi_type.id == rule.poi_type_id)
+                self.poi_types.iter().find(|poi_type| {
+                    poi_type.id == rule.poi_type_id
+                })
             })
     }
     pub fn check(&self) -> Result<(), Box<Error>> {
@@ -195,9 +195,11 @@ const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 
 fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Property> {
     tags.iter()
-        .map(|property| mimir::Property {
-            key: property.0.to_string(),
-            value: property.1.to_string(),
+        .map(|property| {
+            mimir::Property {
+                key: property.0.to_string(),
+                value: property.1.to_string(),
+            }
         })
         .collect()
 }
@@ -228,7 +230,9 @@ fn parse_poi(
         }
         osmpbfreader::OsmObj::Relation(ref relation) => (
             format_poi_id("relation", relation.id.0),
-            make_centroid(&build_boundary(relation, obj_map)),
+            make_centroid(
+                &build_boundary(relation, obj_map),
+            ),
         ),
     };
 
@@ -274,7 +278,9 @@ pub fn pois(
     objects
         .iter()
         .filter(|&(_, obj)| matcher.is_poi(obj.tags()))
-        .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder))
+        .filter_map(|(_, obj)| {
+            parse_poi(obj, &objects, matcher, admins_geofinder)
+        })
         .collect()
 }
 
@@ -327,7 +333,8 @@ mod tests {
             "bicycle_parking",
             "parking",
             "police",
-        ] {
+        ]
+        {
             assert_eq!(
                 format!("poi_type:amenity:{}", s),
                 c.get_poi_id(&tags(&[("amenity", s)])).unwrap()
@@ -351,7 +358,9 @@ mod tests {
         from_str(r#"{"poi_types": [], "rules": []}"#).unwrap();
         from_str(r#"{"poi_types": [{"id": "foo"}], "rules": []}"#).unwrap_err();
         from_str(r#"{"poi_types": [{"name": "bar"}], "rules": []}"#).unwrap_err();
-        from_str(r#"{"poi_types": [{"id": "foo", "name": "bar"}], "rules": []}"#).unwrap();
+        from_str(
+            r#"{"poi_types": [{"id": "foo", "name": "bar"}], "rules": []}"#,
+        ).unwrap();
     }
     #[test]
     fn check_tests() {
@@ -448,35 +457,27 @@ mod tests {
         let c = from_str(json).unwrap();
         assert_eq!(
             Some("poi_type:bob"),
-            c.get_poi_id(&tags(&[
-                ("bob", "bobette"),
-                ("titi", "tata"),
-                ("foo", "bar"),
-            ],))
+            c.get_poi_id(&tags(
+                &[("bob", "bobette"), ("titi", "tata"), ("foo", "bar")],
+            ))
         );
         assert_eq!(
             Some("poi_type:titi"),
-            c.get_poi_id(&tags(&[
-                ("bob", "bobitta"),
-                ("titi", "toto"),
-                ("foo", "bar"),
-            ],))
+            c.get_poi_id(&tags(
+                &[("bob", "bobitta"), ("titi", "toto"), ("foo", "bar")],
+            ))
         );
         assert_eq!(
             Some("poi_type:bob_titi"),
-            c.get_poi_id(&tags(&[
-                ("bob", "bobette"),
-                ("titi", "toto"),
-                ("foo", "bar"),
-            ],))
+            c.get_poi_id(&tags(
+                &[("bob", "bobette"), ("titi", "toto"), ("foo", "bar")],
+            ))
         );
         assert_eq!(
             Some("poi_type:foo"),
-            c.get_poi_id(&tags(&[
-                ("bob", "bobitta"),
-                ("titi", "tata"),
-                ("foo", "bar"),
-            ],))
+            c.get_poi_id(&tags(
+                &[("bob", "bobitta"), ("titi", "tata"), ("foo", "bar")],
+            ))
         );
     }
 }

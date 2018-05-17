@@ -62,9 +62,8 @@ struct Args {
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Elasticsearch parameters.
-    #[structopt(
-        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
-    )]
+    #[structopt(short = "c", long = "connection-string",
+                default_value = "http://localhost:9200/munin")]
     connection_string: String,
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
@@ -95,7 +94,8 @@ struct GtfsStop {
 impl GtfsStop {
     fn incr_stop_point(&self, nb_stop_points: &mut HashMap<String, u32>) {
         match (self.location_type, &self.parent_station) {
-            (Some(0), &Some(ref id)) | (None, &Some(ref id)) if !id.is_empty() => {
+            (Some(0), &Some(ref id)) |
+            (None, &Some(ref id)) if !id.is_empty() => {
                 *nb_stop_points
                     .entry(format!("stop_area:{}", id))
                     .or_insert(0) += 1
@@ -109,13 +109,15 @@ impl GtfsStop {
             Err(StopConversionErr::NotStopArea)
         } else if self.visible == Some(0) {
             Err(StopConversionErr::InvisibleStop)
-        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT || self.stop_lon <= MIN_LON
-            || self.stop_lon >= MAX_LON
+        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT ||
+                   self.stop_lon <= MIN_LON || self.stop_lon >= MAX_LON
         {
             //Here we return an error message
             Err(StopConversionErr::InvalidStop(format!(
                 "Invalid lon {:?} or lat {:?} for stop {:?}",
-                self.stop_lon, self.stop_lat, self.stop_name
+                self.stop_lon,
+                self.stop_lat,
+                self.stop_name
             )))
         } else {
             Ok(mimir::Stop {

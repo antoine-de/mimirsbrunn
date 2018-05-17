@@ -314,12 +314,9 @@ pub struct Admin {
     pub zip_codes: Vec<String>,
     pub weight: Cell<f64>,
     pub coord: Coord,
-    #[serde(
-        serialize_with = "custom_multi_polygon_serialize",
-        deserialize_with = "custom_multi_polygon_deserialize",
-        skip_serializing_if = "Option::is_none",
-        default
-    )]
+    #[serde(serialize_with = "custom_multi_polygon_serialize",
+            deserialize_with = "custom_multi_polygon_deserialize",
+            skip_serializing_if = "Option::is_none", default)]
     pub boundary: Option<geo::MultiPolygon<f64>>,
     #[serde(default = "default_admin_city")]
     pub admin_type: AdminType, // deprecated, to be removed after the new zone_type deployment
@@ -542,8 +539,8 @@ impl Coord {
         self.lat() == 0. && self.lon() == 0.
     }
     pub fn is_valid(&self) -> bool {
-        !self.is_default() && -90. <= self.lat() && self.lat() <= 90. && -180. <= self.lon()
-            && self.lon() <= 180.
+        !self.is_default() && -90. <= self.lat() && self.lat() <= 90. && -180. <= self.lon() &&
+            self.lon() <= 180.
     }
 }
 impl Default for Coord {
@@ -596,10 +593,12 @@ impl<'de> Deserialize<'de> for Coord {
             where
                 V: SeqAccess<'de>,
             {
-                let lon = seq.next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let lat = seq.next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                let lon = seq.next_element()?.ok_or_else(
+                    || de::Error::invalid_length(0, &self),
+                )?;
+                let lat = seq.next_element()?.ok_or_else(
+                    || de::Error::invalid_length(1, &self),
+                )?;
                 Ok(Coord::new(lon, lat))
             }
 

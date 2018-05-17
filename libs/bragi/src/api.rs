@@ -86,9 +86,7 @@ impl ApiEndPoint {
         Api::build(|api| {
             api.get("", |endpoint| {
                 endpoint.handle(|client, _params| {
-                    let desc = EndPoint {
-                        description: "autocomplete service".to_string(),
-                    };
+                    let desc = EndPoint { description: "autocomplete service".to_string() };
                     render(client, desc)
                 })
             });
@@ -124,11 +122,10 @@ impl ApiEndPoint {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
                     })
-                    .map(|timer| {
-                        client.ext.insert::<Timer>(timer.start_timer());
-                    })
+                    .map(|timer| { client.ext.insert::<Timer>(timer.start_timer()); })
                     .unwrap_or_else(|err| {
-                        error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
+                        error!("impossible to get HTTP_REQ_HISTOGRAM metrics";
+                               "err" => err.to_string());
                     });
                 Ok(())
             });
@@ -202,9 +199,7 @@ impl ApiEndPoint {
     fn reverse(&self) -> rustless::Api {
         Api::build(|api| {
             api.get("reverse", |endpoint| {
-                endpoint.params(|params| {
-                    coord_param(params, false);
-                });
+                endpoint.params(|params| { coord_param(params, false); });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
                     let coord = ::mimir::Coord::new(
@@ -233,9 +228,10 @@ impl ApiEndPoint {
                 endpoint.handle(move |mut client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
-                    let all_data = params
-                        .find("_all_data")
-                        .map_or(false, |val| val.as_bool().unwrap());
+                    let all_data = params.find("_all_data").map_or(
+                        false,
+                        |val| val.as_bool().unwrap(),
+                    );
                     let features = query::features(&pt_datasets, all_data, &cnx, &id);
                     if features.is_err() {
                         client.set_status(status::StatusCode::NotFound);
@@ -266,9 +262,10 @@ impl ApiEndPoint {
                         .unwrap_or("")
                         .to_string();
                     let pt_datasets = get_param_array(params, "pt_dataset");
-                    let all_data = params
-                        .find("_all_data")
-                        .map_or(false, |val| val.as_bool().unwrap());
+                    let all_data = params.find("_all_data").map_or(
+                        false,
+                        |val| val.as_bool().unwrap(),
+                    );
                     let offset = params
                         .find("offset")
                         .and_then(|val| val.as_u64())
@@ -323,9 +320,10 @@ impl ApiEndPoint {
                         .unwrap_or("")
                         .to_string();
                     let pt_datasets = get_param_array(params, "pt_dataset");
-                    let all_data = params
-                        .find("_all_data")
-                        .map_or(false, |val| val.as_bool().unwrap());
+                    let all_data = params.find("_all_data").map_or(
+                        false,
+                        |val| val.as_bool().unwrap(),
+                    );
                     let offset = params
                         .find("offset")
                         .and_then(|val| val.as_u64())

@@ -74,8 +74,9 @@ pub fn import_stops(
     let nb_stops = rubber.index(dataset, stops.iter())?;
     info!("Nb of indexed stops: {}", nb_stops);
 
-    publish_global_index(&mut rubber, &global_index)
-        .context("Error while publishing global index")?;
+    publish_global_index(&mut rubber, &global_index).context(
+        "Error while publishing global index",
+    )?;
     Ok(())
 }
 
@@ -161,9 +162,9 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
 }
 
 fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, Error> {
-    rubber
-        .get_all_objects_from_index(&index)
-        .map_err(|e| format_err!("Getting all stops {}", e.to_string()))
+    rubber.get_all_objects_from_index(&index).map_err(|e| {
+        format_err!("Getting all stops {}", e.to_string())
+    })
 }
 
 fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(

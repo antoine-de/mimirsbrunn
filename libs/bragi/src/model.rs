@@ -131,9 +131,7 @@ impl From<mimir::Place> for Feature {
         Feature {
             feature_type: "Feature".to_string(),
             geometry: geom,
-            properties: Properties {
-                geocoding: geocoding,
-            },
+            properties: Properties { geocoding: geocoding },
         }
     }
 }
@@ -166,7 +164,8 @@ impl From<mimir::Admin> for GeocodingResponse {
 fn get_admin_type(adm: &mimir::Admin) -> String {
     match adm.zone_type {
         Some(t) => format!("{:?}", t).to_snake_case(),
-        None => adm.admin_type.to_string(), // TODO return administrative_region when admin_type is removed
+        // TODO below return administrative_region when admin_type is removed
+        None => adm.admin_type.to_string(),
     }
 }
 
@@ -226,7 +225,8 @@ impl From<mimir::Addr> for GeocodingResponse {
         let street_name = Some(other.street.street_name.to_string());
         let name = Some(format!(
             "{} {}",
-            other.house_number, other.street.street_name
+            other.house_number,
+            other.street.street_name
         ));
         let admins = other.street.administrative_regions;
         let city = get_city_name(&admins);

@@ -96,10 +96,10 @@ impl Bano {
             admins.push(admin.clone());
         }
 
-        let weight = admins
-            .iter()
-            .find(|a| a.level == 8)
-            .map_or(0., |a| a.weight.get());
+        let weight = admins.iter().find(|a| a.level == 8).map_or(
+            0.,
+            |a| a.weight.get(),
+        );
 
         let street = mimir::Street {
             id: street_id,
@@ -129,15 +129,16 @@ where
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
 
-    let admins = rubber
-        .get_admins_from_dataset(dataset)
-        .unwrap_or_else(|err| {
+    let admins = rubber.get_admins_from_dataset(dataset).unwrap_or_else(
+        |err| {
             info!(
                 "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset, err
+                dataset,
+                err
             );
             vec![]
-        });
+        },
+    );
     let admins_geofinder = admins.iter().cloned().collect();
     let admins_by_insee = admins
         .into_iter()
@@ -148,9 +149,9 @@ where
         })
         .collect();
 
-    let addr_index = rubber
-        .make_index(dataset)
-        .with_context(|_| format!("Error occurred when making index {}", dataset))?;
+    let addr_index = rubber.make_index(dataset).with_context(|_| {
+        format!("Error occurred when making index {}", dataset)
+    })?;
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -160,14 +161,14 @@ where
             let b: Bano = r.unwrap();
             b.into_addr(&admins_by_insee, &admins_geofinder)
         });
-        let nb = rubber
-            .bulk_index(&addr_index, iter)
-            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
+        let nb = rubber.bulk_index(&addr_index, iter).with_context(|_| {
+            format!("failed to bulk insert file {:?}", &f)
+        })?;
         info!("importing {:?}: {} addresses added.", &f, nb);
     }
-    rubber
-        .publish_index(dataset, addr_index)
-        .context("Error while publishing the index")?;
+    rubber.publish_index(dataset, addr_index).context(
+        "Error while publishing the index",
+    )?;
     Ok(())
 }
 
@@ -177,9 +178,8 @@ struct Args {
     #[structopt(short = "i", long = "input", parse(from_os_str))]
     input: PathBuf,
     /// Elasticsearch parameters.
-    #[structopt(
-        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
-    )]
+    #[structopt(short = "c", long = "connection-string",
+                default_value = "http://localhost:9200/munin")]
     connection_string: String,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]

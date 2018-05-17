@@ -40,7 +40,7 @@ use std::cell::Cell;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
-                                   // we should have our elt
+    // we should have our elt
     assert_eq!(search.pointer("/hits/total"), Some(&json!(1)));
     fun(search.pointer("/hits/hits/0").unwrap());
 }
@@ -150,16 +150,18 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         zip_codes: vec!["zip_code".to_string()],
         weight: Cell::new(0.42),
         coord: Coord::new(2.68326290f64, 48.5110722f64),
-        boundary: Some(geo::MultiPolygon(vec![geo::Polygon::new(
-            geo::LineString(vec![
-                p(2., 48.),
-                p(2., 49.),
-                p(3., 49.),
-                p(3., 48.),
-                p(2., 48.),
-            ]),
-            vec![],
-        )])),
+        boundary: Some(geo::MultiPolygon(vec![
+            geo::Polygon::new(
+                geo::LineString(vec![
+                    p(2., 48.),
+                    p(2., 49.),
+                    p(3., 49.),
+                    p(3., 48.),
+                    p(2., 48.),
+                ]),
+                vec![]
+            ),
+        ])),
         admin_type: City,
         zone_type: Some(ZoneType::City),
     };

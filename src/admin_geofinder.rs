@@ -96,9 +96,10 @@ impl AdminGeoFinder {
             .into_iter()
             .map(|(_, a)| a)
             .filter(|a| {
-                a.0
-                    .as_ref()
-                    .map_or(false, |b| (*b).contains(&geo::Point(*coord)))
+                a.0.as_ref().map_or(
+                    false,
+                    |b| (*b).contains(&geo::Point(*coord)),
+                )
             })
             .map(|admin_and_boundary| admin_and_boundary.1.clone())
             .collect()
@@ -139,9 +140,7 @@ impl AdminGeoFinder {
 
 impl Default for AdminGeoFinder {
     fn default() -> Self {
-        AdminGeoFinder {
-            admins: RTree::new(),
-        }
+        AdminGeoFinder { admins: RTree::new() }
     }
 }
 

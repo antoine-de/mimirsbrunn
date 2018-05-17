@@ -70,11 +70,9 @@ fn zip_code_test(bragi: &BragiHandler) {
     for postcodes in get_values(&all_20, "postcode") {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
-    assert!(
-        get_values(&all_20, "postcode")
-            .iter()
-            .any(|r| *r == "77000;77003;77008;CP77001")
-    );
+    assert!(get_values(&all_20, "postcode").iter().any(|r| {
+        *r == "77000;77003;77008;CP77001"
+    }));
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
@@ -109,11 +107,9 @@ fn zip_code_street_test(bragi: &BragiHandler) {
 fn zip_code_admin_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
     assert_eq!(all_20.len(), 4);
-    assert!(
-        get_values(&all_20, "postcode")
-            .iter()
-            .all(|r| *r == "77000",)
-    );
+    assert!(get_values(&all_20, "postcode").iter().all(
+        |r| *r == "77000",
+    ));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 3);

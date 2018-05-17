@@ -40,9 +40,10 @@ const MAX_LON: f64 = 90f64;
 const MIN_LON: f64 = -90f64;
 
 pub fn dataset_param(params: &mut Builder) {
-    params.opt("pt_dataset", |t| {
-        t.coerce(json_dsl::encoded_array(","));
-    });
+    params.opt(
+        "pt_dataset",
+        |t| { t.coerce(json_dsl::encoded_array(",")); },
+    );
     params.opt_typed("_all_data", json_dsl::boolean());
 }
 
@@ -78,14 +79,16 @@ pub fn coord_param(params: &mut Builder, is_opt: bool) {
             let has_lon = obj.get("lon").is_some();
             let has_lat = obj.get("lat").is_some();
             if has_lon ^ has_lat {
-                Err(vec![Box::new(json_dsl::errors::WrongValue {
-                    path: path.to_string(),
-                    detail: Some(
-                        "you need to provide a lon AND a lat \
-                         if you provide one of them"
-                            .to_string(),
-                    ),
-                })])
+                Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(
+                            "you need to provide a lon AND a lat \
+                             if you provide one of them"
+                                .to_string(),
+                        ),
+                    }),
+                ])
             } else {
                 Ok(())
             }
@@ -155,10 +158,12 @@ fn check_bound(
         if min <= lon && lon <= max {
             Ok(())
         } else {
-            Err(vec![Box::new(json_dsl::errors::WrongValue {
-                path: path.to_string(),
-                detail: Some(error_msg.to_string()),
-            })])
+            Err(vec![
+                Box::new(json_dsl::errors::WrongValue {
+                    path: path.to_string(),
+                    detail: Some(error_msg.to_string()),
+                }),
+            ])
         }
     } else {
         unreachable!("should never happen, already checked");
@@ -168,10 +173,12 @@ fn check_bound(
 fn check_type(types: &[JsonValue], path: &str) -> Result<(), valico_error::ValicoErrors> {
     for type_ in types {
         if let Err(e) = Type::from_str(type_.as_str().unwrap()) {
-            return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                path: path.to_string(),
-                detail: Some(e),
-            })]);
+            return Err(vec![
+                Box::new(json_dsl::errors::WrongValue {
+                    path: path.to_string(),
+                    detail: Some(e),
+                }),
+            ]);
         }
     }
 
@@ -184,67 +191,85 @@ fn check_coordinates(
     error_msg: &str,
 ) -> Result<(), valico_error::ValicoErrors> {
     if !val.is_array() {
-        return Err(vec![Box::new(json_dsl::errors::WrongType {
-            path: path.to_string(),
-            detail: error_msg.to_string(),
-        })]);
+        return Err(vec![
+            Box::new(json_dsl::errors::WrongType {
+                path: path.to_string(),
+                detail: error_msg.to_string(),
+            }),
+        ]);
     }
     let array = val.as_array().unwrap();
     if array.is_empty() {
-        return Err(vec![Box::new(json_dsl::errors::WrongValue {
-            path: path.to_string(),
-            detail: Some(error_msg.to_string()),
-        })]);
+        return Err(vec![
+            Box::new(json_dsl::errors::WrongValue {
+                path: path.to_string(),
+                detail: Some(error_msg.to_string()),
+            }),
+        ]);
     }
 
     for arr0 in array {
         if !arr0.is_array() {
-            return Err(vec![Box::new(json_dsl::errors::WrongType {
-                path: path.to_string(),
-                detail: error_msg.to_string(),
-            })]);
+            return Err(vec![
+                Box::new(json_dsl::errors::WrongType {
+                    path: path.to_string(),
+                    detail: error_msg.to_string(),
+                }),
+            ]);
         }
         let arr1 = arr0.as_array().unwrap();
         if arr1.is_empty() {
-            return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                path: path.to_string(),
-                detail: Some(error_msg.to_string()),
-            })]);
+            return Err(vec![
+                Box::new(json_dsl::errors::WrongValue {
+                    path: path.to_string(),
+                    detail: Some(error_msg.to_string()),
+                }),
+            ]);
         }
         for arr2 in arr1 {
             if !arr2.is_array() {
-                return Err(vec![Box::new(json_dsl::errors::WrongType {
-                    path: path.to_string(),
-                    detail: error_msg.to_string(),
-                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongType {
+                        path: path.to_string(),
+                        detail: error_msg.to_string(),
+                    }),
+                ]);
             }
             let lonlat = arr2.as_array().unwrap();
             if lonlat.len() != 2 {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                    path: path.to_string(),
-                    detail: Some(error_msg.to_string()),
-                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(error_msg.to_string()),
+                    }),
+                ]);
             }
 
             if !(lonlat[0].is_f64() && lonlat[1].is_f64()) {
-                return Err(vec![Box::new(json_dsl::errors::WrongType {
-                    path: path.to_string(),
-                    detail: error_msg.to_string(),
-                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongType {
+                        path: path.to_string(),
+                        detail: error_msg.to_string(),
+                    }),
+                ]);
             }
             let lon = lonlat[0].as_f64().unwrap();
             let lat = lonlat[1].as_f64().unwrap();
             if !(MIN_LON <= lon && lon <= MAX_LON) {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                    path: path.to_string(),
-                    detail: Some(error_msg.to_string()),
-                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(error_msg.to_string()),
+                    }),
+                ]);
             }
             if !(MIN_LAT <= lat && lat <= MAX_LAT) {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                    path: path.to_string(),
-                    detail: Some(error_msg.to_string()),
-                })]);
+                return Err(vec![
+                    Box::new(json_dsl::errors::WrongValue {
+                        path: path.to_string(),
+                        detail: Some(error_msg.to_string()),
+                    }),
+                ]);
             }
         }
     }

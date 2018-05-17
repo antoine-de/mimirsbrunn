@@ -54,9 +54,8 @@ struct Args {
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Elasticsearch parameters.
-    #[structopt(
-        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
-    )]
+    #[structopt(short = "c", long = "connection-string",
+                default_value = "http://localhost:9200/munin")]
     connection_string: String,
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
@@ -71,40 +70,44 @@ fn to_mimir(
     let commercial_modes = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|cm_idx| mimir::CommercialMode {
-            id: format!("commercial_mode:{}", navitia.commercial_modes[cm_idx].id),
-            name: navitia.commercial_modes[cm_idx].name.clone(),
+        .map(|cm_idx| {
+            mimir::CommercialMode {
+                id: format!("commercial_mode:{}", navitia.commercial_modes[cm_idx].id),
+                name: navitia.commercial_modes[cm_idx].name.clone(),
+            }
         })
         .collect();
     let physical_modes = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|pm_idx| mimir::PhysicalMode {
-            id: format!("physical_mode:{}", navitia.physical_modes[pm_idx].id),
-            name: navitia.physical_modes[pm_idx].name.clone(),
+        .map(|pm_idx| {
+            mimir::PhysicalMode {
+                id: format!("physical_mode:{}", navitia.physical_modes[pm_idx].id),
+                name: navitia.physical_modes[pm_idx].name.clone(),
+            }
         })
         .collect();
     let comments = navitia
         .comments
         .iter_from(&stop_area.comment_links)
-        .map(|comment| mimir::Comment {
-            name: comment.name.clone(),
-        })
+        .map(|comment| mimir::Comment { name: comment.name.clone() })
         .collect();
     let feed_publishers = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|contrib_idx| mimir::FeedPublisher {
-            id: navitia.contributors[contrib_idx].id.clone(),
-            name: navitia.contributors[contrib_idx].name.clone(),
-            license: navitia.contributors[contrib_idx]
-                .license
-                .clone()
-                .unwrap_or_else(|| "".into()),
-            url: navitia.contributors[contrib_idx]
-                .website
-                .clone()
-                .unwrap_or_else(|| "".into()),
+        .map(|contrib_idx| {
+            mimir::FeedPublisher {
+                id: navitia.contributors[contrib_idx].id.clone(),
+                name: navitia.contributors[contrib_idx].name.clone(),
+                license: navitia.contributors[contrib_idx]
+                    .license
+                    .clone()
+                    .unwrap_or_else(|| "".into()),
+                url: navitia.contributors[contrib_idx]
+                    .website
+                    .clone()
+                    .unwrap_or_else(|| "".into()),
+            }
         })
         .collect();
 
@@ -124,17 +127,21 @@ fn to_mimir(
         codes: stop_area
             .codes
             .iter()
-            .map(|&(ref t, ref v)| mimir::Code {
-                name: t.clone(),
-                value: v.clone(),
+            .map(|&(ref t, ref v)| {
+                mimir::Code {
+                    name: t.clone(),
+                    value: v.clone(),
+                }
             })
             .collect(),
         properties: stop_area
             .object_properties
             .iter()
-            .map(|&(ref k, ref v)| mimir::Property {
-                key: k.clone(),
-                value: v.clone(),
+            .map(|&(ref k, ref v)| {
+                mimir::Property {
+                    key: k.clone(),
+                    value: v.clone(),
+                }
             })
             .collect(),
         feed_publishers: feed_publishers,
@@ -169,12 +176,14 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset).with_context(|_| {
-        format!(
-            "Error occurred when importing stops into {} on {}",
-            args.dataset, args.connection_string
-        )
-    })?;
+    import_stops(stops, &args.connection_string, &args.dataset)
+        .with_context(|_| {
+            format!(
+                "Error occurred when importing stops into {} on {}",
+                args.dataset,
+                args.connection_string
+            )
+        })?;
     Ok(())
 }
 
