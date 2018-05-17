@@ -33,7 +33,7 @@ use geojson;
 use heck::SnakeCase;
 use mimir;
 use rs_es::error::EsError;
-use std::rc::Rc;
+use std::rc::Arc;
 
 #[derive(Fail, Debug)]
 pub enum BragiError {
@@ -92,7 +92,7 @@ pub struct GeocodingResponse {
     // pub state: Option<String>,
     // pub country: Option<String>,
     // pub geohash: Option<String>,
-    pub administrative_regions: Vec<Rc<mimir::Admin>>,
+    pub administrative_regions: Vec<Arc<mimir::Admin>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -188,14 +188,14 @@ fn get_admin_type(adm: &mimir::Admin) -> String {
     }
 }
 
-fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+fn get_city_name(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.name.clone())
 }
 
-fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+fn get_citycode(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
@@ -376,14 +376,8 @@ pub struct Coord {
 }
 
 pub mod v1 {
-    use super::BragiError;
-    use iron;
     use mimir;
     use rs_es;
-
-    pub trait HasStatus {
-        fn status(&self) -> iron::status::Status;
-    }
 
     // Note: I think this should be in api.rs but with the serde stuff it's easier for all
     // serde struct to be in the same file
@@ -393,37 +387,21 @@ pub mod v1 {
         pub description: String,
     }
 
-    impl HasStatus for EndPoint {
-        fn status(&self) -> iron::status::Status {
-            default_status()
-        }
-    }
-
     #[derive(Serialize, Deserialize, Debug)]
     pub struct CustomError {
         pub short: String,
         pub long: String,
-        #[serde(skip, default = "default_status")]
-        pub status: iron::status::Status,
     }
 
-    fn default_status() -> iron::status::Status {
-        iron::status::Status::Ok
+    #[derive(Serialize, Deserialize, Debug)]
+    pub enum V1Reponse {
+        Error(CustomError),
+        Response { description: String },
     }
-
     #[derive(Debug)]
     pub enum AutocompleteResponse {
         Error(CustomError),
         Autocomplete(super::Autocomplete),
-    }
-
-    impl HasStatus for AutocompleteResponse {
-        fn status(&self) -> iron::status::Status {
-            match self {
-                AutocompleteResponse::Error(e) => e.status,
-                AutocompleteResponse::Autocomplete(_) => iron::status::Status::Ok,
-            }
-        }
     }
 
     use serde;
@@ -446,29 +424,13 @@ pub mod v1 {
         pub status: String,
     }
 
-    impl HasStatus for Status {
-        fn status(&self) -> iron::status::Status {
-            iron::status::Status::Ok
-        }
-    }
-
-    impl From<Result<Vec<mimir::Place>, BragiError>> for AutocompleteResponse {
-        fn from(r: Result<Vec<mimir::Place>, BragiError>) -> AutocompleteResponse {
+    impl From<Result<Vec<mimir::Place>, rs_es::error::EsError>> for AutocompleteResponse {
+        fn from(r: Result<Vec<mimir::Place>, rs_es::error::EsError>) -> AutocompleteResponse {
             match r {
                 Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
                 Err(e) => AutocompleteResponse::Error(CustomError {
                     short: "query error".to_string(),
-                    long: format!("{}", e),
-                    status: match e {
-                        BragiError::ObjectNotFound => iron::status::Status::NotFound,
-                        BragiError::IndexNotFound => iron::status::Status::NotFound,
-                        BragiError::Es(es_error) => match es_error {
-                            rs_es::error::EsError::HttpError(_) => {
-                                iron::status::Status::ServiceUnavailable
-                            }
-                            _ => iron::status::Status::InternalServerError,
-                        },
-                    },
+                    long: format!("invalid query {:?}", e),
                 }),
             }
         }

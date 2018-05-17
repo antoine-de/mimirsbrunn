@@ -282,7 +282,7 @@ pub fn compute_poi_weight(pois_vec: &mut [Poi]) {
     for poi in pois_vec {
         for admin in &mut poi.administrative_regions {
             if admin.is_city() {
-                poi.weight = admin.weight.get();
+                poi.weight = *admin.weight.read().unwrap();
                 break;
             }
         }

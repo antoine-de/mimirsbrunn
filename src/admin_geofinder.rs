@@ -33,17 +33,17 @@ use gst::rtree::{RTree, Rect};
 use mimir::Admin;
 use std;
 use std::iter::FromIterator;
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// We want to strip the admin's boundary for the objects referencing it (for performance purpose)
 /// thus in the `AdminGeoFinder` we store an Admin without the boundary (the option is emptied)
 /// and we store the boundary aside
-struct BoundaryAndAdmin(Option<geo::MultiPolygon<f64>>, Rc<Admin>);
+struct BoundaryAndAdmin(Option<geo::MultiPolygon<f64>>, Arc<Admin>);
 
 impl BoundaryAndAdmin {
     fn new(mut admin: Admin) -> BoundaryAndAdmin {
         let b = std::mem::replace(&mut admin.boundary, None);
-        let minimal_admin = Rc::new(admin);
+        let minimal_admin = Arc::new(admin);
         BoundaryAndAdmin(b, minimal_admin)
     }
 }
@@ -88,7 +88,7 @@ impl AdminGeoFinder {
     }
 
     /// Get all Admins overlapping the coordinate
-    pub fn get(&self, coord: &geo::Coordinate<f64>) -> Vec<Rc<Admin>> {
+    pub fn get(&self, coord: &geo::Coordinate<f64>) -> Vec<Arc<Admin>> {
         let (x, y) = (coord.x as f32, coord.y as f32);
         let search = Rect::from_float(down(x), up(x), down(y), up(y));
         self.admins
@@ -124,9 +124,8 @@ impl AdminGeoFinder {
     }
 
     /// Iterates on all the `Rc<Admin>` in the structure as returned by `get`.
-    pub fn admins_without_boundary<'a>(&'a self) -> Box<Iterator<Item = Rc<Admin>> + 'a> {
-        let iter = self
-            .admins
+    pub fn admins_without_boundary<'a>(&'a self) -> Box<Iterator<Item = Arc<Admin>> + 'a> {
+        let iter = self.admins
             .get(&Rect::from_float(
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,

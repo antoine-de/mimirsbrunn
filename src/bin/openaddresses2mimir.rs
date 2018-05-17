@@ -77,7 +77,7 @@ impl OpenAddresse {
         let weight = admins
             .iter()
             .find(|a| a.is_city())
-            .map_or(0., |a| a.weight.get());
+            .map_or(0., |a| *a.weight.read().unwrap());
 
         let street = mimir::Street {
             id: street_id,
