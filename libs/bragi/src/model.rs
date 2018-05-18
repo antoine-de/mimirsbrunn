@@ -33,6 +33,23 @@ use geojson;
 use heck::SnakeCase;
 use mimir;
 use std::rc::Rc;
+use rs_es::error::EsError;
+
+#[derive(Fail, Debug)]
+pub enum BragiError {
+    #[fail(display = "Unable to find object")]
+    ObjectNotFound,
+    #[fail(display = "Impossible to find object")]
+    IndexNotFound,
+    #[fail(display = "invalid query {}", _0)]
+    Es(EsError),
+}
+
+impl From<EsError> for BragiError {
+    fn from(e: EsError) -> Self {
+        BragiError::Es(e)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Geocoding {
@@ -358,8 +375,14 @@ pub struct Coord {
 }
 
 pub mod v1 {
+    use super::BragiError;
     use mimir;
     use rs_es;
+    use iron;
+
+    pub trait HasStatus {
+        fn status(&self) -> iron::status::Status;
+    }
 
     // Note: I think this should be in api.rs but with the serde stuff it's easier for all
     // serde struct to be in the same file
@@ -369,21 +392,37 @@ pub mod v1 {
         pub description: String,
     }
 
+    impl HasStatus for EndPoint {
+        fn status(&self) -> iron::status::Status {
+            default_status()
+        }
+    }
+
     #[derive(Serialize, Deserialize, Debug)]
     pub struct CustomError {
         pub short: String,
         pub long: String,
+        #[serde(skip, default = "default_status")]
+        pub status: iron::status::Status,
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
-    pub enum V1Reponse {
-        Error(CustomError),
-        Response { description: String },
+    fn default_status() -> iron::status::Status {
+        iron::status::Status::Ok
     }
+
     #[derive(Debug)]
     pub enum AutocompleteResponse {
         Error(CustomError),
         Autocomplete(super::Autocomplete),
+    }
+
+    impl HasStatus for AutocompleteResponse {
+        fn status(&self) -> iron::status::Status {
+            match self {
+                AutocompleteResponse::Error(e) => e.status,
+                AutocompleteResponse::Autocomplete(_) => iron::status::Status::Ok,
+            }
+        }
     }
 
     use serde;
@@ -406,13 +445,28 @@ pub mod v1 {
         pub status: String,
     }
 
-    impl From<Result<Vec<mimir::Place>, rs_es::error::EsError>> for AutocompleteResponse {
-        fn from(r: Result<Vec<mimir::Place>, rs_es::error::EsError>) -> AutocompleteResponse {
+    impl HasStatus for Status {
+        fn status(&self) -> iron::status::Status {
+            iron::status::Status::Ok
+        }
+    }
+
+
+    impl From<Result<Vec<mimir::Place>, BragiError>> for AutocompleteResponse {
+        fn from(r: Result<Vec<mimir::Place>, BragiError>) -> AutocompleteResponse {
             match r {
                 Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
                 Err(e) => AutocompleteResponse::Error(CustomError {
                     short: "query error".to_string(),
-                    long: format!("invalid query {:?}", e),
+                    long: format!("{}", e),
+                    status: match e {
+                        BragiError::ObjectNotFound => iron::status::Status::NotFound,
+                        BragiError::IndexNotFound => iron::status::Status::NotFound,
+                        BragiError::Es(es_error) => match es_error {
+                            rs_es::error::EsError::HttpError(_) => iron::status::Status::ServiceUnavailable,
+                            _ => iron::status::Status::InternalServerError,
+                        }
+                    }
                 }),
             }
         }

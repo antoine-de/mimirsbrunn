@@ -30,6 +30,7 @@
 
 extern crate mimir;
 extern crate serde_json;
+extern crate iron;
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
@@ -148,4 +149,16 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["street"], "Rue de la Reine Blanche");
     assert_eq!(poi_addr["postcode"], "77288");
     assert_eq!(poi_addr["city"], "Melun");
+}
+
+pub fn bragi_invalid_es_test(es_wrapper: ::ElasticSearchWrapper) {
+    let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
+
+    // the status does not check the ES connexion, so for the status all is good
+    let resp = bragi.raw_get("/status").unwrap();
+    assert_eq!(resp.status, Some(iron::status::Status::Ok));
+
+    // the autocomplete gives a 503
+    let resp = bragi.raw_get("/autocomplete?q=toto").unwrap();
+    assert_eq!(resp.status, Some(iron::status::Status::ServiceUnavailable));
 }

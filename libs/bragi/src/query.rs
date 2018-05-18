@@ -27,7 +27,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use super::model;
+use super::model::{self, BragiError};
 use mimir;
 use mimir::objects::{Addr, Admin, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{collect, get_indexes};
@@ -268,8 +268,7 @@ fn query(
         )
         .ok();
 
-    let result: SearchResult<serde_json::Value> = try!(
-        client
+    let result: SearchResult<serde_json::Value> = client
             .search_query()
             .with_indexes(&indexes
                 .iter()
@@ -278,8 +277,8 @@ fn query(
             .with_query(&query)
             .with_from(offset)
             .with_size(limit)
-            .send()
-    );
+            .send()?;
+
     timer.map(|t| t.observe_duration());
 
     collect(result)
@@ -290,7 +289,7 @@ pub fn features(
     all_data: bool,
     cnx: &str,
     id: &str,
-) -> Result<Vec<mimir::Place>, EsError> {
+) -> Result<Vec<mimir::Place>, BragiError> {
     let val = rs_es::units::JsonVal::String(id.into());
     let mut filters = vec![Query::build_ids(vec![val]).build()];
 
@@ -310,7 +309,7 @@ pub fn features(
     if indexes.is_empty() {
         // if there is no indexes, rs_es search with index "_all"
         // but we want to return an error in this case.
-        return Err(EsError::EsError("Unable to find object".to_string()));
+        return Err(BragiError::IndexNotFound);
     }
 
     let result: SearchResult<serde_json::Value> = try!(
@@ -325,9 +324,9 @@ pub fn features(
     );
 
     if result.hits.total == 0 {
-        Err(EsError::EsError("Unable to find object".to_string()))
+        Err(BragiError::ObjectNotFound)
     } else {
-        collect(result)
+        collect(result).map_err(model::BragiError::from)
     }
 }
 
@@ -341,7 +340,7 @@ pub fn autocomplete(
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
     types: &[&str],
-) -> Result<Vec<mimir::Place>, EsError> {
+) -> Result<Vec<mimir::Place>, BragiError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape
             .as_ref()
@@ -350,7 +349,7 @@ pub fn autocomplete(
 
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
-    let results = try!(query(
+    let results = query(
         &q,
         &pt_datasets,
         all_data,
@@ -361,7 +360,7 @@ pub fn autocomplete(
         &coord,
         make_shape(&shape),
         &types,
-    ));
+    ).map_err(model::BragiError::from)?;
     if results.is_empty() {
         query(
             &q,
@@ -374,7 +373,7 @@ pub fn autocomplete(
             &coord,
             make_shape(&shape),
             &types,
-        )
+        ).map_err(model::BragiError::from)
     } else {
         Ok(results)
     }

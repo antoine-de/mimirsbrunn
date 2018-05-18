@@ -369,4 +369,5 @@ fn all_tests() {
     canonical_import_process_test::canonical_import_process_test(ElasticSearchWrapper::new(
         &docker_wrapper,
     ));
+    canonical_import_process_test::bragi_invalid_es_test(ElasticSearchWrapper::new(&docker_wrapper));
 }
