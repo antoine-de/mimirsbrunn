@@ -15,7 +15,7 @@ matrix:
     - rust: nightly
       env: RUN=RUSTFMT
       before_script: rustup component add rustfmt-preview
-      script: cargo fmt --all -- --write-mode=diff
+      script: cargo fmt --all -- --check
   allow_failures:
     - rust: nightly
       env: RUN=TEST
