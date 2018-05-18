@@ -111,10 +111,10 @@ fn docker_command(args: &[&'static str]) {
     match status {
         Ok(s) => {
             if !s.success() {
-                warn!("`docker {a:?}` failed {s}", a = args, s = s)
+                warn!("`docker {:?}` failed {}", args, s)
             }
         }
-        Err(e) => warn!("command `docker {a:?}` failed {e}", a = args, e = e),
+        Err(e) => warn!("command `docker {:?}` failed {}", args, e),
     }
 }
 
