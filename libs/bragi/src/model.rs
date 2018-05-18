@@ -166,7 +166,8 @@ impl From<mimir::Admin> for GeocodingResponse {
 fn get_admin_type(adm: &mimir::Admin) -> String {
     match adm.zone_type {
         Some(t) => format!("{:?}", t).to_snake_case(),
-        None => adm.admin_type.to_string(), // TODO return administrative_region when admin_type is removed
+        // TODO below return administrative_region when admin_type is removed
+        None => adm.admin_type.to_string(),
     }
 }
 

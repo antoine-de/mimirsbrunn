@@ -221,12 +221,14 @@ pub fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
     let mut pt_dataset_indexes: Vec<String> = vec![];
     match pt_datasets.len() {
         0 => (),
-        1 => for pt_dataset in pt_datasets.iter() {
-            try!(push(
-                &mut pt_dataset_indexes,
-                format!("munin_stop_{}", pt_dataset).as_str(),
-            ))
-        },
+        1 => {
+            for pt_dataset in pt_datasets.iter() {
+                try!(push(
+                    &mut pt_dataset_indexes,
+                    format!("munin_stop_{}", pt_dataset).as_str(),
+                ))
+            }
+        }
         _ => try!(push(&mut pt_dataset_indexes, "munin_global_stops")),
     };
 
@@ -372,7 +374,8 @@ impl Rubber {
         &self,
         base_index: &str,
     ) -> Result<BTreeMap<String, Vec<String>>, Error> {
-        let res = self.get(&format!("{}*/_aliases", base_index))
+        let res = self
+            .get(&format!("{}*/_aliases", base_index))
             .with_context(|_| format!("Error occurred when getting {}*/_aliases", base_index))?;
         match res.status {
             StatusCode::Ok => {
@@ -412,7 +415,8 @@ impl Rubber {
     ) -> Result<Vec<String>, Error> {
         let base_index = get_main_type_and_dataset_index::<T>(dataset);
         // we don't want to remove the newly created index
-        Ok(self.get_all_aliased_index(&base_index)?
+        Ok(self
+            .get_all_aliased_index(&base_index)?
             .into_iter()
             .map(|(k, _)| k)
             .filter(|i| i.as_str() != new_index.name)
@@ -430,7 +434,8 @@ impl Rubber {
             .with_must(geo_distance)
             .build();
 
-        let result: SearchResult<serde_json::Value> = self.es_client
+        let result: SearchResult<serde_json::Value> = self
+            .es_client
             .search_query()
             .with_indexes(&indexes
                 .iter()
@@ -508,7 +513,8 @@ impl Rubber {
             actions: add_operations.chain(remove_operations).collect(),
         };
         let json = serde_json::to_string(&operations)?;
-        let res = self.post("_aliases", &json)
+        let res = self
+            .post("_aliases", &json)
             .context("Error occurred when POSTing: _alias")?;
         match res.status {
             StatusCode::Ok => Ok(()),
@@ -518,7 +524,8 @@ impl Rubber {
 
     pub fn delete_index(&mut self, index: &String) -> Result<(), Error> {
         debug!("deleting index {}", &index);
-        let res = self.es_client
+        let res = self
+            .es_client
             .delete_index(&index)
             .map(|res| res.acknowledged)
             .unwrap_or(false);
@@ -581,7 +588,8 @@ impl Rubber {
         I: Iterator<Item = T>,
     {
         // TODO better error handling
-        let index = self.make_index(dataset)
+        let index = self
+            .make_index(dataset)
             .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)?;
         self.publish_index(dataset, index)?;
@@ -607,7 +615,8 @@ impl Rubber {
         for<'de> T: MimirObject + serde::de::Deserialize<'de> + std::fmt::Debug,
     {
         let mut result: Vec<T> = vec![];
-        let mut scan: ScanResult<T> = self.es_client
+        let mut scan: ScanResult<T> = self
+            .es_client
             .search_query()
             .with_indexes(&[&index])
             .with_size(1000)

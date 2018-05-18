@@ -51,8 +51,10 @@ trait IntoAdmin {
 }
 
 fn get_weight(tags: &osmpbfreader::Tags) -> f64 {
-    // to have an admin weight we use the osm 'population' tag to priorize the big zones over the small one
-    // Note: this tags is not often filled , so only some zones will have a weight (but the main cities have it)
+    // to have an admin weight we use the osm 'population' tag to priorize
+    // the big zones over the small one.
+    // Note: this tags is not often filled , so only some zones
+    // will have a weight (but the main cities have it).
     tags.get("population")
         .and_then(|p| p.parse().ok())
         .unwrap_or(0.)

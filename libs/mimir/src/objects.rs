@@ -542,7 +542,10 @@ impl Coord {
         self.lat() == 0. && self.lon() == 0.
     }
     pub fn is_valid(&self) -> bool {
-        !self.is_default() && -90. <= self.lat() && self.lat() <= 90. && -180. <= self.lon()
+        !self.is_default()
+            && -90. <= self.lat()
+            && self.lat() <= 90.
+            && -180. <= self.lon()
             && self.lon() <= 180.
     }
 }
@@ -596,9 +599,11 @@ impl<'de> Deserialize<'de> for Coord {
             where
                 V: SeqAccess<'de>,
             {
-                let lon = seq.next_element()?
+                let lon = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let lat = seq.next_element()?
+                let lat = seq
+                    .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 Ok(Coord::new(lon, lat))
             }

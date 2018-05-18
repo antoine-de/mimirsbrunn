@@ -130,7 +130,8 @@ impl ApiEndPoint {
                         client.ext.insert::<Timer>(timer.start_timer());
                     })
                     .unwrap_or_else(|err| {
-                        error!("impossible to get HTTP_REQ_HISTOGRAM metrics"; "err" => err.to_string());
+                        error!("impossible to get HTTP_REQ_HISTOGRAM metrics";
+                               "err" => err.to_string());
                     });
                 Ok(())
             });

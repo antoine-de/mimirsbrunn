@@ -451,7 +451,7 @@ mod tests {
             c.get_poi_id(&tags(&[
                 ("bob", "bobette"),
                 ("titi", "tata"),
-                ("foo", "bar"),
+                ("foo", "bar")
             ],))
         );
         assert_eq!(
@@ -459,7 +459,7 @@ mod tests {
             c.get_poi_id(&tags(&[
                 ("bob", "bobitta"),
                 ("titi", "toto"),
-                ("foo", "bar"),
+                ("foo", "bar")
             ],))
         );
         assert_eq!(
@@ -467,7 +467,7 @@ mod tests {
             c.get_poi_id(&tags(&[
                 ("bob", "bobette"),
                 ("titi", "toto"),
-                ("foo", "bar"),
+                ("foo", "bar")
             ],))
         );
         assert_eq!(
@@ -475,7 +475,7 @@ mod tests {
             c.get_poi_id(&tags(&[
                 ("bob", "bobitta"),
                 ("titi", "tata"),
-                ("foo", "bar"),
+                ("foo", "bar")
             ],))
         );
     }
