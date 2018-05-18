@@ -116,9 +116,9 @@ fn stop_attached_to_admin_test(bragi: &BragiHandler) {
     // this stop area is in the boundary of the admin 'Vaux-le-Pénil',
     // it should have been associated to it
     assert_eq!(get_value(stop, "city"), "Vaux-le-Pénil");
-    let admins = stop.get("administrative_regions").and_then(
-        |a| a.as_array(),
-    );
+    let admins = stop
+        .get("administrative_regions")
+        .and_then(|a| a.as_array());
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 1);
 }
 
@@ -134,9 +134,9 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "name"), "Far west station");
     assert_eq!(get_value(stop, "id"), "stop_area:SA:station_no_city");
     assert_eq!(get_value(stop, "city"), "");
-    let admins = stop.get("administrative_regions").and_then(
-        |a| a.as_array(),
-    );
+    let admins = stop
+        .get("administrative_regions")
+        .and_then(|a| a.as_array());
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
 }
 
@@ -215,9 +215,8 @@ fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler
     assert_eq!(get_value(stop, "name"), "All known stop");
 
     //filter by multiple datasets (1 matching)
-    let response = bragi.get(
-        "/autocomplete?q=All known stop&pt_dataset[]=dataset2&pt_dataset[]=bobito",
-    );
+    let response =
+        bragi.get("/autocomplete?q=All known stop&pt_dataset[]=dataset2&pt_dataset[]=bobito");
     assert_eq!(response.len(), 1);
 
     let stop = response.first().unwrap();
@@ -228,9 +227,8 @@ fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler
     ); //name should be the first binarized
 
     //filter by multiple datasets (all matching)
-    let response = bragi.get(
-        "/autocomplete?q=All known stop&pt_dataset[]=dataset2&pt_dataset[]=dataset1",
-    );
+    let response =
+        bragi.get("/autocomplete?q=All known stop&pt_dataset[]=dataset2&pt_dataset[]=dataset1");
     assert_eq!(response.len(), 1);
 
     let stop = response.first().unwrap();
@@ -241,9 +239,8 @@ fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler
     ); //name should be the first binarized
 
     //filter by multiple datasets (none matching)
-    let response = bragi.get(
-        "/autocomplete?q=All known stop&pt_dataset[]=bobette&pt_dataset[]=bobito",
-    );
+    let response =
+        bragi.get("/autocomplete?q=All known stop&pt_dataset[]=bobette&pt_dataset[]=bobito");
     assert_eq!(response.len(), 0);
 }
 
@@ -256,9 +253,7 @@ fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
 
     //wrong pt_dataset
     let response = bragi
-        .raw_get(
-            "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette",
-        )
+        .raw_get("/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette")
         .unwrap();
     assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
 
@@ -283,9 +278,7 @@ fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
     );
 
     //one dataset, we hit it (not the global one)
-    let response = bragi.get(
-        "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=dataset2",
-    );
+    let response = bragi.get("/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=dataset2");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:known_by_all_dataset");

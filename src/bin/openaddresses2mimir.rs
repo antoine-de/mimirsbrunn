@@ -74,10 +74,10 @@ impl OpenAddresse {
             y: self.lat,
         });
 
-        let weight = admins.iter().find(|a| a.is_city()).map_or(
-            0.,
-            |a| a.weight.get(),
-        );
+        let weight = admins
+            .iter()
+            .find(|a| a.is_city())
+            .map_or(0., |a| a.weight.get());
 
         let street = mimir::Street {
             id: street_id,
@@ -106,21 +106,20 @@ where
 {
     let mut rubber = Rubber::new(cnx_string);
 
-    let admins = rubber.get_admins_from_dataset(dataset).unwrap_or_else(
-        |err| {
+    let admins = rubber
+        .get_admins_from_dataset(dataset)
+        .unwrap_or_else(|err| {
             info!(
                 "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset,
-                err
+                dataset, err
             );
             vec![]
-        },
-    );
+        });
     let admins_geofinder = admins.into_iter().collect();
 
-    let addr_index = rubber.make_index(dataset).with_context(|_| {
-        format!("error occureed when making index for {}", dataset)
-    })?;
+    let addr_index = rubber
+        .make_index(dataset)
+        .with_context(|_| format!("error occureed when making index for {}", dataset))?;
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
@@ -130,9 +129,9 @@ where
                 .ok()
                 .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
         });
-        let nb = rubber.bulk_index(&addr_index, iter).with_context(|_| {
-            format!("failed to bulk insert file {:?}", &f)
-        })?;
+        let nb = rubber
+            .bulk_index(&addr_index, iter)
+            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
         info!("importing {:?}: {} addresses added.", &f, nb);
     }
     rubber.publish_index(dataset, addr_index)
@@ -144,8 +143,9 @@ struct Args {
     #[structopt(short = "i", long = "input", parse(from_os_str))]
     input: PathBuf,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]

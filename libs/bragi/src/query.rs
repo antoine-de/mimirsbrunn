@@ -169,12 +169,10 @@ fn build_query(
     // Priorization by importance
     let importance_query = match coord {
         &Some(ref c) => build_proximity_with_boost(c, 100.),
-        &None => {
-            Query::build_function_score()
-                .with_function(Function::build_field_value_factor("weight").build())
-                .with_boost(30.)
-                .build()
-        }
+        &None => Query::build_function_score()
+            .with_function(Function::build_field_value_factor("weight").build())
+            .with_boost(30.)
+            .build(),
     };
 
     // filter to handle house number
@@ -186,8 +184,7 @@ fn build_query(
             Query::build_bool()
                 .with_must_not(Query::build_exists("house_number").build())
                 .build(),
-            Query::build_match("house_number", q.to_string())
-                .build(),
+            Query::build_match("house_number", q.to_string()).build(),
         ])
         .build();
 
@@ -198,11 +195,9 @@ fn build_query(
         // When the match type is Prefix, we want to use every possible information even though
         // these are not present in label, for instance, the zip_code.
         // The field full_label contains all of them and will do the trick.
-        MatchType::Prefix => {
-            Query::build_match("full_label.prefix".to_string(), q.to_string())
-                .with_operator("and")
-                .build()
-        }
+        MatchType::Prefix => Query::build_match("full_label.prefix".to_string(), q.to_string())
+            .with_operator("and")
+            .build(),
         // for fuzzy search we lower our expectation & we accept a certain percentage of token match
         // on full_label.ngram
         // The values defined here are empirical,
@@ -213,15 +208,13 @@ fn build_query(
         //     Vaureaaal (instead of Vaureal)
         // Very long requests:
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
-        MatchType::Fuzzy => {
-            Query::build_match("full_label.ngram".to_string(), q.to_string())
-                .with_minimum_should_match(MinimumShouldMatch::from(vec![
-                    CombinationMinimumShouldMatch::new(1i64, 75f64),
-                    CombinationMinimumShouldMatch::new(6i64, 60f64),
-                    CombinationMinimumShouldMatch::new(9i64, 40f64),
-                ]))
-                .build()
-        }
+        MatchType::Fuzzy => Query::build_match("full_label.ngram".to_string(), q.to_string())
+            .with_minimum_should_match(MinimumShouldMatch::from(vec![
+                CombinationMinimumShouldMatch::new(1i64, 75f64),
+                CombinationMinimumShouldMatch::new(6i64, 60f64),
+                CombinationMinimumShouldMatch::new(9i64, 40f64),
+            ]))
+            .build(),
     };
 
     let mut filters = vec![house_number_condition, matching_condition];
@@ -270,9 +263,9 @@ fn query(
     let timer = ES_REQ_HISTOGRAM
         .get_metric_with_label_values(&[query_type.as_str()])
         .map(|h| h.start_timer())
-        .map_err(|err| {
-            error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string())
-        })
+        .map_err(
+            |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
+        )
         .ok();
 
     let result: SearchResult<serde_json::Value> = try!(
@@ -350,9 +343,9 @@ pub fn autocomplete(
     types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
-        shape.as_ref().map(
-            |v| v.iter().map(|&l| l.into()).collect(),
-        )
+        shape
+            .as_ref()
+            .map(|v| v.iter().map(|&l| l.into()).collect())
     }
 
     // First we try a pretty exact match on the prefix.

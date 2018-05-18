@@ -112,9 +112,9 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(get_poi_type_ids(cityhall), &["poi_type:amenity:townhall"]);
     assert_eq!(cityhall["city"], "Melun");
 
-    let cityhall_admins = cityhall["administrative_regions"].as_array().expect(
-        "admins must be array",
-    );
+    let cityhall_admins = cityhall["administrative_regions"]
+        .as_array()
+        .expect("admins must be array");
 
     assert_eq!(cityhall_admins.len(), 3);
     assert_eq!(cityhall_admins[0]["id"], "admin:osm:relation:80071");

@@ -60,8 +60,9 @@ struct Args {
     #[structopt(short = "C", long = "city-level", default_value = "8")]
     city_level: u32,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Import ways.
     #[structopt(short = "w", long = "import-way")]
@@ -151,9 +152,9 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         add_address(&mut pois, &mut rubber);
 
         info!("Importing pois into Mimir");
-        let nb_pois = rubber.index(&args.dataset, pois.iter()).context(
-            "Importing pois into Mimir",
-        )?;
+        let nb_pois = rubber
+            .index(&args.dataset, pois.iter())
+            .context("Importing pois into Mimir")?;
 
         info!("Nb of indexed pois: {}", nb_pois);
     }

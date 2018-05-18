@@ -123,19 +123,16 @@ pub fn get_indexes_by_type(a_type: &str) -> String {
 pub fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<Place>, EsError> {
     debug!(
         "{} documents found in {} ms",
-        result.hits.total,
-        result.took
+        result.hits.total, result.took
     );
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
-    Ok(
-        result
-            .hits
-            .hits
-            .into_iter()
-            .filter_map(|hit| make_place(hit.doc_type, hit.source))
-            .collect(),
-    )
+    Ok(result
+        .hits
+        .hits
+        .into_iter()
+        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .collect())
 }
 
 /// takes a ES json blob and build a Place from it
@@ -300,10 +297,9 @@ impl Rubber {
         let analysis = include_str!("../../../json/settings.json");
 
         let mut analysis_json_value = try!(
-            serde_json::from_str::<serde_json::Value>(&analysis)
-                .map_err(|err| {
-                    format_err!("Error occurred when creating index: {} err: {}", name, err)
-                })
+            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| {
+                format_err!("Error occurred when creating index: {} err: {}", name, err)
+            })
         );
 
         let synonyms: Vec<_> = SYNONYMS
@@ -323,10 +319,12 @@ impl Rubber {
                     e.to_string()
                 )
             })
-            .and_then(|res| if res.status == StatusCode::Ok {
-                Ok(())
-            } else {
-                Err(format_err!("cannot create index: {:?}", res))
+            .and_then(|res| {
+                if res.status == StatusCode::Ok {
+                    Ok(())
+                } else {
+                    Err(format_err!("cannot create index: {:?}", res))
+                }
             })
     }
 
@@ -337,10 +335,12 @@ impl Rubber {
                 info!("Error while creating template {}", name);
                 format_err!("Error: {} while creating template {}", e.to_string(), name)
             })
-            .and_then(|res| if res.status == StatusCode::Ok {
-                Ok(())
-            } else {
-                Err(format_err!("cannot create template: {:?}", res))
+            .and_then(|res| {
+                if res.status == StatusCode::Ok {
+                    Ok(())
+                } else {
+                    Err(format_err!("cannot create template: {:?}", res))
+                }
             })
     }
 
@@ -374,33 +374,28 @@ impl Rubber {
         &self,
         base_index: &str,
     ) -> Result<BTreeMap<String, Vec<String>>, Error> {
-        let res = self.get(&format!("{}*/_aliases", base_index))
-            .with_context(|_| {
-                format!("Error occurred when getting {}*/_aliases", base_index)
-            })?;
+        let res = self
+            .get(&format!("{}*/_aliases", base_index))
+            .with_context(|_| format!("Error occurred when getting {}*/_aliases", base_index))?;
         match res.status {
             StatusCode::Ok => {
                 let value: serde_json::Value = res.read_response()?;
-                Ok(
-                    value
-                        .as_object()
-                        .map(|all_aliases| {
-                            all_aliases
-                                .iter()
-                                .filter_map(|(i, a)| {
-                                    a.pointer("/aliases").and_then(|a| a.as_object()).map(
-                                        |aliases| {
-                                            (i.clone(), aliases.keys().cloned().collect())
-                                        },
-                                    )
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_else(|| {
-                            info!("no aliases for {}", base_index);
-                            BTreeMap::new()
-                        }),
-                )
+                Ok(value
+                    .as_object()
+                    .map(|all_aliases| {
+                        all_aliases
+                            .iter()
+                            .filter_map(|(i, a)| {
+                                a.pointer("/aliases")
+                                    .and_then(|a| a.as_object())
+                                    .map(|aliases| (i.clone(), aliases.keys().cloned().collect()))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_else(|| {
+                        info!("no aliases for {}", base_index);
+                        BTreeMap::new()
+                    }))
             }
             StatusCode::NotFound => {
                 info!("impossible to find alias {}", base_index);
@@ -420,27 +415,27 @@ impl Rubber {
     ) -> Result<Vec<String>, Error> {
         let base_index = get_main_type_and_dataset_index::<T>(dataset);
         // we don't want to remove the newly created index
-        Ok(
-            self.get_all_aliased_index(&base_index)?
-                .into_iter()
-                .map(|(k, _)| k)
-                .filter(|i| i.as_str() != new_index.name)
-                .collect(),
-        )
+        Ok(self
+            .get_all_aliased_index(&base_index)?
+            .into_iter()
+            .map(|(k, _)| k)
+            .filter(|i| i.as_str() != new_index.name)
+            .collect())
     }
 
     pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
         let types = vec!["house".into(), "street".into()];
         let indexes = get_indexes(false, &[], &types, &mut self.es_client)?;
         let distance = rs_u::Distance::new(1000., rs_u::DistanceUnit::Meter);
-        let geo_distance = Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance)
-            .build();
+        let geo_distance =
+            Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance).build();
         let query = Query::build_bool()
             .with_should(build_proximity_with_boost(coord, 1.))
             .with_must(geo_distance)
             .build();
 
-        let result: SearchResult<serde_json::Value> = self.es_client
+        let result: SearchResult<serde_json::Value> = self
+            .es_client
             .search_query()
             .with_indexes(&indexes
                 .iter()
@@ -465,15 +460,11 @@ impl Rubber {
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
         self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes)
-            .with_context(|_| {
-                format!("Error occurred when making alias: {}", dataset_index)
-            })?;
+            .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
 
         let type_index = get_main_type_index::<T>();
         self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
-            .with_context(|_| {
-                format!("Error occurred when making alias: {}", type_index)
-            })?;
+            .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
 
         if T::is_geo_data() {
             self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
@@ -485,17 +476,16 @@ impl Rubber {
                 .context("Error occurred when making alias: munin")?;
         }
         for i in last_indexes {
-            self.delete_index(&i).with_context(|_| {
-                format!("Error occurred when deleting index: {}", i)
-            })?;
+            self.delete_index(&i)
+                .with_context(|_| format!("Error occurred when deleting index: {}", i))?;
         }
         Ok(())
     }
 
     pub fn is_existing_index(&self, name: &String) -> Result<bool, String> {
-        self.get(&name).map_err(|e| e.to_string()).map(|res| {
-            res.status == StatusCode::Ok
-        })
+        self.get(&name)
+            .map_err(|e| e.to_string())
+            .map(|res| res.status == StatusCode::Ok)
     }
 
     /// add a list of new indexes to the alias
@@ -503,34 +493,29 @@ impl Rubber {
     pub fn alias(&self, alias: &str, add: &[String], remove: &[String]) -> Result<(), Error> {
         info!(
             "for {}, adding alias {:?}, removing {:?}",
-            alias,
-            add,
-            remove
+            alias, add, remove
         );
-        let add_operations = add.iter().map(|x| {
-            AliasOperation {
-                remove: None,
-                add: Some(AliasParameter {
-                    index: x.clone(),
-                    alias: alias.to_string(),
-                }),
-            }
+        let add_operations = add.iter().map(|x| AliasOperation {
+            remove: None,
+            add: Some(AliasParameter {
+                index: x.clone(),
+                alias: alias.to_string(),
+            }),
         });
-        let remove_operations = remove.iter().map(|x| {
-            AliasOperation {
-                add: None,
-                remove: Some(AliasParameter {
-                    index: x.clone(),
-                    alias: alias.to_string(),
-                }),
-            }
+        let remove_operations = remove.iter().map(|x| AliasOperation {
+            add: None,
+            remove: Some(AliasParameter {
+                index: x.clone(),
+                alias: alias.to_string(),
+            }),
         });
-        let operations =
-            AliasOperations { actions: add_operations.chain(remove_operations).collect() };
+        let operations = AliasOperations {
+            actions: add_operations.chain(remove_operations).collect(),
+        };
         let json = serde_json::to_string(&operations)?;
-        let res = self.post("_aliases", &json).context(
-            "Error occurred when POSTing: _alias",
-        )?;
+        let res = self
+            .post("_aliases", &json)
+            .context("Error occurred when POSTing: _alias")?;
         match res.status {
             StatusCode::Ok => Ok(()),
             _ => bail!("failed to post aliases for {}: {:?}", alias, res),
@@ -539,7 +524,8 @@ impl Rubber {
 
     pub fn delete_index(&mut self, index: &String) -> Result<(), Error> {
         debug!("deleting index {}", &index);
-        let res = self.es_client
+        let res = self
+            .es_client
             .delete_index(&index)
             .map(|res| res.acknowledged)
             .unwrap_or(false);
@@ -564,9 +550,9 @@ impl Rubber {
         let chunk_size = 1000;
         // fold is used for creating the action and optionally set the id of the object
         let mut actions = iter.map(|v| {
-            v.es_id().into_iter().fold(Action::index(v), |action, id| {
-                action.with_id(id)
-            })
+            v.es_id()
+                .into_iter()
+                .fold(Action::index(v), |action, id| action.with_id(id))
         });
         loop {
             let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
@@ -602,9 +588,9 @@ impl Rubber {
         I: Iterator<Item = T>,
     {
         // TODO better error handling
-        let index = self.make_index(dataset).with_context(|_| {
-            format!("Error occurred when making index: {}", dataset)
-        })?;
+        let index = self
+            .make_index(dataset)
+            .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)?;
         self.publish_index(dataset, index)?;
         Ok(nb_elements)
@@ -629,7 +615,8 @@ impl Rubber {
         for<'de> T: MimirObject + serde::de::Deserialize<'de> + std::fmt::Debug,
     {
         let mut result: Vec<T> = vec![];
-        let mut scan: ScanResult<T> = self.es_client
+        let mut scan: ScanResult<T> = self
+            .es_client
             .search_query()
             .with_indexes(&[&index])
             .with_size(1000)

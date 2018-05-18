@@ -122,9 +122,8 @@ fn gare_de_lyon(bragi: &BragiHandler) {
 
 fn gare_de_lyon_with_two_datasets(bragi: &BragiHandler) {
     // with this query we should find only one response, a stop
-    let response = bragi.get(
-        "/autocomplete?q=gare de lyon&pt_dataset=dataset1&pt_dataset=dataset2",
-    );
+    let response =
+        bragi.get("/autocomplete?q=gare de lyon&pt_dataset=dataset1&pt_dataset=dataset2");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
 

@@ -90,7 +90,8 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
 
     // the first element returned should be the poi 'Le-Mée-sur-Seine Courtilleraies'
     let poi = geocodings.first().unwrap();
-    let properties = poi.get("properties")
+    let properties = poi
+        .get("properties")
         .and_then(|json| json.as_array())
         .unwrap();
     let keys = [
@@ -121,9 +122,7 @@ fn poi_admin_test(bragi: &BragiHandler) {
     let count = count_types(&types, Poi::doc_type());
     assert!(count >= 1);
 
-    assert!(get_values(&geocodings, "label").contains(
-        &"Melun Rp (Melun)",
-    ));
+    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)",));
 
     // when we search for just 'Melun', we should find some places in melun
     let geocodings = bragi.get("/autocomplete?q=Melun");
@@ -196,9 +195,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     // (barycenter not computed so far), it should be filtered.
     let geocodings = bragi.get("/autocomplete?q=ENSE3 site Ampère");
     // we can find other results (due to the fuzzy search, but we can't find the 'site Ampère')
-    assert!(!get_values(&geocodings, "label").contains(
-        &"ENSE3 site Ampère",
-    ));
+    assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère",));
 }
 
 fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
@@ -207,9 +204,7 @@ fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
     let types = get_types(&geocodings);
     let count = count_types(&types, Poi::doc_type());
     assert!(count >= 1);
-    assert!(get_values(&geocodings, "label").contains(
-        &"Melun Rp (Melun)",
-    ));
+    assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)",));
 
     // when we search for 'Meluuun', we should find some places in melun
     let geocodings = bragi.get("/autocomplete?q=Meluuun");

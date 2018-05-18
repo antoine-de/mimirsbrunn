@@ -49,17 +49,18 @@ pub struct AdminMatcher {
 
 impl AdminMatcher {
     pub fn new(levels: BTreeSet<u32>) -> AdminMatcher {
-        AdminMatcher { admin_levels: levels }
+        AdminMatcher {
+            admin_levels: levels,
+        }
     }
 
     pub fn is_admin(&self, obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Relation(ref rel) => {
-                rel.tags.get("boundary").map_or(
-                    false,
-                    |v| v == "administrative",
-                ) &&
-                    rel.tags.get("admin_level").map_or(false, |lvl| {
+                rel.tags
+                    .get("boundary")
+                    .map_or(false, |v| v == "administrative")
+                    && rel.tags.get("admin_level").map_or(false, |lvl| {
                         self.admin_levels.contains(&lvl.parse::<u32>().unwrap_or(0))
                     })
             }
@@ -85,9 +86,10 @@ pub fn read_administrative_regions(
             continue;
         }
         if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
-            let level = relation.tags.get("admin_level").and_then(
-                |s| s.parse().ok(),
-            );
+            let level = relation
+                .tags
+                .get("admin_level")
+                .and_then(|s| s.parse().ok());
             let level = match level {
                 None => {
                     warn!(
@@ -129,9 +131,7 @@ pub fn read_administrative_regions(
                     let id = format!("admin:osm:{}", relation.id.0);
                     warn!(
                         "relation/{}: have the INSEE {} that is already used, using {} as id",
-                        relation.id.0,
-                        val,
-                        id
+                        relation.id.0, val, id
                     );
                     (id, val)
                 }
@@ -191,18 +191,17 @@ pub fn format_zip_codes(zip_codes: &[String]) -> String {
     match zip_codes.len() {
         0 => "".to_string(),
         1 => format!(" ({})", zip_codes.first().unwrap()),
-        _ => {
-            format!(
-                " ({}-{})",
-                zip_codes.first().unwrap(),
-                zip_codes.last().unwrap()
-            )
-        }
+        _ => format!(
+            " ({}-{})",
+            zip_codes.first().unwrap(),
+            zip_codes.last().unwrap()
+        ),
     }
 }
 
 pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
-    let zip_code = tags.get("addr:postcode")
+    let zip_code = tags
+        .get("addr:postcode")
         .or_else(|| tags.get("postal_code"))
         .map_or("", |val| &val[..]);
     zip_code

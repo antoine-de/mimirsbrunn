@@ -96,10 +96,9 @@ impl AdminGeoFinder {
             .into_iter()
             .map(|(_, a)| a)
             .filter(|a| {
-                a.0.as_ref().map_or(
-                    false,
-                    |b| (*b).contains(&geo::Point(*coord)),
-                )
+                a.0
+                    .as_ref()
+                    .map_or(false, |b| (*b).contains(&geo::Point(*coord)))
             })
             .map(|admin_and_boundary| admin_and_boundary.1.clone())
             .collect()
@@ -107,7 +106,8 @@ impl AdminGeoFinder {
 
     /// Iterates on all the admins with a not None boundary.
     pub fn admins<'a>(&'a self) -> Box<Iterator<Item = Admin> + 'a> {
-        let iter = self.admins
+        let iter = self
+            .admins
             .get(&Rect::from_float(
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
@@ -125,7 +125,8 @@ impl AdminGeoFinder {
 
     /// Iterates on all the `Rc<Admin>` in the structure as returned by `get`.
     pub fn admins_without_boundary<'a>(&'a self) -> Box<Iterator<Item = Rc<Admin>> + 'a> {
-        let iter = self.admins
+        let iter = self
+            .admins
             .get(&Rect::from_float(
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
@@ -140,7 +141,9 @@ impl AdminGeoFinder {
 
 impl Default for AdminGeoFinder {
     fn default() -> Self {
-        AdminGeoFinder { admins: RTree::new() }
+        AdminGeoFinder {
+            admins: RTree::new(),
+        }
     }
 }
 

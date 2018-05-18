@@ -133,8 +133,9 @@ struct Args {
     #[structopt(short = "i", long = "input")]
     input: String,
     /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string",
-                default_value = "http://localhost:9200/munin")]
+    #[structopt(
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+    )]
     connection_string: String,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]

@@ -125,7 +125,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     /// simple search on an index
     /// assert that the result is OK and transform it to a json Value
     pub fn search(&self, word: &str) -> serde_json::Value {
-        let res = self.rubber
+        let res = self
+            .rubber
             .get(&format!("munin/_search?q={}", word))
             .unwrap();
         assert!(res.status == hyper::Ok);
@@ -133,7 +134,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     }
 
     pub fn search_on_global_stop_index(&self, word: &str) -> serde_json::Value {
-        let res = self.rubber
+        let res = self
+            .rubber
             .get(&format!("munin_global_stops/_search?q={}", word))
             .unwrap();
         assert!(res.status == hyper::Ok);
@@ -199,7 +201,8 @@ impl<'a> ElasticSearchWrapper<'a> {
                             v.into_iter()
                                 .filter_map(|json| {
                                     into_object(json).and_then(|obj| {
-                                        let doc_type = obj.get("_type")
+                                        let doc_type = obj
+                                            .get("_type")
                                             .and_then(|doc_type| doc_type.as_str())
                                             .map(|doc_type| doc_type.into());
 
@@ -215,14 +218,13 @@ impl<'a> ElasticSearchWrapper<'a> {
                                     })
                                 })
                                 .filter(predicate),
-                        ) as
-                            Box<Iterator<Item = mimir::Place>>)
+                        )
+                            as Box<Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
             })
-            .unwrap_or(Box::new(None.into_iter()) as
-                Box<Iterator<Item = mimir::Place>>)
+            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
     }
 }
 
@@ -243,7 +245,9 @@ pub struct BragiHandler {
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
         let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
-        BragiHandler { app: rustless::Application::new(api) }
+        BragiHandler {
+            app: rustless::Application::new(api),
+        }
     }
 
     pub fn raw_get(&self, q: &str) -> iron::IronResult<iron::Response> {
@@ -314,9 +318,7 @@ pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
 
 pub fn filter_by_type<'a>(r: &'a [Map<String, Value>], t: &'a str) -> Vec<Map<String, Value>> {
     r.iter()
-        .filter(|e| {
-            e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t
-        })
+        .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
         .cloned()
         .collect()
 }
@@ -350,9 +352,9 @@ fn all_tests() {
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_test::osm2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     stops2mimir_test::stops2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
-    osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(
-        ElasticSearchWrapper::new(&docker_wrapper),
-    );
+    osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(ElasticSearchWrapper::new(
+        &docker_wrapper,
+    ));
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_ghost_index_cleanup(ElasticSearchWrapper::new(&docker_wrapper));
@@ -367,7 +369,7 @@ fn all_tests() {
     bragi_synonyms_test::bragi_synonyms_test(ElasticSearchWrapper::new(&docker_wrapper));
     openaddresses2mimir_test::oa2mimir_simple_test(ElasticSearchWrapper::new(&docker_wrapper));
     cosmogony2mimir_test::cosmogony2mimir_test(ElasticSearchWrapper::new(&docker_wrapper));
-    canonical_import_process_test::canonical_import_process_test(
-        ElasticSearchWrapper::new(&docker_wrapper),
-    );
+    canonical_import_process_test::canonical_import_process_test(ElasticSearchWrapper::new(
+        &docker_wrapper,
+    ));
 }
