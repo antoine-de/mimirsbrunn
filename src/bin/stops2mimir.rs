@@ -109,7 +109,9 @@ impl GtfsStop {
             Err(StopConversionErr::NotStopArea)
         } else if self.visible == Some(0) {
             Err(StopConversionErr::InvisibleStop)
-        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT || self.stop_lon <= MIN_LON
+        } else if self.stop_lat <= MIN_LAT
+            || self.stop_lat >= MAX_LAT
+            || self.stop_lon <= MIN_LON
             || self.stop_lon >= MAX_LON
         {
             //Here we return an error message
@@ -158,7 +160,8 @@ fn run(args: Args) -> Result<(), failure::Error> {
 
     let mut rdr = csv::Reader::from_path(&args.input)?;
     let mut nb_stop_points = HashMap::new();
-    let mut stops: Vec<mimir::Stop> = rdr.deserialize()
+    let mut stops: Vec<mimir::Stop> = rdr
+        .deserialize()
         .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
@@ -181,7 +184,8 @@ fn test_load_stops() {
     let mut rdr = csv::Reader::from_path("./tests/fixtures/stops.txt".to_string()).unwrap();
 
     let mut nb_stop_points = HashMap::new();
-    let stops: Vec<mimir::Stop> = rdr.deserialize()
+    let stops: Vec<mimir::Stop> = rdr
+        .deserialize()
         .filter_map(Result::ok)
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);

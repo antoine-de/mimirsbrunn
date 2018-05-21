@@ -28,9 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate iron;
 extern crate mimir;
 extern crate serde_json;
-extern crate iron;
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;

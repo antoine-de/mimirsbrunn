@@ -32,8 +32,8 @@ use geo;
 use geojson;
 use heck::SnakeCase;
 use mimir;
-use std::rc::Rc;
 use rs_es::error::EsError;
+use std::rc::Rc;
 
 #[derive(Fail, Debug)]
 pub enum BragiError {
@@ -376,9 +376,9 @@ pub struct Coord {
 
 pub mod v1 {
     use super::BragiError;
+    use iron;
     use mimir;
     use rs_es;
-    use iron;
 
     pub trait HasStatus {
         fn status(&self) -> iron::status::Status;
@@ -451,7 +451,6 @@ pub mod v1 {
         }
     }
 
-
     impl From<Result<Vec<mimir::Place>, BragiError>> for AutocompleteResponse {
         fn from(r: Result<Vec<mimir::Place>, BragiError>) -> AutocompleteResponse {
             match r {
@@ -463,10 +462,12 @@ pub mod v1 {
                         BragiError::ObjectNotFound => iron::status::Status::NotFound,
                         BragiError::IndexNotFound => iron::status::Status::NotFound,
                         BragiError::Es(es_error) => match es_error {
-                            rs_es::error::EsError::HttpError(_) => iron::status::Status::ServiceUnavailable,
+                            rs_es::error::EsError::HttpError(_) => {
+                                iron::status::Status::ServiceUnavailable
+                            }
                             _ => iron::status::Status::InternalServerError,
-                        }
-                    }
+                        },
+                    },
                 }),
             }
         }

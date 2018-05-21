@@ -29,8 +29,8 @@
 // www.navitia.io
 use super::query;
 use hyper::mime::Mime;
-use iron::typemap::Key;
 use iron::status::Status as IronStatus;
+use iron::typemap::Key;
 use mimir::rubber::Rubber;
 use model;
 use model::v1::*;
@@ -105,13 +105,13 @@ impl ApiEndPoint {
                     CustomError {
                         short: "validation error".to_string(),
                         long: format!("invalid arguments {:?}", val_err.reason),
-                        status: IronStatus::BadRequest
+                        status: IronStatus::BadRequest,
                     }
                 } else {
                     CustomError {
                         short: "bad_request".to_string(),
                         long: format!("bad request, error: {}", error),
-                        status: IronStatus::BadRequest
+                        status: IronStatus::BadRequest,
                     }
                 };
                 let mut resp = rustless::Response::from(
@@ -218,7 +218,8 @@ impl ApiEndPoint {
                         params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
                     let mut rubber = Rubber::new(&cnx);
-                    let model_autocomplete = rubber.get_address(&coord).map_err(model::BragiError::from);
+                    let model_autocomplete =
+                        rubber.get_address(&coord).map_err(model::BragiError::from);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
