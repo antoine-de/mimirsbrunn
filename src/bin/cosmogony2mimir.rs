@@ -44,7 +44,7 @@ use failure::Error;
 use mimir::objects::{Admin, AdminType};
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 trait IntoAdmin {
     fn into_admin(self) -> Admin;
@@ -65,7 +65,7 @@ impl IntoAdmin for Zone {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
-        let weight = Arc::new(RwLock::new(get_weight(&self.tags)));
+        let weight = RwLock::new(get_weight(&self.tags));
         let admin_type = if self.zone_type == Some(ZoneType::City) {
             AdminType::City
         } else {

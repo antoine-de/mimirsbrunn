@@ -37,7 +37,7 @@ use super::OsmPbfReader;
 use admin_geofinder::AdminGeoFinder;
 use itertools::Itertools;
 use osm_reader::osm_utils::make_centroid;
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 use std::collections::BTreeSet;
 pub type StreetsVec = Vec<mimir::Street>;
 use cosmogony::ZoneType;
@@ -170,7 +170,7 @@ pub fn read_administrative_regions(
                 name: name.to_string(),
                 label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
                 zip_codes: zip_codes,
-                weight: Arc::new(RwLock::new(0.)),
+                weight: RwLock::new(0.),
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
                 admin_type: admin_type,

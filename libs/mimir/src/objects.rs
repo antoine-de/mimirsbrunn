@@ -305,7 +305,7 @@ impl fmt::Display for AdminType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Admin {
     pub id: String,
     pub insee: String,
@@ -313,7 +313,7 @@ pub struct Admin {
     pub label: String,
     pub name: String,
     pub zip_codes: Vec<String>,
-    pub weight: Arc<RwLock<f64>>,
+    pub weight: RwLock<f64>,
     pub coord: Coord,
     #[serde(
         serialize_with = "custom_multi_polygon_serialize",
@@ -330,6 +330,24 @@ pub struct Admin {
 
 fn default_admin_city() -> AdminType {
     AdminType::Unknown //this way an Admin with no ZoneType won't be a city
+}
+
+impl Clone for Admin {
+    fn clone(&self) -> Admin {
+        Admin {
+            id: self.id.clone(),
+            insee: self.insee.clone(),
+            level: self.level.clone(),
+            label: self.label.clone(),
+            name: self.name.clone(),
+            zip_codes: self.zip_codes.clone(),
+            weight: RwLock::new(*self.weight.read().unwrap()),
+            coord: self.coord.clone(),
+            boundary: self.boundary.clone(),
+            admin_type: self.admin_type.clone(),
+            zone_type: self.zone_type.clone()
+        }
+    }
 }
 
 impl Admin {
