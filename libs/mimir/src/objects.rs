@@ -480,6 +480,8 @@ impl Members for Street {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Addr {
     pub id: String,
+    #[serde(default)]
+    pub name: String,
     pub house_number: String,
     pub street: Street,
     pub label: String,

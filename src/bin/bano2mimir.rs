@@ -113,6 +113,7 @@ impl Bano {
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
+            name: addr_name,
             house_number: self.nb,
             street: street,
             label: addr_label,

@@ -88,6 +88,7 @@ impl OpenAddresse {
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
+            name: addr_name,
             house_number: self.number,
             street: street,
             label: addr_label,
