@@ -72,6 +72,19 @@
                     "geohash_prefix": true,
                     "geohash_precision": "1m"
                 },
+                "name": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        }
+                    }
+                },
                 "label": {
                     "type": "string",
                     "index_options": "docs",
@@ -115,7 +128,7 @@
                 "street": {
                     "properties": {
                         "id": { "type": "string", "index": "no" },
-                        "name": { "type": "string" },
+                        "street_name": { "type": "string" },
                         "administrative_regions": {
                             "properties": {
                                 "id": { "type": "string", "index": "no" },

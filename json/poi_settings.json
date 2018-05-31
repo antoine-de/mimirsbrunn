@@ -51,7 +51,19 @@
         "poi": {
             "properties": {
                 "id": { "type": "string", "index": "no" },
-                "name": { "type": "string" },
+                "name": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        }
+                    }
+                },
                 "zip_codes": {
                     "type": "string",
                     "index_options": "docs",
