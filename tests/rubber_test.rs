@@ -33,7 +33,7 @@ use geo;
 use hyper;
 use mimir::rubber::{self, Rubber};
 use mimir::AdminType::City;
-use mimir::{Admin, Coord, MimirObject, Street};
+use mimir::{Admin, Coord, MimirObject, Street, Weight};
 use serde_json::value::Value;
 use std;
 use std::cell::Cell;
@@ -148,7 +148,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         name: "my admin".to_string(),
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
-        weight: Cell::new(0.42),
+        weight: Weight::new(0.42),
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: Some(geo::MultiPolygon(vec![geo::Polygon::new(
             geo::LineString(vec![
@@ -163,6 +163,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         admin_type: City,
         zone_type: Some(ZoneType::City),
     };
+    admin.weight.normalize(1.);
 
     // we index our admin
     let result = es.rubber.index(dataset, std::iter::once(admin));
@@ -238,12 +239,13 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         name: "my admin".to_string(),
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
-        weight: Cell::new(0.42),
+        weight: Weight::new(0.42),
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
         admin_type: City,
         zone_type: Some(ZoneType::City),
     };
+    admin.weight.normalize(1.);
 
     // we index our admin
     let result = es.rubber.index("fr", std::iter::once(admin));

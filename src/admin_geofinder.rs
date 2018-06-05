@@ -185,7 +185,7 @@ fn test_up_down() {
 mod tests {
     use super::*;
     use cosmogony::ZoneType;
-    use mimir::AdminType;
+    use mimir::{Weight, AdminType};
 
     fn p(x: f64, y: f64) -> ::geo::Point<f64> {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
@@ -215,7 +215,7 @@ mod tests {
             name: "city".to_string(),
             label: format!("city {}", offset),
             zip_codes: vec!["421337".to_string()],
-            weight: ::std::cell::Cell::new(0.),
+            weight: Weight::default(),
             coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
             boundary: Some(boundary),
             insee: "outlook".to_string(),

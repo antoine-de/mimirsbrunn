@@ -195,7 +195,8 @@ pub fn compute_street_weight(streets: &mut StreetsVec) {
     for st in streets {
         for admin in &mut st.administrative_regions {
             if admin.is_city() {
-                st.weight = *admin.weight.read().unwrap();
+                // Note: we can unwrap there because the admin should always have a computed weight there
+                st.weight = admin.weight.value().unwrap();
                 break;
             }
         }
