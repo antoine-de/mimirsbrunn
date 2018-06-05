@@ -54,19 +54,19 @@ extern crate hyper;
 extern crate rs_es;
 
 #[cfg(test)]
-#[macro_use] extern crate proptest;
+#[macro_use]
+extern crate proptest;
 #[cfg(test)]
 #[macro_use]
 extern crate approx;
-
 
 pub mod objects;
 pub mod rubber;
 mod weight;
 
 pub use objects::*;
-pub use weight::Weight;
 use std::env;
+pub use weight::Weight;
 
 use slog::Drain;
 use slog::Never;

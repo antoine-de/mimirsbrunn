@@ -39,7 +39,6 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
-use super::Weight;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;

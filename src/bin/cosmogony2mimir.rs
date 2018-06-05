@@ -104,7 +104,9 @@ fn load_cosmogony(input: &str) -> Result<Cosmogony, Error> {
 }
 
 fn normalize_weight(admins: &mut [Admin]) {
-    let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight.unnormalized_value()));
+    let max = admins
+        .iter()
+        .fold(1f64, |m, a| f64::max(m, a.weight.unnormalized_value()));
     for ref mut a in admins {
         a.weight.normalize(max);
     }
