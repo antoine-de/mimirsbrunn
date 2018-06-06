@@ -3,7 +3,7 @@ use serde::ser::{Serialize, Serializer};
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-/// The Weight is an object used to for the Mimir's Object weight.
+/// The Weight is an object used to control the elasticsearch sort.
 ///
 /// A Weight's value must be a float between 0 and 1.
 ///
@@ -25,7 +25,8 @@ pub struct Weight {
 const MAX_VAL: f64 = u32::max_value() as f64;
 
 impl Weight {
-    pub fn new(val: f64) -> Weight {
+    // Note we limit val to a u32 even if we store a usize because we'll loose precision while converting it to float
+    pub fn new(val: u32) -> Weight {
         Weight {
             val: AtomicUsize::new(val as usize),
             normalized: AtomicBool::new(false),
@@ -33,6 +34,8 @@ impl Weight {
     }
 
     fn from_normalized_float(val: f64) -> Weight {
+        debug_assert!(0f64 <= val);
+        debug_assert!(val <= 1f64);
         Weight {
             val: AtomicUsize::new((val * MAX_VAL) as usize),
             normalized: AtomicBool::new(true),
@@ -43,19 +46,19 @@ impl Weight {
     /// If the weight has not yet been normlized returns `None` else returns the float
     pub fn value(&self) -> Option<f64> {
         match self.normalized.load(Ordering::Relaxed) {
-            true => Some(self.unnormalized_value() / MAX_VAL),
+            true => Some(self.unnormalized_value() as f64 / MAX_VAL),
             false => None,
         }
     }
 
-    pub fn unnormalized_value(&self) -> f64 {
+    pub fn unnormalized_value(&self) -> u32 {
         // we can read the atomic without any ordering constraints as in practice
         // we don't change the value in multi thread context
-        self.val.load(Ordering::Relaxed) as f64
+        self.val.load(Ordering::Relaxed) as u32
     }
 
-    pub fn normalize(&self, max_value: f64) {
-        let mut val: f64 = self.val.load(Ordering::Relaxed) as f64 / max_value;
+    pub fn normalize(&self, max_value: u32) {
+        let mut val: f64 = self.val.load(Ordering::Relaxed) as f64 / max_value as f64;
         debug_assert!(0f64 <= val);
         debug_assert!(val <= 1f64);
         val *= MAX_VAL;
@@ -85,7 +88,7 @@ impl Serialize for Weight {
 
 impl Default for Weight {
     fn default() -> Self {
-        Weight::new(0f64)
+        Weight::new(0u32)
     }
 }
 
@@ -123,23 +126,23 @@ mod tests {
 
     #[test]
     pub fn test_basic_uses() {
-        let weight = Weight::new(12f64);
+        let weight = Weight::new(12u32);
 
         assert!(weight.value().is_none());
     }
 
     #[test]
     pub fn test_zero() {
-        let weight = Weight::new(0f64);
-        weight.normalize(12f64);
+        let weight = Weight::new(0u32);
+        weight.normalize(12u32);
 
         abs_diff_eq!(0.0f64, weight.value().unwrap());
     }
 
     #[test]
     pub fn test_max_val() {
-        let weight = Weight::new(12f64);
-        weight.normalize(12f64);
+        let weight = Weight::new(12u32);
+        weight.normalize(12u32);
 
         abs_diff_eq!(1.0f64, weight.value().unwrap());
     }
@@ -147,25 +150,25 @@ mod tests {
     proptest! {
 
         #[test]
-        fn test_normalize_for_any_value(val in 0usize..1000000usize) {
-            let weight = Weight::new(val as f64);
-            weight.normalize(1000000f64);
+        fn test_normalize_for_any_value(val in 0u32..1000000u32) {
+            let weight = Weight::new(val);
+            weight.normalize(1000000u32);
             abs_diff_eq!(weight.value().unwrap(), val as f64 / 1000000f64);
         }
     }
 
     #[test]
     pub fn test_normalize() {
-        let weight = Weight::new(12f64);
-        weight.normalize(24f64);
+        let weight = Weight::new(12u32);
+        weight.normalize(24u32);
 
         abs_diff_eq!(0.5f64, weight.value().unwrap());
     }
 
     #[test]
     pub fn test_weight_serialization() {
-        let weight = Weight::new(12f64);
-        weight.normalize(24f64);
+        let weight = Weight::new(12u32);
+        weight.normalize(24u32);
 
         let as_json = serde_json::to_string(&weight).unwrap();
         let from_json: Weight = serde_json::from_str(&as_json).unwrap();
