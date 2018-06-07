@@ -101,8 +101,6 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         info!("Extracting streets from osm");
         let mut streets = streets(&mut osm_reader, &admins_geofinder)?;
 
-        info!("computing city weight");
-
         info!("computing street weight");
         compute_street_weight(&mut streets);
 

@@ -51,6 +51,10 @@ impl Weight {
         }
     }
 
+    pub fn add(&self, val: u32) {
+        self.val.fetch_add(val as usize, Ordering::Relaxed);
+    }
+
     pub fn unnormalized_value(&self) -> u32 {
         // we can read the atomic without any ordering constraints as in practice
         // we don't change the value in multi thread context

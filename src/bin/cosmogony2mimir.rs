@@ -107,7 +107,7 @@ fn normalize_weight(admins: &mut [Admin]) {
     let max = admins
         .iter()
         .fold(1u32, |m, a| u32::max(m, a.weight.unnormalized_value()));
-    for ref mut a in admins {
+    for ref a in admins {
         a.weight.normalize(max);
     }
 }
