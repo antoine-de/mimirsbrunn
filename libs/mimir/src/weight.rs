@@ -61,13 +61,26 @@ impl Weight {
         self.val.load(Ordering::Relaxed) as u32
     }
 
+    /// normalize the internal value so that once divided by MAX_VAL
+    /// it spans between [0, 1]
+    /// the `loop` is here to enfore the contraints on the atomicity
     pub fn normalize(&self, max_value: u32) {
-        let mut val: f64 = self.val.load(Ordering::Relaxed) as f64 / max_value as f64;
-        debug_assert!(0f64 <= val);
-        debug_assert!(val <= 1f64);
-        val *= MAX_VAL;
-        self.val.store(val as usize, Ordering::Relaxed);
-        self.normalized.store(true, Ordering::Relaxed);
+        let mut old = self.val.load(Ordering::Relaxed);
+        loop {
+            let mut new = old as f64 / max_value as f64;
+            debug_assert!(0f64 <= new);
+            debug_assert!(new <= 1f64);
+            new *= MAX_VAL;
+
+            let current = self
+                .val
+                .compare_and_swap(old, new as usize, Ordering::Relaxed);
+            if current == old {
+                self.normalized.store(true, Ordering::Relaxed);
+                break;
+            }
+            old = current;
+        }
     }
 }
 
