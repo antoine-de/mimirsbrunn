@@ -29,6 +29,7 @@
 // www.navitia.io
 use super::query;
 use hyper::mime::Mime;
+use iron::status::Status as IronStatus;
 use iron::typemap::Key;
 use mimir::rubber::Rubber;
 use model;
@@ -39,7 +40,7 @@ use params::{
 use prometheus;
 use prometheus::Encoder;
 use rustless;
-use rustless::server::{header, status};
+use rustless::server::header;
 use rustless::{Api, Nesting};
 use serde;
 use serde_json;
@@ -72,10 +73,11 @@ fn render<T>(
     obj: T,
 ) -> Result<rustless::Client, rustless::ErrorResponse>
 where
-    T: serde::Serialize,
+    T: serde::Serialize + model::v1::HasStatus,
 {
     client.set_json_content_type();
     client.set_header(header::AccessControlAllowOrigin::Any);
+    client.set_status(obj.status());
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
@@ -103,15 +105,17 @@ impl ApiEndPoint {
                     CustomError {
                         short: "validation error".to_string(),
                         long: format!("invalid arguments {:?}", val_err.reason),
+                        status: IronStatus::BadRequest,
                     }
                 } else {
                     CustomError {
                         short: "bad_request".to_string(),
                         long: format!("bad request, error: {}", error),
+                        status: IronStatus::BadRequest,
                     }
                 };
                 let mut resp = rustless::Response::from(
-                    status::StatusCode::BadRequest,
+                    err.status,
                     Box::new(serde_json::to_string(&err).unwrap()),
                 );
                 resp.set_json_content_type();
@@ -215,7 +219,8 @@ impl ApiEndPoint {
                         params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
                     let mut rubber = Rubber::new(&cnx);
-                    let model_autocomplete = rubber.get_address(&coord);
+                    let model_autocomplete =
+                        rubber.get_address(&coord).map_err(model::BragiError::from);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -233,16 +238,13 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                endpoint.handle(move |mut client, params| {
+                endpoint.handle(move |client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
                     let all_data = params
                         .find("_all_data")
                         .map_or(false, |val| val.as_bool().unwrap());
                     let features = query::features(&pt_datasets, all_data, &cnx, &id);
-                    if features.is_err() {
-                        client.set_status(status::StatusCode::NotFound);
-                    }
                     let response = model::v1::AutocompleteResponse::from(features);
                     render(client, response)
                 })

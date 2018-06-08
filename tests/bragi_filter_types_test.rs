@@ -223,3 +223,15 @@ fn stop_area_that_does_not_exists(bragi: &BragiHandler) {
     let result_body = iron_test::response::extract_body_to_string(response);
     assert!(result_body.contains("Unable to find object"));
 }
+
+fn stop_area_invalid_index(bragi: &BragiHandler) {
+    // if the index does not exists, we get a 404 with "impossible to find object"
+    let response = bragi
+        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=invalid_dataset")
+        .unwrap();
+
+    assert_eq!(response.status, Some(NotFound));
+
+    let result_body = iron_test::response::extract_body_to_string(response);
+    assert!(result_body.contains("Impossible to find object"));
+}
