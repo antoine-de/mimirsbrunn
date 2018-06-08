@@ -118,4 +118,8 @@ pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
     // (we should have the one without hash, but not the badly formated line)
     let res: Vec<_> = es_wrapper.search_and_filter("*.*", |_| true).collect();
     assert_eq!(res.len(), 10);
+
+    // We look for 'Fake-City' which should have been filtered since the street name is empty
+    let res: Vec<_> = es_wrapper.search_and_filter("Fake-City", |_| true).collect();
+    assert_eq!(res.len(), 0);
 }

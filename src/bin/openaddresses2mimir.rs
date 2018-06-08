@@ -128,7 +128,7 @@ where
             r.map_err(|e| info!("impossible to read line, error: {}", e))
                 .ok()
                 .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
-        });
+        }).filter(|a| !a.street.street_name.is_empty());
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
