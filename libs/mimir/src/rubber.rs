@@ -437,10 +437,12 @@ impl Rubber {
         let result: SearchResult<serde_json::Value> = self
             .es_client
             .search_query()
-            .with_indexes(&indexes
-                .iter()
-                .map(|index| index.as_str())
-                .collect::<Vec<_>>())
+            .with_indexes(
+                &indexes
+                    .iter()
+                    .map(|index| index.as_str())
+                    .collect::<Vec<_>>(),
+            )
             .with_query(&query)
             .with_size(1)
             .send()?;

@@ -124,11 +124,14 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
-        let iter = rdr.deserialize().filter_map(|r| {
-            r.map_err(|e| info!("impossible to read line, error: {}", e))
-                .ok()
-                .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
-        }).filter(|a| !a.street.street_name.is_empty());
+        let iter = rdr
+            .deserialize()
+            .filter_map(|r| {
+                r.map_err(|e| info!("impossible to read line, error: {}", e))
+                    .ok()
+                    .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
+            })
+            .filter(|a| !a.street.street_name.is_empty());
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;

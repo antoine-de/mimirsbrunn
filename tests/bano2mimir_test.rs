@@ -124,6 +124,8 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(total, 32);
 
     // We look for 'Fake-City' which should have been filtered since the street name is empty
-    let res: Vec<_> = es_wrapper.search_and_filter("Fake-City", |_| true).collect();
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("Fake-City", |_| true)
+        .collect();
     assert_eq!(res.len(), 0);
 }
