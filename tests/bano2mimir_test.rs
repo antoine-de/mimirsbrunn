@@ -34,7 +34,7 @@ use hyper::client::Client;
 use mdo::option::{bind, ret};
 
 /// Returns the total number of results in the ES
-fn get_total(es_wrapper: &::ElasticSearchWrapper) -> u64 {
+fn get_nb_elements(es_wrapper: &::ElasticSearchWrapper) -> u64 {
     let json = es_wrapper.search("*.*");
     json["hits"]["total"].as_u64().unwrap()
 }
@@ -120,7 +120,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // we should have imported 32 elements
     // (we shouldn't have the badly formated line)
-    let total = get_total(&es_wrapper);
+    let total = get_nb_elements(&es_wrapper);
     assert_eq!(total, 32);
 
     // We look for 'Fake-City' which should have been filtered since the street name is empty
