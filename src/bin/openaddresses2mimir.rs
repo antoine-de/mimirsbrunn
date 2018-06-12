@@ -45,6 +45,7 @@ extern crate structopt;
 use failure::ResultExt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use std::cell::Cell;
 use std::fs;
 use std::path::PathBuf;
 
@@ -123,6 +124,7 @@ where
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
+        let skipped_addresses = Cell::new(0);
         let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
         let iter = rdr
             .deserialize()
@@ -131,11 +133,21 @@ where
                     .ok()
                     .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
             })
-            .filter(|a| !a.street.street_name.is_empty());
+            .filter(|a| {
+                !a.street.street_name.is_empty() || {
+                    skipped_addresses.set(skipped_addresses.get() + 1);
+                    false
+                }
+            });
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!("importing {:?}: {} addresses added.", &f, nb);
+        info!(
+            "importing {:?}: {} addresses added and {} addresses skipped.",
+            &f,
+            nb,
+            skipped_addresses.get()
+        );
     }
     rubber.publish_index(dataset, addr_index)
 }

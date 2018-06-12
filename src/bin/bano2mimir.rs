@@ -46,6 +46,7 @@ use failure::ResultExt;
 use mimir::objects::Admin;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
@@ -155,7 +156,7 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
-
+        let skipped_addresses = Cell::new(0);
         let iter = rdr
             .deserialize()
             .filter_map(|r| {
@@ -163,11 +164,21 @@ where
                     .ok()
                     .map(|b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
             })
-            .filter(|a| !a.street.street_name.is_empty());
+            .filter(|a| {
+                !a.street.street_name.is_empty() || {
+                    skipped_addresses.set(skipped_addresses.get() + 1);
+                    false
+                }
+            });
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!("importing {:?}: {} addresses added.", &f, nb);
+        info!(
+            "importing {:?}: {} addresses added and {} addresses skipped.",
+            &f,
+            nb,
+            skipped_addresses.get()
+        );
     }
     rubber
         .publish_index(dataset, addr_index)
