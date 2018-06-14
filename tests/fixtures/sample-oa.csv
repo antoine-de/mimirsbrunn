@@ -1,0 +1,12 @@
+LON,LAT,NUMBER,STREET,UNIT,CITY,DISTRICT,REGION,POSTCODE,ID,HASH
+13.4193129,52.5235445,72,Otto-Braun-Straße,,Berlin,,,10178,,7dd34e4c6cc4cdcd
+13.3960675,52.5194301,3,Dorotheenstraße,,Berlin,,,10117,,58563cdf7c46ef4d
+13.3940601,52.5193514,16,Dorotheenstraße,,Berlin,,,10117,,47efc998880565c7
+13.3917783,52.5192125,26,Dorotheenstraße,,Berlin,,,10117,,96c3d317c4fc9f1a
+13.3914051,52.5189387,27,Dorotheenstraße,,Berlin,,,10117,,0eb02d64f941bf90
+13.3898511,52.518665,33,Dorotheenstraße,,Berlin,,,10117,,fde2c164f68b5a3f
+13.3891903,52.518889,34,Dorotheenstraße,,Berlin,,,10117,,6e93eaafadd1a45c
+13.3897137,52.5186699,35,Dorotheenstraße,,Berlin,,,10117,,025c011f388aa2b2
+13.3894677,52.5186535,37,Dorotheenstraße,,Berlin,,,10117,,d76a05fc52856e17
+13.3894677,52.518658,42,Dorotheenstraße,,Berlin,,,10117,line_without_hash_should_work,
+,,,,,,,,,badly_formated_line,

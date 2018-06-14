@@ -4,6 +4,10 @@ version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 
 [dependencies]
-hyper = "*"
-log = "0.3"
+hyper = "0.10"
+slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4.0"
 retry = "*"
+
+[dependencies.mimir]
+path = "../mimir"

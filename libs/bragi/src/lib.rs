@@ -28,68 +28,78 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#![cfg_attr(feature = "serde_macros", feature(custom_derive, plugin))]
-#![cfg_attr(feature = "serde_macros", plugin(serde_macros))]
-
-extern crate serde;
-extern crate serde_json;
-
-extern crate rustc_serialize;
-extern crate docopt;
-extern crate iron;
-extern crate urlencoded;
-extern crate regex;
-
-extern crate rustless;
-extern crate hyper;
-extern crate jsonway;
-extern crate valico;
-extern crate mimir;
-extern crate geojson;
 extern crate geo;
-
+extern crate geojson;
+extern crate iron;
+#[macro_use]
+extern crate lazy_static;
+extern crate mimir;
 extern crate rs_es;
+extern crate rustless;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
+#[macro_use]
+extern crate structopt;
+extern crate heck;
+extern crate urlencoded;
+extern crate valico;
+
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
+
+use iron::prelude::Chain;
 use iron::Iron;
 use rustless::Application;
+use structopt::StructOpt;
+
+extern crate logger;
 
 #[macro_use]
-extern crate mdo;
-#[macro_use]
-extern crate log;
+extern crate prometheus;
 
+extern crate hyper;
 
 pub mod api;
-pub mod query;
 mod model;
+mod params;
+pub mod query;
+use logger::Logger;
 
-#[derive(RustcDecodable, Debug)]
-pub struct Args {
-    flag_bind: String,
-    flag_connection_string: String,
+lazy_static! {
+    static ref BRAGI_ES: String =
+        std::env::var("BRAGI_ES").unwrap_or_else(|_| "http://localhost:9200/munin".into());
 }
 
-static USAGE: &'static str = "
-Usage:
-    bragi --help
-    bragi [--bind=<address>] [--connection-string=<connection-string>]
-
-Options:
-    -h, --help            Show this message.
-    -b, --bind=<addres>   adresse to bind, [default: 127.0.0.1:4000]
-    -c, --connection-string=<connection-string>
-                          Elasticsearch parameters, override BRAGI_ES and default to http://localhost:9200/munin
-";
+#[derive(StructOpt, Debug)]
+pub struct Args {
+    /// Address to bind.
+    #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:4000")]
+    bind: String,
+    /// Elasticsearch parameters, override BRAGI_ES environment variable.
+    #[structopt(short = "c", long = "connection-string", raw(default_value = "&BRAGI_ES"))]
+    connection_string: String,
+}
 
 pub fn runserver() {
-    let mut args: Args = docopt::Docopt::new(USAGE)
-                         .and_then(|d| d.decode())
-                         .unwrap_or_else(|e| e.exit());
-    if args.flag_connection_string.is_empty() {
-        args.flag_connection_string = std::env::var("BRAGI_ES").ok().unwrap_or("http://localhost:9200/munin".to_string());
-    }
-    let api = api::ApiEndPoint{es_cnx_string: args.flag_connection_string.clone()}.root();
+    let args = Args::from_args();
+    let api = api::ApiEndPoint {
+        es_cnx_string: args.connection_string,
+    }.root();
     let app = Application::new(api);
-    println!("listening on {}", args.flag_bind);
-    Iron::new(app).http(args.flag_bind.as_str()).unwrap();
 
+    let (logger_before, logger_after) = Logger::new(None);
+
+    let mut chain = Chain::new(app);
+    // Link logger_before as your first before middleware.
+    chain.link_before(logger_before);
+
+    // Link logger_after as your *last* after middleware.
+    chain.link_after(logger_after);
+
+    println!("listening on {}", args.bind);
+    Iron::new(chain).http(args.bind.as_str()).unwrap();
 }

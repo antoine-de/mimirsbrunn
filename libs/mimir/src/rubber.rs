@@ -28,25 +28,45 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
-use super::objects::{DocType, EsId, Admin};
+use super::objects::{Admin, MimirObject};
+use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use chrono;
-use regex;
+use failure::{Error, ResultExt};
 use hyper;
 use hyper::status::StatusCode;
-use rs_es::error::EsError;
 use rs_es;
+use rs_es::error::EsError;
+use rs_es::operations::search::ScanResult;
+use rs_es::operations::search::SearchResult;
+use rs_es::query::Query;
+use rs_es::units as rs_u;
+use rs_es::units::Duration;
 use rs_es::EsResponse;
 use serde;
 use serde_json;
-use rs_es::operations::search::ScanResult;
-
-use super::objects::{AliasOperations, AliasOperation, AliasParameter};
-use rs_es::units::Duration;
+use std;
 use std::collections::BTreeMap;
-use std::rc::Rc;
+use std::marker::PhantomData;
 
-pub type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
+const SYNONYMS: [&'static str; 17] = [
+    "cc,centre commercial",
+    "hotel de ville,mairie",
+    "gare sncf,gare",
+    "chu,chr,hopital",
+    "ld,lieu-dit",
+    "st,saint",
+    "ste,sainte",
+    "bvd,bld,bd,boulevard",
+    "pt,pont",
+    "rle,ruelle",
+    "rte,route",
+    "vla,villa",
+    "grand-champ,grandchamp",
+    "fac,faculte,ufr,universite",
+    "embarcadere,gare maritime",
+    "cpam,securite sociale",
+    "anpe,pole emploi",
+];
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
@@ -55,23 +75,188 @@ pub struct Rubber {
     http_client: hyper::client::Client,
 }
 
+pub struct TypedIndex<T> {
+    name: String,
+    _type: PhantomData<T>,
+}
+
+impl<T> TypedIndex<T> {
+    pub fn new(name: String) -> TypedIndex<T> {
+        TypedIndex {
+            name: name,
+            _type: PhantomData,
+        }
+    }
+}
+
 /// return the index associated to the given type and dataset
 /// this will be an alias over another real index
-fn get_main_index(doc_type: &str, dataset: &str) -> String {
-    format!("munin_{}_{}", doc_type, dataset)
+pub fn get_main_type_and_dataset_index<T: MimirObject>(dataset: &str) -> String {
+    format!("munin_{}_{}", T::doc_type(), dataset)
+}
+
+/// return the index associated to the given type
+/// this will be an alias over another real index
+pub fn get_main_type_index<T: MimirObject>() -> String {
+    format!("munin_{}", T::doc_type())
+}
+
+pub fn get_date_index_name(base_index_name: &str) -> String {
+    format!(
+        "{}_{}",
+        base_index_name,
+        chrono::Utc::now().format("%Y%m%d_%H%M%S_%f")
+    )
+}
+
+pub fn get_indexes_by_type(a_type: &str) -> String {
+    let doc_type = match a_type {
+        "public_transport:stop_area" => "stop",
+        "city" => "admin",
+        "house" => "addr",
+        _ => a_type,
+    };
+
+    format!("munin_{}", doc_type)
+}
+
+pub fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<Place>, EsError> {
+    debug!(
+        "{} documents found in {} ms",
+        result.hits.total, result.took
+    );
+    // for the moment rs-es does not handle enum Document,
+    // so we need to convert the ES glob to a Place
+    Ok(result
+        .hits
+        .hits
+        .into_iter()
+        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .collect())
+}
+
+/// takes a ES json blob and build a Place from it
+/// it uses the _type field of ES to know which type of the Place enum to fill
+pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<Place> {
+    value.and_then(|v| {
+        fn convert<T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
+        where
+            for<'de> T: serde::Deserialize<'de>,
+        {
+            serde_json::from_value::<T>(v)
+                .map_err(|err| warn!("Impossible to load ES result: {}", err))
+                .ok()
+                .map(f)
+        }
+        match doc_type.as_ref() {
+            "addr" => convert(*v, Place::Addr),
+            "street" => convert(*v, Place::Street),
+            "admin" => convert(*v, Place::Admin),
+            "poi" => convert(*v, Place::Poi),
+            "stop" => convert(*v, Place::Stop),
+            _ => {
+                warn!("unknown ES return value, _type field = {}", doc_type);
+                None
+            }
+        }
+    })
+}
+
+/// Create a `rs_es::Query` that boosts results according to the
+/// distance to `coord`.
+pub fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
+    Query::build_function_score()
+        .with_boost(boost)
+        .with_function(
+            rs_es::query::functions::Function::build_decay(
+                "coord",
+                rs_u::Location::LatLon(coord.lat(), coord.lon()),
+                rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
+            ).build_gauss(),
+        )
+        .build()
+}
+
+pub fn is_existing_index(client: &mut rs_es::Client, index: &str) -> Result<bool, EsError> {
+    if index.is_empty() {
+        return Ok(false);
+    }
+    match client.open_index(&index) {
+        //This error indicates that the search index is absent in ElasticSearch.
+        Err(EsError::EsError(_)) => Ok(false),
+        Err(e) => Err(e),
+        Ok(_) => Ok(true),
+    }
+}
+
+pub fn get_indexes(
+    all_data: bool,
+    pt_datasets: &[&str],
+    types: &[&str],
+    client: &mut rs_es::Client,
+) -> Result<Vec<String>, EsError> {
+    make_indexes_impl(all_data, pt_datasets, types, |index| {
+        is_existing_index(client, index)
+    })
+}
+
+pub fn make_indexes_impl<F: FnMut(&str) -> Result<bool, EsError>>(
+    all_data: bool,
+    pt_datasets: &[&str],
+    types: &[&str],
+    mut is_existing_index: F,
+) -> Result<Vec<String>, EsError> {
+    if all_data {
+        return Ok(vec!["munin".to_string()]);
+    }
+
+    let mut result: Vec<String> = vec![];
+    let mut push = |result: &mut Vec<_>, i: &str| -> Result<(), EsError> {
+        if try!(is_existing_index(i)) {
+            result.push(i.into());
+        }
+        Ok(())
+    };
+
+    let mut pt_dataset_indexes: Vec<String> = vec![];
+    match pt_datasets.len() {
+        0 => (),
+        1 => {
+            for pt_dataset in pt_datasets.iter() {
+                try!(push(
+                    &mut pt_dataset_indexes,
+                    format!("munin_stop_{}", pt_dataset).as_str(),
+                ))
+            }
+        }
+        _ => try!(push(&mut pt_dataset_indexes, "munin_global_stops")),
+    };
+
+    match types.len() {
+        0 => {
+            try!(push(&mut result, &"munin_geo_data".to_string()));
+            result.append(&mut pt_dataset_indexes);
+        }
+        _ => {
+            for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
+                try!(push(&mut result, &get_indexes_by_type(type_)));
+            }
+            if types.contains(&"public_transport:stop_area") {
+                result.append(&mut pt_dataset_indexes);
+            }
+        }
+    }
+
+    Ok(result)
 }
 
 impl Rubber {
     // build a rubber with a connection string (http://host:port/)
     pub fn new(cnx: &str) -> Rubber {
-        let re = regex::Regex::new(r"(?:https?://)?(?P<host>.+?):(?P<port>\d+)").unwrap();
-        let cap = re.captures(cnx).unwrap();
-        let host = cap.name("host").unwrap();
-        let port = cap.name("port").unwrap().parse::<u32>().unwrap();
-        info!("elastic search host {:?} port {:?}", host, port);
+        info!("elastic search host {} ", cnx);
 
         Rubber {
-            es_client: rs_es::Client::new(&host, port),
+            es_client: rs_es::Client::new(&cnx).unwrap(),
             http_client: hyper::client::Client::new(),
         }
     }
@@ -80,104 +265,219 @@ impl Rubber {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client
-                              .get(&url)
-                              .send());
+        let result = try!(self.http_client.get(&url).send());
         rs_es::do_req(result)
     }
     fn put(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client
-                              .put(&url)
-                              .body(body)
-                              .send());
+        let result = try!(self.http_client.put(&url).body(body).send());
         rs_es::do_req(result)
     }
     fn post(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a post on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client
-                              .post(&url)
-                              .body(body)
-                              .send());
+        let result = try!(self.http_client.post(&url).body(body).send());
         rs_es::do_req(result)
     }
 
-    pub fn make_index(&self, doc_type: &str, dataset: &str) -> Result<String, String> {
-        let current_time = chrono::UTC::now().format("%Y%m%d_%H%M%S_%f");
-        let index_name = format!("munin_{}_{}_{}", doc_type, dataset, current_time);
+    pub fn make_index<T: MimirObject>(&self, dataset: &str) -> Result<TypedIndex<T>, Error> {
+        let index_name = get_date_index_name(&get_main_type_and_dataset_index::<T>(dataset));
         info!("creating index {}", index_name);
-        self.create_index(&index_name.to_string()).map(|_| index_name)
+        self.create_index(&index_name.to_string())?;
+        Ok(TypedIndex::new(index_name))
     }
 
-    fn create_index(&self, name: &String) -> Result<(), String> {
+    pub fn create_index(&self, name: &String) -> Result<(), Error> {
         debug!("creating index");
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
         let analysis = include_str!("../../../json/settings.json");
-        self.put(name, &analysis)
+
+        let mut analysis_json_value = try!(
+            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| {
+                format_err!("Error occurred when creating index: {} err: {}", name, err)
+            })
+        );
+
+        let synonyms: Vec<_> = SYNONYMS
+            .iter()
+            .map(|s| serde_json::Value::String(s.to_string()))
+            .collect();
+
+        *analysis_json_value
+            .pointer_mut("/settings/analysis/filter/synonym_filter/synonyms")
+            .unwrap() = serde_json::Value::Array(synonyms);
+
+        self.put(name, &analysis_json_value.to_string())
             .map_err(|e| {
-                info!("Error while creating new index {}", name);
-                e.to_string()
+                format_err!(
+                    "Error: {},  while creating new index {}, ",
+                    name,
+                    e.to_string()
+                )
             })
             .and_then(|res| {
                 if res.status == StatusCode::Ok {
                     Ok(())
                 } else {
-                    Err(format!("cannot create index: {:?}", res))
+                    Err(format_err!("cannot create index: {:?}", res))
                 }
             })
     }
 
-    fn get_last_index(&self, doc_type: &str, dataset: &str) -> Result<Vec<String>, String> {
-        debug!("get last index: {base_index}/_aliases",
-               base_index = get_main_index(doc_type, dataset));
-        self.get(&format!("{base_index}/_aliases",
-                          base_index = get_main_index(doc_type, dataset)))
-            .map_err(|e| e.to_string())
-            .and_then(|res| {
-                match res.status {
-                    StatusCode::Ok => {
-                        let value: serde_json::Value = try!(res.read_response()
-                                                               .map_err(|e| e.to_string()));
-                        Ok(value.as_object()
-                                .and_then(|aliases| Some(aliases.keys().cloned().collect()))
-                                .unwrap_or_else(|| {
-                                    info!("no previous index to delete for type {} and dataset {}",
-                                          doc_type,
-                                          dataset);
-                                    vec![]
-                                }))
-                    }
-                    StatusCode::NotFound => {
-                        info!("impossible to find alias {}, no last index to remove",
-                              get_main_index(doc_type, dataset));
-                        Ok(vec![])
-                    }
-                    _ => Err(format!("invalid elasticsearch response: {:?}", res)),
-                }
-
+    pub fn create_template(&self, name: &str, settings: &str) -> Result<(), Error> {
+        debug!("creating template");
+        self.put(&format!("_template/{}", name), settings)
+            .map_err(|e| {
+                info!("Error while creating template {}", name);
+                format_err!("Error: {} while creating template {}", e.to_string(), name)
             })
+            .and_then(|res| {
+                if res.status == StatusCode::Ok {
+                    Ok(())
+                } else {
+                    Err(format_err!("cannot create template: {:?}", res))
+                }
+            })
+    }
+
+    pub fn initialize_templates(&self) -> Result<(), Error> {
+        self.create_template(
+            &"template_addr",
+            include_str!("../../../json/addr_settings.json"),
+        )?;
+        self.create_template(
+            &"template_stop",
+            include_str!("../../../json/stop_settings.json"),
+        )?;
+        self.create_template(
+            &"template_admin",
+            include_str!("../../../json/admin_settings.json"),
+        )?;
+        self.create_template(
+            &"template_street",
+            include_str!("../../../json/street_settings.json"),
+        )?;
+        self.create_template(
+            &"template_poi",
+            include_str!("../../../json/poi_settings.json"),
+        )?;
+        Ok(())
+    }
+
+    // get all aliases for a doc_type/dataset
+    // return a map with each index as key and all their aliases
+    pub fn get_all_aliased_index(
+        &self,
+        base_index: &str,
+    ) -> Result<BTreeMap<String, Vec<String>>, Error> {
+        let res = self
+            .get(&format!("{}*/_aliases", base_index))
+            .with_context(|_| format!("Error occurred when getting {}*/_aliases", base_index))?;
+        match res.status {
+            StatusCode::Ok => {
+                let value: serde_json::Value = res.read_response()?;
+                Ok(value
+                    .as_object()
+                    .map(|all_aliases| {
+                        all_aliases
+                            .iter()
+                            .filter_map(|(i, a)| {
+                                a.pointer("/aliases")
+                                    .and_then(|a| a.as_object())
+                                    .map(|aliases| (i.clone(), aliases.keys().cloned().collect()))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_else(|| {
+                        info!("no aliases for {}", base_index);
+                        BTreeMap::new()
+                    }))
+            }
+            StatusCode::NotFound => {
+                info!("impossible to find alias {}", base_index);
+                Ok(BTreeMap::new())
+            }
+            _ => Err(format_err!("invalid elasticsearch response: {:?}", res)),
+        }
+    }
+
+    // get the last indexes for this doc_type/dataset
+    // Note: to be resilient to ghost ES indexes, we return all indexes for this doc_type/dataset
+    // but the new index
+    fn get_last_index<T: MimirObject>(
+        &self,
+        new_index: &TypedIndex<T>,
+        dataset: &str,
+    ) -> Result<Vec<String>, Error> {
+        let base_index = get_main_type_and_dataset_index::<T>(dataset);
+        // we don't want to remove the newly created index
+        Ok(self
+            .get_all_aliased_index(&base_index)?
+            .into_iter()
+            .map(|(k, _)| k)
+            .filter(|i| i.as_str() != new_index.name)
+            .collect())
+    }
+
+    pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
+        let types = vec!["house".into(), "street".into()];
+        let indexes = get_indexes(false, &[], &types, &mut self.es_client)?;
+        let distance = rs_u::Distance::new(1000., rs_u::DistanceUnit::Meter);
+        let geo_distance =
+            Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance).build();
+        let query = Query::build_bool()
+            .with_should(build_proximity_with_boost(coord, 1.))
+            .with_must(geo_distance)
+            .build();
+
+        let result: SearchResult<serde_json::Value> = self
+            .es_client
+            .search_query()
+            .with_indexes(&indexes
+                .iter()
+                .map(|index| index.as_str())
+                .collect::<Vec<_>>())
+            .with_query(&query)
+            .with_size(1)
+            .send()?;
+        collect(result)
     }
 
     /// publish the index as the new index for this doc_type and this dataset
     /// move the index alias of the doc_type and the dataset to point to this indexes
     /// and remove the old index
-    pub fn publish_index(&mut self,
-                         doc_type: &str,
-                         dataset: &str,
-                         index: String)
-                         -> Result<(), String> {
+    pub fn publish_index<T: MimirObject>(
+        &mut self,
+        dataset: &str,
+        index: TypedIndex<T>,
+    ) -> Result<(), Error> {
         debug!("publishing index");
-        let last_indexes = try!(self.get_last_index(doc_type, dataset));
-        let main_index = get_main_index(doc_type, dataset);
-        try!(self.alias(&main_index, &vec![index.clone()], &last_indexes));
-        try!(self.alias("munin", &vec![main_index.to_string()], &vec![]));
+        let last_indexes = try!(self.get_last_index(&index, dataset));
+
+        let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
+        self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes)
+            .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
+
+        let type_index = get_main_type_index::<T>();
+        self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
+            .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
+
+        if T::is_geo_data() {
+            self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
+                .context("Error occurred when making alias: munin_geo_data")?;
+            self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
+                .context("Error occurred when making alias: munin")?;
+        } else {
+            self.alias("munin", &vec![type_index.to_string()], &vec![])
+                .context("Error occurred when making alias: munin")?;
+        }
         for i in last_indexes {
-            try!(self.delete_index(&i));
+            self.delete_index(&i)
+                .with_context(|_| format!("Error occurred when deleting index: {}", i))?;
         }
         Ok(())
     }
@@ -190,82 +490,84 @@ impl Rubber {
 
     /// add a list of new indexes to the alias
     /// remove a list of indexes from the alias
-    fn alias(&self, alias: &str, add: &Vec<String>, remove: &Vec<String>) -> Result<(), String> {
-        info!("for {}, adding alias {:?}, removing {:?}",
-              alias,
-              add,
-              remove);
-        let add_operations = add.iter().map(|x| {
-            AliasOperation {
-                remove: None,
-                add: Some(AliasParameter {
-                    index: x.clone(),
-                    alias: alias.to_string(),
-                }),
-            }
+    pub fn alias(&self, alias: &str, add: &[String], remove: &[String]) -> Result<(), Error> {
+        info!(
+            "for {}, adding alias {:?}, removing {:?}",
+            alias, add, remove
+        );
+        let add_operations = add.iter().map(|x| AliasOperation {
+            remove: None,
+            add: Some(AliasParameter {
+                index: x.clone(),
+                alias: alias.to_string(),
+            }),
         });
-        let remove_operations = remove.iter().map(|x| {
-            AliasOperation {
-                add: None,
-                remove: Some(AliasParameter {
-                    index: x.clone(),
-                    alias: alias.to_string(),
-                }),
-            }
+        let remove_operations = remove.iter().map(|x| AliasOperation {
+            add: None,
+            remove: Some(AliasParameter {
+                index: x.clone(),
+                alias: alias.to_string(),
+            }),
         });
         let operations = AliasOperations {
             actions: add_operations.chain(remove_operations).collect(),
         };
-        let json = serde_json::to_string(&operations).unwrap();
-        self.post("_aliases", &json)
-            .map_err(|e| e.to_string())
-            .and_then(|res| {
-                if res.status == StatusCode::Ok {
-                    Ok(())
-                } else {
-                    error!("failed to change aliases for {}, es response: {:?}",
-                           alias,
-                           res);
-                    Err(format!("failed to post aliases for {}: {:?}", alias, res).to_string())
-                }
-            })
+        let json = serde_json::to_string(&operations)?;
+        let res = self
+            .post("_aliases", &json)
+            .context("Error occurred when POSTing: _alias")?;
+        match res.status {
+            StatusCode::Ok => Ok(()),
+            _ => bail!("failed to post aliases for {}: {:?}", alias, res),
+        }
     }
 
-    pub fn delete_index(&mut self, index: &String) -> Result<(), String> {
+    pub fn delete_index(&mut self, index: &String) -> Result<(), Error> {
         debug!("deleting index {}", &index);
-        let res = self.es_client
-                      .delete_index(&index)
-                      .map(|res| res.acknowledged)
-                      .unwrap_or(false);
+        let res = self
+            .es_client
+            .delete_index(&index)
+            .map(|res| res.acknowledged)
+            .unwrap_or(false);
         if !res {
-            Err(format!("Error deleting index {}", &index).into())
+            bail!("Error deleting index {}", &index)
         } else {
             Ok(())
         }
     }
 
-    pub fn bulk_index<T, I>(&mut self,
-                            index: &String,
-                            iter: I)
-                            -> Result<usize, rs_es::error::EsError>
-        where T: serde::Serialize + DocType + EsId,
-              I: Iterator<Item = T>
+    pub fn bulk_index<T, I>(
+        &mut self,
+        index: &TypedIndex<T>,
+        iter: I,
+    ) -> Result<usize, rs_es::error::EsError>
+    where
+        T: MimirObject,
+        I: Iterator<Item = T>,
     {
         use rs_es::operations::bulk::Action;
         let mut nb = 0;
         let chunk_size = 1000;
-        //fold is used for creating the action and optionally set the id of the object
-        let mut actions = iter.map(|v| v.es_id()
-                                        .into_iter()
-                                        .fold(Action::index(v), |action, id| action.with_id(id)));
+        // fold is used for creating the action and optionally set the id of the object
+        let mut actions = iter.map(|v| {
+            v.es_id()
+                .into_iter()
+                .fold(Action::index(v), |action, id| action.with_id(id))
+        });
         loop {
             let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
+
+            if chunk.is_empty() {
+                break;
+            }
             nb += chunk.len();
-            try!(self.es_client
-                     .bulk(&chunk)
-                     .with_index(&index)
-                     .with_doc_type(T::doc_type())
-                     .send());
+            try!(
+                self.es_client
+                    .bulk(&chunk)
+                    .with_index(&index.name)
+                    .with_doc_type(T::doc_type())
+                    .send()
+            );
 
             if chunk.len() < chunk_size {
                 break;
@@ -280,34 +582,58 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, doc_type: &str, dataset: &str, iter: I) -> Result<usize, String>
-        where T: serde::Serialize + DocType + EsId,
-              I: Iterator<Item = T>
+    pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, Error>
+    where
+        T: MimirObject,
+        I: Iterator<Item = T>,
     {
         // TODO better error handling
-        let index = try!(self.make_index(doc_type, dataset));
-        let nb_elements = try!(self.bulk_index(&index, iter).map_err(|e| e.to_string()));
-        try!(self.publish_index(doc_type, dataset, index));
+        let index = self
+            .make_index(dataset)
+            .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
+        let nb_elements = self.bulk_index(&index, iter)?;
+        self.publish_index(dataset, index)?;
         Ok(nb_elements)
     }
 
-    pub fn get_admins(&mut self, dataset: &str) -> Result<AdminFromInsee, rs_es::error::EsError> {
-        let mut result: AdminFromInsee = BTreeMap::new();
-        let index = get_main_index("admin", dataset);
-        let mut scan: ScanResult<Admin> = try!(self.es_client
+    pub fn get_admins_from_dataset(
+        &mut self,
+        dataset: &str,
+    ) -> Result<Vec<Admin>, rs_es::error::EsError> {
+        self.get_all_objects_from_index(&get_main_type_and_dataset_index::<Admin>(dataset))
+    }
+
+    pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
+        self.get_all_objects_from_index(&get_main_type_index::<Admin>())
+    }
+
+    pub fn get_all_objects_from_index<T>(
+        &mut self,
+        index: &str,
+    ) -> Result<Vec<T>, rs_es::error::EsError>
+    where
+        for<'de> T: MimirObject + serde::de::Deserialize<'de> + std::fmt::Debug,
+    {
+        let mut result: Vec<T> = vec![];
+        let mut scan: ScanResult<T> = self
+            .es_client
             .search_query()
             .with_indexes(&[&index])
             .with_size(1000)
-            .with_types(&[&"admin"])
-            .scan(&Duration::minutes(1)));
+            .with_types(&[&T::doc_type()])
+            .scan(&Duration::minutes(1))?;
         loop {
             let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
             if page.hits.hits.len() == 0 {
                 break;
             }
-            for ad in page.hits.hits.into_iter().filter_map(|hit| hit.source) {
-                result.insert(ad.id.to_string(), Rc::new(*ad));
-            }
+            result.extend(
+                page.hits
+                    .hits
+                    .into_iter()
+                    .filter_map(|hit| hit.source)
+                    .map(|ad| *ad),
+            );
         }
         try!(scan.close(&mut self.es_client));
         Ok(result)
@@ -318,11 +644,6 @@ impl Rubber {
 pub fn test_valid_url() {
     Rubber::new("http://localhost:9200");
     Rubber::new("localhost:9200");
-}
-
-#[test]
-#[should_panic]
-pub fn test_invalid_url() {
     Rubber::new("http://bob");
 }
 
@@ -330,4 +651,112 @@ pub fn test_invalid_url() {
 #[should_panic]
 pub fn test_invalid_url_no_port() {
     Rubber::new("localhost");
+}
+
+#[test]
+fn test_make_indexes_impl() {
+    fn ok_index(_index: &str) -> Result<bool, EsError> {
+        Ok(true)
+    }
+    // all_data
+    assert_eq!(
+        make_indexes_impl(true, &[], &[], ok_index).unwrap(),
+        vec!["munin"]
+    );
+
+    // no dataset and no types
+    assert_eq!(
+        make_indexes_impl(false, &[], &[], ok_index).unwrap(),
+        vec!["munin_geo_data"]
+    );
+
+    // dataset fr + no types
+    assert_eq!(
+        make_indexes_impl(false, &["fr"], &[], ok_index).unwrap(),
+        vec!["munin_geo_data", "munin_stop_fr"]
+    );
+
+    // no dataset + types poi, city, street, house and public_transport:stop_area
+    // => munin_stop is not included
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &[],
+            &[
+                "poi",
+                "city",
+                "street",
+                "house",
+                "public_transport:stop_area",
+            ],
+            ok_index,
+        ).unwrap(),
+        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+    );
+
+    // no dataset fr + type public_transport:stop_area only
+    assert_eq!(
+        make_indexes_impl(false, &[], &["public_transport:stop_area"], ok_index).unwrap(),
+        Vec::<String>::new()
+    );
+
+    // dataset fr + types poi, city, street, house and public_transport:stop_area
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &["fr"],
+            &[
+                "poi",
+                "city",
+                "street",
+                "house",
+                "public_transport:stop_area",
+            ],
+            ok_index,
+        ).unwrap(),
+        vec![
+            "munin_poi",
+            "munin_admin",
+            "munin_street",
+            "munin_addr",
+            "munin_stop_fr",
+        ]
+    );
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    //  => munin_stop_fr is not included
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &["fr"],
+            &["poi", "city", "street", "house"],
+            ok_index,
+        ).unwrap(),
+        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+    );
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with a result "false" as non of the index
+    // is present in elasticsearch
+    assert_eq!(
+        make_indexes_impl(
+            false,
+            &["fr"],
+            &["poi", "city", "street", "house"],
+            |_index| Ok::<_, EsError>(false),
+        ).unwrap(),
+        Vec::<String>::new()
+    );
+
+    // dataset fr types poi, city, street, house without public_transport:stop_area
+    // and the function is_existing_index with an error in the result (Elasticsearch is absent..)
+    match make_indexes_impl(
+        false,
+        &["fr"],
+        &["poi", "city", "street", "house"],
+        |_index| Err::<bool, _>(EsError::EsError("Elasticsearch".into())),
+    ) {
+        Err(EsError::EsError(e)) => assert_eq!(e, "Elasticsearch"),
+        _ => assert!(false),
+    }
 }

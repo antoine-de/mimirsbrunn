@@ -28,13 +28,16 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate log;
-extern crate mimir;
 extern crate bragi;
+extern crate mimir;
+
+#[macro_use]
+extern crate slog;
+#[macro_use]
+extern crate slog_scope;
 
 fn main() {
-    mimir::logger_init().unwrap();
+    let _guard = mimir::logger_init();
     debug!("running bragi webserver");
     bragi::runserver();
 }

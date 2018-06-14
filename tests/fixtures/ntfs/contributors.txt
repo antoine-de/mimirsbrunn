@@ -1,0 +1,2 @@
+contributor_id,contributor_name,contributor_website,contributor_license
+TGC,The Great Contributor,http://the-great-contributor.com,DoWhattheFuckYouWanttoPublicLicense

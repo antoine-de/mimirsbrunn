@@ -27,30 +27,55 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+use super::query;
+use hyper::mime::Mime;
+use iron::typemap::Key;
+use mimir::rubber::Rubber;
+use model;
+use model::v1::*;
+use params::{
+    coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param,
+};
+use prometheus;
+use prometheus::Encoder;
 use rustless;
+use rustless::server::{header, status};
+use rustless::{Api, Nesting};
 use serde;
 use serde_json;
-use rustc_serialize::json;
-use rustless::server::status;
-use rustless::{Api, Nesting};
 use valico::json_dsl;
-use valico::common::error as valico_error;
-use super::query;
-use model::v1::*;
-use model;
 
-const MAX_LAT: f64 = 180f64;
-const MIN_LAT: f64 = -180f64;
+const DEFAULT_LIMIT: u64 = 10u64;
+const DEFAULT_OFFSET: u64 = 0u64;
 
-const MAX_LON: f64 = 90f64;
-const MIN_LON: f64 = -90f64;
+struct Timer;
+impl Key for Timer {
+    type Value = prometheus::HistogramTimer;
+}
 
-fn render<T>(mut client: rustless::Client,
-             obj: T)
-             -> Result<rustless::Client, rustless::ErrorResponse>
-    where T: serde::Serialize
+lazy_static! {
+    static ref HTTP_COUNTER: prometheus::CounterVec = register_counter_vec!(
+        "bragi_http_requests_total",
+        "Total number of HTTP requests made.",
+        &["handler", "method", "status"]
+    ).unwrap();
+    static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
+        "bragi_http_request_duration_seconds",
+        "The HTTP request latencies in seconds.",
+        &["handler", "method"],
+        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+    ).unwrap();
+}
+
+fn render<T>(
+    mut client: rustless::Client,
+    obj: T,
+) -> Result<rustless::Client, rustless::ErrorResponse>
+where
+    T: serde::Serialize,
 {
     client.set_json_content_type();
+    client.set_header(header::AccessControlAllowOrigin::Any);
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
@@ -63,7 +88,9 @@ impl ApiEndPoint {
         Api::build(|api| {
             api.get("", |endpoint| {
                 endpoint.handle(|client, _params| {
-                    let desc = EndPoint { description: "autocomplete service".to_string() };
+                    let desc = EndPoint {
+                        description: "autocomplete service".to_string(),
+                    };
                     render(client, desc)
                 })
             });
@@ -83,11 +110,52 @@ impl ApiEndPoint {
                         long: format!("bad request, error: {}", error),
                     }
                 };
-                let mut resp = rustless::Response::from(status::StatusCode::BadRequest,
-                                                        Box::new(serde_json::to_string(&err)
-                                                            .unwrap()));
+                let mut resp = rustless::Response::from(
+                    status::StatusCode::BadRequest,
+                    Box::new(serde_json::to_string(&err).unwrap()),
+                );
                 resp.set_json_content_type();
                 Some(resp)
+            });
+
+            api.before(|client, _params| {
+                let method = client.endpoint.method.to_string();
+
+                HTTP_REQ_HISTOGRAM
+                    .get_metric_with(&labels!{
+                        "handler" => client.endpoint.path.path.as_str(),
+                        "method" => method.as_str(),
+                    })
+                    .map(|timer| {
+                        client.ext.insert::<Timer>(timer.start_timer());
+                    })
+                    .unwrap_or_else(|err| {
+                        error!("impossible to get HTTP_REQ_HISTOGRAM metrics";
+                               "err" => err.to_string());
+                    });
+                Ok(())
+            });
+
+            api.after(|client, _params| {
+                let method = client.endpoint.method.to_string();
+                let code = client.status().to_string();
+
+                HTTP_COUNTER
+                    .get_metric_with(&labels!{
+                        "handler" => client.endpoint.path.path.as_str(),
+                        "method" => method.as_str(),
+                        "status" => code.as_str(),
+                    })
+                    .map(|counter| counter.inc())
+                    .unwrap_or_else(|err| {
+                        error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
+                    });
+                client
+                    .ext
+                    .remove::<Timer>()
+                    .map(|timer| timer.observe_duration())
+                    .unwrap_or_else(|| error!("impossible to get timers from typemap"));
+                Ok(())
             });
             api.mount(self.v1());
         })
@@ -97,6 +165,9 @@ impl ApiEndPoint {
         Api::build(|api| {
             api.mount(self.status());
             api.mount(self.autocomplete());
+            api.mount(self.features());
+            api.mount(self.reverse());
+            api.mount(self.metrics());
         })
     }
 
@@ -116,90 +187,156 @@ impl ApiEndPoint {
         })
     }
 
+    fn metrics(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("metrics", |endpoint| {
+                endpoint.handle(move |mut client, _params| {
+                    let encoder = prometheus::TextEncoder::new();
+                    let metric_familys = prometheus::gather();
+                    let mut buffer = vec![];
+                    encoder.encode(&metric_familys, &mut buffer).unwrap();
+                    client.set_content_type(encoder.format_type().parse::<Mime>().unwrap());
+                    client.text(String::from_utf8(buffer).unwrap())
+                })
+            });
+        })
+    }
+
+    fn reverse(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("reverse", |endpoint| {
+                endpoint.params(|params| {
+                    coord_param(params, false);
+                });
+                let cnx = self.es_cnx_string.clone();
+                endpoint.handle(move |client, params| {
+                    let coord = ::mimir::Coord::new(
+                        params.find("lon").and_then(|p| p.as_f64()).unwrap(),
+                        params.find("lat").and_then(|p| p.as_f64()).unwrap(),
+                    );
+                    let mut rubber = Rubber::new(&cnx);
+                    let model_autocomplete = rubber.get_address(&coord);
+
+                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    render(client, response)
+                })
+            });
+        })
+    }
+
+    fn features(&self) -> rustless::Api {
+        Api::build(|api| {
+            api.get("features/:id", |endpoint| {
+                endpoint.params(|params| {
+                    params.opt_typed("id", json_dsl::string());
+                    dataset_param(params);
+                });
+
+                let cnx = self.es_cnx_string.clone();
+                endpoint.handle(move |mut client, params| {
+                    let id = params.find("id").unwrap().as_str().unwrap();
+                    let pt_datasets = get_param_array(params, "pt_dataset");
+                    let all_data = params
+                        .find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
+                    let features = query::features(&pt_datasets, all_data, &cnx, &id);
+                    if features.is_err() {
+                        client.set_status(status::StatusCode::NotFound);
+                    }
+                    let response = model::v1::AutocompleteResponse::from(features);
+                    render(client, response)
+                })
+            });
+        })
+    }
+
     fn autocomplete(&self) -> rustless::Api {
         Api::build(|api| {
             api.post("autocomplete", |endpoint| {
                 endpoint.params(|params| {
                     params.opt_typed("q", json_dsl::string());
-                    params.req("geometry", |geometry| {
-                        geometry.coerce(json_dsl::object());
-                        geometry.nest(|params| {
-                            params.req("type", |geojson_type| {
-                                geojson_type.coerce(json_dsl::string());
-                                geojson_type.allow_values(&["Polygon".to_string()]);
-                            });
-                        });
-                        geometry.nest(|params| {
-                            params.req("coordinates", |shape| {
-                                shape.coerce(json_dsl::array());
-                                shape.validate_with(|val, path| {
-                                    check_coordinates(val, path, "Coordinates is invalid")
-                                });
-                            });
-                        });
-                    })
+                    dataset_param(params);
+                    paginate_param(params);
+                    shape_param(params);
+                    types_param(params);
                 });
 
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = match params.find("q") {
-                            Some(val) => val.as_string().unwrap_or(""),
-                            None => "",
-                        }
+                    let q = params
+                        .find("q")
+                        .and_then(|val| val.as_str())
+                        .unwrap_or("")
                         .to_string();
-                    let geometry = params.find_path(&["geometry"]).unwrap();
-                    let coordinates =
-                        geometry.find_path(&["coordinates"]).unwrap().as_array().unwrap();
+                    let pt_datasets = get_param_array(params, "pt_dataset");
+                    let all_data = params
+                        .find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
+                    let offset = params
+                        .find("offset")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_OFFSET);
+                    let limit = params
+                        .find("limit")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_LIMIT);
+                    let geometry = params.find_path(&["shape", "geometry"]).unwrap();
+                    let coordinates = geometry
+                        .find_path(&["coordinates"])
+                        .unwrap()
+                        .as_array()
+                        .unwrap();
                     let mut shape = Vec::new();
                     for ar in coordinates[0].as_array().unwrap() {
                         // (Lat, Lon)
-                        shape.push((ar[1].as_f64().unwrap(), ar[0].as_f64().unwrap()));
+                        shape.push((
+                            ar.as_array().unwrap()[1].as_f64().unwrap(),
+                            ar.as_array().unwrap()[0].as_f64().unwrap(),
+                        ));
                     }
-                    let model_autocomplete = query::autocomplete(&q, None, &cnx, Some(shape));
-
+                    let types = get_param_array(params, "type");
+                    let model_autocomplete = query::autocomplete(
+                        &q,
+                        &pt_datasets,
+                        all_data,
+                        offset,
+                        limit,
+                        None,
+                        &cnx,
+                        Some(shape),
+                        &types,
+                    );
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
                 })
             });
             api.get("autocomplete", |endpoint| {
                 endpoint.params(|params| {
-                    params.req_typed("q", json_dsl::string());
-                    params.opt("lon", |lon| {
-                        lon.coerce(json_dsl::f64());
-                        lon.validate_with(|val, path| {
-                            check_bound(val, path, MIN_LON, MAX_LON, "lon is not a valid longitude")
-                        });
-                    });
-
-                    params.opt("lat", |lat| {
-                        lat.coerce(json_dsl::f64());
-                        lat.validate_with(|val, path| {
-                            check_bound(val, path, MIN_LAT, MAX_LAT, "lat is not a valid latitude")
-                        });
-                    });
-                    params.validate_with(|val, path| {
-                        // if we have a lat we should have a lon (and the opposite)
-                        if let json::Json::Object(ref obj) = *val {
-                            let has_lon = obj.get("lon").is_some();
-                            let has_lat = obj.get("lat").is_some();
-                            if has_lon ^ has_lat {
-                                Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                             path: path.to_string(),
-                                             detail: Some("you need to provide a lon AND a lat \
-                                                           if you provide one of them"
-                                                 .to_string()),
-                                         })])
-                            } else {
-                                Ok(())
-                            }
-                        } else {
-                            unreachable!("should never happen, already checked");
-                        }
-                    });
+                    params.opt_typed("q", json_dsl::string());
+                    dataset_param(params);
+                    paginate_param(params);
+                    coord_param(params, true);
+                    types_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
-                    let q = params.find("q").unwrap().as_string().unwrap().to_string();
+                    let q = params
+                        .find("q")
+                        .and_then(|val| val.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let pt_datasets = get_param_array(params, "pt_dataset");
+                    let all_data = params
+                        .find("_all_data")
+                        .map_or(false, |val| val.as_bool().unwrap());
+                    let offset = params
+                        .find("offset")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_OFFSET);
+                    let limit = params
+                        .find("limit")
+                        .and_then(|val| val.as_u64())
+                        .unwrap_or(DEFAULT_LIMIT);
                     let lon = params.find("lon").and_then(|p| p.as_f64());
                     let lat = params.find("lat").and_then(|p| p.as_f64());
                     // we have already checked that if there is a lon, lat
@@ -210,7 +347,20 @@ impl ApiEndPoint {
                             lat: lat.unwrap(),
                         })
                     });
-                    let model_autocomplete = query::autocomplete(&q, coord, &cnx, None);
+
+                    let types = get_param_array(params, "type");
+
+                    let model_autocomplete = query::autocomplete(
+                        &q,
+                        &pt_datasets,
+                        all_data,
+                        offset,
+                        limit,
+                        coord,
+                        &cnx,
+                        None,
+                        &types,
+                    );
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -218,97 +368,4 @@ impl ApiEndPoint {
             });
         })
     }
-}
-
-fn check_bound(val: &json::Json,
-               path: &str,
-               min: f64,
-               max: f64,
-               error_msg: &str)
-               -> Result<(), valico_error::ValicoErrors> {
-    if let json::Json::F64(lon) = *val {
-        if min <= lon && lon <= max {
-            Ok(())
-        } else {
-            Err(vec![Box::new(json_dsl::errors::WrongValue {
-                         path: path.to_string(),
-                         detail: Some(error_msg.to_string()),
-                     })])
-        }
-    } else {
-        unreachable!("should never happen, already checked");
-    }
-}
-
-fn check_coordinates(val: &json::Json,
-                     path: &str,
-                     error_msg: &str)
-                     -> Result<(), valico_error::ValicoErrors> {
-
-    if !val.is_array() {
-        return Err(vec![Box::new(json_dsl::errors::WrongType {
-                            path: path.to_string(),
-                            detail: error_msg.to_string(),
-                        })]);
-    }
-    let array = val.as_array().unwrap();
-    if array.is_empty() {
-        return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                            path: path.to_string(),
-                            detail: Some(error_msg.to_string()),
-                        })]);
-    }
-
-    for arr0 in array {
-        if !arr0.is_array() {
-            return Err(vec![Box::new(json_dsl::errors::WrongType {
-                                path: path.to_string(),
-                                detail: error_msg.to_string(),
-                            })]);
-        }
-        let arr1 = arr0.as_array().unwrap();
-        if arr1.is_empty() {
-            return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                path: path.to_string(),
-                                detail: Some(error_msg.to_string()),
-                            })]);
-        }
-        for arr2 in arr1 {
-            if !arr2.is_array() {
-                return Err(vec![Box::new(json_dsl::errors::WrongType {
-                                    path: path.to_string(),
-                                    detail: error_msg.to_string(),
-                                })]);
-            }
-            let lonlat = arr2.as_array().unwrap();
-            if lonlat.len() != 2 {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                    path: path.to_string(),
-                                    detail: Some(error_msg.to_string()),
-                                })]);
-            }
-
-            if !(lonlat[0].is_f64() && lonlat[1].is_f64()) {
-                return Err(vec![Box::new(json_dsl::errors::WrongType {
-                                    path: path.to_string(),
-                                    detail: error_msg.to_string(),
-                                })]);
-            }
-            let lon = lonlat[0].as_f64().unwrap();
-            let lat = lonlat[1].as_f64().unwrap();
-            if !(MIN_LON <= lon && lon <= MAX_LON) {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                    path: path.to_string(),
-                                    detail: Some(error_msg.to_string()),
-                                })]);
-            }
-            if !(MIN_LAT <= lat && lat <= MAX_LAT) {
-                return Err(vec![Box::new(json_dsl::errors::WrongValue {
-                                    path: path.to_string(),
-                                    detail: Some(error_msg.to_string()),
-                                })]);
-            }
-        }
-    }
-    Ok(())
 }

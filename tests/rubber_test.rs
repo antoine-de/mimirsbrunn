@@ -28,35 +28,36 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use serde_json::value::{to_value, Value};
-use mimir::{Street, Admin, Coord};
-use mimir::rubber::Rubber;
+use cosmogony::ZoneType;
+use geo;
+use hyper;
+use mimir::rubber::{self, Rubber};
+use mimir::AdminType::City;
+use mimir::{Admin, Coord, MimirObject, Street};
+use serde_json::value::Value;
 use std;
 use std::cell::Cell;
 
-fn check_has_elt(es: &::ElasticSearchWrapper, fun: Box<Fn(&Value)>) {
+fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
-    // we should have our elt
-    assert_eq!(search.lookup("hits.total").and_then(|v| v.as_u64()).unwrap_or(0),
-               1);
-    let es_elt = search.lookup("hits.hits")
-                       .and_then(|h| h.as_array())
-                       .and_then(|v| v.first())
-                       .unwrap();
-    fun(es_elt);
+                                   // we should have our elt
+    assert_eq!(search.pointer("/hits/total"), Some(&json!(1)));
+    fun(search.pointer("/hits/hits/0").unwrap());
 }
 
 fn check_has_bob(es: &::ElasticSearchWrapper) {
     let check_is_bob = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
-                   "street");
-        let es_bob = es_elt.find("_source").unwrap();
-        assert_eq!(es_bob.find("id"), Some(&to_value("bob")));
-        assert_eq!(es_bob.find("street_name"), Some(&to_value("bob's street")));
-        assert_eq!(es_bob.find("label"), Some(&to_value("bob's name")));
-        assert_eq!(es_bob.find("weight"), Some(&Value::U64(42)));
+        assert_eq!(
+            es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
+            "street"
+        );
+        let es_bob = es_elt.pointer("/_source").unwrap();
+        assert_eq!(es_bob.pointer("/id"), Some(&json!("bob")));
+        assert_eq!(es_bob.pointer("/street_name"), Some(&json!("bob's street")));
+        assert_eq!(es_bob.pointer("/label"), Some(&json!("bob's name")));
+        assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.42)));
     };
-    check_has_elt(es, Box::new(check_is_bob));
+    check_has_elt(es, check_is_bob);
 }
 
 /// check the zero downtime update
@@ -64,7 +65,6 @@ fn check_has_bob(es: &::ElasticSearchWrapper) {
 /// during the second batch we should be able to query Elasticsearch and find the first batch
 pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     info!("running rubber_zero_downtime_test");
-    let doc_type = "street";
     let dataset = "my_dataset";
 
     let bob = Street {
@@ -72,13 +72,13 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         street_name: "bob's street".to_string(),
         label: "bob's name".to_string(),
         administrative_regions: vec![],
-        weight: 42u32,
+        weight: 0.42,
         zip_codes: vec![],
         coord: Coord::new(0., 0.),
     };
 
     // we index our bob
-    let result = es.rubber.index(doc_type, dataset, std::iter::once(bob));
+    let result = es.rubber.index(dataset, std::iter::once(bob));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -92,9 +92,9 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         street_name: "bobette's street".to_string(),
         label: "bobette's name".to_string(),
         administrative_regions: vec![],
-        weight: 24u32,
+        weight: 0.24,
         zip_codes: vec![],
-        coord: Coord::new(48.5110722f64, 2.68326290f64),
+        coord: Coord::new(2.68326290f64, 48.5110722f64),
     };
 
     info!("inserting bobette");
@@ -104,51 +104,68 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         es.refresh(); // we send a refresh to be sure to be up to date
         check_has_bob(&es);
     });
-    let result = rubber.index(doc_type, dataset, checker_iter);
-    assert!(result.is_ok(),
-            "impossible to index bobette, res: {:?}",
-            result);
+    let result = rubber.index(dataset, checker_iter);
+    assert!(
+        result.is_ok(),
+        "impossible to index bobette, res: {:?}",
+        result
+    );
     assert_eq!(result.unwrap(), 1); // we still have only indexed 1 element
 
     es.refresh(); // we send another refresh
 
     // then we should have our bobette
     let check_is_bobette = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
-                   "street");
-        let es_bob = es_elt.find("_source").unwrap();
-        assert_eq!(es_bob.find("id"), Some(&to_value("bobette")));
-        assert_eq!(es_bob.find("street_name"),
-                   Some(&to_value("bobette's street")));
-        assert_eq!(es_bob.find("label"), Some(&to_value("bobette's name")));
-        assert_eq!(es_bob.find("weight"), Some(&Value::U64(24)));
-        
-        let es_coord = es_bob.find("coord").unwrap();
-        assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
-        assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
-        
+        assert_eq!(
+            es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
+            "street"
+        );
+        let es_bob = es_elt.pointer("/_source").unwrap();
+        assert_eq!(es_bob.pointer("/id"), Some(&json!("bobette")));
+        assert_eq!(
+            es_bob.pointer("/street_name"),
+            Some(&json!("bobette's street"))
+        );
+        assert_eq!(es_bob.pointer("/label"), Some(&json!("bobette's name")));
+        assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.24)));
+
+        let es_coord = es_bob.pointer("/coord").unwrap();
+        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
+        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
     };
-    check_has_elt(&es, Box::new(check_is_bobette));
+    check_has_elt(&es, check_is_bobette);
 }
 
 pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     info!("running rubber_custom_id");
-    let doc_type = "admin";
     let dataset = "my_dataset";
+    let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
 
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
         level: 8,
-        label: "my admin".to_string(),
+        name: "my admin".to_string(),
+        label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
-        weight: Cell::new(42),
-        coord: Coord::new(48.5110722f64, 2.68326290f64),
-        boundary: None,
+        weight: Cell::new(0.42),
+        coord: Coord::new(2.68326290f64, 48.5110722f64),
+        boundary: Some(geo::MultiPolygon(vec![geo::Polygon::new(
+            geo::LineString(vec![
+                p(2., 48.),
+                p(2., 49.),
+                p(3., 49.),
+                p(3., 48.),
+                p(2., 48.),
+            ]),
+            vec![],
+        )])),
+        admin_type: City,
+        zone_type: Some(ZoneType::City),
     };
 
     // we index our admin
-    let result = es.rubber.index(doc_type, dataset, std::iter::once(admin));
+    let result = es.rubber.index(dataset, std::iter::once(admin));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -156,16 +173,112 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     es.refresh(); // we need to refresh the index to be sure to get the elt;
 
     let check_admin = |es_elt: &Value| {
-        assert_eq!(es_elt.find("_type").and_then(|t| t.as_string()).unwrap(),
-                   "admin");
-        let es_source = es_elt.find("_source").unwrap();
-        assert_eq!(es_elt.find("_id"), es_source.find("id"));
-        assert_eq!(es_elt.find("_id"), Some(&to_value("admin:bob")));
-        assert_eq!(es_source.find("insee"), Some(&to_value("insee:dummy")));
-        
-        let es_coord = es_source.find("coord").unwrap();
-        assert_eq!(es_coord.find("lat"), Some(&Value::F64(48.5110722)));
-        assert_eq!(es_coord.find("lon"), Some(&Value::F64(2.68326290)));
+        assert_eq!(
+            es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
+            Admin::doc_type()
+        );
+        let es_source = es_elt.pointer("/_source").unwrap();
+        assert_eq!(es_elt.pointer("/_id"), es_source.pointer("/id"));
+        assert_eq!(es_elt.pointer("/_id"), Some(&json!("admin:bob")));
+        assert_eq!(es_source.pointer("/insee"), Some(&json!("insee:dummy")));
+
+        let es_coord = es_source.pointer("/coord").unwrap();
+        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
+        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
+
+        assert_eq!(
+            es_source.pointer("/boundary/type"),
+            Some(&json!("MultiPolygon"))
+        );
+        let es_boundary = es_source.pointer("/boundary/coordinates").unwrap();
+        assert_eq!(es_boundary.pointer("/0/0/0/0"), Some(&json!(2.0))); //first lon, then lat
+        assert_eq!(es_boundary.pointer("/0/0/0/1"), Some(&json!(48.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/1/0"), Some(&json!(2.0)));
+        assert_eq!(es_boundary.pointer("/0/0/1/1"), Some(&json!(49.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/2/0"), Some(&json!(3.0)));
+        assert_eq!(es_boundary.pointer("/0/0/2/1"), Some(&json!(49.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/3/0"), Some(&json!(3.0)));
+        assert_eq!(es_boundary.pointer("/0/0/3/1"), Some(&json!(48.0)));
+
+        assert_eq!(es_boundary.pointer("/0/0/4/0"), Some(&json!(2.0)));
+        assert_eq!(es_boundary.pointer("/0/0/4/1"), Some(&json!(48.0)));
     };
-    check_has_elt(&es, Box::new(check_admin));
+    check_has_elt(&es, check_admin);
+}
+
+/// test that rubber correctly cleanup ghost indexes
+/// (indexes that are not aliases to anything, for example
+/// if an import has been stopped in the middle)
+pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
+    // we create a ghost ES index
+    let client = hyper::client::Client::new();
+    let old_idx_name = "munin_admin_fr_20170313_113227_006297916";
+    let res = client
+        .put(&format!(
+            "{host}/{idx}",
+            host = es.host(),
+            idx = old_idx_name
+        ))
+        .send()
+        .unwrap();
+
+    assert_eq!(res.status, hyper::Ok);
+    info!("result: {:?}", res);
+
+    es.refresh();
+    assert_eq!(get_munin_indexes(&es), [old_idx_name.to_string()]);
+
+    let admin = Admin {
+        id: "admin:bob".to_string(),
+        insee: "insee:dummy".to_string(),
+        level: 8,
+        name: "my admin".to_string(),
+        label: "my admin (zip_code)".to_string(),
+        zip_codes: vec!["zip_code".to_string()],
+        weight: Cell::new(0.42),
+        coord: Coord::new(2.68326290f64, 48.5110722f64),
+        boundary: None,
+        admin_type: City,
+        zone_type: Some(ZoneType::City),
+    };
+
+    // we index our admin
+    let result = es.rubber.index("fr", std::iter::once(admin));
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 1); // we have indexed 1 element
+
+    es.refresh(); // we need to refresh the index to be sure to get the elt;
+
+    // we should have only one index, and it should not be the previous one
+    assert_eq!(get_munin_indexes(&es).len(), 1);
+    assert!(!get_munin_indexes(&es).contains(&old_idx_name.to_string()));
+}
+
+// return the list of the munin indexes
+fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
+    use super::ToJson;
+    let client = hyper::client::Client::new();
+    let res = client
+        .get(&format!("{host}/_aliases", host = es.host()))
+        .send()
+        .unwrap();
+    assert_eq!(res.status, hyper::Ok);
+
+    let json = res.to_json();
+    let raw_indexes = json.as_object().unwrap();
+    raw_indexes.keys().cloned().collect()
+}
+
+pub fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
+    // we don't want an empty bulk to crash
+    info!("running rubber_empty_bulk");
+    let dataset = rubber::TypedIndex::<Admin>::new("my_dataset".into());
+    // we index nothing
+    let result = es.rubber.bulk_index(&dataset, std::iter::empty::<Admin>());
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), 0); // we have indexed nothing, but it's ok
 }

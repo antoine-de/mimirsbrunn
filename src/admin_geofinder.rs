@@ -27,25 +27,34 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use mimir::Admin;
-use geo::contains::Contains;
 use geo;
-use std::rc::Rc;
+use geo::contains::Contains;
 use gst::rtree::{RTree, Rect};
+use mimir::Admin;
+use std;
+use std::iter::FromIterator;
+use std::rc::Rc;
+
+/// We want to strip the admin's boundary for the objects referencing it (for performance purpose)
+/// thus in the `AdminGeoFinder` we store an Admin without the boundary (the option is emptied)
+/// and we store the boundary aside
+struct BoundaryAndAdmin(Option<geo::MultiPolygon<f64>>, Rc<Admin>);
+
+impl BoundaryAndAdmin {
+    fn new(mut admin: Admin) -> BoundaryAndAdmin {
+        let b = std::mem::replace(&mut admin.boundary, None);
+        let minimal_admin = Rc::new(admin);
+        BoundaryAndAdmin(b, minimal_admin)
+    }
+}
 
 pub struct AdminGeoFinder {
-    admins: RTree<Rc<Admin>>
+    admins: RTree<BoundaryAndAdmin>,
 }
 
 impl AdminGeoFinder {
-    pub fn new() -> AdminGeoFinder {
-        AdminGeoFinder {
-            admins: RTree::new()
-        }
-    }
-
-    pub fn insert(&mut self, admin: Rc<Admin>) {
-        use ::ordered_float::OrderedFloat;
+    pub fn insert(&mut self, admin: Admin) {
+        use ordered_float::OrderedFloat;
         fn min(a: OrderedFloat<f32>, b: f64) -> f32 {
             a.0.min(down(b as f32))
         }
@@ -55,7 +64,7 @@ impl AdminGeoFinder {
 
         let rect = {
             let mut coords = match admin.boundary {
-                Some(ref b) => b.0.iter().flat_map(|poly| (poly.0).0.iter()),
+                Some(ref b) => (*b).0.iter().flat_map(|poly| (poly.exterior).0.iter()),
                 None => return,
             };
             let first_coord = match coords.next() {
@@ -66,23 +75,87 @@ impl AdminGeoFinder {
                 let (x, y) = (first_coord.x() as f32, first_coord.y() as f32);
                 Rect::from_float(down(x), up(x), down(y), up(y))
             };
-            coords.fold(first_rect, |accu, p| Rect::from_float(min(accu.xmin, p.x()),
-                                                               max(accu.xmax, p.x()),
-                                                               min(accu.ymin, p.y()),
-                                                               max(accu.ymax, p.y())))
+            coords.fold(first_rect, |accu, p| {
+                Rect::from_float(
+                    min(accu.xmin, p.x()),
+                    max(accu.xmax, p.x()),
+                    min(accu.ymin, p.y()),
+                    max(accu.ymax, p.y()),
+                )
+            })
         };
-        self.admins.insert(rect, admin);
+        self.admins.insert(rect, BoundaryAndAdmin::new(admin));
     }
 
     /// Get all Admins overlapping the coordinate
-    pub fn get(&self, coord: &geo::Coordinate) -> Vec<Rc<Admin>> {
+    pub fn get(&self, coord: &geo::Coordinate<f64>) -> Vec<Rc<Admin>> {
         let (x, y) = (coord.x as f32, coord.y as f32);
         let search = Rect::from_float(down(x), up(x), down(y), up(y));
-        self.admins.get(&search).into_iter().map(|(_, a)| a).filter(|a| {
-            a.boundary.as_ref().map_or(false, |b| {
-                b.contains(&geo::Point(coord.clone()))
+        self.admins
+            .get(&search)
+            .into_iter()
+            .map(|(_, a)| a)
+            .filter(|a| {
+                a.0
+                    .as_ref()
+                    .map_or(false, |b| (*b).contains(&geo::Point(*coord)))
             })
-        }).cloned().collect()
+            .map(|admin_and_boundary| admin_and_boundary.1.clone())
+            .collect()
+    }
+
+    /// Iterates on all the admins with a not None boundary.
+    pub fn admins<'a>(&'a self) -> Box<Iterator<Item = Admin> + 'a> {
+        let iter = self
+            .admins
+            .get(&Rect::from_float(
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+            ))
+            .into_iter()
+            .map(|(_, a)| {
+                let mut admin = (*a.1).clone();
+                admin.boundary = a.0.clone();
+                admin
+            });
+        Box::new(iter)
+    }
+
+    /// Iterates on all the `Rc<Admin>` in the structure as returned by `get`.
+    pub fn admins_without_boundary<'a>(&'a self) -> Box<Iterator<Item = Rc<Admin>> + 'a> {
+        let iter = self
+            .admins
+            .get(&Rect::from_float(
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+                std::f32::NEG_INFINITY,
+                std::f32::INFINITY,
+            ))
+            .into_iter()
+            .map(|(_, a)| a.1.clone());
+        Box::new(iter)
+    }
+}
+
+impl Default for AdminGeoFinder {
+    fn default() -> Self {
+        AdminGeoFinder {
+            admins: RTree::new(),
+        }
+    }
+}
+
+impl FromIterator<Admin> for AdminGeoFinder {
+    fn from_iter<I: IntoIterator<Item = Admin>>(admins: I) -> Self {
+        let mut geofinder = AdminGeoFinder::default();
+
+        for admin in admins {
+            geofinder.insert(admin);
+        }
+
+        geofinder
     }
 }
 
@@ -98,48 +171,63 @@ fn up(f: f32) -> f32 {
 fn test_up_down() {
     for &f in [1.0f64, 0., -0., -1., 0.1, -0.1, 0.9, -0.9, 42., -42.].iter() {
         let small_f = f as f32;
-        assert!(down(small_f) as f64 <= f, format!("{} <= {}", down(small_f) as f64, f));
-        assert!(f <= up(small_f) as f64, format!("{} <= {}", f, up(small_f) as f64));
+        assert!(
+            down(small_f) as f64 <= f,
+            format!("{} <= {}", down(small_f) as f64, f)
+        );
+        assert!(
+            f <= up(small_f) as f64,
+            format!("{} <= {}", f, up(small_f) as f64)
+        );
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cosmogony::ZoneType;
+    use mimir::AdminType;
 
-    fn p(x: f64, y: f64) -> ::geo::Point {
+    fn p(x: f64, y: f64) -> ::geo::Point<f64> {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
     }
 
-    fn make_admin(offset: f64) -> ::std::rc::Rc<::mimir::Admin> {
+    fn make_admin(offset: f64) -> ::mimir::Admin {
         // the boundary is a big octogon
-        let shape = ::geo::Polygon(::geo::LineString(vec![p(3. + offset, 0. + offset),
-                                                          p(6. + offset, 0. + offset),
-                                                          p(9. + offset, 3. + offset),
-                                                          p(9. + offset, 6. + offset),
-                                                          p(6. + offset, 9. + offset),
-                                                          p(3. + offset, 9. + offset),
-                                                          p(0. + offset, 6. + offset),
-                                                          p(0. + offset, 3. + offset),
-                                                          p(3. + offset, 0. + offset)]),
-                                   vec![]);
+        let shape = ::geo::Polygon::new(
+            ::geo::LineString(vec![
+                p(3. + offset, 0. + offset),
+                p(6. + offset, 0. + offset),
+                p(9. + offset, 3. + offset),
+                p(9. + offset, 6. + offset),
+                p(6. + offset, 9. + offset),
+                p(3. + offset, 9. + offset),
+                p(0. + offset, 6. + offset),
+                p(0. + offset, 3. + offset),
+                p(3. + offset, 0. + offset),
+            ]),
+            vec![],
+        );
         let boundary = ::geo::MultiPolygon(vec![shape]);
 
-        ::std::rc::Rc::new(::mimir::Admin {
+        ::mimir::Admin {
             id: format!("admin:offset:{}", offset),
             level: 8,
+            name: "city".to_string(),
             label: format!("city {}", offset),
             zip_codes: vec!["421337".to_string()],
-            weight: ::std::cell::Cell::new(1),
+            weight: ::std::cell::Cell::new(0.),
             coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
             boundary: Some(boundary),
-            insee: "outlook".to_string()
-        })
+            insee: "outlook".to_string(),
+            admin_type: AdminType::City,
+            zone_type: Some(ZoneType::City),
+        }
     }
 
     #[test]
     fn test_two_fake_admins() {
-        let mut finder = AdminGeoFinder::new();
+        let mut finder = AdminGeoFinder::default();
         finder.insert(make_admin(40.));
         finder.insert(make_admin(43.));
 

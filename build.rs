@@ -1,3 +1,5 @@
-// this file is used to be able to use OUT_DIR env variable
+extern crate git_version;
 
-fn main() { }
+fn main() {
+    git_version::set_env_with_name("CARGO_PKG_VERSION");
+}

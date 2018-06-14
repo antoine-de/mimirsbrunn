@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -e
+
 mimirsbrunn_dir="`dirname \"$0\"`"
 temporary_install_dir="./build_packages/"
 raw_version="`git describe`"
