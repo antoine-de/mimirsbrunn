@@ -43,9 +43,9 @@ extern crate slog_scope;
 extern crate structopt;
 
 use failure::ResultExt;
-use mimir::MimirObject;
 use mimir::objects::Admin;
 use mimir::rubber::Rubber;
+use mimir::MimirObject;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::BTreeMap;
 use std::fs;
@@ -165,18 +165,17 @@ where
             })
             .filter(|a| {
                 !a.street.street_name.is_empty() || {
-                    info!("Address {}:{:?}:{:?} has no street name and has been ignored.", a.id, a.coord, a.street);
+                    info!(
+                        "Address {}:{:?}:{:?} has no street name and has been ignored.",
+                        a.id, a.coord, a.street
+                    );
                     false
                 }
             });
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!(
-            "importing {:?}: {} addresses added.",
-            &f,
-            nb
-        );
+        info!("importing {:?}: {} addresses added.", &f, nb);
     }
     rubber
         .publish_index(dataset, addr_index)
