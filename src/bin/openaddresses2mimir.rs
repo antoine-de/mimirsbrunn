@@ -124,7 +124,6 @@ where
     info!("Add data in elasticsearch db.");
     for f in files {
         info!("importing {:?}...", &f);
-        let skipped_addresses = Cell::new(0);
         let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
         let iter = rdr
             .deserialize()
@@ -135,19 +134,17 @@ where
             })
             .filter(|a| {
                 !a.street.street_name.is_empty() || {
-                    skipped_addresses.set(skipped_addresses.get() + 1);
+                    info!(
+                        "Address {}:{:?}:{:?} has no street name and has been ignored.",
+                        a.id, a.coord, a.street
+                    );
                     false
                 }
             });
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!(
-            "importing {:?}: {} addresses added and {} addresses skipped.",
-            &f,
-            nb,
-            skipped_addresses.get()
-        );
+        info!("importing {:?}: {} addresses", &f, nb);
     }
     rubber.publish_index(dataset, addr_index)
 }
