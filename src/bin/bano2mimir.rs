@@ -43,10 +43,10 @@ extern crate slog_scope;
 extern crate structopt;
 
 use failure::ResultExt;
+use mimir::MimirObject;
 use mimir::objects::Admin;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
@@ -156,7 +156,6 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
-        let skipped_addresses = Cell::new(0);
         let iter = rdr
             .deserialize()
             .filter_map(|r| {
@@ -166,7 +165,7 @@ where
             })
             .filter(|a| {
                 !a.street.street_name.is_empty() || {
-                    skipped_addresses.set(skipped_addresses.get() + 1);
+                    info!("Address {}:{:?}:{:?} has no street name and has been ignored.", a.id, a.coord, a.street);
                     false
                 }
             });
@@ -174,10 +173,9 @@ where
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
         info!(
-            "importing {:?}: {} addresses added and {} addresses skipped.",
+            "importing {:?}: {} addresses added.",
             &f,
-            nb,
-            skipped_addresses.get()
+            nb
         );
     }
     rubber
