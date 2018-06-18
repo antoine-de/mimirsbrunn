@@ -27,8 +27,6 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
-use super::Weight;
 use cosmogony::ZoneType;
 use geo;
 use serde;
@@ -314,7 +312,7 @@ pub struct Admin {
     pub label: String,
     pub name: String,
     pub zip_codes: Vec<String>,
-    pub weight: Weight,
+    pub weight: f64,
     pub coord: Coord,
     #[serde(
         serialize_with = "custom_multi_polygon_serialize",

@@ -42,10 +42,11 @@ extern crate structopt;
 use failure::ResultExt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::osm_reader::admin::{compute_admin_weight, read_administrative_regions};
+use mimirsbrunn::osm_reader::admin::{read_administrative_regions};
 use mimirsbrunn::osm_reader::make_osm_reader;
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
+use mimirsbrunn::utils::normalize_admin_weight;
 use std::path::PathBuf;
 
 #[derive(StructOpt, Debug)]

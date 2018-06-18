@@ -62,11 +62,9 @@ extern crate approx;
 
 pub mod objects;
 pub mod rubber;
-mod weight;
 
 pub use objects::*;
 use std::env;
-pub use weight::Weight;
 
 use slog::Drain;
 use slog::Never;
