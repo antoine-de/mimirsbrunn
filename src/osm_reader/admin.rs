@@ -150,14 +150,17 @@ pub fn read_administrative_regions(
             let weight = relation
                 .tags
                 .get("population")
-                .or(relation
-                    .refs
-                    .iter()
-                    .find(|r| r.role == "admin_centre")
-                    .and_then(|r| objects.get(&r.member))
-                    .and_then(|o| o.node())
-                    .and_then(|node| node.tags.get("population")))
                 .and_then(|p| p.parse().ok())
+                .or_else(|| {
+                    let rel = relation.refs.iter().find(|r| r.role == "admin_centre")?;
+                    objects
+                        .get(&rel.member)?
+                        .node()?
+                        .tags
+                        .get("population")?
+                        .parse()
+                        .ok()
+                })
                 .unwrap_or(0.);
 
             let admin = mimir::Admin {
