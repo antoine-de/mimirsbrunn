@@ -1,7 +1,8 @@
 *
-!target/release/bragi
-!target/release/osm2mimir
-!target/release/cosmogony2mimir
-!target/release/bano2mimir
-!target/release/openaddresses2mimir
-!build_packages/*
+!src/
+!libs/
+!tests/
+!json/
+!Cargo*
+!build.rs
+!.git/
