@@ -146,6 +146,23 @@ pub fn read_administrative_regions(
             } else {
                 mimir::AdminType::Unknown
             };
+
+            let weight = relation
+                .tags
+                .get("population")
+                .and_then(|p| p.parse().ok())
+                .or_else(|| {
+                    let rel = relation.refs.iter().find(|r| r.role == "admin_centre")?;
+                    objects
+                        .get(&rel.member)?
+                        .node()?
+                        .tags
+                        .get("population")?
+                        .parse()
+                        .ok()
+                })
+                .unwrap_or(0.);
+
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -153,7 +170,7 @@ pub fn read_administrative_regions(
                 name: name.to_string(),
                 label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
                 zip_codes: zip_codes,
-                weight: Cell::new(0.),
+                weight: Cell::new(weight),
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
                 admin_type: admin_type,
@@ -162,6 +179,9 @@ pub fn read_administrative_regions(
             administrative_regions.push(admin);
         }
     }
+
+    compute_admin_weight(&mut administrative_regions);
+
     administrative_regions
 }
 
@@ -173,17 +193,10 @@ fn get_zone_type(level: u32, city_lvl: u32) -> Option<ZoneType> {
     }
 }
 
-pub fn compute_admin_weight(streets: &StreetsVec, admins_geofinder: &AdminGeoFinder) {
-    let mut max = 1.;
-    for st in streets {
-        for admin in &st.administrative_regions {
-            admin.weight.set(admin.weight.get() + 1.);
-            max = f64::max(max, admin.weight.get());
-        }
-    }
-
-    for admin in admins_geofinder.admins_without_boundary() {
-        admin.weight.set(admin.weight.get() / max);
+pub fn compute_admin_weight(admins: &mut [mimir::Admin]) {
+    let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight.get()));
+    for ref mut a in admins {
+        a.weight.set(a.weight.get() / max);
     }
 }
 
