@@ -39,8 +39,6 @@ use super::get_value;
 use super::get_values;
 use super::BragiHandler;
 use mimir::{MimirObject, Poi};
-use serde_json::Map;
-use serde_json::Value;
 
 pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));

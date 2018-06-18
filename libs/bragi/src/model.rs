@@ -375,7 +375,6 @@ pub struct Coord {
     pub lon: f64,
 }
 
-
 pub mod v1 {
     use super::BragiError;
     use iron;

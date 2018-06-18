@@ -36,7 +36,6 @@ use mimir::AdminType::City;
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
 use std;
-use std::cell::Cell;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base

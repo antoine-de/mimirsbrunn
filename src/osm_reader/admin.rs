@@ -34,13 +34,12 @@ extern crate osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
-use admin_geofinder::AdminGeoFinder;
+use cosmogony::ZoneType;
 use itertools::Itertools;
 use osm_reader::osm_utils::make_centroid;
 use std::collections::BTreeSet;
-pub type StreetsVec = Vec<mimir::Street>;
-use cosmogony::ZoneType;
 use utils::normalize_admin_weight;
+pub type StreetsVec = Vec<mimir::Street>;
 
 #[derive(Debug)]
 pub struct AdminMatcher {

@@ -32,11 +32,10 @@ use geo;
 use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;

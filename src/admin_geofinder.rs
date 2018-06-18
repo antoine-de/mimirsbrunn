@@ -186,7 +186,7 @@ fn test_up_down() {
 mod tests {
     use super::*;
     use cosmogony::ZoneType;
-    use mimir::{AdminType};
+    use mimir::AdminType;
 
     fn p(x: f64, y: f64) -> ::geo::Point<f64> {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
