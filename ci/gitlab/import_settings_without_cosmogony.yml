@@ -1,0 +1,14 @@
+es: http://es:9200
+
+osm_file: /data/osm/france-latest.osm.pbf
+
+admin:
+  osm:
+    levels:
+      - 8
+
+poi:
+  osm:
+
+addresses:
+  bano_file: /data/addresses/full.csv
