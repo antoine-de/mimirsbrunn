@@ -1,3 +1,8 @@
 *
-!target/release/bragi
-!build_packages/*
+!src/
+!libs/
+!tests/
+!json/
+!Cargo*
+!build.rs
+!.git/
