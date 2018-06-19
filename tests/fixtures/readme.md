@@ -57,3 +57,5 @@ point | amenity=post_office | Melun Rp | Melun
 ## BANO fixtures
 
 The BANO file-format is specified at http://bano.openstreetmap.fr/data/lisezmoi-bano.txt
+
+## Cosmogony2mimir

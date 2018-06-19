@@ -47,7 +47,14 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // All results should be admins, and have some basic information
     let all_objects: Vec<_> = es_wrapper.search_and_filter("*.*", |_| true).collect();
-    assert_eq!(all_objects.len(), 8);
+    // In the last cosmogony version we filtered admins level 7.
+    // As a result the following admin:
+    // {"id":5,"osm_id":"relation:1636480","admin_level":7,"zone_type":"state_district","name":"Créteil",...}
+    // is not any more present in the new cosmogony.json output.
+    // (for more details check this commit:
+    // https://github.com/osm-without-borders/libpostal/commit/37bb7f4326b3c8f02ba15965ee4f930edff76f4c)
+    // So there are only 7 admins in total now:
+    assert_eq!(all_objects.len(), 7);
 
     assert!(all_objects.iter().any(|r| r.is_admin()));
     // all cosmogony admins have boundaries
@@ -72,8 +79,10 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(livry_sur_seine.insee, "77255");
             assert_eq!(livry_sur_seine.level, 8);
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
-            // the weight is 1 because it's the most important town around
-            assert_eq!(livry_sur_seine.weight, 1f64);
+            // this admin is not the most important admin around
+            // since we have the admin center population.
+            // so the weight is not any more 1 after normalization
+            assert_eq!(livry_sur_seine.weight.get(), 0.048473060698678926);
             assert!(livry_sur_seine.coord.is_valid());
             assert_eq!(livry_sur_seine.admin_type, mimir::AdminType::City);
             assert_eq!(livry_sur_seine.zone_type, Some(ZoneType::City));
@@ -120,6 +129,24 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(fr.weight, 0f64);
             assert!(fr.coord.is_valid());
             assert_eq!(fr.zone_type, Some(ZoneType::Country));
+        }
+        _ => panic!("should be an admin"),
+    }
+
+    // we check the weight is max on the admin with the highest population number
+    let res: Vec<_> = es_wrapper
+        .search_and_filter(
+            "label:Melun (77000-CP77001), Fausse Seine-et-Marne, France hexagonale",
+            |_| true,
+        )
+        .collect();
+    assert!(res.len() >= 1);
+
+    let fausse_seine_max_weight = &res[0];
+    match fausse_seine_max_weight {
+        &mimir::Place::Admin(ref fr) => {
+            assert_eq!(fr.id, "admin:osm:relation:80071");
+            assert_eq!(fr.weight.get(), 1f64);
         }
         _ => panic!("should be an admin"),
     }
