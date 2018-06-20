@@ -58,4 +58,11 @@ point | amenity=post_office | Melun Rp | Melun
 
 The BANO file-format is specified at http://bano.openstreetmap.fr/data/lisezmoi-bano.txt
 
-## Cosmogony2mimir
+## Cosmogony fixturers
+
+The `cosmogony2mimir_test.rs` test requires the output of cosmogony: `cosmogony.json` which depends on the `cargo run --release -- -i ~/ved_qwant/004.geocoders/006.mimir/mimirsbrunn/tests/fixtures/osm_fixture.osm.pbf` file.
+To get this output file you need to build [cosmogony](https://github.com/osm-without-borders/cosmogony) and to generate the file as follows:
+
+```bash
+cargo run --release -- -i ./mimirsbrunn/tests/fixtures/osm_fixture.osm.pbf
+```

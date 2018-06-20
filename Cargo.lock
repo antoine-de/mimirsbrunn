@@ -38,6 +38,14 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "approx"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -802,6 +810,7 @@ dependencies = [
 name = "mimirsbrunn"
 version = "1.2.0"
 dependencies = [
+ "approx 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bragi 1.2.0",
  "chrono 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cosmogony 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2021,6 +2030,7 @@ dependencies = [
 "checksum alga 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "49d80afe08c2e8075d33d3ba01e9f7b0c16c20bebdf1f73df805c4ee862cf8a9"
 "checksum ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
 "checksum approx 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "08abcc3b4e9339e33a3d0a5ed15d84a687350c05689d825e0f6655eef9e76a94"
+"checksum approx 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5817aa36ff3bf3ceb774e8c678c4294d1544f98d9a6af2588c9011a88dbc6994"
 "checksum arrayvec 0.3.25 (registry+https://github.com/rust-lang/crates.io-index)" = "06f59fe10306bb78facd90d28c2038ad23ffaaefa85bac43c8a434cde383334f"
 "checksum atty 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)" = "6609a866dd1a1b2d0ee1362195bf3e4f6438abb2d80120b83b1e1f4fb6476dd0"
 "checksum backtrace 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "ebbe525f66f42d207968308ee86bc2dd60aa5fab535b22e616323a173d097d8e"

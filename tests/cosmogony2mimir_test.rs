@@ -47,13 +47,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // All results should be admins, and have some basic information
     let all_objects: Vec<_> = es_wrapper.search_and_filter("*.*", |_| true).collect();
-    // In the last cosmogony version we filtered admins level 7.
-    // As a result the following admin:
-    // {"id":5,"osm_id":"relation:1636480","admin_level":7,"zone_type":"state_district","name":"Créteil",...}
-    // is not any more present in the new cosmogony.json output.
-    // (for more details check this commit:
-    // https://github.com/osm-without-borders/libpostal/commit/37bb7f4326b3c8f02ba15965ee4f930edff76f4c)
-    // So there are only 7 admins in total now:
+    // There are 7 admins in total:
     assert_eq!(all_objects.len(), 7);
 
     assert!(all_objects.iter().any(|r| r.is_admin()));
@@ -79,10 +73,8 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(livry_sur_seine.insee, "77255");
             assert_eq!(livry_sur_seine.level, 8);
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
-            // this admin is not the most important admin around
-            // since we have the admin center population.
-            // so the weight is not any more 1 after normalization
             assert_eq!(livry_sur_seine.weight.get(), 0.048473060698678926);
+            assert_relative_eq!(livry_sur_seine.weight.get(), 0.048473060698678926);
             assert!(livry_sur_seine.coord.is_valid());
             assert_eq!(livry_sur_seine.admin_type, mimir::AdminType::City);
             assert_eq!(livry_sur_seine.zone_type, Some(ZoneType::City));

@@ -56,9 +56,9 @@ fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f6
     // Note: this tags is not often filled , so only some zones
     // will have a weight (but the main cities have it).
     tags.get("population")
-        .or_else(|| center_tags.get("population"))
         .and_then(|p| p.parse().ok())
-        .unwrap_or(0f64)
+        .or_else(|| center_tags.get("population")?.parse().ok())
+        .unwrap_or(0.)
 }
 
 impl IntoAdmin for Zone {

@@ -47,6 +47,8 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate cosmogony;
+#[macro_use]
+extern crate approx;
 
 mod bano2mimir_test;
 mod bragi_bano_test;
