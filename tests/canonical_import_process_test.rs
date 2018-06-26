@@ -35,7 +35,6 @@ use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
-use super::get_values;
 use super::BragiHandler;
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
@@ -151,7 +150,7 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["city"], "Melun");
 }
 
-pub fn bragi_invalid_es_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_invalid_es_test(_es_wrapper: ::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
 
     // the status does not check the ES connexion, so for the status all is good

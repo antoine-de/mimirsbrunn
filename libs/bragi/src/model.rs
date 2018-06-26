@@ -33,7 +33,7 @@ use geojson;
 use heck::SnakeCase;
 use mimir;
 use rs_es::error::EsError;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Fail, Debug)]
 pub enum BragiError {
@@ -92,7 +92,7 @@ pub struct GeocodingResponse {
     // pub state: Option<String>,
     // pub country: Option<String>,
     // pub geohash: Option<String>,
-    pub administrative_regions: Vec<Rc<mimir::Admin>>,
+    pub administrative_regions: Vec<Arc<mimir::Admin>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -188,14 +188,14 @@ fn get_admin_type(adm: &mimir::Admin) -> String {
     }
 }
 
-fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+fn get_city_name(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.name.clone())
 }
 
-fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+fn get_citycode(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())

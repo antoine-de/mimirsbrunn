@@ -38,11 +38,11 @@ use super::OsmPbfReader;
 use admin_geofinder::AdminGeoFinder;
 use failure::ResultExt;
 use std::collections::{BTreeMap, BTreeSet};
-use std::rc::Rc;
+use std::sync::Arc;
 use utils::{format_label, get_zip_codes_from_admins};
 use Error;
 
-pub type AdminSet = BTreeSet<Rc<mimir::Admin>>;
+pub type AdminSet = BTreeSet<Arc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
 pub type StreetsVec = Vec<mimir::Street>;
 pub type StreetWithRelationSet = BTreeSet<osmpbfreader::OsmId>;
@@ -135,7 +135,7 @@ pub fn streets(
         let name_admin_map = &mut name_admin_map;
         mdo! {
             way =<< obj.way();
-            let admins: BTreeSet<Rc<mimir::Admin>> = get_street_admin(admins_geofinder,
+            let admins: BTreeSet<Arc<mimir::Admin>> = get_street_admin(admins_geofinder,
                 objs_map, way)
                 .into_iter()
                 .filter(|admin| admin.is_city())
@@ -177,7 +177,7 @@ fn get_street_admin(
     admins_geofinder: &AdminGeoFinder,
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
     way: &osmpbfreader::objects::Way,
-) -> Vec<Rc<mimir::Admin>> {
+) -> Vec<Arc<mimir::Admin>> {
     // for the moment we consider that the coord of the way is the coord of it's first node
     way.nodes
         .iter()
@@ -195,7 +195,7 @@ pub fn compute_street_weight(streets: &mut StreetsVec) {
     for st in streets {
         for admin in &mut st.administrative_regions {
             if admin.is_city() {
-                st.weight = admin.weight.get();
+                st.weight = admin.weight;
                 break;
             }
         }

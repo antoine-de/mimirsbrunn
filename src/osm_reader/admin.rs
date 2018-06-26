@@ -34,13 +34,12 @@ extern crate osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
-use admin_geofinder::AdminGeoFinder;
+use cosmogony::ZoneType;
 use itertools::Itertools;
 use osm_reader::osm_utils::make_centroid;
-use std::cell::Cell;
 use std::collections::BTreeSet;
+use utils::normalize_admin_weight;
 pub type StreetsVec = Vec<mimir::Street>;
-use cosmogony::ZoneType;
 
 #[derive(Debug)]
 pub struct AdminMatcher {
@@ -170,7 +169,7 @@ pub fn read_administrative_regions(
                 name: name.to_string(),
                 label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
                 zip_codes: zip_codes,
-                weight: Cell::new(weight),
+                weight: weight,
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 boundary: boundary,
                 admin_type: admin_type,
@@ -180,7 +179,7 @@ pub fn read_administrative_regions(
         }
     }
 
-    compute_admin_weight(&mut administrative_regions);
+    normalize_admin_weight(&mut administrative_regions);
 
     administrative_regions
 }
@@ -190,13 +189,6 @@ fn get_zone_type(level: u32, city_lvl: u32) -> Option<ZoneType> {
         Some(ZoneType::City)
     } else {
         None
-    }
-}
-
-pub fn compute_admin_weight(admins: &mut [mimir::Admin]) {
-    let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight.get()));
-    for ref mut a in admins {
-        a.weight.set(a.weight.get() / max);
     }
 }
 

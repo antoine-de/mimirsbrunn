@@ -27,16 +27,15 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
 use cosmogony::ZoneType;
 use geo;
 use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -109,7 +108,7 @@ impl Place {
         }
     }
 
-    pub fn admins(&self) -> Vec<Rc<Admin>> {
+    pub fn admins(&self) -> Vec<Arc<Admin>> {
         match *self {
             Place::Admin(ref o) => o.admins(),
             Place::Street(ref o) => o.admins(),
@@ -138,7 +137,7 @@ pub trait MimirObject: serde::Serialize {
 
 pub trait Members {
     fn label(&self) -> &str;
-    fn admins(&self) -> Vec<Rc<Admin>>;
+    fn admins(&self) -> Vec<Arc<Admin>>;
 }
 
 impl<'a, T: MimirObject> MimirObject for &'a T {
@@ -175,7 +174,7 @@ pub struct Poi {
     pub label: String,
     pub name: String,
     pub coord: Coord,
-    pub administrative_regions: Vec<Rc<Admin>>,
+    pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
@@ -205,7 +204,7 @@ impl Members for Poi {
     fn label(&self) -> &str {
         &self.label
     }
-    fn admins(&self) -> Vec<Rc<Admin>> {
+    fn admins(&self) -> Vec<Arc<Admin>> {
         self.administrative_regions.clone()
     }
 }
@@ -247,7 +246,7 @@ pub struct Stop {
     pub label: String,
     pub name: String,
     pub coord: Coord,
-    pub administrative_regions: Vec<Rc<Admin>>,
+    pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
     #[serde(default)]
@@ -283,7 +282,7 @@ impl Members for Stop {
     fn label(&self) -> &str {
         &self.label
     }
-    fn admins(&self) -> Vec<Rc<Admin>> {
+    fn admins(&self) -> Vec<Arc<Admin>> {
         self.administrative_regions.clone()
     }
 }
@@ -312,7 +311,7 @@ pub struct Admin {
     pub label: String,
     pub name: String,
     pub zip_codes: Vec<String>,
-    pub weight: Cell<f64>,
+    pub weight: f64,
     pub coord: Coord,
     #[serde(
         serialize_with = "custom_multi_polygon_serialize",
@@ -415,8 +414,8 @@ impl Members for Admin {
     fn label(&self) -> &str {
         &self.label
     }
-    fn admins(&self) -> Vec<Rc<Admin>> {
-        vec![Rc::new(self.clone())]
+    fn admins(&self) -> Vec<Arc<Admin>> {
+        vec![Arc::new(self.clone())]
     }
 }
 
@@ -437,7 +436,7 @@ impl MimirObject for Admin {
 pub struct Street {
     pub id: String,
     pub street_name: String,
-    pub administrative_regions: Vec<Rc<Admin>>,
+    pub administrative_regions: Vec<Arc<Admin>>,
     pub label: String,
     pub weight: f64,
     pub coord: Coord,
@@ -468,7 +467,7 @@ impl Members for Street {
     fn label(&self) -> &str {
         &self.label
     }
-    fn admins(&self) -> Vec<Rc<Admin>> {
+    fn admins(&self) -> Vec<Arc<Admin>> {
         self.administrative_regions.clone()
     }
 }
@@ -500,7 +499,7 @@ impl Members for Addr {
     fn label(&self) -> &str {
         &self.label
     }
-    fn admins(&self) -> Vec<Rc<Admin>> {
+    fn admins(&self) -> Vec<Arc<Admin>> {
         self.street.admins()
     }
 }

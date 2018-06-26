@@ -75,6 +75,7 @@ pub struct Rubber {
     http_client: hyper::client::Client,
 }
 
+#[derive(Clone, Debug)]
 pub struct TypedIndex<T> {
     name: String,
     _type: PhantomData<T>,

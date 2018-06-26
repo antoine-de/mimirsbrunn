@@ -44,7 +44,7 @@ use failure::Error;
 use mimir::objects::{Admin, AdminType};
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin;
-use std::cell::Cell;
+use mimirsbrunn::utils::normalize_admin_weight;
 
 trait IntoAdmin {
     fn into_admin(self) -> Admin;
@@ -57,7 +57,7 @@ fn get_weight(tags: &osmpbfreader::Tags) -> f64 {
     // will have a weight (but the main cities have it).
     tags.get("population")
         .and_then(|p| p.parse().ok())
-        .unwrap_or(0.)
+        .unwrap_or(0f64)
 }
 
 impl IntoAdmin for Zone {
@@ -65,7 +65,7 @@ impl IntoAdmin for Zone {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
-        let weight = Cell::new(get_weight(&self.tags));
+        let weight = get_weight(&self.tags);
         let admin_type = if self.zone_type == Some(ZoneType::City) {
             AdminType::City
         } else {
@@ -103,13 +103,6 @@ fn load_cosmogony(input: &str) -> Result<Cosmogony, Error> {
         .map_err(|e| failure::err_msg(e.to_string()))
 }
 
-fn normalize_weight(admins: &mut [Admin]) {
-    let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight.get()));
-    for ref mut a in admins {
-        a.weight.set(a.weight.get() / max);
-    }
-}
-
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("importing cosmogony into Mimir");
     let cosmogony = load_cosmogony(&args.input)?;
@@ -120,7 +113,7 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
         .map(|z| z.into_admin())
         .collect();
 
-    normalize_weight(&mut admins);
+    normalize_admin_weight(&mut admins);
 
     send_to_es(&admins, &args.connection_string, &args.dataset)?;
 

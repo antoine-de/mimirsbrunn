@@ -74,10 +74,7 @@ impl OpenAddresse {
             y: self.lat,
         });
 
-        let weight = admins
-            .iter()
-            .find(|a| a.is_city())
-            .map_or(0., |a| a.weight.get());
+        let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
 
         let street = mimir::Street {
             id: street_id,

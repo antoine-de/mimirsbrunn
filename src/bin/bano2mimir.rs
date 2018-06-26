@@ -49,9 +49,9 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::Arc;
 
-type AdminFromInsee = BTreeMap<String, Rc<Admin>>;
+type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
 
 #[derive(Serialize, Deserialize)]
 pub struct Bano {
@@ -99,7 +99,7 @@ impl Bano {
         let weight = admins
             .iter()
             .find(|a| a.level == 8)
-            .map_or(0., |a| a.weight.get());
+            .map_or(0., |a| a.weight);
 
         let street = mimir::Street {
             id: street_id,
@@ -144,7 +144,7 @@ where
         .filter(|a| !a.insee.is_empty())
         .map(|mut a| {
             a.boundary = None; // to save some space we remove the admin boundary
-            (a.insee.clone(), Rc::new(a))
+            (a.insee.clone(), Arc::new(a))
         })
         .collect();
 

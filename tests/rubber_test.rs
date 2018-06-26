@@ -36,7 +36,6 @@ use mimir::AdminType::City;
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
 use std;
-use std::cell::Cell;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
@@ -148,7 +147,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         name: "my admin".to_string(),
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
-        weight: Cell::new(0.42),
+        weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: Some(geo::MultiPolygon(vec![geo::Polygon::new(
             geo::LineString(vec![
@@ -238,7 +237,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         name: "my admin".to_string(),
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
-        weight: Cell::new(0.42),
+        weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
         admin_type: City,
