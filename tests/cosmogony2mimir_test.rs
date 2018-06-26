@@ -48,7 +48,6 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // All results should be admins, and have some basic information
     let all_objects: Vec<_> = es_wrapper.search_and_filter("*.*", |_| true).collect();
-    // There are 7 admins in total:
     assert_eq!(all_objects.len(), 7);
 
     assert!(all_objects.iter().any(|r| r.is_admin()));
@@ -75,7 +74,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(livry_sur_seine.level, 8);
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
             assert_relative_eq!(
-                livry_sur_seine.weight.get(),
+                livry_sur_seine.weight,
                 0.048473060698678926,
                 epsilon = f64::EPSILON
             );
@@ -142,7 +141,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     match fausse_seine_max_weight {
         &mimir::Place::Admin(ref fr) => {
             assert_eq!(fr.id, "admin:osm:relation:80071");
-            assert_eq!(fr.weight.get(), 1f64);
+            assert_eq!(fr.weight, 1f64);
         }
         _ => panic!("should be an admin"),
     }

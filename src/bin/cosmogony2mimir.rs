@@ -66,7 +66,7 @@ impl IntoAdmin for Zone {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
-        let weight = get_weight(&self.tags);
+        let weight = get_weight(&self.tags, &self.center_tags);
         let admin_type = if self.zone_type == Some(ZoneType::City) {
             AdminType::City
         } else {
