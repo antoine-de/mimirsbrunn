@@ -55,6 +55,7 @@ extern crate rs_es;
 
 pub mod objects;
 pub mod rubber;
+pub mod utils;
 
 pub use objects::*;
 use std::env;

@@ -32,6 +32,7 @@ use cosmogony::ZoneType;
 use geo;
 use hyper;
 use mimir::rubber::{self, Rubber};
+use mimir::utils::mpoly_to_geojson_bbox;
 use mimir::AdminType::City;
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
@@ -140,6 +141,17 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     let dataset = "my_dataset";
     let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
 
+    let boundary = geo::MultiPolygon(vec![geo::Polygon::new(
+        geo::LineString(vec![
+            p(2., 48.),
+            p(2., 49.),
+            p(3., 49.),
+            p(3., 48.),
+            p(2., 48.),
+        ]),
+        vec![],
+    )]);
+
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -149,16 +161,8 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
-        boundary: Some(geo::MultiPolygon(vec![geo::Polygon::new(
-            geo::LineString(vec![
-                p(2., 48.),
-                p(2., 49.),
-                p(3., 49.),
-                p(3., 48.),
-                p(2., 48.),
-            ]),
-            vec![],
-        )])),
+        bbox: mpoly_to_geojson_bbox(&boundary),
+        boundary: Some(boundary),
         admin_type: City,
         zone_type: Some(ZoneType::City),
     };
@@ -240,6 +244,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
+        bbox: None,
         admin_type: City,
         zone_type: Some(ZoneType::City),
     };

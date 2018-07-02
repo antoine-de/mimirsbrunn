@@ -29,6 +29,7 @@
 // www.navitia.io
 use cosmogony::ZoneType;
 use geo;
+use geojson;
 use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
@@ -320,6 +321,10 @@ pub struct Admin {
         default
     )]
     pub boundary: Option<geo::MultiPolygon<f64>>,
+
+    #[serde(default)]
+    pub bbox: Option<geojson::Bbox>,
+
     #[serde(default = "default_admin_city")]
     pub admin_type: AdminType, // deprecated, to be removed after the new zone_type deployment
     #[serde(default)]

@@ -111,6 +111,8 @@ pub struct GeocodingResponse {
     pub codes: Vec<mimir::Code>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub feed_publishers: Vec<mimir::FeedPublisher>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub bbox: Option<geojson::Bbox>,
 }
 
 trait ToGeom {
@@ -175,6 +177,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             name: name,
             postcode: postcode,
             label: label,
+            bbox: other.bbox,
             ..Default::default()
         }
     }

@@ -96,6 +96,10 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(melun["id"], "admin:osm:relation:80071");
     assert_eq!(melun["type"], "city");
     assert_eq!(melun["city"], serde_json::Value::Null);
+    assert_eq!(
+        melun["bbox"],
+        json!(vec![2.6284669, 48.5235259, 2.6820184, 48.5607616])
+    );
 
     // we should also find other object that are in the city
     // (in the data there is at least one poi, and one street that matches)
