@@ -237,7 +237,7 @@ impl From<mimir::Addr> for GeocodingResponse {
         let label = Some(other.label);
         let housenumber = Some(other.house_number.to_string());
         let street_name = Some(other.street.name.to_string());
-        let name = Some(format!("{} {}", other.house_number, other.street.name));
+        let name = Some(other.name.to_string());
         let admins = other.street.administrative_regions;
         let city = get_city_name(&admins);
         let postcode = if other.zip_codes.is_empty() {
