@@ -429,14 +429,13 @@ where
 {
     use serde::Deserialize;
 
-    Option::<Vec<f64>>::deserialize(d).map(|option| match option {
-        Some(b) => Some(geo::Bbox {
+    Option::<Vec<f64>>::deserialize(d).map(|option| {
+        option.map(|b| geo::Bbox {
             xmin: b[0],
             ymin: b[1],
             xmax: b[2],
             ymax: b[3],
-        }),
-        None => None,
+        })
     })
 }
 
