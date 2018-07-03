@@ -36,8 +36,8 @@ extern crate osmpbfreader;
 use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
 use cosmogony::ZoneType;
+use geo::prelude::BoundingBox;
 use itertools::Itertools;
-use mimir::utils::mpoly_to_geojson_bbox;
 use osm_reader::osm_utils::make_centroid;
 use std::collections::BTreeSet;
 use utils::normalize_admin_weight;
@@ -174,7 +174,7 @@ pub fn read_administrative_regions(
                 zip_codes: zip_codes,
                 weight: weight,
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
-                bbox: boundary.as_ref().and_then(mpoly_to_geojson_bbox),
+                bbox: boundary.as_ref().and_then(|b| b.bbox()),
                 boundary: boundary,
                 admin_type: admin_type,
                 zone_type: zone_type,

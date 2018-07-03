@@ -30,9 +30,9 @@
 
 use cosmogony::ZoneType;
 use geo;
+use geo::prelude::BoundingBox;
 use hyper;
 use mimir::rubber::{self, Rubber};
-use mimir::utils::mpoly_to_geojson_bbox;
 use mimir::AdminType::City;
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
@@ -161,7 +161,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
-        bbox: mpoly_to_geojson_bbox(&boundary),
+        bbox: boundary.bbox(),
         boundary: Some(boundary),
         admin_type: City,
         zone_type: Some(ZoneType::City),

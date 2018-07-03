@@ -43,7 +43,6 @@ use cosmogony::{Cosmogony, Zone, ZoneType};
 use failure::Error;
 use mimir::objects::{Admin, AdminType};
 use mimir::rubber::Rubber;
-use mimir::utils::geo_to_geojson_bbox;
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::utils::normalize_admin_weight;
 
@@ -84,7 +83,7 @@ impl IntoAdmin for Zone {
             name: self.name,
             zip_codes: zip_codes,
             weight: weight,
-            bbox: self.bbox.map(geo_to_geojson_bbox),
+            bbox: self.bbox,
             boundary: self.boundary,
             coord: center,
             admin_type: admin_type,

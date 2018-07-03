@@ -186,7 +186,7 @@ fn test_up_down() {
 mod tests {
     use super::*;
     use cosmogony::ZoneType;
-    use mimir::utils::mpoly_to_geojson_bbox;
+    use geo::prelude::BoundingBox;
     use mimir::AdminType;
 
     fn p(x: f64, y: f64) -> ::geo::Point<f64> {
@@ -219,7 +219,7 @@ mod tests {
             zip_codes: vec!["421337".to_string()],
             weight: 0f64,
             coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
-            bbox: mpoly_to_geojson_bbox(&boundary),
+            bbox: boundary.bbox(),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
             admin_type: AdminType::City,
