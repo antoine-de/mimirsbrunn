@@ -164,6 +164,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         boundary: Some(boundary),
         admin_type: City,
         zone_type: Some(ZoneType::City),
+        parent_id: None,
     };
 
     // we index our admin
@@ -246,6 +247,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         bbox: None,
         admin_type: City,
         zone_type: Some(ZoneType::City),
+        parent_id: None,
     };
 
     // we index our admin

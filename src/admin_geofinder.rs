@@ -32,6 +32,7 @@ use geo::contains::Contains;
 use gst::rtree::{RTree, Rect};
 use mimir::Admin;
 use std;
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
 
@@ -50,6 +51,7 @@ impl BoundaryAndAdmin {
 
 pub struct AdminGeoFinder {
     admins: RTree<BoundaryAndAdmin>,
+    parents_map: BTreeMap<String, String>,
 }
 
 impl AdminGeoFinder {
@@ -84,6 +86,9 @@ impl AdminGeoFinder {
                 )
             })
         };
+        if let Some(parent_id) = &admin.parent_id {
+            self.parents_map.insert(admin.id.clone(), parent_id.clone());
+        }
         self.admins.insert(rect, BoundaryAndAdmin::new(admin));
     }
 
@@ -91,17 +96,31 @@ impl AdminGeoFinder {
     pub fn get(&self, coord: &geo::Coordinate<f64>) -> Vec<Arc<Admin>> {
         let (x, y) = (coord.x as f32, coord.y as f32);
         let search = Rect::from_float(down(x), up(x), down(y), up(y));
-        self.admins
-            .get(&search)
-            .into_iter()
-            .map(|(_, a)| a)
-            .filter(|a| {
-                a.0
+        let mut rtree_results = self.admins.get(&search);
+
+        rtree_results.sort_by_key(|(_, a)| (*a.1).zone_type);
+
+        let mut tested_hierarchy = BTreeSet::<String>::new();
+        let mut res = vec![];
+
+        for boundary_and_admin in rtree_results.into_iter().map(|(_, a)| a) {
+            let boundary = &boundary_and_admin.0;
+            let admin = &boundary_and_admin.1;
+            if tested_hierarchy.contains(&(*admin).id)
+                || boundary
                     .as_ref()
                     .map_or(false, |b| (*b).contains(&geo::Point(*coord)))
-            })
-            .map(|admin_and_boundary| admin_and_boundary.1.clone())
-            .collect()
+            {
+                let mut admin_parent = (*admin).parent_id.clone();
+                while let Some(id) = admin_parent {
+                    admin_parent = self.parents_map.get(&id).cloned();
+                    tested_hierarchy.insert(id);
+                }
+
+                res.push(admin.clone());
+            }
+        }
+        res
     }
 
     /// Iterates on all the admins with a not None boundary.
@@ -143,6 +162,7 @@ impl Default for AdminGeoFinder {
     fn default() -> Self {
         AdminGeoFinder {
             admins: RTree::new(),
+            parents_map: BTreeMap::new(),
         }
     }
 }
@@ -224,6 +244,7 @@ mod tests {
             insee: "outlook".to_string(),
             admin_type: AdminType::City,
             zone_type: Some(ZoneType::City),
+            parent_id: None,
         }
     }
 

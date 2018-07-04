@@ -335,6 +335,8 @@ pub struct Admin {
     pub admin_type: AdminType, // deprecated, to be removed after the new zone_type deployment
     #[serde(default)]
     pub zone_type: Option<ZoneType>,
+    #[serde(default)]
+    pub parent_id: Option<String>, // id of the Admin's parent (from the cosmogony's hierarchy)
 }
 
 fn default_admin_city() -> AdminType {
