@@ -39,15 +39,16 @@ extern crate serde_json;
 extern crate structopt;
 extern crate osmpbfreader;
 
-use cosmogony::{Cosmogony, Zone, ZoneType};
+use cosmogony::{Cosmogony, Zone, ZoneIndex, ZoneType};
 use failure::Error;
 use mimir::objects::{Admin, AdminType};
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::utils::normalize_admin_weight;
+use std::collections::BTreeMap;
 
 trait IntoAdmin {
-    fn into_admin(self) -> Admin;
+    fn into_admin(self, &BTreeMap<ZoneIndex, String>) -> Admin;
 }
 
 fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f64 {
@@ -62,7 +63,7 @@ fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f6
 }
 
 impl IntoAdmin for Zone {
-    fn into_admin(self) -> Admin {
+    fn into_admin(self, zones_osm_id: &BTreeMap<ZoneIndex, String>) -> Admin {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
@@ -75,8 +76,13 @@ impl IntoAdmin for Zone {
         let center = self.center.map_or(mimir::Coord::default(), |c| {
             mimir::Coord::new(c.lng(), c.lat())
         });
+        let format_id = |id| format!("admin:osm:{}", id);
+        let parent_osm_id = self
+            .parent
+            .and_then(|id| zones_osm_id.get(&id))
+            .map(format_id);
         Admin {
-            id: format!("admin:osm:{}", self.osm_id),
+            id: format_id(&self.osm_id),
             insee: insee.into(),
             level: self.admin_level.unwrap_or(0),
             label: label,
@@ -88,6 +94,7 @@ impl IntoAdmin for Zone {
             coord: center,
             admin_type: admin_type,
             zone_type: self.zone_type,
+            parent_id: parent_osm_id,
         }
     }
 }
@@ -109,10 +116,16 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("importing cosmogony into Mimir");
     let cosmogony = load_cosmogony(&args.input)?;
 
+    let cosmogony_id_to_osm_id: BTreeMap<_, _> = cosmogony
+        .zones
+        .iter()
+        .map(|z| (z.id.clone(), z.osm_id.clone()))
+        .collect();
+
     let mut admins: Vec<_> = cosmogony
         .zones
         .into_iter()
-        .map(|z| z.into_admin())
+        .map(|z| z.into_admin(&cosmogony_id_to_osm_id))
         .collect();
 
     normalize_admin_weight(&mut admins);
