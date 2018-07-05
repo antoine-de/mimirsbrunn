@@ -545,16 +545,20 @@ impl Rubber {
         iter: I,
     ) -> Result<usize, rs_es::error::EsError>
     where
-        T: MimirObject,
+        T: MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
+        use par_map::ParMap;
         use rs_es::operations::bulk::Action;
         let mut nb = 0;
         let chunk_size = 1000;
-        // fold is used for creating the action and optionally set the id of the object
-        let mut actions = iter.map(|v| {
+        let nb_threads = std::env::var("MIMIR_NB_THREADS")
+            .map(|v| v.parse().expect("unable to read the number of threads"))
+            .unwrap_or(1);
+        let mut actions = iter.with_nb_threads(nb_threads).par_map(|v| {
             v.es_id()
                 .into_iter()
+                // fold is used for creating the action and optionally set the id of the object
                 .fold(Action::index(v), |action, id| action.with_id(id))
         });
         loop {
@@ -587,7 +591,7 @@ impl Rubber {
     /// the index is published and the old index is removed
     pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, Error>
     where
-        T: MimirObject,
+        T: MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
         // TODO better error handling

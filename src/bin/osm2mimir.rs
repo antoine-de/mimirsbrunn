@@ -150,7 +150,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
         info!("Importing pois into Mimir");
         let nb_pois = rubber
-            .index(&args.dataset, pois.iter())
+            .index(&args.dataset, pois.into_iter())
             .context("Importing pois into Mimir")?;
 
         info!("Nb of indexed pois: {}", nb_pois);

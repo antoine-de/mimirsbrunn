@@ -92,10 +92,10 @@ impl IntoAdmin for Zone {
     }
 }
 
-fn send_to_es(admins: &[Admin], cnx_string: &str, dataset: &str) -> Result<(), Error> {
+fn send_to_es(admins: Vec<Admin>, cnx_string: &str, dataset: &str) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, admins.iter())?;
+    let nb_admins = rubber.index(dataset, admins.into_iter())?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }
@@ -117,7 +117,7 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
 
     normalize_admin_weight(&mut admins);
 
-    send_to_es(&admins, &args.connection_string, &args.dataset)?;
+    send_to_es(admins, &args.connection_string, &args.dataset)?;
 
     Ok(())
 }
