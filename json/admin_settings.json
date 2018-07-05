@@ -49,6 +49,7 @@
     },
     "mappings": {
         "admin": {
+            "dynamic": "false",
             "properties": {
                 "id": { "type": "string", "index": "no" },
                 "level": { "type": "long", "index": "no" },

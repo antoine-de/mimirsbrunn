@@ -49,6 +49,7 @@
     },
     "mappings": {
         "street": {
+            "dynamic": "false",
             "properties": {
                 "id": { "type": "string", "index": "no" },
                 "name": {
@@ -135,15 +136,7 @@
                         }
                     }
                 },
-                "weight": { "type": "double" },
-                "administrative_regions": {
-                    "properties": {
-                        "id": { "type": "string", "index": "no" },
-                        "level": { "type": "long", "index": "no" },
-                        "zip_codes": { "type": "string", "index": "not_analyzed" },
-                        "weight": { "type": "double" }
-                    }
-                }
+                "weight": { "type": "double" }
             }
         }
     }
