@@ -45,6 +45,7 @@ extern crate structopt;
 use failure::ResultExt;
 use mimir::objects::Admin;
 use mimir::rubber::Rubber;
+use mimir::MimirObject;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::BTreeMap;
 use std::fs;
@@ -157,11 +158,22 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
-
-        let iter = rdr.deserialize().map(|r| {
-            let b: Bano = r.unwrap();
-            b.into_addr(&admins_by_insee, &admins_geofinder)
-        });
+        let iter = rdr
+            .deserialize()
+            .filter_map(|r| {
+                r.map_err(|e| info!("impossible to read line, error: {}", e))
+                    .ok()
+                    .map(|b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
+            })
+            .filter(|a| {
+                !a.street.street_name.is_empty() || {
+                    info!(
+                        "Address {}:{:?}:{:?} has no street name and has been ignored.",
+                        a.id, a.coord, a.street
+                    );
+                    false
+                }
+            });
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;

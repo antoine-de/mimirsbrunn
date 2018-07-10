@@ -45,6 +45,7 @@ extern crate structopt;
 use failure::ResultExt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use std::cell::Cell;
 use std::fs;
 use std::path::PathBuf;
 
@@ -123,15 +124,26 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
-        let iter = rdr.deserialize().filter_map(|r| {
-            r.map_err(|e| info!("impossible to read line, error: {}", e))
-                .ok()
-                .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
-        });
+        let iter = rdr
+            .deserialize()
+            .filter_map(|r| {
+                r.map_err(|e| info!("impossible to read line, error: {}", e))
+                    .ok()
+                    .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
+            })
+            .filter(|a| {
+                !a.street.street_name.is_empty() || {
+                    info!(
+                        "Address {}:{:?}:{:?} has no street name and has been ignored.",
+                        a.id, a.coord, a.street
+                    );
+                    false
+                }
+            });
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!("importing {:?}: {} addresses added.", &f, nb);
+        info!("importing {:?}: {} addresses", &f, nb);
     }
     rubber.publish_index(dataset, addr_index)
 }
