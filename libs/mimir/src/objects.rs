@@ -29,6 +29,7 @@
 // www.navitia.io
 use cosmogony::ZoneType;
 use geo;
+use geojson;
 use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
@@ -321,6 +322,15 @@ pub struct Admin {
         default
     )]
     pub boundary: Option<geo::MultiPolygon<f64>>,
+
+    #[serde(
+        serialize_with = "serialize_bbox",
+        deserialize_with = "deserialize_bbox",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub bbox: Option<geo::Bbox<f64>>,
+
     #[serde(default = "default_admin_city")]
     pub admin_type: AdminType, // deprecated, to be removed after the new zone_type deployment
     #[serde(default)]
@@ -389,6 +399,43 @@ where
                 }
             }
             _ => None,
+        })
+    })
+}
+
+pub fn serialize_bbox<'a, S>(
+    bbox: &'a Option<geo::Bbox<f64>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::Serialize;
+
+    match bbox {
+        Some(b) => {
+            // bbox serialized as an array
+            // using GeoJSON bounding box format
+            // See RFC 7946: https://tools.ietf.org/html/rfc7946#section-5
+            let geojson_bbox: geojson::Bbox = vec![b.xmin, b.ymin, b.xmax, b.ymax];
+            geojson_bbox.serialize(serializer)
+        }
+        None => serializer.serialize_none(),
+    }
+}
+
+fn deserialize_bbox<'de, D>(d: D) -> Result<Option<geo::Bbox<f64>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+
+    Option::<Vec<f64>>::deserialize(d).map(|option| {
+        option.map(|b| geo::Bbox {
+            xmin: b[0],
+            ymin: b[1],
+            xmax: b[2],
+            ymax: b[3],
         })
     })
 }

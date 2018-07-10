@@ -83,6 +83,7 @@ impl IntoAdmin for Zone {
             name: self.name,
             zip_codes: zip_codes,
             weight: weight,
+            bbox: self.bbox,
             boundary: self.boundary,
             coord: center,
             admin_type: admin_type,

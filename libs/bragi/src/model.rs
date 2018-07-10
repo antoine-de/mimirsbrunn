@@ -51,13 +51,13 @@ impl From<EsError> for BragiError {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Geocoding {
     version: String,
     query: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Feature {
     #[serde(rename = "type")]
     pub feature_type: String,
@@ -65,12 +65,12 @@ pub struct Feature {
     pub properties: Properties,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Properties {
     pub geocoding: GeocodingResponse,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Debug, Default)]
 pub struct GeocodingResponse {
     pub id: String,
     #[serde(rename = "type")]
@@ -111,6 +111,12 @@ pub struct GeocodingResponse {
     pub codes: Vec<mimir::Code>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub feed_publishers: Vec<mimir::FeedPublisher>,
+    #[serde(
+        serialize_with = "mimir::objects::serialize_bbox",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub bbox: Option<geo::Bbox<f64>>,
 }
 
 trait ToGeom {
@@ -175,6 +181,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             name: name,
             postcode: postcode,
             label: label,
+            bbox: other.bbox,
             ..Default::default()
         }
     }
@@ -335,7 +342,7 @@ impl From<mimir::Stop> for GeocodingResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Autocomplete {
     #[serde(rename = "type")]
     format_type: String,

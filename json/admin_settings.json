@@ -136,7 +136,8 @@
                         }
                     }
                 },
-                "weight": { "type": "double" }
+                "weight": { "type": "double" },
+                "bbox": { "type": "double", "index": "no"}
             }
         }
     }
