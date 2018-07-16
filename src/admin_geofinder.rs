@@ -66,7 +66,7 @@ impl AdminGeoFinder {
 
         let rect = {
             let mut coords = match admin.boundary {
-                Some(ref b) => (*b).0.iter().flat_map(|poly| (poly.exterior).0.iter()),
+                Some(ref b) => b.0.iter().flat_map(|poly| (poly.exterior).0.iter()),
                 None => return,
             };
             let first_coord = match coords.next() {
@@ -88,7 +88,7 @@ impl AdminGeoFinder {
         };
         let bound_admin = BoundaryAndAdmin::new(admin);
         self.admin_by_id
-            .insert((*bound_admin.1).id.clone(), bound_admin.1.clone());
+            .insert(bound_admin.1.id.clone(), bound_admin.1.clone());
         self.admins.insert(rect, bound_admin);
     }
 
@@ -98,7 +98,7 @@ impl AdminGeoFinder {
         let search = Rect::from_float(down(x), up(x), down(y), up(y));
         let mut rtree_results = self.admins.get(&search);
 
-        rtree_results.sort_by_key(|(_, a)| (*a.1).zone_type);
+        rtree_results.sort_by_key(|(_, a)| a.1.zone_type);
 
         let mut tested_hierarchy = BTreeSet::<String>::new();
         let mut added_zone_types = BTreeSet::new();
@@ -107,9 +107,9 @@ impl AdminGeoFinder {
         for boundary_and_admin in rtree_results.into_iter().map(|(_, a)| a) {
             let boundary = &boundary_and_admin.0;
             let admin = &boundary_and_admin.1;
-            if tested_hierarchy.contains(&(*admin).id) {
+            if tested_hierarchy.contains(&admin.id) {
                 res.push(admin.clone());
-            } else if (*admin)
+            } else if admin
                 .zone_type
                 .as_ref()
                 .map_or(false, |zt| added_zone_types.contains(zt))
@@ -117,20 +117,20 @@ impl AdminGeoFinder {
                 // we don't want it, we already have this kind of ZoneType
             } else if boundary
                 .as_ref()
-                .map_or(false, |b| (*b).contains(&geo::Point(*coord)))
+                .map_or(false, |b| b.contains(&geo::Point(*coord)))
             {
                 // we found a valid admin, we save it's hierarchy not to have to test their boundaries
-                if let Some(zt) = (*admin).zone_type {
+                if let Some(zt) = admin.zone_type {
                     added_zone_types.insert(zt.clone());
                 }
-                let mut admin_parent_id = (*admin).parent_id.clone();
+                let mut admin_parent_id = admin.parent_id.clone();
                 while let Some(id) = admin_parent_id {
                     let admin_parent = self.admin_by_id.get(&id);
-                    if let Some(zt) = admin_parent.as_ref().and_then(|a| (*a).zone_type) {
+                    if let Some(zt) = admin_parent.as_ref().and_then(|a| a.zone_type) {
                         added_zone_types.insert(zt.clone());
                     }
                     tested_hierarchy.insert(id);
-                    admin_parent_id = admin_parent.and_then(|a| (*a).parent_id.clone());
+                    admin_parent_id = admin_parent.and_then(|a| a.parent_id.clone());
                 }
 
                 res.push(admin.clone());
@@ -309,7 +309,7 @@ mod tests {
         let mut finder = AdminGeoFinder::default();
         finder.insert(make_admin(40., Some(ZoneType::City)));
         finder.insert(make_admin(43., Some(ZoneType::City)));
-        let mut admins = finder.get(&p(46., 46.).0);
+        let admins = finder.get(&p(46., 46.).0);
         assert_eq!(admins.len(), 1);
     }
 
@@ -321,7 +321,7 @@ mod tests {
         let mut finder = AdminGeoFinder::default();
         finder.insert(make_admin(40., None));
         finder.insert(make_admin(43., None));
-        let mut admins = finder.get(&p(46., 46.).0);
+        let admins = finder.get(&p(46., 46.).0);
         assert_eq!(admins.len(), 2);
     }
 
@@ -350,7 +350,7 @@ mod tests {
             None,
         ));
 
-        let mut admins = finder.get(&p(46., 46.).0);
+        let admins = finder.get(&p(46., 46.).0);
         assert_eq!(admins.len(), 3);
         assert_eq!(admins[0].id, "bob_city");
         assert_eq!(admins[1].id, "bob_state");
@@ -393,7 +393,7 @@ mod tests {
             Some("bob_country"),
         ));
 
-        let mut admins = finder.get(&p(46., 46.).0);
+        let admins = finder.get(&p(46., 46.).0);
         assert_eq!(admins.len(), 3);
         assert_eq!(admins[0].id, "bob_city");
         assert_eq!(admins[1].id, "bob_state");
@@ -428,7 +428,7 @@ mod tests {
         // not_typed zone is outside the hierarchy, but since it contains the point and it has no type it is added
         finder.insert(make_complex_admin("no_typed_zone", 40., None, 2., None));
 
-        let mut admins = finder.get(&p(46., 46.).0);
+        let admins = finder.get(&p(46., 46.).0);
         assert_eq!(admins.len(), 4);
         assert_eq!(admins[0].id, "no_typed_zone");
         assert_eq!(admins[1].id, "bob_city");
