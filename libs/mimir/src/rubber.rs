@@ -555,30 +555,21 @@ impl Rubber {
         let nb_threads = std::env::var("MIMIR_NB_THREADS")
             .map(|v| v.parse().expect("unable to read the number of threads"))
             .unwrap_or(1);
-        let mut actions = iter.with_nb_threads(nb_threads).par_map(|v| {
-            v.es_id()
-                .into_iter()
-                // fold is used for creating the action and optionally set the id of the object
-                .fold(Action::index(v), |action, id| action.with_id(id))
+        let chunks = iter.pack(chunk_size).with_nb_threads(nb_threads).par_map(|v| {
+            v.into_iter()
+                .map(|v| v.es_id()
+                    .into_iter()
+                    .fold(Action::index(v), |action, id| action.with_id(id))
+                )
+                .collect::<Vec<_>>()
         });
-        loop {
-            let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
-
-            if chunk.is_empty() {
-                break;
-            }
+        for chunk in chunks.filter(|c| !c.is_empty()) {
             nb += chunk.len();
-            try!(
-                self.es_client
-                    .bulk(&chunk)
-                    .with_index(&index.name)
-                    .with_doc_type(T::doc_type())
-                    .send()
-            );
-
-            if chunk.len() < chunk_size {
-                break;
-            }
+            self.es_client
+                .bulk(&chunk)
+                .with_index(&index.name)
+                .with_doc_type(T::doc_type())
+                .send()?;
         }
 
         Ok(nb)
