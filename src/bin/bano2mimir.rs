@@ -158,8 +158,7 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
-        let iter = rdr
-            .deserialize()
+        let iter = rdr.deserialize()
             .filter_map(|r| {
                 r.map_err(|e| info!("impossible to read line, error: {}", e))
                     .ok()
@@ -192,9 +191,7 @@ struct Args {
     input: PathBuf,
     /// Elasticsearch parameters.
     #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
     /// Name of the dataset.

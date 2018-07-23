@@ -652,11 +652,9 @@ impl<'de> Deserialize<'de> for Coord {
             where
                 V: SeqAccess<'de>,
             {
-                let lon = seq
-                    .next_element()?
+                let lon = seq.next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let lat = seq
-                    .next_element()?
+                let lat = seq.next_element()?
                     .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                 Ok(Coord::new(lon, lat))
             }

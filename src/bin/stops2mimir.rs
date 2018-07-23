@@ -63,9 +63,7 @@ struct Args {
     dataset: String,
     /// Elasticsearch parameters.
     #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
     /// Deprecated option.
@@ -162,8 +160,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
 
     let mut rdr = csv::Reader::from_path(&args.input)?;
     let mut nb_stop_points = HashMap::new();
-    let mut stops: Vec<mimir::Stop> = rdr
-        .deserialize()
+    let mut stops: Vec<mimir::Stop> = rdr.deserialize()
         .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
@@ -186,8 +183,7 @@ fn test_load_stops() {
     let mut rdr = csv::Reader::from_path("./tests/fixtures/stops.txt".to_string()).unwrap();
 
     let mut nb_stop_points = HashMap::new();
-    let stops: Vec<mimir::Stop> = rdr
-        .deserialize()
+    let stops: Vec<mimir::Stop> = rdr.deserialize()
         .filter_map(Result::ok)
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);

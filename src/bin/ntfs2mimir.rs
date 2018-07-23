@@ -48,21 +48,14 @@ use std::path::PathBuf;
 #[derive(Debug, StructOpt)]
 struct Args {
     /// NTFS directory.
-    #[structopt(
-        short = "i",
-        long = "input",
-        parse(from_os_str),
-        default_value = "."
-    )]
+    #[structopt(short = "i", long = "input", parse(from_os_str), default_value = ".")]
     input: PathBuf,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Elasticsearch parameters.
     #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
+        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
     /// Deprecated option.
