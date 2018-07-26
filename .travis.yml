@@ -4,6 +4,8 @@ rust:
   - stable
   - beta
   - nightly
+env:
+  - RUN=TEST
 script:
   - cargo test --all
 services:
@@ -11,6 +13,7 @@ services:
 matrix:
   include:
     - rust: stable
+      env: RUN=RUSTFMT
       before_script: rustup component add rustfmt-preview
       script: cargo fmt --all -- --write-mode diff
   allow_failures:
