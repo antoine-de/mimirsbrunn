@@ -49,6 +49,7 @@
     },
     "mappings": {
         "poi": {
+            "dynamic": "false",
             "properties": {
                 "id": { "type": "string", "index": "no" },
                 "name": {
@@ -133,14 +134,6 @@
                                 "enabled": false
                             }
                         }
-                    }
-                },
-                "administrative_regions": {
-                    "properties": {
-                        "id": { "type": "string", "index": "no" },
-                        "level": { "type": "long", "index": "no" },
-                        "zip_codes": { "type": "string", "index": "not_analyzed" },
-                        "weight": { "type": "double" }
                     }
                 },
                 "properties": {

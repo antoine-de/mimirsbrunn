@@ -49,6 +49,7 @@
     },
     "mappings": {
         "addr": {
+            "dynamic": "false",
             "properties": {
                 "id": { "type": "string", "index": "no" },
                 "house_number": { "type": "string", "analyzer": "word"},
@@ -136,23 +137,7 @@
                         }
                     }
                 },
-                "weight": { "type": "double" },
-                "street": {
-                    "properties": {
-                        "id": { "type": "string", "index": "no" },
-                        "street_name": { "type": "string" },
-                        "administrative_regions": {
-                            "properties": {
-                                "id": { "type": "string", "index": "no" },
-                                "level": { "type": "long", "index": "no" },
-                                "zip_codes": { "type": "string", "index": "not_analyzed" },
-                                "weight": { "type": "double" }
-                            }
-                        },
-                        "weight": { "type": "double" },
-                        "zip_codes": { "type": "string", "index": "not_analyzed" }
-                    }
-                }
+                "weight": { "type": "double" }
             }
         }
     }
