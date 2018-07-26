@@ -12,10 +12,9 @@ services:
   - docker
 matrix:
   include:
-    - rust: nightly
+    - rust: stable
       env: RUN=RUSTFMT
       before_script: rustup component add rustfmt-preview
-      script: cargo fmt --all -- --check
+      script: cargo fmt --all -- --write-mode diff
   allow_failures:
     - rust: nightly
-      env: RUN=TEST

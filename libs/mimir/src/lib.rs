@@ -51,6 +51,7 @@ extern crate cosmogony;
 extern crate geo;
 extern crate geojson;
 extern crate hyper;
+extern crate par_map;
 extern crate rs_es;
 
 pub mod objects;

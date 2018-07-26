@@ -71,7 +71,7 @@ pub fn import_stops(
     let global_index = update_global_stop_index(&mut rubber, stops.iter(), dataset)?;
 
     info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.index(dataset, stops.iter())?;
+    let nb_stops = rubber.index(dataset, stops.into_iter())?;
     info!("Nb of indexed stops: {}", nb_stops);
 
     publish_global_index(&mut rubber, &global_index)
@@ -126,8 +126,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
 fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
     use std::collections::BTreeSet;
     let tmp = replace(target, vec![]);
-    *target = tmp
-        .into_iter()
+    *target = tmp.into_iter()
         .chain(source)
         .collect::<BTreeSet<_>>()
         .into_iter()

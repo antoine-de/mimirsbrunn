@@ -209,8 +209,7 @@ pub fn format_zip_codes(zip_codes: &[String]) -> String {
 }
 
 pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
-    let zip_code = tags
-        .get("addr:postcode")
+    let zip_code = tags.get("addr:postcode")
         .or_else(|| tags.get("postal_code"))
         .map_or("", |val| &val[..]);
     zip_code
