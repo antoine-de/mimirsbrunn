@@ -111,9 +111,7 @@ impl GtfsStop {
             Err(StopConversionErr::NotStopArea)
         } else if self.visible == Some(0) {
             Err(StopConversionErr::InvisibleStop)
-        } else if self.stop_lat <= MIN_LAT
-            || self.stop_lat >= MAX_LAT
-            || self.stop_lon <= MIN_LON
+        } else if self.stop_lat <= MIN_LAT || self.stop_lat >= MAX_LAT || self.stop_lon <= MIN_LON
             || self.stop_lon >= MAX_LON
         {
             //Here we return an error message
