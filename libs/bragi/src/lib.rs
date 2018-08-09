@@ -46,6 +46,8 @@ extern crate heck;
 extern crate urlencoded;
 extern crate valico;
 
+extern crate navitia_model;
+
 #[macro_use]
 extern crate slog;
 #[macro_use]

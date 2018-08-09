@@ -44,6 +44,8 @@ use serde;
 use serde_json;
 use valico::json_dsl;
 
+use navitia_model::objects::Coord;
+
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
 
@@ -342,7 +344,7 @@ impl ApiEndPoint {
                     // we have already checked that if there is a lon, lat
                     // is not None so we can unwrap
                     let coord = lon.and_then(|lon| {
-                        Some(model::Coord {
+                        Some(Coord {
                             lon: lon,
                             lat: lat.unwrap(),
                         })

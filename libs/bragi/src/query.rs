@@ -41,6 +41,8 @@ use serde;
 use serde_json;
 use std::fmt;
 
+use navitia_model::objects::Coord;
+
 lazy_static! {
     static ref ES_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
         "bragi_elasticsearch_request_duration_seconds",
@@ -95,7 +97,7 @@ impl fmt::Display for MatchType {
 
 /// Create a `rs_es::Query` that boosts results according to the
 /// distance to `coord`.
-fn build_proximity_with_boost(coord: &model::Coord, boost: f64) -> Query {
+fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
     Query::build_function_score()
         .with_boost(boost)
         .with_function(
@@ -128,7 +130,7 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
 fn build_query(
     q: &str,
     match_type: MatchType,
-    coord: &Option<model::Coord>,
+    coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     pt_datasets: &[&str],
     all_data: bool,
@@ -243,7 +245,7 @@ fn query(
     match_type: MatchType,
     offset: u64,
     limit: u64,
-    coord: &Option<model::Coord>,
+    coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
@@ -337,7 +339,7 @@ pub fn autocomplete(
     all_data: bool,
     offset: u64,
     limit: u64,
-    coord: Option<model::Coord>,
+    coord: Option<Coord>,
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
     types: &[&str],

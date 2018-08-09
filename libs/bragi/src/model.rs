@@ -86,6 +86,8 @@ pub struct GeocodingResponse {
     pub citycode: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub level: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance: Option<u32>,
     // pub accuracy: Option<i32>,
     // pub district: Option<String>,
     // pub county: Option<String>,
@@ -371,12 +373,6 @@ impl From<Vec<mimir::Place>> for Autocomplete {
             places.into_iter().map(|p| Feature::from(p)).collect(),
         )
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Coord {
-    pub lat: f64,
-    pub lon: f64,
 }
 
 pub mod v1 {

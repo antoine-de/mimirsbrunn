@@ -138,6 +138,7 @@ dependencies = [
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "logger 0.4.0 (git+https://github.com/iron/logger.git)",
  "mimir 1.2.0",
+ "navitia_model 0.1.0 (git+https://github.com/CanalTP/navitia_model)",
  "prometheus 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustless 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
