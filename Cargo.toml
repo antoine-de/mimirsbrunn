@@ -14,7 +14,8 @@ slog-envlogger = "2.1.0"
 slog-async = "2.2.0"
 structopt = "0.2"
 csv = "1.0.0-beta.4"
-rs-es = {version = "0.10", default-features = false}
+# rs-es = {version = "0.10", default-features = false}
+rs-es = { path = "/home/antoine/dev/bin/rs-es", default-features = false}
 regex = "*"
 osmpbfreader = "0.11.2"
 chrono = "0.4"
@@ -58,3 +59,7 @@ name = "tests"
 [replace]
 # remove this line once queryst > 1.0.1 is released
 "queryst:1.0.1" = { git = "https://github.com/rustless/queryst", rev = "b29604af7bfb05c2b9d98d726ab1bafd0533cc10" }
+
+
+# [patch.crates-io]
+# rs-es = { path = "/home/antoine/dev/bin/rs-es"}

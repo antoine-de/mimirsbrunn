@@ -149,14 +149,15 @@ fn build_query(
             match_type_with_boost::<Poi>(1.5),
             match_type_with_boost::<Street>(1.),
         ])
-        .with_boost(30.)
+        .with_boost(60.)
         .build();
 
     // Priorization by query string
     let mut string_should = vec![
         Query::build_match("name", q).with_boost(1.).build(),
-        Query::build_match("label", q).with_boost(1.).build(),
-        Query::build_match("label.prefix", q).with_boost(1.).build(),
+        // Query::build_match("name.prefix", q).with_boost(1.).build(),
+        Query::build_match("label", q).with_boost(1.0).build(),
+        Query::build_match("label.prefix", q).with_boost(1.0).build(),
         Query::build_match("zip_codes", q).with_boost(1.).build(),
     ];
     if let MatchType::Fuzzy = match_type {
@@ -269,6 +270,21 @@ fn query(
         )
         .ok();
 
+    let rescore = json!({
+    "window_size": 100,
+    "query": {
+      "rescore_query": {
+        "match_phrase": {
+          "name": {
+            "query": q,
+            "slop": 5
+          }
+        }
+      },
+      "rescore_query_weight": 0.01
+    }
+  });
+
     let result: SearchResult<serde_json::Value> = client
         .search_query()
         .with_indexes(&indexes
@@ -278,6 +294,7 @@ fn query(
         .with_query(&query)
         .with_from(offset)
         .with_size(limit)
+        .with_rescore(rescore)
         .send()?;
 
     timer.map(|t| t.observe_duration());

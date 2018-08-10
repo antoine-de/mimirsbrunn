@@ -86,7 +86,7 @@
                     "fields": {
                         "prefix": {
                             "type": "string",
-                            "index_options": "docs",
+                            "index_options": "positions",
                             "analyzer": "prefix",
                             "search_analyzer": "word",
                             "norms": {

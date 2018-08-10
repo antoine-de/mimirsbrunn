@@ -55,12 +55,12 @@
                 "level": { "type": "long", "index": "no" },
                 "name": {
                     "type": "string",
-                    "index_options": "docs",
+                    "index_options": "positions",
                     "analyzer": "word",
                     "fields": {
                         "prefix": {
                             "type": "string",
-                            "index_options": "docs",
+                            "index_options": "positions",
                             "analyzer": "prefix",
                             "search_analyzer": "word"
                         }
@@ -88,13 +88,13 @@
                 },
                 "label": {
                     "type": "string",
-                    "index_options": "docs",
+                    "index_options": "positions",
                     "analyzer": "word",
                     "copy_to": "full_label",
                     "fields": {
                         "prefix": {
                             "type": "string",
-                            "index_options": "docs",
+                            "index_options": "positions",
                             "analyzer": "prefix",
                             "search_analyzer": "word",
                             "norms": {
@@ -138,7 +138,30 @@
                     }
                 },
                 "weight": { "type": "double" },
-                "zone_type": { "type": "string", "index": "not_analyzed"}
+                "zone_type": { "type": "string", "index": "not_analyzed"},
+                "administrative_regions": {
+                    "properties": {
+                        "name": { 
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "word",
+                            "fields": {
+                                "prefix": {
+                                    "type": "string",
+                                    "index_options": "docs",
+                                    "analyzer": "prefix",
+                                    "search_analyzer": "word"
+                                },
+                                "ngram": {
+                                    "type": "string",
+                                    "index_options": "docs",
+                                    "analyzer": "ngram",
+                                    "search_analyzer": "ngram"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
