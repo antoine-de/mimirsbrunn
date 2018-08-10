@@ -167,10 +167,7 @@ where
             })
             .filter(|a| {
                 !a.street.street_name.is_empty() || {
-                    info!(
-                        "Address {}:{:?}:{:?} has no street name and has been ignored.",
-                        a.id, a.coord, a.street
-                    );
+                    debug!("Address {} has no street name and has been ignored.", a.id);
                     false
                 }
             });
