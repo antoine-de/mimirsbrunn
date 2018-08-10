@@ -1,6 +1,6 @@
 # Mímirsbrunn
 
-Mimirsbrunn is an geocoding service build upon [Elasticsearch](https://www.elastic.co).
+Mimirsbrunn is a geocoding service build upon [Elasticsearch](https://www.elastic.co).
 
 It is an independent service, but [Navitia](https://github.com/CanalTP/navitia) uses it as it's global geocoding service.
 
@@ -137,21 +137,22 @@ To import all those data into Mimir, you only have to do:
 The `--connection-string` argument refers to the ElasticSearch url
 
 
-### stops2mimir
+### ntfs2mimir
 
-This component imports stops into Mimir.
-It is recommended to run stops integration after osm integration so that stops are attached to admins.
+This component imports data from the ntfs files into Mimir.
+It is recommended to run ntfs integration after osm integration so that stops are attached to admins.
 
 To import all those data into Mimir, you only have to do:
 
 ```shell
-./target/release/stops2mimir -i stops.txt --dataset=idf --connection-string=http://localhost:9200/
+./target/release/ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
 ```
 
 The `--connection-string` argument refers to the ElasticSearch url
 
-The stops input file needs to match the either the GTFS specification (https://developers.google.com/transit/gtfs/reference/)
- or NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
+The ntfs input file needs to match the NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
+
+Note: previously, another component was used: stops2mimir. Though it is still available, it is now deprecated because ntfs2mimir imports stops and every other files present in the ntfs.
 
 ### Bragi
 
@@ -167,7 +168,7 @@ To run Bragi:
 ./target/release/bragi --connection-string=http://localhost:9200/munin
 ```
 
-you then can call the API (the default Bragi's listening port is 4000):
+then, you can call the API (the default Bragi's listening port is 4000):
 ```
 curl "http://localhost:4000/autocomplete?q=rue+hector+malot"
 ```
