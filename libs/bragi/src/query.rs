@@ -271,10 +271,12 @@ fn query(
 
     let result: SearchResult<serde_json::Value> = client
         .search_query()
-        .with_indexes(&indexes
-            .iter()
-            .map(|index| index.as_str())
-            .collect::<Vec<&str>>())
+        .with_indexes(
+            &indexes
+                .iter()
+                .map(|index| index.as_str())
+                .collect::<Vec<&str>>(),
+        )
         .with_query(&query)
         .with_from(offset)
         .with_size(limit)
@@ -316,10 +318,12 @@ pub fn features(
     let result: SearchResult<serde_json::Value> = try!(
         client
             .search_query()
-            .with_indexes(&indexes
-                .iter()
-                .map(|index| index.as_str())
-                .collect::<Vec<&str>>())
+            .with_indexes(
+                &indexes
+                    .iter()
+                    .map(|index| index.as_str())
+                    .collect::<Vec<&str>>()
+            )
             .with_query(&query)
             .send()
     );

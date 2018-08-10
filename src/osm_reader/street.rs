@@ -63,14 +63,16 @@ pub fn streets(
                 way.tags.get("highway").map_or(false, |v| !v.is_empty())
                     && way.tags.get("name").map_or(false, |v| !v.is_empty())
             }
-            osmpbfreader::OsmObj::Relation(ref rel) => rel.tags
+            osmpbfreader::OsmObj::Relation(ref rel) => rel
+                .tags
                 .get("type")
                 .map_or(false, |v| v == "associatedStreet"),
             _ => false,
         }
     }
     info!("reading pbf...");
-    let objs_map = pbf.get_objs_and_deps(is_valid_obj)
+    let objs_map = pbf
+        .get_objs_and_deps(is_valid_obj)
         .context("Error occurred when reading pbf")?;
     info!("reading pbf done.");
     let mut street_rel: StreetWithRelationSet = BTreeSet::new();
