@@ -3351,6 +3351,12 @@
     <tag k='source' v='v2 ; cadastre-dgi-fr source : Direction Générale des Impôts - Cadastre ; mise à jour : 2009' />
   </node>
   <node id='4390174792' timestamp='2016-09-07T18:21:19Z' uid='362997' user='Virgile1994' version='1' changeset='41986038' lat='45.192444' lon='5.7653098' />
+  <node changeset="10313779" id="300417271" lat="48.5257048" lon="2.6662951" timestamp="2012-01-06T17:29:19Z" uid="27454" user="Popolon" version="2" visible="true" />
+  <node changeset="10313779" id="300417408" lat="48.5294960" lon="2.6636875" timestamp="2012-01-06T17:29:45Z" uid="27454" user="Popolon" version="2" visible="true" />
+  <node changeset="10313779" id="300417410" lat="48.5264339" lon="2.6659877" timestamp="2012-01-06T17:29:20Z" uid="27454" user="Popolon" version="2" visible="true" />
+  <node changeset="10313779" id="300417411" lat="48.5269655" lon="2.6657949" timestamp="2012-01-06T17:29:19Z" uid="27454" user="Popolon" version="2" visible="true" />
+  <node changeset="10313779" id="300417412" lat="48.5276473" lon="2.6655267" timestamp="2012-01-06T17:29:21Z" uid="27454" user="Popolon" version="2" visible="true" />
+  <node changeset="708105" id="300417413" lat="48.5283533" lon="2.6650420" timestamp="2008-09-27T20:38:29Z" uid="65954" user="lems_faivre" version="1" visible="true" />
   <way id='424253845' timestamp='2016-02-11T22:27:49Z' uid='4242' user='nlehuby_fake' version='1' changeset='37157390'>
     <nd ref='424253847' />
     <nd ref='424253848' />
@@ -5472,6 +5478,16 @@
     <nd ref='2001882789' />
     <nd ref='1999741847' />
     <tag k='highway' v='footway' />
+  </way>
+  <way id="27365028" visible="true" version="2" changeset="708105" timestamp="2008-09-27T20:39:00Z">
+    <nd ref="300417271"/>
+    <nd ref="300417410"/>
+    <nd ref="300417411"/>
+    <nd ref="300417412"/>
+    <nd ref="300417413"/>
+    <nd ref="300417408"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Rue Marcel Houdet"/>
   </way>
   <relation id='424253843' timestamp='2016-02-11T22:27:49Z' uid='4242' user='nlehuby_fake' version='1' changeset='37157390'>
     <member type='node' ref='26692092' role='center' />

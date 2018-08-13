@@ -131,6 +131,21 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         .count();
     assert_eq!(nb, 1);
 
+    // Test: Street admin is based on a middle node
+    // (instead of the first node which is located outside Melun)
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("label:Rue Marcel Houdet", |_| true)
+        .collect();
+    assert!(res.len() != 0);
+    assert_eq!(res[0].label(), "Rue Marcel Houdet (Melun)");
+    assert!(
+        res[0]
+            .admins()
+            .iter()
+            .filter(|a| a.is_city())
+            .any(|a| a.name == "Melun")
+    );
+
     // Test: search Pois by label
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Le-Mée-sur-Seine Courtilleraies", |_| true)
