@@ -358,13 +358,29 @@ impl ApiEndPoint {
                         all_data,
                         offset,
                         limit,
-                        coord,
+                        coord.as_ref().map(|c| Coord {lat : c.lat, lon : c.lon}),
                         &cnx,
                         None,
                         &types,
                     );
 
-                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
+
+                    // Optional : add distance for each feature (in meters)
+                    if let Some(ref c) = &coord {
+                        if let model::v1::AutocompleteResponse::Autocomplete(autocomp_resp) = &mut response {
+                            for feature in &mut autocomp_resp.features {
+                                if let ::geojson::Value::Point(p) = &feature.geometry.value {
+                                    if let [mut lon, mut lat] = p.as_slice() {
+                                        let feature_coord = Coord {lon : lon, lat : lat};
+                                        feature.distance = Some(feature_coord.distance_to(c) as u32);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // distance between "from" and "autocomplete object"
                     render(client, response)
                 })
             });
