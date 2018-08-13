@@ -106,7 +106,8 @@ impl AdminGeoFinder {
 
     /// Iterates on all the admins with a not None boundary.
     pub fn admins<'a>(&'a self) -> Box<Iterator<Item = Admin> + 'a> {
-        let iter = self.admins
+        let iter = self
+            .admins
             .get(&Rect::from_float(
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
@@ -124,7 +125,8 @@ impl AdminGeoFinder {
 
     /// Iterates on all the `Rc<Admin>` in the structure as returned by `get`.
     pub fn admins_without_boundary<'a>(&'a self) -> Box<Iterator<Item = Arc<Admin>> + 'a> {
-        let iter = self.admins
+        let iter = self
+            .admins
             .get(&Rect::from_float(
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,

@@ -88,7 +88,8 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
 
     // the first element returned should be the poi 'Le-Mée-sur-Seine Courtilleraies'
     let poi = geocodings.first().unwrap();
-    let properties = poi.get("properties")
+    let properties = poi
+        .get("properties")
         .and_then(|json| json.as_array())
         .unwrap();
     let keys = [

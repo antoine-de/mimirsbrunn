@@ -85,11 +85,7 @@ pub struct Args {
     #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:4000")]
     bind: String,
     /// Elasticsearch parameters, override BRAGI_ES environment variable.
-    #[structopt(
-        short = "c",
-        long = "connection-string",
-        raw(default_value = "&BRAGI_ES")
-    )]
+    #[structopt(short = "c", long = "connection-string", raw(default_value = "&BRAGI_ES"))]
     connection_string: String,
 }
 
