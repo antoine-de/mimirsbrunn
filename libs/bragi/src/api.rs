@@ -388,7 +388,6 @@ impl ApiEndPoint {
                         }
                     }
 
-                    // distance between "from" and "autocomplete object"
                     render(client, response)
                 })
             });

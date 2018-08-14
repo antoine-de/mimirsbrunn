@@ -32,6 +32,7 @@ extern crate bragi;
 extern crate iron;
 extern crate iron_test;
 extern crate serde_json;
+use super::get_results;
 use super::get_value;
 use super::BragiHandler;
 
@@ -98,6 +99,7 @@ pub fn bragi_stops_test(es_wrapper: ::ElasticSearchWrapper) {
     features_stop_filtered_by_dataset_transcoverage_test(&bragi);
     stop_all_data_test(&bragi);
     stop_order_by_weight_test(&bragi);
+    distance_test(&bragi);
 }
 
 fn stop_attached_to_admin_test(bragi: &BragiHandler) {
@@ -346,4 +348,43 @@ fn stop_order_by_weight_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "label"), "weight one");
     assert_eq!(get_value(stop, "name"), "weight one");
     assert_eq!(get_value(stop, "id"), "stop_area:SA:weight_1_station");
+}
+
+fn distance_test(bragi: &BragiHandler) {
+    // This test highlight distance computing.
+    // if {lat,lon} params are added, we compute the distance between input coord and autocomplete
+    // objects coords.
+    // In the test, the input coord is 100 meters away from autocomplete response object.
+
+    // with input coord
+    {
+        let response = bragi
+            .raw_get("/autocomplete?q=14 juillet&_all_data=true&lat=48.526578&lon=2.679347")
+            .unwrap();
+        let features = get_results(response, None);
+        assert_eq!(features.len(), 2);
+
+        let feature_first = features.first().unwrap();
+        assert!(feature_first.contains_key("distance"));
+        assert_eq!(feature_first["distance"], 100);
+
+        let feature_second = features.last().unwrap();
+        assert!(feature_second.contains_key("distance"));
+        assert_eq!(feature_second["distance"], 100);
+    }
+
+    // with out input coord
+    {
+        let response = bragi
+            .raw_get("/autocomplete?q=14 juillet&_all_data=true")
+            .unwrap();
+        let features = get_results(response, None);
+        assert_eq!(features.len(), 2);
+
+        let feature_first = features.first().unwrap();
+        assert!(!feature_first.contains_key("distance"));
+
+        let feature_second = features.last().unwrap();
+        assert!(!feature_second.contains_key("distance"));
+    }
 }
