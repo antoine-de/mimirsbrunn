@@ -354,7 +354,7 @@ fn distance_test(bragi: &BragiHandler) {
     // This test highlight distance computing.
     // if {lat,lon} params are added in the request, we compute the distance
     // between input coord and autocomplete objects coords.
-    // In the test, the input coord is 100 meters away from autocomplete features.
+    // In the test, the input coord is 100 meters away from autocomplete features coords.
 
     // with input coord
     {
