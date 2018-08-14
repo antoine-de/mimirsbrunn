@@ -360,10 +360,7 @@ impl ApiEndPoint {
                         all_data,
                         offset,
                         limit,
-                        coord.as_ref().map(|c| Coord {
-                            lat: c.lat,
-                            lon: c.lon,
-                        }),
+                        coord,
                         &cnx,
                         None,
                         &types,
