@@ -352,9 +352,9 @@ fn stop_order_by_weight_test(bragi: &BragiHandler) {
 
 fn distance_test(bragi: &BragiHandler) {
     // This test highlight distance computing.
-    // if {lat,lon} params are added, we compute the distance between input coord and autocomplete
-    // objects coords.
-    // In the test, the input coord is 100 meters away from autocomplete response object.
+    // if {lat,lon} params are added in the request, we compute the distance
+    // between input coord and autocomplete objects coords.
+    // In the test, the input coord is 100 meters away from autocomplete features.
 
     // with input coord
     {
