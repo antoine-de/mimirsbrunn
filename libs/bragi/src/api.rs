@@ -70,6 +70,17 @@ lazy_static! {
     ).unwrap();
 }
 
+fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
+    for feature in &mut autocomp_resp.features {
+        if let ::geojson::Value::Point(p) = &feature.geometry.value {
+            if let [mut lon, mut lat] = p.as_slice() {
+                let feature_coord = Coord { lon: lon, lat: lat };
+                feature.distance = Some(feature_coord.distance_to(&origin_coord) as u32);
+            }
+        }
+    }
+}
+
 fn render<T>(
     mut client: rustless::Client,
     obj: T,
@@ -369,19 +380,11 @@ impl ApiEndPoint {
                     let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
 
                     // Optional : add distance for each feature (in meters)
-                    if let Some(ref c) = &coord {
-                        if let model::v1::AutocompleteResponse::Autocomplete(autocomp_resp) =
+                    if let Some(origin_coord) = &coord {
+                        if let model::v1::AutocompleteResponse::Autocomplete(autocomplete_resp) =
                             &mut response
                         {
-                            for feature in &mut autocomp_resp.features {
-                                if let ::geojson::Value::Point(p) = &feature.geometry.value {
-                                    if let [mut lon, mut lat] = p.as_slice() {
-                                        let feature_coord = Coord { lon: lon, lat: lat };
-                                        feature.distance =
-                                            Some(feature_coord.distance_to(c) as u32);
-                                    }
-                                }
-                            }
+                            add_distance(autocomplete_resp, origin_coord);
                         }
                     }
 
