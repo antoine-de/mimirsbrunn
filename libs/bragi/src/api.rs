@@ -380,10 +380,8 @@ impl ApiEndPoint {
                     let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
 
                     // Optional : add distance for each feature (in meters)
-                    if let (
-                        Some(coord),
-                        model::v1::AutocompleteResponse::Autocomplete(autocomplete_resp),
-                    ) = (&coord, &mut response)
+                    use model::v1::AutocompleteResponse::Autocomplete;
+                    if let (Some(coord), Autocomplete(autocomplete_resp)) = (&coord, &mut response)
                     {
                         add_distance(autocomplete_resp, coord);
                     }
