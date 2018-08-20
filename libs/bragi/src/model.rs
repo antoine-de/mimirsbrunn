@@ -348,8 +348,8 @@ impl From<mimir::Stop> for GeocodingResponse {
 #[derive(Serialize, Debug)]
 pub struct Autocomplete {
     #[serde(rename = "type")]
-    format_type: String,
-    geocoding: Geocoding,
+    pub format_type: String,
+    pub geocoding: Geocoding,
     pub features: Vec<Feature>,
 }
 
