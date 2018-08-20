@@ -63,6 +63,8 @@ pub struct Feature {
     pub feature_type: String,
     pub geometry: geojson::Geometry,
     pub properties: Properties,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance: Option<u32>,
 }
 
 #[derive(Serialize, Debug)]
@@ -157,6 +159,7 @@ impl From<mimir::Place> for Feature {
             properties: Properties {
                 geocoding: geocoding,
             },
+            distance: None,
         }
     }
 }
@@ -345,9 +348,9 @@ impl From<mimir::Stop> for GeocodingResponse {
 #[derive(Serialize, Debug)]
 pub struct Autocomplete {
     #[serde(rename = "type")]
-    format_type: String,
-    geocoding: Geocoding,
-    features: Vec<Feature>,
+    pub format_type: String,
+    pub geocoding: Geocoding,
+    pub features: Vec<Feature>,
 }
 
 impl Autocomplete {
@@ -371,12 +374,6 @@ impl From<Vec<mimir::Place>> for Autocomplete {
             places.into_iter().map(|p| Feature::from(p)).collect(),
         )
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Coord {
-    pub lat: f64,
-    pub lon: f64,
 }
 
 pub mod v1 {

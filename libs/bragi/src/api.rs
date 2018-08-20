@@ -46,6 +46,8 @@ use serde;
 use serde_json;
 use valico::json_dsl;
 
+use navitia_model::objects::Coord;
+
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
 
@@ -66,6 +68,17 @@ lazy_static! {
         &["handler", "method"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
     ).unwrap();
+}
+
+fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
+    for feature in &mut autocomp_resp.features {
+        if let ::geojson::Value::Point(p) = &feature.geometry.value {
+            if let [mut lon, mut lat] = p.as_slice() {
+                let feature_coord = Coord { lon, lat };
+                feature.distance = Some(feature_coord.distance_to(&origin_coord) as u32);
+            }
+        }
+    }
 }
 
 fn render<T>(
@@ -344,7 +357,7 @@ impl ApiEndPoint {
                     // we have already checked that if there is a lon, lat
                     // is not None so we can unwrap
                     let coord = lon.and_then(|lon| {
-                        Some(model::Coord {
+                        Some(Coord {
                             lon: lon,
                             lat: lat.unwrap(),
                         })
@@ -364,7 +377,15 @@ impl ApiEndPoint {
                         &types,
                     );
 
-                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
+
+                    // Optional : add distance for each feature (in meters)
+                    use model::v1::AutocompleteResponse::Autocomplete;
+                    if let (Some(coord), Autocomplete(autocomplete_resp)) = (&coord, &mut response)
+                    {
+                        add_distance(autocomplete_resp, coord);
+                    }
+
                     render(client, response)
                 })
             });

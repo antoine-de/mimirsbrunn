@@ -43,6 +43,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate structopt;
 extern crate heck;
+extern crate navitia_model;
 extern crate urlencoded;
 extern crate valico;
 
