@@ -373,7 +373,7 @@ fn distance_test(bragi: &BragiHandler) {
         assert_eq!(feature_second["distance"], 100);
     }
 
-    // with out input coord
+    // without input coord
     {
         let response = bragi
             .raw_get("/autocomplete?q=14 juillet&_all_data=true")

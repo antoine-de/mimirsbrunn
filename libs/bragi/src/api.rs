@@ -74,7 +74,7 @@ fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
     for feature in &mut autocomp_resp.features {
         if let ::geojson::Value::Point(p) = &feature.geometry.value {
             if let [mut lon, mut lat] = p.as_slice() {
-                let feature_coord = Coord { lon: lon, lat: lat };
+                let feature_coord = Coord { lon, lat };
                 feature.distance = Some(feature_coord.distance_to(&origin_coord) as u32);
             }
         }
@@ -380,12 +380,12 @@ impl ApiEndPoint {
                     let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
 
                     // Optional : add distance for each feature (in meters)
-                    if let Some(origin_coord) = &coord {
-                        if let model::v1::AutocompleteResponse::Autocomplete(autocomplete_resp) =
-                            &mut response
-                        {
-                            add_distance(autocomplete_resp, origin_coord);
-                        }
+                    if let (
+                        Some(coord),
+                        model::v1::AutocompleteResponse::Autocomplete(autocomplete_resp),
+                    ) = (&coord, &mut response)
+                    {
+                        add_distance(autocomplete_resp, coord);
                     }
 
                     render(client, response)
