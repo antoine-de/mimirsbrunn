@@ -35,7 +35,8 @@ use mimir::rubber::Rubber;
 use model;
 use model::v1::*;
 use params::{
-    coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param,
+    coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
+    types_param,
 };
 use prometheus;
 use prometheus::Encoder;
@@ -44,6 +45,7 @@ use rustless::server::header;
 use rustless::{Api, Nesting};
 use serde;
 use serde_json;
+use std::time;
 use valico::json_dsl;
 
 use navitia_model::objects::Coord;
@@ -68,6 +70,13 @@ lazy_static! {
         &["handler", "method"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
     ).unwrap();
+}
+
+fn parse_timeout(params: &rustless::json::JsonValue) -> Option<time::Duration> {
+    params
+        .find("timeout")
+        .and_then(|v| v.as_u64())
+        .map(time::Duration::from_millis)
 }
 
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
@@ -224,6 +233,7 @@ impl ApiEndPoint {
             api.get("reverse", |endpoint| {
                 endpoint.params(|params| {
                     coord_param(params, false);
+                    timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
@@ -232,6 +242,7 @@ impl ApiEndPoint {
                         params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
                     let mut rubber = Rubber::new(&cnx);
+                    rubber.set_read_timeout(parse_timeout(params));
                     let model_autocomplete =
                         rubber.get_address(&coord).map_err(model::BragiError::from);
 
@@ -248,6 +259,7 @@ impl ApiEndPoint {
                 endpoint.params(|params| {
                     params.opt_typed("id", json_dsl::string());
                     dataset_param(params);
+                    timeout_param(params);
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -257,7 +269,8 @@ impl ApiEndPoint {
                     let all_data = params
                         .find("_all_data")
                         .map_or(false, |val| val.as_bool().unwrap());
-                    let features = query::features(&pt_datasets, all_data, &cnx, &id);
+                    let timeout = parse_timeout(params);
+                    let features = query::features(&pt_datasets, all_data, &cnx, &id, timeout);
                     let response = model::v1::AutocompleteResponse::from(features);
                     render(client, response)
                 })
@@ -274,6 +287,7 @@ impl ApiEndPoint {
                     paginate_param(params);
                     shape_param(params);
                     types_param(params);
+                    timeout_param(params);
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -310,6 +324,7 @@ impl ApiEndPoint {
                         ));
                     }
                     let types = get_param_array(params, "type");
+                    let timeout = parse_timeout(params);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
@@ -320,6 +335,7 @@ impl ApiEndPoint {
                         &cnx,
                         Some(shape),
                         &types,
+                        timeout,
                     );
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -332,6 +348,7 @@ impl ApiEndPoint {
                     paginate_param(params);
                     coord_param(params, true);
                     types_param(params);
+                    timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
@@ -364,7 +381,7 @@ impl ApiEndPoint {
                     });
 
                     let types = get_param_array(params, "type");
-
+                    let timeout = parse_timeout(params);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
@@ -375,6 +392,7 @@ impl ApiEndPoint {
                         &cnx,
                         None,
                         &types,
+                        timeout,
                     );
 
                     let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
