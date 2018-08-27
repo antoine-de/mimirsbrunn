@@ -180,9 +180,15 @@ fn get_street_admin(
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
     way: &osmpbfreader::objects::Way,
 ) -> Vec<Arc<mimir::Admin>> {
-    // for the moment we consider that the coord of the way is the coord of it's first node
+    /*
+        To avoid corner cases where the ends of the way are near
+        administrative boundaries, the geofinder is called
+        on a middle node.
+    */
+    let nb_nodes = way.nodes.len();
     way.nodes
         .iter()
+        .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|node_obj| node_obj.node())
         .map(|node| geo::Coordinate {

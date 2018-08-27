@@ -142,7 +142,7 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, Poi::doc_type()), 2);
     assert_eq!(count_types(&types, "city"), 3);
-    assert_eq!(count_types(&types, "street"), 7);
+    assert_eq!(count_types(&types, "street"), 8);
 
     // search by zip code and limit is string type
     let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=ABCD");
@@ -157,7 +157,7 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     assert_eq!(all_20.len(), 10);
 
     let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=10");
-    assert_eq!(all_20.len(), 2);
+    assert_eq!(all_20.len(), 3);
 }
 
 fn poi_from_osm_test(bragi: &BragiHandler) {
