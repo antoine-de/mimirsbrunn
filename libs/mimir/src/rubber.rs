@@ -263,12 +263,12 @@ impl Rubber {
         }
     }
 
-    pub fn set_read_timeout(&mut self, timeout: Option<time::Duration>){
+    pub fn set_read_timeout(&mut self, timeout: Option<time::Duration>) {
         self.es_client.set_read_timeout(timeout);
         self.http_client.set_read_timeout(timeout);
     }
 
-    pub fn set_write_timeout(&mut self, timeout: Option<time::Duration>){
+    pub fn set_write_timeout(&mut self, timeout: Option<time::Duration>) {
         self.es_client.set_write_timeout(timeout);
         self.http_client.set_write_timeout(timeout);
     }
