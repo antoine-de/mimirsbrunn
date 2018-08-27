@@ -40,6 +40,7 @@ use rs_es::units as rs_u;
 use serde;
 use serde_json;
 use std::fmt;
+use std::time;
 
 use navitia_model::objects::Coord;
 
@@ -241,7 +242,7 @@ fn query(
     q: &str,
     pt_datasets: &[&str],
     all_data: bool,
-    cnx: &str,
+    mut client: &mut rs_es::Client,
     match_type: MatchType,
     offset: u64,
     limit: u64,
@@ -251,8 +252,6 @@ fn query(
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
-
-    let mut client = rs_es::Client::new(cnx).unwrap();
 
     let indexes = try!(get_indexes(all_data, &pt_datasets, types, &mut client));
 
@@ -294,6 +293,7 @@ pub fn features(
     all_data: bool,
     cnx: &str,
     id: &str,
+    timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     let val = rs_es::units::JsonVal::String(id.into());
     let mut filters = vec![Query::build_ids(vec![val]).build()];
@@ -306,6 +306,7 @@ pub fn features(
     let query = Query::build_bool().with_filter(filter).build();
 
     let mut client = rs_es::Client::new(cnx).unwrap();
+    client.set_read_timeout(timeout);
 
     let indexes = try!(get_indexes(all_data, &pt_datasets, &[], &mut client));
 
@@ -347,6 +348,7 @@ pub fn autocomplete(
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
     types: &[&str],
+    timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape
@@ -354,13 +356,16 @@ pub fn autocomplete(
             .map(|v| v.iter().map(|&l| l.into()).collect())
     }
 
+    let mut client = rs_es::Client::new(cnx).unwrap();
+    client.set_read_timeout(timeout);
+
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = query(
         &q,
         &pt_datasets,
         all_data,
-        cnx,
+        &mut client,
         MatchType::Prefix,
         offset,
         limit,
@@ -373,7 +378,7 @@ pub fn autocomplete(
             &q,
             &pt_datasets,
             all_data,
-            cnx,
+            &mut client,
             MatchType::Fuzzy,
             offset,
             limit,

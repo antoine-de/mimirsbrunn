@@ -47,6 +47,7 @@ use serde_json;
 use std;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
+use std::time;
 
 const SYNONYMS: [&'static str; 17] = [
     "cc,centre commercial",
@@ -260,6 +261,16 @@ impl Rubber {
             es_client: rs_es::Client::new(&cnx).unwrap(),
             http_client: hyper::client::Client::new(),
         }
+    }
+
+    pub fn set_read_timeout(&mut self, timeout: Option<time::Duration>){
+        self.es_client.set_read_timeout(timeout);
+        self.http_client.set_read_timeout(timeout);
+    }
+
+    pub fn set_write_timeout(&mut self, timeout: Option<time::Duration>){
+        self.es_client.set_write_timeout(timeout);
+        self.http_client.set_write_timeout(timeout);
     }
 
     pub fn get(&self, path: &str) -> Result<hyper::client::response::Response, EsError> {
