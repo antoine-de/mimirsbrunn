@@ -54,9 +54,10 @@ extern crate slog_scope;
 
 #[macro_use]
 extern crate failure;
+extern crate num_cpus;
 
 use iron::prelude::Chain;
-use iron::Iron;
+use iron::{Iron, Protocol};
 use rustless::Application;
 use structopt::StructOpt;
 
@@ -74,8 +75,7 @@ pub mod query;
 use logger::Logger;
 
 lazy_static! {
-    static ref BRAGI_ES: String =
-        std::env::var("BRAGI_ES").unwrap_or_else(|_| "http://localhost:9200/munin".into());
+    static ref BRAGI_NB_THREADS: String = (8 * ::num_cpus::get()).to_string();
 }
 
 #[derive(StructOpt, Debug)]
@@ -84,8 +84,21 @@ pub struct Args {
     #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:4000")]
     bind: String,
     /// Elasticsearch parameters, override BRAGI_ES environment variable.
-    #[structopt(short = "c", long = "connection-string", raw(default_value = "&BRAGI_ES"))]
+    #[structopt(
+        short = "c",
+        long = "connection-string",
+        default_value = "http://localhost:9200/munin",
+        env = "BRAGI_ES"
+    )]
     connection_string: String,
+    /// Number of threads used to serve http requests, override BRAGI_NB_THREADS environment variable.
+    #[structopt(
+        short = "t",
+        long = "nb-threads",
+        raw(default_value = "&BRAGI_NB_THREADS"),
+        env = "BRAGI_NB_THREADS"
+    )]
+    nb_threads: usize,
 }
 
 pub fn runserver() {
@@ -105,5 +118,7 @@ pub fn runserver() {
     chain.link_after(logger_after);
 
     println!("listening on {}", args.bind);
-    Iron::new(chain).http(args.bind.as_str()).unwrap();
+    Iron::new(chain)
+        .listen_with(args.bind.as_str(), args.nb_threads, Protocol::Http, None)
+        .unwrap();
 }
