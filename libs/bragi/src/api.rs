@@ -72,6 +72,13 @@ lazy_static! {
     ).unwrap();
 }
 
+fn parse_timeout(params: &rustless::json::JsonValue) -> Option<time::Duration> {
+    params
+        .find("timeout")
+        .and_then(|v| v.as_u64())
+        .map(time::Duration::from_millis)
+}
+
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
     for feature in &mut autocomp_resp.features {
         if let ::geojson::Value::Point(p) = &feature.geometry.value {
@@ -234,11 +241,8 @@ impl ApiEndPoint {
                         params.find("lon").and_then(|p| p.as_f64()).unwrap(),
                         params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
-                    let timeout = params
-                        .find("timeout")
-                        .and_then(|v| Some(time::Duration::from_millis(v.as_u64().unwrap())));
                     let mut rubber = Rubber::new(&cnx);
-                    rubber.set_read_timeout(timeout);
+                    rubber.set_read_timeout(parse_timeout(params));
                     let model_autocomplete =
                         rubber.get_address(&coord).map_err(model::BragiError::from);
 
@@ -265,9 +269,7 @@ impl ApiEndPoint {
                     let all_data = params
                         .find("_all_data")
                         .map_or(false, |val| val.as_bool().unwrap());
-                    let timeout = params
-                        .find("timeout")
-                        .and_then(|v| Some(time::Duration::from_millis(v.as_u64().unwrap())));
+                    let timeout = parse_timeout(params);
                     let features = query::features(&pt_datasets, all_data, &cnx, &id, timeout);
                     let response = model::v1::AutocompleteResponse::from(features);
                     render(client, response)
@@ -322,9 +324,7 @@ impl ApiEndPoint {
                         ));
                     }
                     let types = get_param_array(params, "type");
-                    let timeout = params
-                        .find("timeout")
-                        .and_then(|v| Some(time::Duration::from_millis(v.as_u64().unwrap())));
+                    let timeout = parse_timeout(params);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
@@ -381,10 +381,7 @@ impl ApiEndPoint {
                     });
 
                     let types = get_param_array(params, "type");
-                    let timeout = params
-                        .find("timeout")
-                        .and_then(|v| Some(time::Duration::from_millis(v.as_u64().unwrap())));
-
+                    let timeout = parse_timeout(params);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
