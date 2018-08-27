@@ -84,10 +84,20 @@ pub struct Args {
     #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:4000")]
     bind: String,
     /// Elasticsearch parameters, override BRAGI_ES environment variable.
-    #[structopt(short = "c", long = "connection-string", default_value = "http://localhost:9200/munin", env = "BRAGI_ES")]
+    #[structopt(
+        short = "c",
+        long = "connection-string",
+        default_value = "http://localhost:9200/munin",
+        env = "BRAGI_ES"
+    )]
     connection_string: String,
     /// Number of threads used to serve http requests, override BRAGI_NB_THREADS environment variable.
-    #[structopt(short = "t", long = "nb-threads", raw(default_value = "&BRAGI_NB_THREADS"), env = "BRAGI_NB_THREADS")]
+    #[structopt(
+        short = "t",
+        long = "nb-threads",
+        raw(default_value = "&BRAGI_NB_THREADS"),
+        env = "BRAGI_NB_THREADS"
+    )]
     nb_threads: usize,
 }
 
