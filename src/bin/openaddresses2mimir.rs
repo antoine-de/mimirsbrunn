@@ -41,6 +41,9 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate par_map;
+extern crate rayon;
+extern crate itertools;
 
 use failure::ResultExt;
 use mimir::rubber::Rubber;
@@ -48,6 +51,10 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::cell::Cell;
 use std::fs;
 use std::path::PathBuf;
+use std::thread;
+use par_map::ParMap;
+use rayon::prelude::*;
+use itertools::Itertools;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -66,6 +73,7 @@ pub struct OpenAddresse {
 
 impl OpenAddresse {
     pub fn into_addr(self, admins_geofinder: &AdminGeoFinder) -> mimir::Addr {
+        // info!("creating address from thread {:?}", thread::current().id());
         let street_name = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.number, self.street);
         let addr_label = format!("{} ({})", addr_name, self.city);
@@ -117,6 +125,9 @@ where
         });
     let admins_geofinder = admins.into_iter().collect();
 
+        let nb_threads = std::env::var("MIMIR_NB_THREADS")
+            .map(|v| v.parse().expect("unable to read the number of threads"))
+            .unwrap_or(1);
     let addr_index = rubber
         .make_index(dataset)
         .with_context(|_| format!("error occureed when making index for {}", dataset))?;
@@ -129,14 +140,20 @@ where
             .filter_map(|r| {
                 r.map_err(|e| info!("impossible to read line, error: {}", e))
                     .ok()
-                    .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
             })
-            .filter(|a| {
-                !a.street.street_name.is_empty() || {
-                    debug!("Address {} has no street name and has been ignored.", a.id);
-                    false
-                }
-            });
+            .pack(10000)
+            .map(|c: Vec<OpenAddresse>| c
+                .into_par_iter()
+                .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
+                .filter(|a| {
+                    !a.street.name.is_empty() || {
+                        debug!("Address {} has no street name and has been ignored.", a.id);
+                        false
+                    }
+                })
+                .collect::<Vec<_>>().into_iter()
+            )
+            .flatten();
         let nb = rubber
             .bulk_index(&addr_index, iter)
             .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
