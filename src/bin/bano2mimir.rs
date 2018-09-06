@@ -41,6 +41,7 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate par_map;
 
 use failure::ResultExt;
 use mimir::objects::Admin;
@@ -50,6 +51,7 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
+use par_map::ParMap;
 use std::sync::Arc;
 
 type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
@@ -141,15 +143,15 @@ where
             );
             vec![]
         });
-    let admins_geofinder = admins.iter().cloned().collect();
-    let admins_by_insee = admins
+    let admins_geofinder: Arc<AdminGeoFinder> = Arc::new(admins.iter().cloned().collect());
+    let admins_by_insee: Arc<AdminFromInsee> = Arc::new(admins
         .into_iter()
         .filter(|a| !a.insee.is_empty())
         .map(|mut a| {
             a.boundary = None; // to save some space we remove the admin boundary
             (a.insee.clone(), Arc::new(a))
         })
-        .collect();
+        .collect());
 
     let addr_index = rubber
         .make_index(dataset)
@@ -158,12 +160,18 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
+        
         let iter = rdr
             .deserialize()
             .filter_map(|r| {
                 r.map_err(|e| info!("impossible to read line, error: {}", e))
                     .ok()
-                    .map(|b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
+            })
+            .with_nb_threads(8)
+            .par_map({
+                let adm_by_insee = admins_by_insee.clone();
+                let adm_geofinder = admins_geofinder.clone();
+                move |b: Bano| b.into_addr(&adm_by_insee, &adm_geofinder)
             })
             .filter(|a| {
                 !a.street.street_name.is_empty() || {

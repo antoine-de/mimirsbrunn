@@ -41,13 +41,16 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate par_map;
 
 use failure::ResultExt;
-use mimir::rubber::Rubber;
+use mimir::rubber::{Rubber, TypedIndex};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::cell::Cell;
 use std::fs;
 use std::path::PathBuf;
+use par_map::ParMap;
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -100,6 +103,33 @@ impl OpenAddresse {
     }
 }
 
+fn index_file(f: std::path::PathBuf, rubber: &mut Rubber, addr_index: &TypedIndex<mimir::Addr>, a: Arc<AdminGeoFinder>) -> Result<(), mimirsbrunn::Error> {
+    info!("importing {:?}...", &f);
+    let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
+    let iter = rdr
+        .deserialize()
+        .filter_map(|r| {
+            r.map_err(|e| info!("impossible to read line, error: {}", e))
+                .ok()
+        })
+        .with_nb_threads(8)
+        .par_map({
+            move |v: OpenAddresse| v.into_addr(&a)
+        })
+        .filter(|a| {
+            !a.street.street_name.is_empty() || {
+                debug!("Address {} has no street name and has been ignored.", a.id);
+                false
+            }
+        });
+    let nb = rubber
+        .bulk_index(addr_index, iter)
+        .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
+    info!("importing {:?}: {} addresses", &f, nb);
+
+    Ok(())
+}
+
 fn index_oa<I>(cnx_string: &str, dataset: &str, files: I) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
@@ -115,32 +145,13 @@ where
             );
             vec![]
         });
-    let admins_geofinder = admins.into_iter().collect();
-
+    let admins_geofinder: Arc<AdminGeoFinder> = Arc::new(admins.into_iter().collect());
     let addr_index = rubber
         .make_index(dataset)
         .with_context(|_| format!("error occureed when making index for {}", dataset))?;
     info!("Add data in elasticsearch db.");
     for f in files {
-        info!("importing {:?}...", &f);
-        let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
-        let iter = rdr
-            .deserialize()
-            .filter_map(|r| {
-                r.map_err(|e| info!("impossible to read line, error: {}", e))
-                    .ok()
-                    .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
-            })
-            .filter(|a| {
-                !a.street.street_name.is_empty() || {
-                    debug!("Address {} has no street name and has been ignored.", a.id);
-                    false
-                }
-            });
-        let nb = rubber
-            .bulk_index(&addr_index, iter)
-            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!("importing {:?}: {} addresses", &f, nb);
+        index_file(f, &mut rubber, &addr_index, admins_geofinder.clone())?;
     }
     rubber.publish_index(dataset, addr_index)
 }

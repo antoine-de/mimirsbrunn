@@ -31,6 +31,7 @@ navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = "0.2"
 failure = "0.1"
 cosmogony = "0.3.1"
+par-map = "0.1.4"
 
 [dev-dependencies]
 hyper = "0.10"
