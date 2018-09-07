@@ -67,7 +67,7 @@ pub fn normalize_admin_weight(admins: &mut [mimir::Admin]) {
     }
 }
 
-pub fn launch_run<O, F>(run: F)
+pub fn wrapped_launch_run<O, F>(run: F) -> Result<(), Error>
 where
     F: FnOnce(O) -> Result<(), Error>,
     O: StructOpt,
@@ -77,6 +77,20 @@ where
         for cause in err.causes() {
             error!("{}", cause);
         }
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
+
+pub fn launch_run<O, F>(run: F)
+where
+    F: FnOnce(O) -> Result<(), Error>,
+    O: StructOpt,
+{
+    if wrapped_launch_run(run).is_err() {
+        // we wrap the real stuff in another method to std::exit after
+        // the destruction of the logger (so we won't loose any messages)
         exit(1);
     }
 }
