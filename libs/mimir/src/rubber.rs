@@ -563,13 +563,9 @@ impl Rubber {
         use rs_es::operations::bulk::Action;
         let mut nb = 0;
         let chunk_size = 1000;
-        let nb_threads = std::env::var("MIMIR_NB_THREADS")
-            .map(|v| v.parse().expect("unable to read the number of threads"))
-            .unwrap_or(1);
         let chunks = iter
             .pack(chunk_size)
-            .with_nb_threads(nb_threads)
-            .par_map(|v| {
+            .map(|v| {
                 v.into_iter()
                     .map(|v| {
                         v.es_id()

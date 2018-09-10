@@ -41,6 +41,9 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate par_map;
+extern crate rayon;
+extern crate itertools;
 
 use failure::ResultExt;
 use mimir::objects::Admin;
@@ -51,7 +54,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
-
+use std::thread;
+use par_map::ParMap;
+use rayon::prelude::*;
+use itertools::Itertools;
 type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
 
 #[derive(Serialize, Deserialize)]
@@ -80,6 +86,7 @@ impl Bano {
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
     ) -> mimir::Addr {
+        // info!("creating address from thread {:?}", thread::current().id());
         let street_name = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.nb, self.street);
         let addr_label = format!("{} ({})", addr_name, self.city);
@@ -158,15 +165,22 @@ where
     for f in files {
         info!("importing {:?}...", &f);
         let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
+        // let v = Vec::with_capacity(10000)
         let iter = rdr
             .deserialize()
             .filter_map(|r| {
                 r.map_err(|e| info!("impossible to read line, error: {}", e))
                     .ok()
-                    .map(|b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
             })
+            .pack(10000)
+            .map(|c| c
+                .into_par_iter()
+                .map(|b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
+                .collect::<Vec<_>>().into_iter()
+            )
+            .flatten()
             .filter(|a| {
-                !a.street.street_name.is_empty() || {
+                !a.street.name.is_empty() || {
                     debug!("Address {} has no street name and has been ignored.", a.id);
                     false
                 }
