@@ -143,47 +143,51 @@ where
             );
             vec![]
         });
-    let admins_geofinder: Arc<AdminGeoFinder> = Arc::new(admins.iter().cloned().collect());
-    let admins_by_insee: Arc<AdminFromInsee> = Arc::new(admins
+    let admins_geofinder: AdminGeoFinder = admins.iter().cloned().collect();
+    let admins_by_insee: AdminFromInsee = admins
         .into_iter()
         .filter(|a| !a.insee.is_empty())
         .map(|mut a| {
             a.boundary = None; // to save some space we remove the admin boundary
             (a.insee.clone(), Arc::new(a))
         })
-        .collect());
+        .collect();
 
     let addr_index = rubber
         .make_index(dataset)
         .with_context(|_| format!("Error occurred when making index {}", dataset))?;
     info!("Add data in elasticsearch db.");
-    for f in files {
-        info!("importing {:?}...", &f);
-        let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
-        
-        let iter = rdr
-            .deserialize()
-            .filter_map(|r| {
-                r.map_err(|e| info!("impossible to read line, error: {}", e))
-                    .ok()
-            })
-            .with_nb_threads(8)
-            .par_map({
-                let adm_by_insee = admins_by_insee.clone();
-                let adm_geofinder = admins_geofinder.clone();
-                move |b: Bano| b.into_addr(&adm_by_insee, &adm_geofinder)
-            })
-            .filter(|a| {
-                !a.street.street_name.is_empty() || {
-                    debug!("Address {} has no street name and has been ignored.", a.id);
-                    false
-                }
-            });
-        let nb = rubber
-            .bulk_index(&addr_index, iter)
-            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!("importing {:?}: {} addresses added.", &f, nb);
-    }
+
+    let iter = files.into_iter()
+        .flat_map(|f| {
+            info!("importing {:?}...", &f);
+            csv::ReaderBuilder::new()
+                .has_headers(false)
+                .from_path(&f)
+                .map_err(|e| error!("impossible to read file {:?}, error: {}", f, e))
+                .ok()
+                .into_iter()
+                .flat_map(|rdr| rdr
+                          .into_deserialize()
+                          .filter_map(|r| {
+                              r.map_err(|e| info!("impossible to read line, error: {}", e))
+                                  .ok()
+                          })
+                )
+        })
+        .with_nb_threads(8)
+        .par_map(move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
+        .filter(|a| {
+            !a.street.street_name.is_empty() || {
+                debug!("Address {} has no street name and has been ignored.", a.id);
+                false
+            }
+        });
+    let nb = rubber
+        .bulk_index(&addr_index, iter)
+        .with_context(|_| format!("failed to bulk insert"))?;
+    info!("importing addresses: {} addresses added.", nb);
+
     rubber
         .publish_index(dataset, addr_index)
         .context("Error while publishing the index")?;
