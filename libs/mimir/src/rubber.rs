@@ -563,21 +563,15 @@ impl Rubber {
         use rs_es::operations::bulk::Action;
         let mut nb = 0;
         let chunk_size = 1000;
-        // let nb_threads = std::env::var("MIMIR_NB_THREADS")
-        //     .map(|v| v.parse().expect("unable to read the number of threads"))
-        //     .unwrap_or(1);
-        let chunks = iter
-            .pack(chunk_size)
-            // .with_nb_threads(nb_threads)
-            .par_map(|v| {
-                v.into_iter()
-                    .map(|v| {
-                        v.es_id()
-                            .into_iter()
-                            .fold(Action::index(v), |action, id| action.with_id(id))
-                    })
-                    .collect::<Vec<_>>()
-            });
+        let chunks = iter.pack(chunk_size).par_map(|v| {
+            v.into_iter()
+                .map(|v| {
+                    v.es_id()
+                        .into_iter()
+                        .fold(Action::index(v), |action, id| action.with_id(id))
+                })
+                .collect::<Vec<_>>()
+        });
         for chunk in chunks.filter(|c| !c.is_empty()) {
             nb += chunk.len();
             self.es_client

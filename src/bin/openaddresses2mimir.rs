@@ -44,13 +44,11 @@ extern crate structopt;
 extern crate par_map;
 
 use failure::ResultExt;
-use mimir::rubber::{Rubber, TypedIndex};
+use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use std::cell::Cell;
+use par_map::ParMap;
 use std::fs;
 use std::path::PathBuf;
-use par_map::ParMap;
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -103,34 +101,12 @@ impl OpenAddresse {
     }
 }
 
-fn index_file(f: std::path::PathBuf, rubber: &mut Rubber, addr_index: &TypedIndex<mimir::Addr>, a: Arc<AdminGeoFinder>) -> Result<(), mimirsbrunn::Error> {
-    info!("importing {:?}...", &f);
-    let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
-    let iter = rdr
-        .deserialize()
-        .filter_map(|r| {
-            r.map_err(|e| info!("impossible to read line, error: {}", e))
-                .ok()
-        })
-        .with_nb_threads(8)
-        .par_map({
-            move |v: OpenAddresse| v.into_addr(&a)
-        })
-        .filter(|a| {
-            !a.street.street_name.is_empty() || {
-                debug!("Address {} has no street name and has been ignored.", a.id);
-                false
-            }
-        });
-    let nb = rubber
-        .bulk_index(addr_index, iter)
-        .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-    info!("importing {:?}: {} addresses", &f, nb);
-
-    Ok(())
-}
-
-fn index_oa<I>(cnx_string: &str, dataset: &str, files: I) -> Result<(), mimirsbrunn::Error>
+fn index_oa<I>(
+    cnx_string: &str,
+    dataset: &str,
+    files: I,
+    nb_threads: usize,
+) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
@@ -145,14 +121,41 @@ where
             );
             vec![]
         });
-    let admins_geofinder: Arc<AdminGeoFinder> = Arc::new(admins.into_iter().collect());
+    let admins_geofinder = admins.into_iter().collect();
     let addr_index = rubber
         .make_index(dataset)
         .with_context(|_| format!("error occureed when making index for {}", dataset))?;
     info!("Add data in elasticsearch db.");
-    for f in files {
-        index_file(f, &mut rubber, &addr_index, admins_geofinder.clone())?;
-    }
+
+    let iter = files
+        .into_iter()
+        .flat_map(|f| {
+            info!("importing {:?}...", &f);
+            csv::ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(&f)
+                .map_err(|e| error!("impossible to read file {:?}, error: {}", f, e))
+                .ok()
+                .into_iter()
+                .flat_map(|rdr| {
+                    rdr.into_deserialize().filter_map(|r| {
+                        r.map_err(|e| info!("impossible to read line, error: {}", e))
+                            .ok()
+                    })
+                })
+        })
+        .with_nb_threads(nb_threads)
+        .par_map(move |v: OpenAddresse| v.into_addr(&admins_geofinder))
+        .filter(|a| {
+            !a.street.name.is_empty() || {
+                debug!("Address {} has no street name and has been ignored.", a.id);
+                false
+            }
+        });
+    let nb = rubber
+        .bulk_index(&addr_index, iter)
+        .with_context(|_| "failed to bulk insert addresses".to_string())?;
+    info!("{} addresses imported", nb);
     rubber.publish_index(dataset, addr_index)
 }
 
@@ -172,6 +175,9 @@ struct Args {
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
     city_level: Option<String>,
+    /// Number of threads to use
+    #[structopt(short = "t", long = "nb-threads", default_value = "1")]
+    nb_threads: usize,
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
@@ -187,12 +193,14 @@ fn run(args: Args) -> Result<(), failure::Error> {
             &args.connection_string,
             &args.dataset,
             paths.map(|p| p.unwrap().path()),
+            args.nb_threads,
         )
     } else {
         index_oa(
             &args.connection_string,
             &args.dataset,
             std::iter::once(args.input),
+            args.nb_threads,
         )
     }
 }

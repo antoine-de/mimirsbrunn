@@ -46,12 +46,11 @@ extern crate par_map;
 use failure::ResultExt;
 use mimir::objects::Admin;
 use mimir::rubber::Rubber;
-use mimir::MimirObject;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use par_map::ParMap;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
-use par_map::ParMap;
 use std::sync::Arc;
 
 type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
@@ -127,7 +126,12 @@ impl Bano {
     }
 }
 
-fn index_bano<I>(cnx_string: &str, dataset: &str, files: I) -> Result<(), mimirsbrunn::Error>
+fn index_bano<I>(
+    cnx_string: &str,
+    dataset: &str,
+    files: I,
+    nb_threads: usize,
+) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
@@ -143,8 +147,8 @@ where
             );
             vec![]
         });
-    let admins_geofinder: AdminGeoFinder = admins.iter().cloned().collect();
-    let admins_by_insee: AdminFromInsee = admins
+    let admins_geofinder = admins.iter().cloned().collect();
+    let admins_by_insee = admins
         .into_iter()
         .filter(|a| !a.insee.is_empty())
         .map(|mut a| {
@@ -158,7 +162,8 @@ where
         .with_context(|_| format!("Error occurred when making index {}", dataset))?;
     info!("Add data in elasticsearch db.");
 
-    let iter = files.into_iter()
+    let iter = files
+        .into_iter()
         .flat_map(|f| {
             info!("importing {:?}...", &f);
             csv::ReaderBuilder::new()
@@ -167,18 +172,17 @@ where
                 .map_err(|e| error!("impossible to read file {:?}, error: {}", f, e))
                 .ok()
                 .into_iter()
-                .flat_map(|rdr| rdr
-                          .into_deserialize()
-                          .filter_map(|r| {
-                              r.map_err(|e| info!("impossible to read line, error: {}", e))
-                                  .ok()
-                          })
-                )
+                .flat_map(|rdr| {
+                    rdr.into_deserialize().filter_map(|r| {
+                        r.map_err(|e| info!("impossible to read line, error: {}", e))
+                            .ok()
+                    })
+                })
         })
-        .with_nb_threads(8)
+        .with_nb_threads(nb_threads)
         .par_map(move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
         .filter(|a| {
-            !a.street.street_name.is_empty() || {
+            !a.street.name.is_empty() || {
                 debug!("Address {} has no street name and has been ignored.", a.id);
                 false
             }
@@ -207,6 +211,9 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
+    /// Number of threads to use
+    #[structopt(short = "t", long = "nb-threads", default_value = "1")]
+    nb_threads: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -217,12 +224,14 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             &args.connection_string,
             &args.dataset,
             paths.map(|p| p.unwrap().path()),
+            args.nb_threads,
         )
     } else {
         index_bano(
             &args.connection_string,
             &args.dataset,
             std::iter::once(args.input),
+            args.nb_threads,
         )
     }
 }
