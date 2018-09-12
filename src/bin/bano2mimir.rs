@@ -41,7 +41,10 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate num_cpus;
 extern crate par_map;
+#[macro_use]
+extern crate lazy_static;
 
 use failure::ResultExt;
 use mimir::objects::Admin;
@@ -54,6 +57,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
+
+lazy_static! {
+    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Bano {
@@ -212,7 +219,7 @@ struct Args {
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Number of threads to use
-    #[structopt(short = "t", long = "nb-threads", default_value = "1")]
+    #[structopt(short = "t", long = "nb-threads", raw(default_value = "&DEFAULT_NB_THREADS"))]
     nb_threads: usize,
 }
 

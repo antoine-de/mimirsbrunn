@@ -41,7 +41,10 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate num_cpus;
 extern crate par_map;
+#[macro_use]
+extern crate lazy_static;
 
 use failure::ResultExt;
 use mimir::rubber::Rubber;
@@ -49,6 +52,10 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use par_map::ParMap;
 use std::fs;
 use std::path::PathBuf;
+
+lazy_static! {
+    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -176,7 +183,7 @@ struct Args {
     #[structopt(short = "C", long = "city-level")]
     city_level: Option<String>,
     /// Number of threads to use
-    #[structopt(short = "t", long = "nb-threads", default_value = "1")]
+    #[structopt(short = "t", long = "nb-threads", raw(default_value = "&DEFAULT_NB_THREADS"))]
     nb_threads: usize,
 }
 
