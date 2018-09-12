@@ -178,6 +178,7 @@ pub fn read_administrative_regions(
                 boundary: boundary,
                 admin_type: admin_type,
                 zone_type: zone_type,
+                parent_id: None,
             };
             administrative_regions.push(admin);
         }
