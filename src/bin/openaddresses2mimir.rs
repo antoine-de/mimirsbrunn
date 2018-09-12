@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate csv;
 extern crate failure;
 extern crate geo;
 extern crate mimir;
@@ -42,14 +41,12 @@ extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
 extern crate num_cpus;
-extern crate par_map;
 #[macro_use]
 extern crate lazy_static;
 
-use failure::ResultExt;
 use mimir::rubber::Rubber;
+use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use par_map::ParMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -129,41 +126,15 @@ where
             vec![]
         });
     let admins_geofinder = admins.into_iter().collect();
-    let addr_index = rubber
-        .make_index(dataset)
-        .with_context(|_| format!("error occureed when making index for {}", dataset))?;
-    info!("Add data in elasticsearch db.");
 
-    let iter = files
-        .into_iter()
-        .flat_map(|f| {
-            info!("importing {:?}...", &f);
-            csv::ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(&f)
-                .map_err(|e| error!("impossible to read file {:?}, error: {}", f, e))
-                .ok()
-                .into_iter()
-                .flat_map(|rdr| {
-                    rdr.into_deserialize().filter_map(|r| {
-                        r.map_err(|e| info!("impossible to read line, error: {}", e))
-                            .ok()
-                    })
-                })
-        })
-        .with_nb_threads(nb_threads)
-        .par_map(move |v: OpenAddresse| v.into_addr(&admins_geofinder))
-        .filter(|a| {
-            !a.street.name.is_empty() || {
-                debug!("Address {} has no street name and has been ignored.", a.id);
-                false
-            }
-        });
-    let nb = rubber
-        .bulk_index(&addr_index, iter)
-        .with_context(|_| "failed to bulk insert addresses".to_string())?;
-    info!("{} addresses imported", nb);
-    rubber.publish_index(dataset, addr_index)
+    import_addresses(
+        &mut rubber,
+        true,
+        nb_threads,
+        dataset,
+        files,
+        move |a: OpenAddresse| a.into_addr(&admins_geofinder),
+    )
 }
 
 #[derive(StructOpt, Debug)]
