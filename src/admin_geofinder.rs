@@ -104,7 +104,7 @@ impl AdminGeoFinder {
         let mut added_zone_types = BTreeSet::new();
         let mut res = vec![];
 
-        for boundary_and_admin in rtree_results.into_iter().map(|(_, a)| a) {
+        for (_, boundary_and_admin) in rtree_results {
             let boundary = &boundary_and_admin.0;
             let admin = &boundary_and_admin.1;
             if tested_hierarchy.contains(&admin.id) {
