@@ -73,21 +73,16 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // Test that Créteil (admin_level 7) is not treated as a city (level 8)
     let admin_regions: Vec<_> = es_wrapper
-        .search_and_filter("admin_type:Unknown", |_| true)
-        .filter_map(|admin| match admin {
-            mimir::Place::Admin(admin) => {
-                if admin.name == "Créteil" {
-                    Some(admin)
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        })
+        .search_and_filter("label:Créteil", |_| true)
         .collect();
     assert!(admin_regions.len() >= 1);
-    assert_eq!(admin_regions[0].level, 7);
-    assert_eq!(admin_regions[0].admin_type, mimir::AdminType::Unknown);
+    if let mimir::Place::Admin(ref creteil) = admin_regions[0] {
+        assert_eq!(creteil.name, "Créteil");
+        assert_eq!(creteil.level, 7);
+        assert_eq!(creteil.admin_type, mimir::AdminType::Unknown);
+    } else {
+        panic!("creteil should be an admin");
+    }
 
     // Test: search for "Rue des Près"
     let res: Vec<_> = es_wrapper
@@ -135,6 +130,21 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         .search_and_filter("label:Rue du Port (Melun)", place_filter)
         .count();
     assert_eq!(nb, 1);
+
+    // Test: Street admin is based on a middle node
+    // (instead of the first node which is located outside Melun)
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("label:Rue Marcel Houdet", |_| true)
+        .collect();
+    assert!(res.len() != 0);
+    assert_eq!(res[0].label(), "Rue Marcel Houdet (Melun)");
+    assert!(
+        res[0]
+            .admins()
+            .iter()
+            .filter(|a| a.is_city())
+            .any(|a| a.name == "Melun")
+    );
 
     // Test: search Pois by label
     let res: Vec<_> = es_wrapper

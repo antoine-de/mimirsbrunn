@@ -47,6 +47,7 @@ use serde_json;
 use std;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
+use std::time;
 
 const SYNONYMS: [&'static str; 17] = [
     "cc,centre commercial",
@@ -75,6 +76,7 @@ pub struct Rubber {
     http_client: hyper::client::Client,
 }
 
+#[derive(Clone, Debug)]
 pub struct TypedIndex<T> {
     name: String,
     _type: PhantomData<T>,
@@ -261,6 +263,16 @@ impl Rubber {
         }
     }
 
+    pub fn set_read_timeout(&mut self, timeout: Option<time::Duration>) {
+        self.es_client.set_read_timeout(timeout);
+        self.http_client.set_read_timeout(timeout);
+    }
+
+    pub fn set_write_timeout(&mut self, timeout: Option<time::Duration>) {
+        self.es_client.set_write_timeout(timeout);
+        self.http_client.set_write_timeout(timeout);
+    }
+
     pub fn get(&self, path: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a get on {}", path);
@@ -437,10 +449,12 @@ impl Rubber {
         let result: SearchResult<serde_json::Value> = self
             .es_client
             .search_query()
-            .with_indexes(&indexes
-                .iter()
-                .map(|index| index.as_str())
-                .collect::<Vec<_>>())
+            .with_indexes(
+                &indexes
+                    .iter()
+                    .map(|index| index.as_str())
+                    .collect::<Vec<_>>(),
+            )
             .with_query(&query)
             .with_size(1)
             .send()?;
@@ -542,36 +556,29 @@ impl Rubber {
         iter: I,
     ) -> Result<usize, rs_es::error::EsError>
     where
-        T: MimirObject,
+        T: MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
+        use par_map::ParMap;
         use rs_es::operations::bulk::Action;
         let mut nb = 0;
         let chunk_size = 1000;
-        // fold is used for creating the action and optionally set the id of the object
-        let mut actions = iter.map(|v| {
-            v.es_id()
-                .into_iter()
-                .fold(Action::index(v), |action, id| action.with_id(id))
+        let chunks = iter.pack(chunk_size).par_map(|v| {
+            v.into_iter()
+                .map(|v| {
+                    v.es_id()
+                        .into_iter()
+                        .fold(Action::index(v), |action, id| action.with_id(id))
+                })
+                .collect::<Vec<_>>()
         });
-        loop {
-            let chunk = actions.by_ref().take(chunk_size).collect::<Vec<_>>();
-
-            if chunk.is_empty() {
-                break;
-            }
+        for chunk in chunks.filter(|c| !c.is_empty()) {
             nb += chunk.len();
-            try!(
-                self.es_client
-                    .bulk(&chunk)
-                    .with_index(&index.name)
-                    .with_doc_type(T::doc_type())
-                    .send()
-            );
-
-            if chunk.len() < chunk_size {
-                break;
-            }
+            self.es_client
+                .bulk(&chunk)
+                .with_index(&index.name)
+                .with_doc_type(T::doc_type())
+                .send()?;
         }
 
         Ok(nb)
@@ -584,7 +591,7 @@ impl Rubber {
     /// the index is published and the old index is removed
     pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, Error>
     where
-        T: MimirObject,
+        T: MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
         // TODO better error handling

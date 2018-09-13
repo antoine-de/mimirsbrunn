@@ -1,5 +1,3 @@
-// Copyright © 2016, Canal TP and/or its affiliates. All rights reserved.
-//
 // This file is part of Navitia,
 //     the software to build cool stuff with public transport.
 //
@@ -47,6 +45,8 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate cosmogony;
+#[macro_use]
+extern crate approx;
 
 mod bano2mimir_test;
 mod bragi_bano_test;
@@ -259,7 +259,10 @@ impl BragiHandler {
     }
 
     pub fn get(&self, q: &str) -> Vec<Map<String, Value>> {
-        get_results(self.raw_get(q).unwrap())
+        get_results(
+            self.raw_get(q).unwrap(),
+            Some("/properties/geocoding".to_string()),
+        )
     }
 
     pub fn raw_post_shape(&self, q: &str, shape: &str) -> iron::IronResult<iron::Response> {
@@ -276,7 +279,10 @@ impl BragiHandler {
     }
 
     pub fn post_shape(&self, q: &str, shape: &str) -> Vec<Map<String, Value>> {
-        get_results(self.raw_post_shape(q, shape).unwrap())
+        get_results(
+            self.raw_post_shape(q, shape).unwrap(),
+            Some("/properties/geocoding".to_string()),
+        )
     }
 }
 
@@ -285,7 +291,7 @@ pub fn to_json(r: iron::Response) -> Value {
     serde_json::from_str(&s).unwrap()
 }
 
-pub fn get_results(r: iron::Response) -> Vec<Map<String, Value>> {
+pub fn get_results(r: iron::Response, pointer: Option<String>) -> Vec<Map<String, Value>> {
     to_json(r)
         .pointer("/features")
         .expect("wrongly formated bragi response")
@@ -293,11 +299,15 @@ pub fn get_results(r: iron::Response) -> Vec<Map<String, Value>> {
         .expect("features must be array")
         .iter()
         .map(|f| {
-            f.pointer("/properties/geocoding")
-                .expect("no geocoding object in bragi response")
-                .as_object()
-                .unwrap()
-                .clone()
+            if let Some(p) = &pointer {
+                f.pointer(&p)
+                    .expect("no field in bragi response")
+                    .as_object()
+                    .unwrap()
+                    .clone()
+            } else {
+                f.as_object().unwrap().clone()
+            }
         })
         .collect()
 }
@@ -370,6 +380,9 @@ fn all_tests() {
     openaddresses2mimir_test::oa2mimir_simple_test(ElasticSearchWrapper::new(&docker_wrapper));
     cosmogony2mimir_test::cosmogony2mimir_test(ElasticSearchWrapper::new(&docker_wrapper));
     canonical_import_process_test::canonical_import_process_test(ElasticSearchWrapper::new(
+        &docker_wrapper,
+    ));
+    canonical_import_process_test::bragi_invalid_es_test(ElasticSearchWrapper::new(
         &docker_wrapper,
     ));
 }

@@ -49,9 +49,22 @@
     },
     "mappings": {
         "poi": {
+            "dynamic": "false",
             "properties": {
                 "id": { "type": "string", "index": "no" },
-                "name": { "type": "string" },
+                "name": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "fields": {
+                        "prefix": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "prefix",
+                            "search_analyzer": "word"
+                        }
+                    }
+                },
                 "zip_codes": {
                     "type": "string",
                     "index_options": "docs",
@@ -81,13 +94,19 @@
                             "type": "string",
                             "index_options": "docs",
                             "analyzer": "prefix",
-                            "search_analyzer": "word"
+                            "search_analyzer": "word",
+                            "norms": {
+                                "enabled": false
+                            }
                         },
                         "ngram": {
                             "type": "string",
                             "index_options": "docs",
                             "analyzer": "ngram_with_synonyms",
-                            "search_analyzer": "ngram"
+                            "search_analyzer": "ngram",
+                            "norms": {
+                                "enabled": false
+                            }
                         }
                     }
                 },
@@ -101,22 +120,20 @@
                             "type": "string",
                             "index_options": "docs",
                             "analyzer": "prefix",
-                            "search_analyzer": "word"
+                            "search_analyzer": "word",
+                            "norms": {
+                                "enabled": false
+                            }
                         },
                         "ngram": {
                             "type": "string",
                             "index_options": "docs",
                             "analyzer": "ngram_with_synonyms",
-                            "search_analyzer": "ngram"
+                            "search_analyzer": "ngram",
+                            "norms": {
+                                "enabled": false
+                            }
                         }
-                    }
-                },
-                "administrative_regions": {
-                    "properties": {
-                        "id": { "type": "string", "index": "no" },
-                        "level": { "type": "long", "index": "no" },
-                        "zip_codes": { "type": "string", "index": "not_analyzed" },
-                        "weight": { "type": "double" }
                     }
                 },
                 "properties": {

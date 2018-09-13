@@ -39,8 +39,15 @@ pub fn get_way_coord(
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
     way: &osmpbfreader::objects::Way,
 ) -> mimir::Coord {
+    /*
+        Returns arbitrary Coord on the way.
+        A middle node is chosen as a better marker on a street
+        than the first node.
+    */
+    let nb_nodes = way.nodes.len();
     way.nodes
         .iter()
+        .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|obj| obj.node())
         .map(|node| mimir::Coord::new(node.lon(), node.lat()))

@@ -30,13 +30,13 @@
 
 use cosmogony::ZoneType;
 use geo;
+use geo::prelude::BoundingBox;
 use hyper;
 use mimir::rubber::{self, Rubber};
 use mimir::AdminType::City;
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
 use std;
-use std::cell::Cell;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
@@ -53,7 +53,7 @@ fn check_has_bob(es: &::ElasticSearchWrapper) {
         );
         let es_bob = es_elt.pointer("/_source").unwrap();
         assert_eq!(es_bob.pointer("/id"), Some(&json!("bob")));
-        assert_eq!(es_bob.pointer("/street_name"), Some(&json!("bob's street")));
+        assert_eq!(es_bob.pointer("/name"), Some(&json!("bob's street")));
         assert_eq!(es_bob.pointer("/label"), Some(&json!("bob's name")));
         assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.42)));
     };
@@ -70,6 +70,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     let bob = Street {
         id: "bob".to_string(),
         street_name: "bob's street".to_string(),
+        name: "bob's street".to_string(),
         label: "bob's name".to_string(),
         administrative_regions: vec![],
         weight: 0.42,
@@ -90,6 +91,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     let bobette = Street {
         id: "bobette".to_string(),
         street_name: "bobette's street".to_string(),
+        name: "bobette's street".to_string(),
         label: "bobette's name".to_string(),
         administrative_regions: vec![],
         weight: 0.24,
@@ -122,10 +124,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         );
         let es_bob = es_elt.pointer("/_source").unwrap();
         assert_eq!(es_bob.pointer("/id"), Some(&json!("bobette")));
-        assert_eq!(
-            es_bob.pointer("/street_name"),
-            Some(&json!("bobette's street"))
-        );
+        assert_eq!(es_bob.pointer("/name"), Some(&json!("bobette's street")));
         assert_eq!(es_bob.pointer("/label"), Some(&json!("bobette's name")));
         assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.24)));
 
@@ -141,6 +140,17 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     let dataset = "my_dataset";
     let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
 
+    let boundary = geo::MultiPolygon(vec![geo::Polygon::new(
+        geo::LineString(vec![
+            p(2., 48.),
+            p(2., 49.),
+            p(3., 49.),
+            p(3., 48.),
+            p(2., 48.),
+        ]),
+        vec![],
+    )]);
+
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -148,20 +158,13 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         name: "my admin".to_string(),
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
-        weight: Cell::new(0.42),
+        weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
-        boundary: Some(geo::MultiPolygon(vec![geo::Polygon::new(
-            geo::LineString(vec![
-                p(2., 48.),
-                p(2., 49.),
-                p(3., 49.),
-                p(3., 48.),
-                p(2., 48.),
-            ]),
-            vec![],
-        )])),
+        bbox: boundary.bbox(),
+        boundary: Some(boundary),
         admin_type: City,
         zone_type: Some(ZoneType::City),
+        parent_id: None,
     };
 
     // we index our admin
@@ -238,11 +241,13 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         name: "my admin".to_string(),
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
-        weight: Cell::new(0.42),
+        weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
+        bbox: None,
         admin_type: City,
         zone_type: Some(ZoneType::City),
+        parent_id: None,
     };
 
     // we index our admin

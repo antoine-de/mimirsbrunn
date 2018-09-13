@@ -30,18 +30,18 @@
 
 use mimir;
 use std::process::exit;
-use std::rc::Rc;
+use std::sync::Arc;
 use structopt::StructOpt;
 use Error;
 
-pub fn format_label(admins: &[Rc<mimir::Admin>], name: &str) -> String {
+pub fn format_label(admins: &[Arc<mimir::Admin>], name: &str) -> String {
     match admins.iter().position(|adm| adm.is_city()) {
         Some(idx) => format!("{} ({})", name, admins[idx].name),
         None => name.to_string(),
     }
 }
 
-pub fn get_zip_codes_from_admins(admins: &[Rc<mimir::Admin>]) -> Vec<String> {
+pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
         if adm.level > level && !adm.zip_codes.is_empty() {
             adm.level
@@ -59,7 +59,15 @@ pub fn get_zip_codes_from_admins(admins: &[Rc<mimir::Admin>]) -> Vec<String> {
         .collect()
 }
 
-pub fn launch_run<O, F>(run: F)
+/// normalize the admin weight for it to be in [0, 1]
+pub fn normalize_admin_weight(admins: &mut [mimir::Admin]) {
+    let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight));
+    for ref mut a in admins {
+        a.weight = a.weight / max;
+    }
+}
+
+pub fn wrapped_launch_run<O, F>(run: F) -> Result<(), Error>
 where
     F: FnOnce(O) -> Result<(), Error>,
     O: StructOpt,
@@ -69,6 +77,20 @@ where
         for cause in err.causes() {
             error!("{}", cause);
         }
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
+
+pub fn launch_run<O, F>(run: F)
+where
+    F: FnOnce(O) -> Result<(), Error>,
+    O: StructOpt,
+{
+    if wrapped_launch_run(run).is_err() {
+        // we wrap the real stuff in another method to std::exit after
+        // the destruction of the logger (so we won't loose any messages)
         exit(1);
     }
 }

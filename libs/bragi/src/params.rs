@@ -95,6 +95,10 @@ pub fn coord_param(params: &mut Builder, is_opt: bool) {
     });
 }
 
+pub fn timeout_param(params: &mut Builder) {
+    params.opt_typed("timeout", json_dsl::u64());
+}
+
 pub fn paginate_param(params: &mut Builder) {
     params.opt_typed("limit", json_dsl::u64());
     params.opt_typed("offset", json_dsl::u64());

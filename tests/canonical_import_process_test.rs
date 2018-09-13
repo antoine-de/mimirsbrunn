@@ -28,13 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate iron;
 extern crate mimir;
 extern crate serde_json;
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
-use super::get_values;
 use super::BragiHandler;
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
@@ -96,6 +96,10 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(melun["id"], "admin:osm:relation:80071");
     assert_eq!(melun["type"], "city");
     assert_eq!(melun["city"], serde_json::Value::Null);
+    assert_eq!(
+        melun["bbox"],
+        json!(vec![2.6284669, 48.5235259, 2.6820184, 48.5607616])
+    );
 
     // we should also find other object that are in the city
     // (in the data there is at least one poi, and one street that matches)
@@ -148,4 +152,16 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["street"], "Rue de la Reine Blanche");
     assert_eq!(poi_addr["postcode"], "77288");
     assert_eq!(poi_addr["city"], "Melun");
+}
+
+pub fn bragi_invalid_es_test(_es_wrapper: ::ElasticSearchWrapper) {
+    let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
+
+    // the status does not check the ES connexion, so for the status all is good
+    let resp = bragi.raw_get("/status").unwrap();
+    assert_eq!(resp.status, Some(iron::status::Status::Ok));
+
+    // the autocomplete gives a 503
+    let resp = bragi.raw_get("/autocomplete?q=toto").unwrap();
+    assert_eq!(resp.status, Some(iron::status::Status::ServiceUnavailable));
 }

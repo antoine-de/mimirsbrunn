@@ -27,7 +27,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use super::model;
+use super::model::{self, BragiError};
 use mimir;
 use mimir::objects::{Addr, Admin, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{collect, get_indexes};
@@ -40,6 +40,9 @@ use rs_es::units as rs_u;
 use serde;
 use serde_json;
 use std::fmt;
+use std::time;
+
+use navitia_model::objects::Coord;
 
 lazy_static! {
     static ref ES_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
@@ -95,7 +98,7 @@ impl fmt::Display for MatchType {
 
 /// Create a `rs_es::Query` that boosts results according to the
 /// distance to `coord`.
-fn build_proximity_with_boost(coord: &model::Coord, boost: f64) -> Query {
+fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
     Query::build_function_score()
         .with_boost(boost)
         .with_function(
@@ -128,7 +131,7 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
 fn build_query(
     q: &str,
     match_type: MatchType,
-    coord: &Option<model::Coord>,
+    coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     pt_datasets: &[&str],
     all_data: bool,
@@ -143,17 +146,18 @@ fn build_query(
     }
     let type_query = Query::build_bool()
         .with_should(vec![
-            match_type_with_boost::<Addr>(12.),
-            match_type_with_boost::<Admin>(11.),
-            match_type_with_boost::<Stop>(10.),
-            match_type_with_boost::<Poi>(2.),
+            match_type_with_boost::<Addr>(20.),
+            match_type_with_boost::<Admin>(19.),
+            match_type_with_boost::<Stop>(18.),
+            match_type_with_boost::<Poi>(1.5),
             match_type_with_boost::<Street>(1.),
         ])
-        .with_boost(20.)
+        .with_boost(30.)
         .build();
 
     // Priorization by query string
     let mut string_should = vec![
+        Query::build_match("name", q).with_boost(1.).build(),
         Query::build_match("label", q).with_boost(1.).build(),
         Query::build_match("label.prefix", q).with_boost(1.).build(),
         Query::build_match("zip_codes", q).with_boost(1.).build(),
@@ -238,18 +242,16 @@ fn query(
     q: &str,
     pt_datasets: &[&str],
     all_data: bool,
-    cnx: &str,
+    mut client: &mut rs_es::Client,
     match_type: MatchType,
     offset: u64,
     limit: u64,
-    coord: &Option<model::Coord>,
+    coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     types: &[&str],
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
-
-    let mut client = rs_es::Client::new(cnx).unwrap();
 
     let indexes = try!(get_indexes(all_data, &pt_datasets, types, &mut client));
 
@@ -268,18 +270,19 @@ fn query(
         )
         .ok();
 
-    let result: SearchResult<serde_json::Value> = try!(
-        client
-            .search_query()
-            .with_indexes(&indexes
+    let result: SearchResult<serde_json::Value> = client
+        .search_query()
+        .with_indexes(
+            &indexes
                 .iter()
                 .map(|index| index.as_str())
-                .collect::<Vec<&str>>())
-            .with_query(&query)
-            .with_from(offset)
-            .with_size(limit)
-            .send()
-    );
+                .collect::<Vec<&str>>(),
+        )
+        .with_query(&query)
+        .with_from(offset)
+        .with_size(limit)
+        .send()?;
+
     timer.map(|t| t.observe_duration());
 
     collect(result)
@@ -290,7 +293,8 @@ pub fn features(
     all_data: bool,
     cnx: &str,
     id: &str,
-) -> Result<Vec<mimir::Place>, EsError> {
+    timeout: Option<time::Duration>,
+) -> Result<Vec<mimir::Place>, BragiError> {
     let val = rs_es::units::JsonVal::String(id.into());
     let mut filters = vec![Query::build_ids(vec![val]).build()];
 
@@ -302,6 +306,7 @@ pub fn features(
     let query = Query::build_bool().with_filter(filter).build();
 
     let mut client = rs_es::Client::new(cnx).unwrap();
+    client.set_read_timeout(timeout);
 
     let indexes = try!(get_indexes(all_data, &pt_datasets, &[], &mut client));
 
@@ -310,24 +315,26 @@ pub fn features(
     if indexes.is_empty() {
         // if there is no indexes, rs_es search with index "_all"
         // but we want to return an error in this case.
-        return Err(EsError::EsError("Unable to find object".to_string()));
+        return Err(BragiError::IndexNotFound);
     }
 
     let result: SearchResult<serde_json::Value> = try!(
         client
             .search_query()
-            .with_indexes(&indexes
-                .iter()
-                .map(|index| index.as_str())
-                .collect::<Vec<&str>>())
+            .with_indexes(
+                &indexes
+                    .iter()
+                    .map(|index| index.as_str())
+                    .collect::<Vec<&str>>()
+            )
             .with_query(&query)
             .send()
     );
 
     if result.hits.total == 0 {
-        Err(EsError::EsError("Unable to find object".to_string()))
+        Err(BragiError::ObjectNotFound)
     } else {
-        collect(result)
+        collect(result).map_err(model::BragiError::from)
     }
 }
 
@@ -337,44 +344,48 @@ pub fn autocomplete(
     all_data: bool,
     offset: u64,
     limit: u64,
-    coord: Option<model::Coord>,
+    coord: Option<Coord>,
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
     types: &[&str],
-) -> Result<Vec<mimir::Place>, EsError> {
+    timeout: Option<time::Duration>,
+) -> Result<Vec<mimir::Place>, BragiError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
         shape
             .as_ref()
             .map(|v| v.iter().map(|&l| l.into()).collect())
     }
 
+    let mut client = rs_es::Client::new(cnx).unwrap();
+    client.set_read_timeout(timeout);
+
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
-    let results = try!(query(
+    let results = query(
         &q,
         &pt_datasets,
         all_data,
-        cnx,
+        &mut client,
         MatchType::Prefix,
         offset,
         limit,
         &coord,
         make_shape(&shape),
         &types,
-    ));
+    ).map_err(model::BragiError::from)?;
     if results.is_empty() {
         query(
             &q,
             &pt_datasets,
             all_data,
-            cnx,
+            &mut client,
             MatchType::Fuzzy,
             offset,
             limit,
             &coord,
             make_shape(&shape),
             &types,
-        )
+        ).map_err(model::BragiError::from)
     } else {
         Ok(results)
     }

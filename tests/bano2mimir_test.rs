@@ -33,6 +33,12 @@ use hyper;
 use hyper::client::Client;
 use mdo::option::{bind, ret};
 
+/// Returns the total number of results in the ES
+fn get_nb_elements(es_wrapper: &::ElasticSearchWrapper) -> u64 {
+    let json = es_wrapper.search("*.*");
+    json["hits"]["total"].as_u64().unwrap()
+}
+
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
@@ -111,4 +117,15 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         aliases,
         vec!["munin", "munin_addr", "munin_addr_fr", "munin_geo_data"]
     );
+
+    // we should have imported 32 elements
+    // (we shouldn't have the badly formated line)
+    let total = get_nb_elements(&es_wrapper);
+    assert_eq!(total, 32);
+
+    // We look for 'Fake-City' which should have been filtered since the street name is empty
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("Fake-City", |_| true)
+        .collect();
+    assert_eq!(res.len(), 0);
 }

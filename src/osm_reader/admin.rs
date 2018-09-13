@@ -28,19 +28,21 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+extern crate geo;
 extern crate mimir;
 extern crate osm_boundaries_utils;
 extern crate osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
-use admin_geofinder::AdminGeoFinder;
+use cosmogony::ZoneType;
+use geo::prelude::BoundingBox;
 use itertools::Itertools;
 use osm_reader::osm_utils::make_centroid;
-use std::cell::Cell;
 use std::collections::BTreeSet;
+use utils::normalize_admin_weight;
+
 pub type StreetsVec = Vec<mimir::Street>;
-use cosmogony::ZoneType;
 
 #[derive(Debug)]
 pub struct AdminMatcher {
@@ -146,6 +148,23 @@ pub fn read_administrative_regions(
             } else {
                 mimir::AdminType::Unknown
             };
+
+            let weight = relation
+                .tags
+                .get("population")
+                .and_then(|p| p.parse().ok())
+                .or_else(|| {
+                    let rel = relation.refs.iter().find(|r| r.role == "admin_centre")?;
+                    objects
+                        .get(&rel.member)?
+                        .node()?
+                        .tags
+                        .get("population")?
+                        .parse()
+                        .ok()
+                })
+                .unwrap_or(0.);
+
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -153,15 +172,20 @@ pub fn read_administrative_regions(
                 name: name.to_string(),
                 label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
                 zip_codes: zip_codes,
-                weight: Cell::new(0.),
+                weight: weight,
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
+                bbox: boundary.as_ref().and_then(|b| b.bbox()),
                 boundary: boundary,
                 admin_type: admin_type,
                 zone_type: zone_type,
+                parent_id: None,
             };
             administrative_regions.push(admin);
         }
     }
+
+    normalize_admin_weight(&mut administrative_regions);
+
     administrative_regions
 }
 
@@ -170,20 +194,6 @@ fn get_zone_type(level: u32, city_lvl: u32) -> Option<ZoneType> {
         Some(ZoneType::City)
     } else {
         None
-    }
-}
-
-pub fn compute_admin_weight(streets: &StreetsVec, admins_geofinder: &AdminGeoFinder) {
-    let mut max = 1.;
-    for st in streets {
-        for admin in &st.administrative_regions {
-            admin.weight.set(admin.weight.get() + 1.);
-            max = f64::max(max, admin.weight.get());
-        }
-    }
-
-    for admin in admins_geofinder.admins_without_boundary() {
-        admin.weight.set(admin.weight.get() / max);
     }
 }
 

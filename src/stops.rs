@@ -34,7 +34,7 @@ use mimir;
 use mimir::rubber::{Rubber, TypedIndex};
 use std::collections::HashMap;
 use std::mem::replace;
-use std::rc::Rc;
+use std::sync::Arc;
 use utils::{format_label, get_zip_codes_from_admins};
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
@@ -71,7 +71,7 @@ pub fn import_stops(
     let global_index = update_global_stop_index(&mut rubber, stops.iter(), dataset)?;
 
     info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.index(dataset, stops.iter())?;
+    let nb_stops = rubber.index(dataset, stops.into_iter())?;
     info!("Nb of indexed stops: {}", nb_stops);
 
     publish_global_index(&mut rubber, &global_index)
@@ -79,7 +79,7 @@ pub fn import_stops(
     Ok(())
 }
 
-fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Rc<mimir::Admin>>) {
+fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Arc<mimir::Admin>>) {
     stop.administrative_regions = admins;
     stop.label = format_label(&stop.administrative_regions, &stop.name);
     stop.zip_codes = get_zip_codes_from_admins(&stop.administrative_regions);

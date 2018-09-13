@@ -1,14 +1,32 @@
 # Mímirsbrunn
 
-Mimirsbrunn is an geocoding service build upon [Elasticsearch](https://www.elastic.co).
+Mimirsbrunn is a geocoding service build upon [Elasticsearch](https://www.elastic.co).
 
 It is an independent service, but [Navitia](https://github.com/CanalTP/navitia) uses it as it's global geocoding service.
 
 Mimirsbrunn is composed of several [parts](#components), some managing the data import in Elasticsearch, and a web service wrapping Elasticsearch responses to return formated responses (we use [geocodejson](https://github.com/geocoders/geocodejson-spec) as the responses format)
 
-## build
+## Use
 
-### requirements
+### Data
+
+Mimirsbrunn relies on geographical datasets to find what users are looking for. These locations belong to different data types and come from various sources.
+
+data type | data sources and components
+--- | ---
+Addresses | OpenAddresses (openaddresses2mimir) or BANO (bano2mimir)
+Streets | OpenStreetMap (osm2mimir)
+POIs | OpenStreetMap (osm2mimir)
+Public Transport Stops | Navitia.io data platform (ntfs2mimir) or any GTFS data repository (stops2mimir)
+Administrative regions | OSM (osm2mimir) or Cosmogony (cosmogony2mimir)
+
+Check out the doc of each [component](#components) to know more about how to use.
+
+If you need to use another datasource, you can also write your own data importer. See for instance [Fafnir](https://github.com/QwantResearch/fafnir), an external component to import POIs from another database.
+
+## Install
+
+### manually
 
 To build, you must first install rust:
 
@@ -16,33 +34,15 @@ To build, you must first install rust:
 curl https://sh.rustup.rs -sSf | sh
 ```
 
-### build
+To use the Mimirsbrunn components you will need an elasticsearch database.
+
+The elasticsearch version needs to be 2.x
+
 and then build Mimirsbrunn:
 
 ```shell
 cargo build --release
 ```
-
-To use the Mimirsbrunn components you will need an elasticsearch database.
-
-The elasticsearch version need to be 2.x
-
-### test
-
-To test simply launch:
-
-```shell
-cargo test
-```
-
-Integration tests are spawning one ElasticSearch docker, so you'll need a recent docker version. Only one docker is spawn, so ES base has to be cleaned before each test.
-
-To write a new test:
-
-- write your test in a separate file in tests/
-- add a call to your test in tests/tests.rs::test_all()
-- pass a new ElasticSearchWrapper to your test method to get the right connection string for ES base
-- the creation of this ElasticSearchWrapper automatically cleans ES base (you can also refresh ES base, clean up during tests, etc.)
 
 ## Architecture
 
@@ -76,7 +76,7 @@ munin_addr_dataset1_20160201T123200
 
 and when the loading is finished
 ```
-munin -> munin_addr -> munin_addr_dataset1 
+munin -> munin_addr -> munin_addr_dataset1
                                           |-> munin_addr_dataset1_20160201T123200
                    |-> munin_addr_dataset2 -> munin_addr_dataset2_20160101T123200
      |-> munin_admin -> munin_admin_dataset1 -> munin_admin_dataset1_20160101T123200
@@ -88,7 +88,7 @@ munin -> munin_addr -> munin_addr_dataset1
 
 There is one major drawback: dataset aren't hermetic since we import multiple OSM files, the area near the border will be in multiple dataset, for now we accept these duplicate. We will be able to filter with shape at import time and/or remove them in bragi.
 
-## <a name=components> components
+## <a name=components> components </a>
 
 All Mimirsbrunn's components implement the `--help` (or `-h`) argument to explain it's use
 
@@ -137,21 +137,22 @@ To import all those data into Mimir, you only have to do:
 The `--connection-string` argument refers to the ElasticSearch url
 
 
-### stops2mimir
+### ntfs2mimir
 
-This component imports stops into Mimir.
-It is recommended to run stops integration after osm integration so that stops are attached to admins.
+This component imports data from the ntfs files into Mimir.
+It is recommended to run ntfs integration after osm integration so that stops are attached to admins.
 
 To import all those data into Mimir, you only have to do:
 
 ```shell
-./target/release/stops2mimir -i stops.txt --dataset=idf --connection-string=http://localhost:9200/
+./target/release/ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
 ```
 
 The `--connection-string` argument refers to the ElasticSearch url
 
-The stops input file needs to match the either the GTFS specification (https://developers.google.com/transit/gtfs/reference/)
- or NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
+The ntfs input file needs to match the NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
+
+Note: previously, another component was used: stops2mimir. Though it is still available, it is now deprecated because ntfs2mimir imports stops and every other files present in the ntfs.
 
 ### Bragi
 
@@ -167,7 +168,32 @@ To run Bragi:
 ./target/release/bragi --connection-string=http://localhost:9200/munin
 ```
 
-you then can call the API (the default Bragi's listening port is 4000):
+then, you can call the API (the default Bragi's listening port is 4000):
 ```
 curl "http://localhost:4000/autocomplete?q=rue+hector+malot"
 ```
+
+## Contribute
+
+### Integration tests
+
+To test, you need to manually build mimir and then simply launch:
+
+```shell
+cargo test
+```
+
+Integration tests are spawning one ElasticSearch docker, so you'll need a recent docker version. Only one docker is spawn, so ES base has to be cleaned before each test.
+
+To write a new test:
+
+- write your test in a separate file in tests/
+- add a call to your test in tests/tests.rs::test_all()
+- pass a new ElasticSearchWrapper to your test method to get the right connection string for ES base
+- the creation of this ElasticSearchWrapper automatically cleans ES base (you can also refresh ES base, clean up during tests, etc.)
+
+### Geocoding tests
+
+We use [geocoder-tester](https://github.com/geocoders/geocoder-tester) to run real search queries and check the output against expected to prevent regressions.
+
+Feel free to add some tests cases here.

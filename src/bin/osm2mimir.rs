@@ -42,7 +42,7 @@ extern crate structopt;
 use failure::ResultExt;
 use mimir::rubber::Rubber;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::osm_reader::admin::{compute_admin_weight, read_administrative_regions};
+use mimirsbrunn::osm_reader::admin::read_administrative_regions;
 use mimirsbrunn::osm_reader::make_osm_reader;
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
@@ -101,9 +101,6 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         info!("Extracting streets from osm");
         let mut streets = streets(&mut osm_reader, &admins_geofinder)?;
 
-        info!("computing city weight");
-        compute_admin_weight(&mut streets, &admins_geofinder);
-
         info!("computing street weight");
         compute_street_weight(&mut streets);
 
@@ -153,7 +150,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
         info!("Importing pois into Mimir");
         let nb_pois = rubber
-            .index(&args.dataset, pois.iter())
+            .index(&args.dataset, pois.into_iter())
             .context("Importing pois into Mimir")?;
 
         info!("Nb of indexed pois: {}", nb_pois);

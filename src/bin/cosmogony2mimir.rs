@@ -39,33 +39,35 @@ extern crate serde_json;
 extern crate structopt;
 extern crate osmpbfreader;
 
-use cosmogony::{Cosmogony, Zone, ZoneType};
+use cosmogony::{Cosmogony, Zone, ZoneIndex, ZoneType};
 use failure::Error;
 use mimir::objects::{Admin, AdminType};
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin;
-use std::cell::Cell;
+use mimirsbrunn::utils::normalize_admin_weight;
+use std::collections::BTreeMap;
 
 trait IntoAdmin {
-    fn into_admin(self) -> Admin;
+    fn into_admin(self, &BTreeMap<ZoneIndex, String>) -> Admin;
 }
 
-fn get_weight(tags: &osmpbfreader::Tags) -> f64 {
+fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f64 {
     // to have an admin weight we use the osm 'population' tag to priorize
     // the big zones over the small one.
     // Note: this tags is not often filled , so only some zones
     // will have a weight (but the main cities have it).
     tags.get("population")
         .and_then(|p| p.parse().ok())
+        .or_else(|| center_tags.get("population")?.parse().ok())
         .unwrap_or(0.)
 }
 
 impl IntoAdmin for Zone {
-    fn into_admin(self) -> Admin {
+    fn into_admin(self, zones_osm_id: &BTreeMap<ZoneIndex, String>) -> Admin {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
-        let weight = Cell::new(get_weight(&self.tags));
+        let weight = get_weight(&self.tags, &self.center_tags);
         let admin_type = if self.zone_type == Some(ZoneType::City) {
             AdminType::City
         } else {
@@ -74,26 +76,33 @@ impl IntoAdmin for Zone {
         let center = self.center.map_or(mimir::Coord::default(), |c| {
             mimir::Coord::new(c.lng(), c.lat())
         });
+        let format_id = |id| format!("admin:osm:{}", id);
+        let parent_osm_id = self
+            .parent
+            .and_then(|id| zones_osm_id.get(&id))
+            .map(format_id);
         Admin {
-            id: format!("admin:osm:{}", self.osm_id),
+            id: format_id(&self.osm_id),
             insee: insee.into(),
             level: self.admin_level.unwrap_or(0),
             label: label,
             name: self.name,
             zip_codes: zip_codes,
             weight: weight,
+            bbox: self.bbox,
             boundary: self.boundary,
             coord: center,
             admin_type: admin_type,
             zone_type: self.zone_type,
+            parent_id: parent_osm_id,
         }
     }
 }
 
-fn send_to_es(admins: &[Admin], cnx_string: &str, dataset: &str) -> Result<(), Error> {
+fn send_to_es(admins: Vec<Admin>, cnx_string: &str, dataset: &str) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, admins.iter())?;
+    let nb_admins = rubber.index(dataset, admins.into_iter())?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }
@@ -103,26 +112,25 @@ fn load_cosmogony(input: &str) -> Result<Cosmogony, Error> {
         .map_err(|e| failure::err_msg(e.to_string()))
 }
 
-fn normalize_weight(admins: &mut [Admin]) {
-    let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight.get()));
-    for ref mut a in admins {
-        a.weight.set(a.weight.get() / max);
-    }
-}
-
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("importing cosmogony into Mimir");
     let cosmogony = load_cosmogony(&args.input)?;
 
+    let cosmogony_id_to_osm_id: BTreeMap<_, _> = cosmogony
+        .zones
+        .iter()
+        .map(|z| (z.id.clone(), z.osm_id.clone()))
+        .collect();
+
     let mut admins: Vec<_> = cosmogony
         .zones
         .into_iter()
-        .map(|z| z.into_admin())
+        .map(|z| z.into_admin(&cosmogony_id_to_osm_id))
         .collect();
 
-    normalize_weight(&mut admins);
+    normalize_admin_weight(&mut admins);
 
-    send_to_es(&admins, &args.connection_string, &args.dataset)?;
+    send_to_es(admins, &args.connection_string, &args.dataset)?;
 
     Ok(())
 }

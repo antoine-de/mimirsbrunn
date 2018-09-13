@@ -29,21 +29,26 @@
 // www.navitia.io
 use super::query;
 use hyper::mime::Mime;
+use iron::status::Status as IronStatus;
 use iron::typemap::Key;
 use mimir::rubber::Rubber;
 use model;
 use model::v1::*;
 use params::{
-    coord_param, dataset_param, get_param_array, paginate_param, shape_param, types_param,
+    coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
+    types_param,
 };
 use prometheus;
 use prometheus::Encoder;
 use rustless;
-use rustless::server::{header, status};
+use rustless::server::header;
 use rustless::{Api, Nesting};
 use serde;
 use serde_json;
+use std::time;
 use valico::json_dsl;
+
+use navitia_model::objects::Coord;
 
 const DEFAULT_LIMIT: u64 = 10u64;
 const DEFAULT_OFFSET: u64 = 0u64;
@@ -67,15 +72,34 @@ lazy_static! {
     ).unwrap();
 }
 
+fn parse_timeout(params: &rustless::json::JsonValue) -> Option<time::Duration> {
+    params
+        .find("timeout")
+        .and_then(|v| v.as_u64())
+        .map(time::Duration::from_millis)
+}
+
+fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
+    for feature in &mut autocomp_resp.features {
+        if let ::geojson::Value::Point(p) = &feature.geometry.value {
+            if let [mut lon, mut lat] = p.as_slice() {
+                let feature_coord = Coord { lon, lat };
+                feature.distance = Some(feature_coord.distance_to(&origin_coord) as u32);
+            }
+        }
+    }
+}
+
 fn render<T>(
     mut client: rustless::Client,
     obj: T,
 ) -> Result<rustless::Client, rustless::ErrorResponse>
 where
-    T: serde::Serialize,
+    T: serde::Serialize + model::v1::HasStatus,
 {
     client.set_json_content_type();
     client.set_header(header::AccessControlAllowOrigin::Any);
+    client.set_status(obj.status());
     client.text(serde_json::to_string(&obj).unwrap())
 }
 
@@ -103,15 +127,17 @@ impl ApiEndPoint {
                     CustomError {
                         short: "validation error".to_string(),
                         long: format!("invalid arguments {:?}", val_err.reason),
+                        status: IronStatus::BadRequest,
                     }
                 } else {
                     CustomError {
                         short: "bad_request".to_string(),
                         long: format!("bad request, error: {}", error),
+                        status: IronStatus::BadRequest,
                     }
                 };
                 let mut resp = rustless::Response::from(
-                    status::StatusCode::BadRequest,
+                    err.status,
                     Box::new(serde_json::to_string(&err).unwrap()),
                 );
                 resp.set_json_content_type();
@@ -207,6 +233,7 @@ impl ApiEndPoint {
             api.get("reverse", |endpoint| {
                 endpoint.params(|params| {
                     coord_param(params, false);
+                    timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
@@ -215,7 +242,9 @@ impl ApiEndPoint {
                         params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
                     let mut rubber = Rubber::new(&cnx);
-                    let model_autocomplete = rubber.get_address(&coord);
+                    rubber.set_read_timeout(parse_timeout(params));
+                    let model_autocomplete =
+                        rubber.get_address(&coord).map_err(model::BragiError::from);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -230,19 +259,18 @@ impl ApiEndPoint {
                 endpoint.params(|params| {
                     params.opt_typed("id", json_dsl::string());
                     dataset_param(params);
+                    timeout_param(params);
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                endpoint.handle(move |mut client, params| {
+                endpoint.handle(move |client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
                     let all_data = params
                         .find("_all_data")
                         .map_or(false, |val| val.as_bool().unwrap());
-                    let features = query::features(&pt_datasets, all_data, &cnx, &id);
-                    if features.is_err() {
-                        client.set_status(status::StatusCode::NotFound);
-                    }
+                    let timeout = parse_timeout(params);
+                    let features = query::features(&pt_datasets, all_data, &cnx, &id, timeout);
                     let response = model::v1::AutocompleteResponse::from(features);
                     render(client, response)
                 })
@@ -259,6 +287,7 @@ impl ApiEndPoint {
                     paginate_param(params);
                     shape_param(params);
                     types_param(params);
+                    timeout_param(params);
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -295,6 +324,7 @@ impl ApiEndPoint {
                         ));
                     }
                     let types = get_param_array(params, "type");
+                    let timeout = parse_timeout(params);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
@@ -305,6 +335,7 @@ impl ApiEndPoint {
                         &cnx,
                         Some(shape),
                         &types,
+                        timeout,
                     );
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -317,6 +348,7 @@ impl ApiEndPoint {
                     paginate_param(params);
                     coord_param(params, true);
                     types_param(params);
+                    timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
                 endpoint.handle(move |client, params| {
@@ -342,14 +374,14 @@ impl ApiEndPoint {
                     // we have already checked that if there is a lon, lat
                     // is not None so we can unwrap
                     let coord = lon.and_then(|lon| {
-                        Some(model::Coord {
+                        Some(Coord {
                             lon: lon,
                             lat: lat.unwrap(),
                         })
                     });
 
                     let types = get_param_array(params, "type");
-
+                    let timeout = parse_timeout(params);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
@@ -360,9 +392,18 @@ impl ApiEndPoint {
                         &cnx,
                         None,
                         &types,
+                        timeout,
                     );
 
-                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
+
+                    // Optional : add distance for each feature (in meters)
+                    use model::v1::AutocompleteResponse::Autocomplete;
+                    if let (Some(coord), Autocomplete(autocomplete_resp)) = (&coord, &mut response)
+                    {
+                        add_distance(autocomplete_resp, coord);
+                    }
+
                     render(client, response)
                 })
             });

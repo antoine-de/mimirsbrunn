@@ -3,6 +3,7 @@ name = "mimirsbrunn"
 version = "1.2.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 build = "build.rs"
+autotests = false
 
 [workspace]
 
@@ -29,7 +30,10 @@ itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = "0.2"
 failure = "0.1"
-cosmogony = "0.2"
+cosmogony = "0.3.1"
+par-map = "0.1.4"
+lazy_static = "1.1.0"
+num_cpus = "1.8.0"
 
 [dev-dependencies]
 hyper = "0.10"
@@ -37,6 +41,7 @@ iron-test = "0.4"
 rustless = "*"
 iron = "0.4"
 mime = "0.2"
+approx = "0.2.0"
 
 [build-dependencies]
 git-version = "0.2"

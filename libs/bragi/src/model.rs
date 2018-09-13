@@ -32,28 +32,47 @@ use geo;
 use geojson;
 use heck::SnakeCase;
 use mimir;
-use std::rc::Rc;
+use rs_es::error::EsError;
+use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Fail, Debug)]
+pub enum BragiError {
+    #[fail(display = "Unable to find object")]
+    ObjectNotFound,
+    #[fail(display = "Impossible to find object")]
+    IndexNotFound,
+    #[fail(display = "invalid query {}", _0)]
+    Es(EsError),
+}
+
+impl From<EsError> for BragiError {
+    fn from(e: EsError) -> Self {
+        BragiError::Es(e)
+    }
+}
+
+#[derive(Serialize, Debug)]
 pub struct Geocoding {
     version: String,
     query: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Feature {
     #[serde(rename = "type")]
     pub feature_type: String,
     pub geometry: geojson::Geometry,
     pub properties: Properties,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Properties {
     pub geocoding: GeocodingResponse,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Debug, Default)]
 pub struct GeocodingResponse {
     pub id: String,
     #[serde(rename = "type")]
@@ -75,7 +94,7 @@ pub struct GeocodingResponse {
     // pub state: Option<String>,
     // pub country: Option<String>,
     // pub geohash: Option<String>,
-    pub administrative_regions: Vec<Rc<mimir::Admin>>,
+    pub administrative_regions: Vec<Arc<mimir::Admin>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -94,6 +113,12 @@ pub struct GeocodingResponse {
     pub codes: Vec<mimir::Code>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub feed_publishers: Vec<mimir::FeedPublisher>,
+    #[serde(
+        serialize_with = "mimir::objects::serialize_bbox",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub bbox: Option<geo::Bbox<f64>>,
 }
 
 trait ToGeom {
@@ -134,6 +159,7 @@ impl From<mimir::Place> for Feature {
             properties: Properties {
                 geocoding: geocoding,
             },
+            distance: None,
         }
     }
 }
@@ -158,6 +184,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             name: name,
             postcode: postcode,
             label: label,
+            bbox: other.bbox,
             ..Default::default()
         }
     }
@@ -171,14 +198,14 @@ fn get_admin_type(adm: &mimir::Admin) -> String {
     }
 }
 
-fn get_city_name(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+fn get_city_name(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.name.clone())
 }
 
-fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
+fn get_citycode(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
@@ -188,7 +215,7 @@ fn get_citycode(admins: &Vec<Rc<mimir::Admin>>) -> Option<String> {
 impl From<mimir::Street> for GeocodingResponse {
     fn from(other: mimir::Street) -> GeocodingResponse {
         let type_ = "street".to_string();
-        let name = Some(other.street_name);
+        let name = Some(other.name);
         let label = Some(other.label);
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
@@ -219,11 +246,8 @@ impl From<mimir::Addr> for GeocodingResponse {
         let type_ = "house".to_string();
         let label = Some(other.label);
         let housenumber = Some(other.house_number.to_string());
-        let street_name = Some(other.street.street_name.to_string());
-        let name = Some(format!(
-            "{} {}",
-            other.house_number, other.street.street_name
-        ));
+        let street_name = Some(other.street.name.to_string());
+        let name = Some(other.name.to_string());
         let admins = other.street.administrative_regions;
         let city = get_city_name(&admins);
         let postcode = if other.zip_codes.is_empty() {
@@ -321,12 +345,12 @@ impl From<mimir::Stop> for GeocodingResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct Autocomplete {
     #[serde(rename = "type")]
-    format_type: String,
-    geocoding: Geocoding,
-    features: Vec<Feature>,
+    pub format_type: String,
+    pub geocoding: Geocoding,
+    pub features: Vec<Feature>,
 }
 
 impl Autocomplete {
@@ -352,15 +376,15 @@ impl From<Vec<mimir::Place>> for Autocomplete {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Coord {
-    pub lat: f64,
-    pub lon: f64,
-}
-
 pub mod v1 {
+    use super::BragiError;
+    use iron;
     use mimir;
     use rs_es;
+
+    pub trait HasStatus {
+        fn status(&self) -> iron::status::Status;
+    }
 
     // Note: I think this should be in api.rs but with the serde stuff it's easier for all
     // serde struct to be in the same file
@@ -370,21 +394,37 @@ pub mod v1 {
         pub description: String,
     }
 
+    impl HasStatus for EndPoint {
+        fn status(&self) -> iron::status::Status {
+            default_status()
+        }
+    }
+
     #[derive(Serialize, Deserialize, Debug)]
     pub struct CustomError {
         pub short: String,
         pub long: String,
+        #[serde(skip, default = "default_status")]
+        pub status: iron::status::Status,
     }
 
-    #[derive(Serialize, Deserialize, Debug)]
-    pub enum V1Reponse {
-        Error(CustomError),
-        Response { description: String },
+    fn default_status() -> iron::status::Status {
+        iron::status::Status::Ok
     }
+
     #[derive(Debug)]
     pub enum AutocompleteResponse {
         Error(CustomError),
         Autocomplete(super::Autocomplete),
+    }
+
+    impl HasStatus for AutocompleteResponse {
+        fn status(&self) -> iron::status::Status {
+            match self {
+                AutocompleteResponse::Error(e) => e.status,
+                AutocompleteResponse::Autocomplete(_) => iron::status::Status::Ok,
+            }
+        }
     }
 
     use serde;
@@ -407,13 +447,29 @@ pub mod v1 {
         pub status: String,
     }
 
-    impl From<Result<Vec<mimir::Place>, rs_es::error::EsError>> for AutocompleteResponse {
-        fn from(r: Result<Vec<mimir::Place>, rs_es::error::EsError>) -> AutocompleteResponse {
+    impl HasStatus for Status {
+        fn status(&self) -> iron::status::Status {
+            iron::status::Status::Ok
+        }
+    }
+
+    impl From<Result<Vec<mimir::Place>, BragiError>> for AutocompleteResponse {
+        fn from(r: Result<Vec<mimir::Place>, BragiError>) -> AutocompleteResponse {
             match r {
                 Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
                 Err(e) => AutocompleteResponse::Error(CustomError {
                     short: "query error".to_string(),
-                    long: format!("invalid query {:?}", e),
+                    long: format!("{}", e),
+                    status: match e {
+                        BragiError::ObjectNotFound => iron::status::Status::NotFound,
+                        BragiError::IndexNotFound => iron::status::Status::NotFound,
+                        BragiError::Es(es_error) => match es_error {
+                            rs_es::error::EsError::HttpError(_) => {
+                                iron::status::Status::ServiceUnavailable
+                            }
+                            _ => iron::status::Status::InternalServerError,
+                        },
+                    },
                 }),
             }
         }

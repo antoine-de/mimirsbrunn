@@ -60,6 +60,7 @@ pub fn bragi_osm_test(es_wrapper: ::ElasticSearchWrapper) {
     zip_code_test(&bragi);
     zip_code_street_test(&bragi);
     zip_code_admin_test(&bragi);
+    bbox_admin_test(&bragi);
     city_admin_test(&bragi);
     administrative_region_test(&bragi);
 }
@@ -126,6 +127,15 @@ fn zip_code_admin_test(bragi: &BragiHandler) {
 
     let count = count_types(&types, "house");
     assert_eq!(count, 0);
+}
+
+fn bbox_admin_test(bragi: &BragiHandler) {
+    let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
+    let first_city = all_20.iter().find(|e| get_value(e, "type") == "city");
+    assert_eq!(
+        *first_city.unwrap().get("bbox").unwrap(),
+        json!(vec![2.663446, 48.5064094, 2.7334936, 48.5419672])
+    );
 }
 
 fn city_admin_test(bragi: &BragiHandler) {
