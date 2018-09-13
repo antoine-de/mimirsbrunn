@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate csv;
 extern crate failure;
 extern crate geo;
 extern crate mimir;
@@ -41,13 +40,19 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate num_cpus;
+#[macro_use]
+extern crate lazy_static;
 
-use failure::ResultExt;
 use mimir::rubber::Rubber;
+use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use std::cell::Cell;
 use std::fs;
 use std::path::PathBuf;
+
+lazy_static! {
+    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -100,7 +105,12 @@ impl OpenAddresse {
     }
 }
 
-fn index_oa<I>(cnx_string: &str, dataset: &str, files: I) -> Result<(), mimirsbrunn::Error>
+fn index_oa<I>(
+    cnx_string: &str,
+    dataset: &str,
+    files: I,
+    nb_threads: usize,
+) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
@@ -117,32 +127,14 @@ where
         });
     let admins_geofinder = admins.into_iter().collect();
 
-    let addr_index = rubber
-        .make_index(dataset)
-        .with_context(|_| format!("error occureed when making index for {}", dataset))?;
-    info!("Add data in elasticsearch db.");
-    for f in files {
-        info!("importing {:?}...", &f);
-        let mut rdr = csv::ReaderBuilder::new().has_headers(true).from_path(&f)?;
-        let iter = rdr
-            .deserialize()
-            .filter_map(|r| {
-                r.map_err(|e| info!("impossible to read line, error: {}", e))
-                    .ok()
-                    .map(|v: OpenAddresse| v.into_addr(&admins_geofinder))
-            })
-            .filter(|a| {
-                !a.street.street_name.is_empty() || {
-                    debug!("Address {} has no street name and has been ignored.", a.id);
-                    false
-                }
-            });
-        let nb = rubber
-            .bulk_index(&addr_index, iter)
-            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!("importing {:?}: {} addresses", &f, nb);
-    }
-    rubber.publish_index(dataset, addr_index)
+    import_addresses(
+        &mut rubber,
+        true,
+        nb_threads,
+        dataset,
+        files,
+        move |a: OpenAddresse| a.into_addr(&admins_geofinder),
+    )
 }
 
 #[derive(StructOpt, Debug)]
@@ -161,6 +153,9 @@ struct Args {
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
     city_level: Option<String>,
+    /// Number of threads to use
+    #[structopt(short = "t", long = "nb-threads", raw(default_value = "&DEFAULT_NB_THREADS"))]
+    nb_threads: usize,
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
@@ -176,12 +171,14 @@ fn run(args: Args) -> Result<(), failure::Error> {
             &args.connection_string,
             &args.dataset,
             paths.map(|p| p.unwrap().path()),
+            args.nb_threads,
         )
     } else {
         index_oa(
             &args.connection_string,
             &args.dataset,
             std::iter::once(args.input),
+            args.nb_threads,
         )
     }
 }

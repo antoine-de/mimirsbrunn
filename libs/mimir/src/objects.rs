@@ -33,7 +33,6 @@ use geojson;
 use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;

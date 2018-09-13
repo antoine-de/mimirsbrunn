@@ -47,8 +47,11 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 extern crate cosmogony;
+extern crate csv;
+extern crate par_map;
 extern crate structopt;
 
+pub mod addr_reader;
 pub mod admin_geofinder;
 pub mod osm_reader;
 pub mod stops;

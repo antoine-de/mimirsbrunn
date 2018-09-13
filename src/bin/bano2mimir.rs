@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate csv;
 extern crate failure;
 extern crate geo;
 extern crate mimir;
@@ -41,11 +40,13 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
+extern crate num_cpus;
+#[macro_use]
+extern crate lazy_static;
 
-use failure::ResultExt;
 use mimir::objects::Admin;
 use mimir::rubber::Rubber;
-use mimir::MimirObject;
+use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::BTreeMap;
 use std::fs;
@@ -53,6 +54,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
+
+lazy_static! {
+    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Bano {
@@ -125,7 +130,12 @@ impl Bano {
     }
 }
 
-fn index_bano<I>(cnx_string: &str, dataset: &str, files: I) -> Result<(), mimirsbrunn::Error>
+fn index_bano<I>(
+    cnx_string: &str,
+    dataset: &str,
+    files: I,
+    nb_threads: usize,
+) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
@@ -151,35 +161,14 @@ where
         })
         .collect();
 
-    let addr_index = rubber
-        .make_index(dataset)
-        .with_context(|_| format!("Error occurred when making index {}", dataset))?;
-    info!("Add data in elasticsearch db.");
-    for f in files {
-        info!("importing {:?}...", &f);
-        let mut rdr = csv::ReaderBuilder::new().has_headers(false).from_path(&f)?;
-        let iter = rdr
-            .deserialize()
-            .filter_map(|r| {
-                r.map_err(|e| info!("impossible to read line, error: {}", e))
-                    .ok()
-                    .map(|b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder))
-            })
-            .filter(|a| {
-                !a.street.street_name.is_empty() || {
-                    debug!("Address {} has no street name and has been ignored.", a.id);
-                    false
-                }
-            });
-        let nb = rubber
-            .bulk_index(&addr_index, iter)
-            .with_context(|_| format!("failed to bulk insert file {:?}", &f))?;
-        info!("importing {:?}: {} addresses added.", &f, nb);
-    }
-    rubber
-        .publish_index(dataset, addr_index)
-        .context("Error while publishing the index")?;
-    Ok(())
+    import_addresses(
+        &mut rubber,
+        false,
+        nb_threads,
+        dataset,
+        files,
+        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder),
+    )
 }
 
 #[derive(StructOpt, Debug)]
@@ -195,6 +184,9 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
+    /// Number of threads to use
+    #[structopt(short = "t", long = "nb-threads", raw(default_value = "&DEFAULT_NB_THREADS"))]
+    nb_threads: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -205,12 +197,14 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             &args.connection_string,
             &args.dataset,
             paths.map(|p| p.unwrap().path()),
+            args.nb_threads,
         )
     } else {
         index_bano(
             &args.connection_string,
             &args.dataset,
             std::iter::once(args.input),
+            args.nb_threads,
         )
     }
 }
