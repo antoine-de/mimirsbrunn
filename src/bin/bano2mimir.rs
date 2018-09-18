@@ -158,8 +158,7 @@ where
         .map(|mut a| {
             a.boundary = None; // to save some space we remove the admin boundary
             (a.insee.clone(), Arc::new(a))
-        })
-        .collect();
+        }).collect();
 
     import_addresses(
         &mut rubber,
@@ -178,14 +177,20 @@ struct Args {
     input: PathBuf,
     /// Elasticsearch parameters.
     #[structopt(
-        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+        short = "c",
+        long = "connection-string",
+        default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Number of threads to use
-    #[structopt(short = "t", long = "nb-threads", raw(default_value = "&DEFAULT_NB_THREADS"))]
+    #[structopt(
+        short = "t",
+        long = "nb-threads",
+        raw(default_value = "&DEFAULT_NB_THREADS")
+    )]
     nb_threads: usize,
 }
 

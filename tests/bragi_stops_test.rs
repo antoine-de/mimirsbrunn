@@ -263,8 +263,7 @@ fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
     let response = bragi
         .raw_get(
             "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette&pt_dataset[]=bobito",
-        )
-        .unwrap();
+        ).unwrap();
     assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
 
     //one matching dataset, we hit the global one

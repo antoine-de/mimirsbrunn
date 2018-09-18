@@ -151,11 +151,9 @@ impl ApiEndPoint {
                     .get_metric_with(&labels!{
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
-                    })
-                    .map(|timer| {
+                    }).map(|timer| {
                         client.ext.insert::<Timer>(timer.start_timer());
-                    })
-                    .unwrap_or_else(|err| {
+                    }).unwrap_or_else(|err| {
                         error!("impossible to get HTTP_REQ_HISTOGRAM metrics";
                                "err" => err.to_string());
                     });
@@ -171,8 +169,7 @@ impl ApiEndPoint {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
                         "status" => code.as_str(),
-                    })
-                    .map(|counter| counter.inc())
+                    }).map(|counter| counter.inc())
                     .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
                     });

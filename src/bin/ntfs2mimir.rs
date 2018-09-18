@@ -48,14 +48,21 @@ use std::path::PathBuf;
 #[derive(Debug, StructOpt)]
 struct Args {
     /// NTFS directory.
-    #[structopt(short = "i", long = "input", parse(from_os_str), default_value = ".")]
+    #[structopt(
+        short = "i",
+        long = "input",
+        parse(from_os_str),
+        default_value = "."
+    )]
     input: PathBuf,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
     /// Elasticsearch parameters.
     #[structopt(
-        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+        short = "c",
+        long = "connection-string",
+        default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
     /// Deprecated option.
@@ -74,23 +81,20 @@ fn to_mimir(
         .map(|cm_idx| mimir::CommercialMode {
             id: format!("commercial_mode:{}", navitia.commercial_modes[cm_idx].id),
             name: navitia.commercial_modes[cm_idx].name.clone(),
-        })
-        .collect();
+        }).collect();
     let physical_modes = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
         .map(|pm_idx| mimir::PhysicalMode {
             id: format!("physical_mode:{}", navitia.physical_modes[pm_idx].id),
             name: navitia.physical_modes[pm_idx].name.clone(),
-        })
-        .collect();
+        }).collect();
     let comments = navitia
         .comments
         .iter_from(&stop_area.comment_links)
         .map(|comment| mimir::Comment {
             name: comment.name.clone(),
-        })
-        .collect();
+        }).collect();
     let feed_publishers = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
@@ -105,8 +109,7 @@ fn to_mimir(
                 .website
                 .clone()
                 .unwrap_or_else(|| "".into()),
-        })
-        .collect();
+        }).collect();
 
     mimir::Stop {
         id: format!("stop_area:{}", stop_area.id),
@@ -127,16 +130,14 @@ fn to_mimir(
             .map(|&(ref t, ref v)| mimir::Code {
                 name: t.clone(),
                 value: v.clone(),
-            })
-            .collect(),
+            }).collect(),
         properties: stop_area
             .object_properties
             .iter()
             .map(|&(ref k, ref v)| mimir::Property {
                 key: k.clone(),
                 value: v.clone(),
-            })
-            .collect(),
+            }).collect(),
         feed_publishers: feed_publishers,
     }
 }
@@ -161,8 +162,7 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
                 .get_corresponding_from_idx::<_, navitia::StopPoint>(idx)
                 .len();
             (id, nb_stop_points as u32)
-        })
-        .collect();
+        }).collect();
     let mut stops: Vec<mimir::Stop> = navitia
         .stop_areas
         .iter()

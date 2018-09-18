@@ -148,8 +148,7 @@ impl AdminGeoFinder {
                 std::f32::INFINITY,
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
-            ))
-            .into_iter()
+            )).into_iter()
             .map(|(_, a)| {
                 let mut admin = (*a.1).clone();
                 admin.boundary = a.0.clone();
@@ -167,8 +166,7 @@ impl AdminGeoFinder {
                 std::f32::INFINITY,
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
-            ))
-            .into_iter()
+            )).into_iter()
             .map(|(_, a)| a.1.clone());
         Box::new(iter)
     }
