@@ -455,9 +455,6 @@ impl MimirObject for Admin {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Street {
     pub id: String,
-    #[deprecated]
-    #[serde(default)]
-    pub street_name: String, // deprecated field only there for retrocompatibility, to remove once migration is complete
     #[serde(default)]
     pub name: String,
     pub administrative_regions: Vec<Arc<Admin>>,

@@ -85,7 +85,7 @@ impl Bano {
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
     ) -> mimir::Addr {
-        let street_name = format!("{} ({})", self.street, self.city);
+        let street_label = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.nb, self.street);
         let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.fantoir().to_string());
@@ -109,9 +109,8 @@ impl Bano {
 
         let street = mimir::Street {
             id: street_id,
-            street_name: self.street.clone(),
             name: self.street,
-            label: street_name.to_string(),
+            label: street_label.to_string(),
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.zip.clone()],

@@ -68,7 +68,6 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
 
     let bob = Street {
         id: "bob".to_string(),
-        street_name: "bob's street".to_string(),
         name: "bob's street".to_string(),
         label: "bob's name".to_string(),
         administrative_regions: vec![],
@@ -89,7 +88,6 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
 
     let bobette = Street {
         id: "bobette".to_string(),
-        street_name: "bobette's street".to_string(),
         name: "bobette's street".to_string(),
         label: "bobette's name".to_string(),
         administrative_regions: vec![],
