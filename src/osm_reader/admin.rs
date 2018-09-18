@@ -143,11 +143,6 @@ pub fn read_administrative_regions(
             let zip_codes = read_zip_codes(&relation.tags);
             let boundary = build_boundary(relation, &objects);
             let zone_type = get_zone_type(level, city_level);
-            let admin_type = if zone_type == Some(ZoneType::City) {
-                mimir::AdminType::City
-            } else {
-                mimir::AdminType::Unknown
-            };
 
             let weight = relation
                 .tags
@@ -175,7 +170,6 @@ pub fn read_administrative_regions(
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 bbox: boundary.as_ref().and_then(|b| b.bbox()),
                 boundary: boundary,
-                admin_type: admin_type,
                 zone_type: zone_type,
                 parent_id: None,
             };

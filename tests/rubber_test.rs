@@ -33,7 +33,6 @@ use geo;
 use geo::prelude::BoundingBox;
 use hyper;
 use mimir::rubber::{self, Rubber};
-use mimir::AdminType::City;
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
 use std;
@@ -162,7 +161,6 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         bbox: boundary.bbox(),
         boundary: Some(boundary),
-        admin_type: City,
         zone_type: Some(ZoneType::City),
         parent_id: None,
     };
@@ -244,7 +242,6 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         coord: Coord::new(2.68326290f64, 48.5110722f64),
         boundary: None,
         bbox: None,
-        admin_type: City,
         zone_type: Some(ZoneType::City),
         parent_id: None,
     };

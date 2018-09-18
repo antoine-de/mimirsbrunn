@@ -79,7 +79,6 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
                 epsilon = f64::EPSILON
             );
             assert!(livry_sur_seine.coord.is_valid());
-            assert_eq!(livry_sur_seine.admin_type, mimir::AdminType::City);
             assert_eq!(livry_sur_seine.zone_type, Some(ZoneType::City));
         }
         _ => panic!("should be an admin"),

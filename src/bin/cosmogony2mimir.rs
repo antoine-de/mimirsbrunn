@@ -39,9 +39,9 @@ extern crate serde_json;
 extern crate structopt;
 extern crate osmpbfreader;
 
-use cosmogony::{Cosmogony, Zone, ZoneIndex, ZoneType};
+use cosmogony::{Cosmogony, Zone, ZoneIndex};
 use failure::Error;
-use mimir::objects::{Admin, AdminType};
+use mimir::objects::Admin;
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::utils::normalize_admin_weight;
@@ -68,11 +68,6 @@ impl IntoAdmin for Zone {
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
         let weight = get_weight(&self.tags, &self.center_tags);
-        let admin_type = if self.zone_type == Some(ZoneType::City) {
-            AdminType::City
-        } else {
-            AdminType::Unknown
-        };
         let center = self.center.map_or(mimir::Coord::default(), |c| {
             mimir::Coord::new(c.lng(), c.lat())
         });
@@ -92,7 +87,6 @@ impl IntoAdmin for Zone {
             bbox: self.bbox,
             boundary: self.boundary,
             coord: center,
-            admin_type: admin_type,
             zone_type: self.zone_type,
             parent_id: parent_osm_id,
         }
