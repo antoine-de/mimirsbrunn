@@ -224,8 +224,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
             "{host}/{idx}",
             host = es.host(),
             idx = old_idx_name
-        ))
-        .send()
+        )).send()
         .unwrap();
 
     assert_eq!(res.status, hyper::Ok);

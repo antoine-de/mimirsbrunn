@@ -69,8 +69,7 @@ impl DockerWrapper {
                     "inspect",
                     "--format={{.NetworkSettings.IPAddress}}",
                     "mimirsbrunn_tests",
-                ])
-                .output()
+                ]).output()
         );
 
         let container_ip = std::str::from_utf8(container_ip_cmd.stdout.as_slice())?.trim();
