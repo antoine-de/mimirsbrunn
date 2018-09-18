@@ -288,22 +288,6 @@ impl Members for Stop {
     }
 }
 
-#[deprecated]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum AdminType {
-    City,
-    Unknown,
-}
-
-impl fmt::Display for AdminType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            AdminType::City => write!(f, "city"),
-            AdminType::Unknown => write!(f, "administrative_region"),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Admin {
     pub id: String,
@@ -330,30 +314,17 @@ pub struct Admin {
     )]
     pub bbox: Option<geo::Bbox<f64>>,
 
-    #[serde(default = "default_admin_city")]
-    pub admin_type: AdminType, // deprecated, to be removed after the new zone_type deployment
     #[serde(default)]
     pub zone_type: Option<ZoneType>,
     #[serde(default)]
     pub parent_id: Option<String>, // id of the Admin's parent (from the cosmogony's hierarchy)
 }
 
-fn default_admin_city() -> AdminType {
-    AdminType::Unknown //this way an Admin with no ZoneType won't be a city
-}
-
 impl Admin {
     pub fn is_city(&self) -> bool {
         match self.zone_type {
             Some(ZoneType::City) => true,
-            Some(_) => false,
-            None => {
-                // maintain the retrocompatibility for the moment, but this should be removed
-                match self.admin_type {
-                    AdminType::City => true,
-                    _ => false,
-                }
-            }
+            _ => false,
         }
     }
 }
@@ -484,9 +455,6 @@ impl MimirObject for Admin {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Street {
     pub id: String,
-    #[deprecated]
-    #[serde(default)]
-    pub street_name: String, // deprecated field only there for retrocompatibility, to remove once migration is complete
     #[serde(default)]
     pub name: String,
     pub administrative_regions: Vec<Arc<Admin>>,

@@ -221,7 +221,6 @@ mod tests {
     use super::*;
     use cosmogony::ZoneType;
     use geo::prelude::BoundingBox;
-    use mimir::AdminType;
 
     fn p(x: f64, y: f64) -> ::geo::Point<f64> {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
@@ -267,7 +266,6 @@ mod tests {
             bbox: boundary.bbox(),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
-            admin_type: AdminType::City,
             zone_type: zt,
             parent_id: parent_offset.map(|id| id.into()),
         }

@@ -79,7 +79,7 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     if let mimir::Place::Admin(ref creteil) = admin_regions[0] {
         assert_eq!(creteil.name, "Créteil");
         assert_eq!(creteil.level, 7);
-        assert_eq!(creteil.admin_type, mimir::AdminType::Unknown);
+        assert!(creteil.zone_type.is_none());
     } else {
         panic!("creteil should be an admin");
     }
