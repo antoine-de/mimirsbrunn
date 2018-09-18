@@ -93,6 +93,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     street_by_id_test(&bragi);
     stop_by_id_test(&bragi);
     stop_area_that_does_not_exists(&bragi);
+    stop_area_invalid_index(&bragi);
 }
 
 fn no_type_no_dataset_test(bragi: &BragiHandler) {
@@ -225,7 +226,9 @@ fn stop_area_that_does_not_exists(bragi: &BragiHandler) {
 }
 
 fn stop_area_invalid_index(bragi: &BragiHandler) {
-    // if the index does not exists, we get a 404 with "impossible to find object"
+    // if the index does not exists, we get a 404 with "Unable to find object" too
+    // it's not trivial to get a better error than a not found object (like a 'not found dataset' error)
+    // because the data might just not have been imported yet
     let response = bragi
         .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=invalid_dataset")
         .unwrap();
@@ -233,5 +236,5 @@ fn stop_area_invalid_index(bragi: &BragiHandler) {
     assert_eq!(response.status, Some(NotFound));
 
     let result_body = iron_test::response::extract_body_to_string(response);
-    assert!(result_body.contains("Impossible to find object"));
+    assert!(result_body.contains("Unable to find object"));
 }
