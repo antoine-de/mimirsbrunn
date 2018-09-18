@@ -188,7 +188,7 @@ fn test_bad_connection_string() {
     };
     let causes = run(args)
         .unwrap_err()
-        .causes()
+        .iter_chain()
         .into_iter()
         .map(|cause| format!("{}", cause))
         .collect::<Vec<String>>();
@@ -212,7 +212,7 @@ fn test_bad_file() {
     };
     let causes = run(args)
         .unwrap_err()
-        .causes()
+        .iter_chain()
         .into_iter()
         .map(|cause| format!("{}", cause))
         .collect::<Vec<String>>();
