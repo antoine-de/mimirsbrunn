@@ -194,6 +194,8 @@ To write a new test:
 
 ### Geocoding tests
 
-We use [geocoder-tester](https://github.com/geocoders/geocoder-tester) to run real search queries and check the output against expected to prevent regressions.
+We use [geocoder-tester](https://github.com/geocoders/geocoder-tester) to run real search queries and check the output against expected to prevent regressions. 
 
 Feel free to add some tests cases here.
+
+When a new Pull Request is submitted, it will be manually tested using [this repo](https://gitlab.com/QwantResearch/mimir-geocoder-tester/), that loads a bunch of data into the geocoder, runs geocoder-tester and then add the results as a comment in the PR.
