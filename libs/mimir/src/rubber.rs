@@ -184,31 +184,20 @@ pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<
     }
 
     let mut result: Vec<String> = vec![];
+    if types.is_empty() {
+        result.push("munin_geo_data".to_string());
+    } else {
+        for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
+            result.push(get_indexes_by_type(type_));
+        }
+    }
 
-    let mut pt_dataset_indexes: Vec<String> = vec![];
-    match pt_datasets.len() {
-        0 => (),
-        1 => {
-            for pt_dataset in pt_datasets.iter() {
-                pt_dataset_indexes.push(format!("munin_stop_{}", pt_dataset));
-            }
-        }
-        _ => pt_dataset_indexes.push("munin_global_stops".to_string()),
-    };
-
-    match types.len() {
-        0 => {
-            result.push("munin_geo_data".to_string());
-            result.append(&mut pt_dataset_indexes);
-        }
-        _ => {
-            for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
-                result.push(get_indexes_by_type(type_));
-            }
-            if types.contains(&"public_transport:stop_area") {
-                result.append(&mut pt_dataset_indexes);
-            }
-        }
+    if types.is_empty() || types.contains(&"public_transport:stop_area") {
+        match pt_datasets {
+            [] => (),
+            [dataset] => result.push(format!("munin_stop_{}", dataset)),
+            _ => result.push("munin_global_stops".to_string()),
+        };
     }
 
     result
