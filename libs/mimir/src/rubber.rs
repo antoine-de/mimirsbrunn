@@ -178,12 +178,7 @@ pub fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
         ).build()
 }
 
-
-pub fn get_indexes(
-    all_data: bool,
-    pt_datasets: &[&str],
-    types: &[&str],
-) -> Vec<String> {
+pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<String> {
     if all_data {
         return vec!["munin".to_string()];
     }
@@ -195,7 +190,7 @@ pub fn get_indexes(
         0 => (),
         1 => {
             for pt_dataset in pt_datasets.iter() {
-                    pt_dataset_indexes.push(format!("munin_stop_{}", pt_dataset));
+                pt_dataset_indexes.push(format!("munin_stop_{}", pt_dataset));
             }
         }
         _ => pt_dataset_indexes.push("munin_global_stops".to_string()),
@@ -621,16 +616,10 @@ pub fn test_invalid_url_no_port() {
 #[test]
 fn test_make_indexes_impl() {
     // all_data
-    assert_eq!(
-        get_indexes(true, &[], &[]),
-        vec!["munin"]
-    );
+    assert_eq!(get_indexes(true, &[], &[]), vec!["munin"]);
 
     // no dataset and no types
-    assert_eq!(
-        get_indexes(false, &[], &[]),
-        vec!["munin_geo_data"]
-    );
+    assert_eq!(get_indexes(false, &[], &[]), vec!["munin_geo_data"]);
 
     // dataset fr + no types
     assert_eq!(
@@ -686,11 +675,7 @@ fn test_make_indexes_impl() {
     // dataset fr types poi, city, street, house without public_transport:stop_area
     //  => munin_stop_fr is not included
     assert_eq!(
-        get_indexes(
-            false,
-            &["fr"],
-            &["poi", "city", "street", "house"],
-        ),
+        get_indexes(false, &["fr"], &["poi", "city", "street", "house"],),
         vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
     );
 }
