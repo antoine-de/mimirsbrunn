@@ -237,7 +237,7 @@ fn query(
     q: &str,
     pt_datasets: &[&str],
     all_data: bool,
-    mut client: &mut rs_es::Client,
+    client: &mut rs_es::Client,
     match_type: MatchType,
     offset: u64,
     limit: u64,
@@ -248,7 +248,7 @@ fn query(
     let query_type = match_type.to_string();
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
 
-    let indexes = try!(get_indexes(all_data, &pt_datasets, types, &mut client));
+    let indexes = get_indexes(all_data, &pt_datasets, types);
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -266,6 +266,7 @@ fn query(
 
     let result: SearchResult<serde_json::Value> = client
         .search_query()
+        .with_ignore_unavailable(true)
         .with_indexes(
             &indexes
                 .iter()
@@ -301,7 +302,7 @@ pub fn features(
     let mut client = rs_es::Client::new(cnx).unwrap();
     client.set_read_timeout(timeout);
 
-    let indexes = try!(get_indexes(all_data, &pt_datasets, &[], &mut client));
+    let indexes = get_indexes(all_data, &pt_datasets, &[]);
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -314,6 +315,7 @@ pub fn features(
     let result: SearchResult<serde_json::Value> = try!(
         client
             .search_query()
+            .with_ignore_unavailable(true)
             .with_indexes(
                 &indexes
                     .iter()
