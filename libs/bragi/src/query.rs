@@ -308,7 +308,7 @@ pub fn features(
     if indexes.is_empty() {
         // if there is no indexes, rs_es search with index "_all"
         // but we want to return an error in this case.
-        return Err(BragiError::IndexNotFound);
+        return Err(BragiError::ObjectNotFound);
     }
 
     let result: SearchResult<serde_json::Value> = try!(
