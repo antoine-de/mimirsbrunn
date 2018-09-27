@@ -318,6 +318,9 @@ pub struct Admin {
     pub zone_type: Option<ZoneType>,
     #[serde(default)]
     pub parent_id: Option<String>, // id of the Admin's parent (from the cosmogony's hierarchy)
+
+    #[serde(default)]
+    pub codes: Vec<Code>,
 }
 
 impl Admin {

@@ -44,6 +44,7 @@ use failure::Error;
 use mimir::objects::Admin;
 use mimir::rubber::Rubber;
 use mimirsbrunn::osm_reader::admin;
+use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils::normalize_admin_weight;
 use std::collections::BTreeMap;
 
@@ -89,6 +90,7 @@ impl IntoAdmin for Zone {
             coord: center,
             zone_type: self.zone_type,
             parent_id: parent_osm_id,
+            codes: osm_utils::get_osm_codes_from_tags(&self.tags),
         }
     }
 }

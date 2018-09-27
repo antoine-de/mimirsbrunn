@@ -38,7 +38,7 @@ use super::OsmPbfReader;
 use cosmogony::ZoneType;
 use geo::prelude::BoundingBox;
 use itertools::Itertools;
-use osm_reader::osm_utils::make_centroid;
+use osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
 use std::collections::BTreeSet;
 use utils::normalize_admin_weight;
 
@@ -172,6 +172,7 @@ pub fn read_administrative_regions(
                 boundary: boundary,
                 zone_type: zone_type,
                 parent_id: None,
+                codes: get_osm_codes_from_tags(&relation.tags),
             };
             administrative_regions.push(admin);
         }

@@ -161,6 +161,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         boundary: Some(boundary),
         zone_type: Some(ZoneType::City),
         parent_id: None,
+        codes: vec![],
     };
 
     // we index our admin
@@ -242,6 +243,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
         bbox: None,
         zone_type: Some(ZoneType::City),
         parent_id: None,
+        codes: vec![],
     };
 
     // we index our admin

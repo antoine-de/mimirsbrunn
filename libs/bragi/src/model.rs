@@ -185,6 +185,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             postcode: postcode,
             label: label,
             bbox: other.bbox,
+            codes: other.codes,
             ..Default::default()
         }
     }
