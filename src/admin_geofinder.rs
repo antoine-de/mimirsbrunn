@@ -95,6 +95,10 @@ impl AdminGeoFinder {
     /// Get all Admins overlapping the coordinate
     pub fn get(&self, coord: &geo::Coordinate<f64>) -> Vec<Arc<Admin>> {
         let (x, y) = (coord.x as f32, coord.y as f32);
+        if ! (up(x) >= down(x)) || ! (up(y) >= down(y)) {
+            warn!("invalid coordinate {:?}, {}, {}, {}, {}", &coord, down(x), up(x), down(y), up(y));
+            return vec![];
+        }
         let search = Rect::from_float(down(x), up(x), down(y), up(y));
         let mut rtree_results = self.admins.get(&search);
 
