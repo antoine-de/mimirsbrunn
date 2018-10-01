@@ -242,7 +242,10 @@ pub struct BragiHandler {
 
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
-        let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
+        let api = bragi::api::ApiEndPoint {
+            es_cnx_string: url,
+            default_es_timeout: None,
+        }.root();
         BragiHandler {
             app: rustless::Application::new(api),
         }

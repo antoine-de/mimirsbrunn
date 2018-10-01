@@ -59,6 +59,7 @@ extern crate num_cpus;
 use iron::prelude::Chain;
 use iron::{Iron, Protocol};
 use rustless::Application;
+use std::time;
 use structopt::StructOpt;
 
 extern crate logger;
@@ -99,12 +100,20 @@ pub struct Args {
         env = "BRAGI_NB_THREADS"
     )]
     nb_threads: usize,
+    /// Default timeout in ms on ES connection. It's the network timeout, not a timeout given to ES.
+    #[structopt(
+        short = "e",
+        long = "default-es-timeout",
+        env = "BRAGI_DEFAULT_ES_TIMEOUT"
+    )]
+    default_es_timeout: Option<u64>,
 }
 
 pub fn runserver() {
     let args = Args::from_args();
     let api = api::ApiEndPoint {
         es_cnx_string: args.connection_string,
+        default_es_timeout: args.default_es_timeout.map(time::Duration::from_millis),
     }.root();
     let app = Application::new(api);
 

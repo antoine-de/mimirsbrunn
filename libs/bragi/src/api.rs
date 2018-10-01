@@ -72,11 +72,17 @@ lazy_static! {
     ).unwrap();
 }
 
-fn parse_timeout(params: &rustless::json::JsonValue) -> Option<time::Duration> {
+/// get the timeout from the query 'timeout' parameter
+/// if the param is not there, use the default value
+fn parse_timeout(
+    params: &rustless::json::JsonValue,
+    default_timeout: Option<time::Duration>,
+) -> Option<time::Duration> {
     params
         .find("timeout")
         .and_then(|v| v.as_u64())
         .map(time::Duration::from_millis)
+        .or(default_timeout)
 }
 
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
@@ -105,6 +111,7 @@ where
 
 pub struct ApiEndPoint {
     pub es_cnx_string: String,
+    pub default_es_timeout: Option<time::Duration>,
 }
 
 impl ApiEndPoint {
@@ -233,13 +240,14 @@ impl ApiEndPoint {
                     timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
+                let default_timeout = self.default_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let coord = ::mimir::Coord::new(
                         params.find("lon").and_then(|p| p.as_f64()).unwrap(),
                         params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
                     let mut rubber = Rubber::new(&cnx);
-                    rubber.set_read_timeout(parse_timeout(params));
+                    rubber.set_read_timeout(parse_timeout(params, default_timeout));
                     let model_autocomplete =
                         rubber.get_address(&coord).map_err(model::BragiError::from);
 
@@ -260,13 +268,14 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
+                let default_timeout = self.default_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
                     let all_data = params
                         .find("_all_data")
                         .map_or(false, |val| val.as_bool().unwrap());
-                    let timeout = parse_timeout(params);
+                    let timeout = parse_timeout(params, default_timeout);
                     let features = query::features(&pt_datasets, all_data, &cnx, &id, timeout);
                     let response = model::v1::AutocompleteResponse::from(features);
                     render(client, response)
@@ -288,6 +297,7 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
+                let default_timeout = self.default_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")
@@ -321,7 +331,7 @@ impl ApiEndPoint {
                         ));
                     }
                     let types = get_param_array(params, "type");
-                    let timeout = parse_timeout(params);
+                    let timeout = parse_timeout(params, default_timeout);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
@@ -348,6 +358,7 @@ impl ApiEndPoint {
                     timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
+                let default_timeout = self.default_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")
@@ -378,7 +389,7 @@ impl ApiEndPoint {
                     });
 
                     let types = get_param_array(params, "type");
-                    let timeout = parse_timeout(params);
+                    let timeout = parse_timeout(params, default_timeout);
                     let model_autocomplete = query::autocomplete(
                         &q,
                         &pt_datasets,
