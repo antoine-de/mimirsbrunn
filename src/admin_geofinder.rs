@@ -268,6 +268,7 @@ mod tests {
             insee: "outlook".to_string(),
             zone_type: zt,
             parent_id: parent_offset.map(|id| id.into()),
+            codes: vec![],
         }
     }
 

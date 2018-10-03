@@ -30,6 +30,7 @@
 
 use cosmogony::ZoneType;
 use mimir;
+use std::collections::BTreeMap;
 use std::f64;
 
 /// load a cosmogony file in mimir.
@@ -120,6 +121,19 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(fr.insee, "");
             assert_eq!(fr.level, 2);
             assert_eq!(fr.zip_codes, Vec::<String>::new());
+            assert_eq!(
+                fr.codes
+                    .iter()
+                    .map(|c| (c.name.as_str(), c.value.as_str()))
+                    .collect::<BTreeMap<_, _>>(),
+                vec![
+                    ("ISO3166-1", "FR"),
+                    ("ISO3166-1:alpha2", "FR"),
+                    ("ISO3166-1:alpha3", "FRA"),
+                    ("ISO3166-1:numeric", "250"),
+                ].into_iter()
+                .collect()
+            );
             assert_eq!(fr.weight, 0f64);
             assert!(fr.coord.is_valid());
             assert_eq!(fr.zone_type, Some(ZoneType::Country));
