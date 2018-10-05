@@ -247,7 +247,9 @@ impl ApiEndPoint {
                         params.find("lat").and_then(|p| p.as_f64()).unwrap(),
                     );
                     let mut rubber = Rubber::new(&cnx);
-                    rubber.set_read_timeout(parse_timeout(params, default_timeout));
+                    let timeout = parse_timeout(params, default_timeout);
+                    rubber.set_read_timeout(timeout);
+                    rubber.set_write_timeout(timeout);
                     let model_autocomplete =
                         rubber.get_address(&coord).map_err(model::BragiError::from);
 

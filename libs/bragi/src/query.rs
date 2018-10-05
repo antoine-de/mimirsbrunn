@@ -301,6 +301,7 @@ pub fn features(
 
     let mut client = rs_es::Client::new(cnx).unwrap();
     client.set_read_timeout(timeout);
+    client.set_write_timeout(timeout);
 
     let indexes = get_indexes(all_data, &pt_datasets, &[]);
 
@@ -352,6 +353,7 @@ pub fn autocomplete(
 
     let mut client = rs_es::Client::new(cnx).unwrap();
     client.set_read_timeout(timeout);
+    client.set_write_timeout(timeout);
 
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
