@@ -107,8 +107,7 @@ fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
                 rs_u::Location::LatLon(coord.lat, coord.lon),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
             ).build_gauss(),
-        )
-        .build()
+        ).build()
 }
 
 // filter to handle PT coverages
@@ -124,8 +123,7 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
             Query::build_terms("coverages")
                 .with_values(pt_datasets)
                 .build(),
-        ])
-        .build()
+        ]).build()
 }
 
 fn build_query(
@@ -151,8 +149,7 @@ fn build_query(
             match_type_with_boost::<Stop>(18.),
             match_type_with_boost::<Poi>(1.5),
             match_type_with_boost::<Street>(1.),
-        ])
-        .with_boost(30.)
+        ]).with_boost(30.)
         .build();
 
     // Priorization by query string
@@ -189,8 +186,7 @@ fn build_query(
                 .with_must_not(Query::build_exists("house_number").build())
                 .build(),
             Query::build_match("house_number", q.to_string()).build(),
-        ])
-        .build();
+        ]).build();
 
     use rs_es::query::CombinationMinimumShouldMatch;
     use rs_es::query::MinimumShouldMatch;
@@ -217,8 +213,7 @@ fn build_query(
                 CombinationMinimumShouldMatch::new(1i64, 75f64),
                 CombinationMinimumShouldMatch::new(6i64, 60f64),
                 CombinationMinimumShouldMatch::new(9i64, 40f64),
-            ]))
-            .build(),
+            ])).build(),
     };
 
     let mut filters = vec![house_number_condition, matching_condition];
@@ -242,7 +237,7 @@ fn query(
     q: &str,
     pt_datasets: &[&str],
     all_data: bool,
-    mut client: &mut rs_es::Client,
+    client: &mut rs_es::Client,
     match_type: MatchType,
     offset: u64,
     limit: u64,
@@ -253,7 +248,7 @@ fn query(
     let query_type = match_type.to_string();
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
 
-    let indexes = try!(get_indexes(all_data, &pt_datasets, types, &mut client));
+    let indexes = get_indexes(all_data, &pt_datasets, types);
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -267,18 +262,17 @@ fn query(
         .map(|h| h.start_timer())
         .map_err(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
-        )
-        .ok();
+        ).ok();
 
     let result: SearchResult<serde_json::Value> = client
         .search_query()
+        .with_ignore_unavailable(true)
         .with_indexes(
             &indexes
                 .iter()
                 .map(|index| index.as_str())
                 .collect::<Vec<&str>>(),
-        )
-        .with_query(&query)
+        ).with_query(&query)
         .with_from(offset)
         .with_size(limit)
         .send()?;
@@ -307,27 +301,28 @@ pub fn features(
 
     let mut client = rs_es::Client::new(cnx).unwrap();
     client.set_read_timeout(timeout);
+    client.set_write_timeout(timeout);
 
-    let indexes = try!(get_indexes(all_data, &pt_datasets, &[], &mut client));
+    let indexes = get_indexes(all_data, &pt_datasets, &[]);
 
     debug!("ES indexes: {:?}", indexes);
 
     if indexes.is_empty() {
         // if there is no indexes, rs_es search with index "_all"
         // but we want to return an error in this case.
-        return Err(BragiError::IndexNotFound);
+        return Err(BragiError::ObjectNotFound);
     }
 
     let result: SearchResult<serde_json::Value> = try!(
         client
             .search_query()
+            .with_ignore_unavailable(true)
             .with_indexes(
                 &indexes
                     .iter()
                     .map(|index| index.as_str())
                     .collect::<Vec<&str>>()
-            )
-            .with_query(&query)
+            ).with_query(&query)
             .send()
     );
 
@@ -358,6 +353,7 @@ pub fn autocomplete(
 
     let mut client = rs_es::Client::new(cnx).unwrap();
     client.set_read_timeout(timeout);
+    client.set_write_timeout(timeout);
 
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)

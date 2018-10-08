@@ -38,7 +38,7 @@ use super::OsmPbfReader;
 use cosmogony::ZoneType;
 use geo::prelude::BoundingBox;
 use itertools::Itertools;
-use osm_reader::osm_utils::make_centroid;
+use osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
 use std::collections::BTreeSet;
 use utils::normalize_admin_weight;
 
@@ -143,11 +143,6 @@ pub fn read_administrative_regions(
             let zip_codes = read_zip_codes(&relation.tags);
             let boundary = build_boundary(relation, &objects);
             let zone_type = get_zone_type(level, city_level);
-            let admin_type = if zone_type == Some(ZoneType::City) {
-                mimir::AdminType::City
-            } else {
-                mimir::AdminType::Unknown
-            };
 
             let weight = relation
                 .tags
@@ -162,8 +157,7 @@ pub fn read_administrative_regions(
                         .get("population")?
                         .parse()
                         .ok()
-                })
-                .unwrap_or(0.);
+                }).unwrap_or(0.);
 
             let admin = mimir::Admin {
                 id: admin_id,
@@ -176,9 +170,9 @@ pub fn read_administrative_regions(
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
                 bbox: boundary.as_ref().and_then(|b| b.bbox()),
                 boundary: boundary,
-                admin_type: admin_type,
                 zone_type: zone_type,
                 parent_id: None,
+                codes: get_osm_codes_from_tags(&relation.tags),
             };
             administrative_regions.push(admin);
         }

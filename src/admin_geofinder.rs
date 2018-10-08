@@ -148,8 +148,7 @@ impl AdminGeoFinder {
                 std::f32::INFINITY,
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
-            ))
-            .into_iter()
+            )).into_iter()
             .map(|(_, a)| {
                 let mut admin = (*a.1).clone();
                 admin.boundary = a.0.clone();
@@ -167,8 +166,7 @@ impl AdminGeoFinder {
                 std::f32::INFINITY,
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
-            ))
-            .into_iter()
+            )).into_iter()
             .map(|(_, a)| a.1.clone());
         Box::new(iter)
     }
@@ -223,7 +221,6 @@ mod tests {
     use super::*;
     use cosmogony::ZoneType;
     use geo::prelude::BoundingBox;
-    use mimir::AdminType;
 
     fn p(x: f64, y: f64) -> ::geo::Point<f64> {
         ::geo::Point(::geo::Coordinate { x: x, y: y })
@@ -269,9 +266,9 @@ mod tests {
             bbox: boundary.bbox(),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
-            admin_type: AdminType::City,
             zone_type: zt,
             parent_id: parent_offset.map(|id| id.into()),
+            codes: vec![],
         }
     }
 

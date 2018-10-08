@@ -143,6 +143,15 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(cityhall_admins[2]["label"], "France hexagonale");
     assert_eq!(cityhall_admins[2]["name"], "France hexagonale");
     assert_eq!(cityhall_admins[2]["zone_type"], "country");
+    assert_eq!(
+        cityhall_admins[2]["codes"],
+        json!([
+                    {"name": "ISO3166-1", "value": "FR"},
+                    {"name": "ISO3166-1:alpha2", "value": "FR"},
+                    {"name": "ISO3166-1:alpha3", "value": "FRA"},
+                    {"name": "ISO3166-1:numeric", "value": "250"},
+    ])
+    );
 
     // the poi should have been associated to an address
     let poi_addr = cityhall["address"].as_object().unwrap();

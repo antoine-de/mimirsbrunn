@@ -63,7 +63,9 @@ struct Args {
     dataset: String,
     /// Elasticsearch parameters.
     #[structopt(
-        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+        short = "c",
+        long = "connection-string",
+        default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
     /// Deprecated option.
@@ -166,8 +168,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
             stop.try_into_with_warn()
-        })
-        .collect();
+        }).collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
     import_stops(stops, &args.connection_string, &args.dataset)
         .context("Error while importing stops")?;
@@ -190,8 +191,7 @@ fn test_load_stops() {
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
             stop.try_into_with_warn()
-        })
-        .collect();
+        }).collect();
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(
         ids,

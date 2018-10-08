@@ -71,7 +71,7 @@ pub struct OpenAddresse {
 
 impl OpenAddresse {
     pub fn into_addr(self, admins_geofinder: &AdminGeoFinder) -> mimir::Addr {
-        let street_name = format!("{} ({})", self.street, self.city);
+        let street_label = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.number, self.street);
         let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.id); // TODO check if thats ok
@@ -84,9 +84,8 @@ impl OpenAddresse {
 
         let street = mimir::Street {
             id: street_id,
-            street_name: self.street.clone(),
             name: self.street,
-            label: street_name.to_string(),
+            label: street_label.to_string(),
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
@@ -144,7 +143,9 @@ struct Args {
     input: PathBuf,
     /// Elasticsearch parameters.
     #[structopt(
-        short = "c", long = "connection-string", default_value = "http://localhost:9200/munin"
+        short = "c",
+        long = "connection-string",
+        default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
     /// Name of the dataset.
@@ -154,7 +155,11 @@ struct Args {
     #[structopt(short = "C", long = "city-level")]
     city_level: Option<String>,
     /// Number of threads to use
-    #[structopt(short = "t", long = "nb-threads", raw(default_value = "&DEFAULT_NB_THREADS"))]
+    #[structopt(
+        short = "t",
+        long = "nb-threads",
+        raw(default_value = "&DEFAULT_NB_THREADS")
+    )]
     nb_threads: usize,
 }
 

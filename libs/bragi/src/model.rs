@@ -185,6 +185,7 @@ impl From<mimir::Admin> for GeocodingResponse {
             postcode: postcode,
             label: label,
             bbox: other.bbox,
+            codes: other.codes,
             ..Default::default()
         }
     }
@@ -193,8 +194,7 @@ impl From<mimir::Admin> for GeocodingResponse {
 fn get_admin_type(adm: &mimir::Admin) -> String {
     match adm.zone_type {
         Some(t) => format!("{:?}", t).to_snake_case(),
-        // TODO below return administrative_region when admin_type is removed
-        None => adm.admin_type.to_string(),
+        None => "administrative_region".to_string(),
     }
 }
 

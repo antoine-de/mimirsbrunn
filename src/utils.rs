@@ -74,7 +74,7 @@ where
 {
     let _guard = mimir::logger_init();
     if let Err(err) = run(O::from_args()) {
-        for cause in err.causes() {
+        for cause in err.iter_chain() {
             error!("{}", cause);
         }
         Err(err)

@@ -216,15 +216,13 @@ impl<'a> ElasticSearchWrapper<'a> {
                                             })
                                         })
                                     })
-                                })
-                                .filter(predicate),
+                                }).filter(predicate),
                         )
                             as Box<Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
-            })
-            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+            }).unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
     }
 }
 
@@ -244,7 +242,10 @@ pub struct BragiHandler {
 
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
-        let api = bragi::api::ApiEndPoint { es_cnx_string: url }.root();
+        let api = bragi::api::ApiEndPoint {
+            es_cnx_string: url,
+            default_es_timeout: None,
+        }.root();
         BragiHandler {
             app: rustless::Application::new(api),
         }
@@ -308,8 +309,7 @@ pub fn get_results(r: iron::Response, pointer: Option<String>) -> Vec<Map<String
             } else {
                 f.as_object().unwrap().clone()
             }
-        })
-        .collect()
+        }).collect()
 }
 
 pub fn get_values<'a>(r: &'a [Map<String, Value>], val: &'a str) -> Vec<&'a str> {

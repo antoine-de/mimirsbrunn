@@ -100,7 +100,6 @@ pub fn streets(
                 let admin = get_street_admin(admins_geofinder, objs_map, way);
                 ret ret(street_list.push(mimir::Street {
                     id: way.id.0.to_string(),
-                    street_name: way_name.to_string(),
                     name: way_name.to_string(),
                     label: format_label(&admin, way_name),
                     weight: 0.,
@@ -161,7 +160,6 @@ pub fn streets(
             let admins = get_street_admin(admins_geofinder, objs_map, way);
             ret ret(street_list.push(mimir::Street {
                 id: way.id.0.to_string(),
-                street_name: way_name.to_string(),
                 name: way_name.to_string(),
                 label: format_label(&admins, way_name),
                 weight: 0.,
@@ -194,8 +192,7 @@ fn get_street_admin(
         .map(|node| geo::Coordinate {
             x: node.lon(),
             y: node.lat(),
-        })
-        .next()
+        }).next()
         .map_or(vec![], |c| admins_geofinder.get(&c))
 }
 
