@@ -313,6 +313,12 @@ pub fn features(
         return Err(BragiError::ObjectNotFound);
     }
 
+    let timer = ES_REQ_HISTOGRAM
+        .get_metric_with_label_values(&["features"])
+        .map(|h| h.start_timer())
+        .map_err(
+            |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
+        ).ok();
     let result: SearchResult<serde_json::Value> = try!(
         client
             .search_query()
@@ -325,6 +331,7 @@ pub fn features(
             ).with_query(&query)
             .send()
     );
+    timer.map(|t| t.observe_duration());
 
     if result.hits.total == 0 {
         Err(BragiError::ObjectNotFound)
