@@ -54,6 +54,11 @@ extern crate hyper;
 extern crate par_map;
 extern crate rs_es;
 
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate prometheus;
+
 pub mod objects;
 pub mod rubber;
 

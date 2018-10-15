@@ -70,6 +70,10 @@ lazy_static! {
         &["handler", "method"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
     ).unwrap();
+    static ref HTTP_IN_FLIGHT: prometheus::Gauge = register_gauge!(
+        "bragi_http_requests_in_flight",
+        "current number of http request being served"
+    ).unwrap();
 }
 
 /// get the timeout from the query 'timeout' parameter
@@ -164,12 +168,14 @@ impl ApiEndPoint {
                         error!("impossible to get HTTP_REQ_HISTOGRAM metrics";
                                "err" => err.to_string());
                     });
+                HTTP_IN_FLIGHT.inc();
                 Ok(())
             });
 
             api.after(|client, _params| {
                 let method = client.endpoint.method.to_string();
                 let code = client.status().to_string();
+                HTTP_IN_FLIGHT.dec();
 
                 HTTP_COUNTER
                     .get_metric_with(&labels!{
