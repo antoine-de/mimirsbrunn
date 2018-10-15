@@ -32,7 +32,7 @@ use cosmogony::ZoneType;
 use geo;
 use geo::prelude::BoundingBox;
 use hyper;
-use mimir::rubber::{self, Rubber};
+use mimir::rubber::{self, IndexSettings, Rubber};
 use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
 use std;
@@ -77,7 +77,13 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     };
 
     // we index our bob
-    let result = es.rubber.index(dataset, std::iter::once(bob));
+    let index_settings = IndexSettings {
+        nb_shards: 2,
+        nb_replicas: 1,
+    };
+    let result = es
+        .rubber
+        .index(dataset, &index_settings, std::iter::once(bob));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -103,7 +109,11 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
         es.refresh(); // we send a refresh to be sure to be up to date
         check_has_bob(&es);
     });
-    let result = rubber.index(dataset, checker_iter);
+    let index_settings = IndexSettings {
+        nb_shards: 2,
+        nb_replicas: 1,
+    };
+    let result = rubber.index(dataset, &index_settings, checker_iter);
     assert!(
         result.is_ok(),
         "impossible to index bobette, res: {:?}",
@@ -165,7 +175,13 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
     };
 
     // we index our admin
-    let result = es.rubber.index(dataset, std::iter::once(admin));
+    let index_settings = IndexSettings {
+        nb_shards: 1,
+        nb_replicas: 0,
+    };
+    let result = es
+        .rubber
+        .index(dataset, &index_settings, std::iter::once(admin));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -207,6 +223,16 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
         assert_eq!(es_boundary.pointer("/0/0/4/1"), Some(&json!(48.0)));
     };
     check_has_elt(&es, check_admin);
+
+    // we also check the number of replica/shard of the created index
+    let indices = get_munin_indexes(&es);
+    let index = &indices[0];
+    let index_info = get_index_info(&es, &index);
+    let settings = index_info
+        .pointer(&format!("/{}/settings/index", index))
+        .unwrap();
+    assert_eq!(settings.get("number_of_shards"), Some(&json!("1")));
+    assert_eq!(settings.get("number_of_replicas"), Some(&json!("0")));
 }
 
 /// test that rubber correctly cleanup ghost indexes
@@ -247,7 +273,13 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
     };
 
     // we index our admin
-    let result = es.rubber.index("fr", std::iter::once(admin));
+    let index_settings = IndexSettings {
+        nb_shards: 1,
+        nb_replicas: 0,
+    };
+    let result = es
+        .rubber
+        .index("fr", &index_settings, std::iter::once(admin));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -272,6 +304,19 @@ fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
     let json = res.to_json();
     let raw_indexes = json.as_object().unwrap();
     raw_indexes.keys().cloned().collect()
+}
+
+// return the list of the munin indexes
+fn get_index_info(es: &::ElasticSearchWrapper, index: &str) -> Value {
+    use super::ToJson;
+    let client = hyper::client::Client::new();
+    let res = client
+        .get(&format!("{host}/{index}", host = es.host(), index = index))
+        .send()
+        .unwrap();
+    assert_eq!(res.status, hyper::Ok);
+
+    res.to_json()
 }
 
 pub fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {

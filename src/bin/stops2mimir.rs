@@ -43,6 +43,7 @@ extern crate slog_scope;
 extern crate structopt;
 
 use failure::ResultExt;
+use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -71,6 +72,12 @@ struct Args {
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
     city_level: Option<String>,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
 }
 
 #[derive(Deserialize, Debug)]
@@ -170,8 +177,18 @@ fn run(args: Args) -> Result<(), failure::Error> {
             stop.try_into_with_warn()
         }).collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset)
-        .context("Error while importing stops")?;
+
+    let index_settings = IndexSettings {
+        nb_shards: args.nb_shards,
+        nb_replicas: args.nb_replicas,
+    };
+
+    import_stops(
+        stops,
+        &args.connection_string,
+        &args.dataset,
+        index_settings,
+    ).context("Error while importing stops")?;
     Ok(())
 }
 

@@ -40,6 +40,7 @@ extern crate slog_scope;
 extern crate structopt;
 
 use failure::ResultExt;
+use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use navitia_model::collection::Idx;
 use navitia_model::objects as navitia;
@@ -68,6 +69,12 @@ struct Args {
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
     city_level: Option<String>,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
 }
 
 fn to_mimir(
@@ -145,6 +152,7 @@ fn to_mimir(
 fn main() {
     mimirsbrunn::utils::launch_run(run);
 }
+
 fn run(args: Args) -> Result<(), navitia_model::Error> {
     info!("Launching ntfs2mimir...");
 
@@ -169,7 +177,18 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset).with_context(|_| {
+
+    let index_settings = IndexSettings {
+        nb_shards: args.nb_shards,
+        nb_replicas: args.nb_replicas,
+    };
+
+    import_stops(
+        stops,
+        &args.connection_string,
+        &args.dataset,
+        index_settings,
+    ).with_context(|_| {
         format!(
             "Error occurred when importing stops into {} on {}",
             args.dataset, args.connection_string
@@ -185,6 +204,8 @@ fn test_bad_connection_string() {
         connection_string: "http://localhost:1".to_string(),
         dataset: "bob".to_string(),
         city_level: None,
+        nb_replicas: 1,
+        nb_shards: 1,
     };
     let causes = run(args)
         .unwrap_err()
@@ -209,6 +230,8 @@ fn test_bad_file() {
         connection_string: "http://localhost:9200".to_string(),
         dataset: "bob".to_string(),
         city_level: None,
+        nb_replicas: 1,
+        nb_shards: 1,
     };
     let causes = run(args)
         .unwrap_err()

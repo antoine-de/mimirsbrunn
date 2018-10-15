@@ -45,7 +45,7 @@ extern crate num_cpus;
 extern crate lazy_static;
 
 use mimir::objects::Admin;
-use mimir::rubber::Rubber;
+use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::collections::BTreeMap;
@@ -134,6 +134,8 @@ fn index_bano<I>(
     dataset: &str,
     files: I,
     nb_threads: usize,
+    nb_shards: usize,
+    nb_replicas: usize,
 ) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
@@ -159,10 +161,16 @@ where
             (a.insee.clone(), Arc::new(a))
         }).collect();
 
+    let index_settings = IndexSettings {
+        nb_shards: nb_shards,
+        nb_replicas: nb_replicas,
+    };
+
     import_addresses(
         &mut rubber,
         false,
         nb_threads,
+        index_settings,
         dataset,
         files,
         move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder),
@@ -191,6 +199,12 @@ struct Args {
         raw(default_value = "&DEFAULT_NB_THREADS")
     )]
     nb_threads: usize,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "5")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -202,6 +216,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             &args.dataset,
             paths.map(|p| p.unwrap().path()),
             args.nb_threads,
+            args.nb_shards,
+            args.nb_replicas,
         )
     } else {
         index_bano(
@@ -209,6 +225,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             &args.dataset,
             std::iter::once(args.input),
             args.nb_threads,
+            args.nb_shards,
+            args.nb_replicas,
         )
     }
 }
