@@ -380,7 +380,7 @@ pub mod v1 {
     use super::BragiError;
     use iron;
     use mimir;
-    use rs_es;
+    use rs_es::error::EsError;
 
     pub trait HasStatus {
         fn status(&self) -> iron::status::Status;
@@ -457,20 +457,32 @@ pub mod v1 {
         fn from(r: Result<Vec<mimir::Place>, BragiError>) -> AutocompleteResponse {
             match r {
                 Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
-                Err(e) => AutocompleteResponse::Error(CustomError {
-                    short: "query error".to_string(),
-                    long: format!("{}", e),
-                    status: match e {
-                        BragiError::ObjectNotFound => iron::status::Status::NotFound,
-                        BragiError::IndexNotFound => iron::status::Status::NotFound,
-                        BragiError::Es(es_error) => match es_error {
-                            rs_es::error::EsError::HttpError(_) => {
-                                iron::status::Status::ServiceUnavailable
+                Err(e) => {
+                    let (long_error, status) = match &e {
+                        BragiError::ObjectNotFound | BragiError::IndexNotFound => {
+                            (format!("{}", e), iron::status::Status::NotFound)
+                        }
+                        BragiError::Es(es_error) => {
+                            error!("es error on query: {}", &es_error);
+                            match es_error {
+                                EsError::HttpError(_) => (
+                                    "service unavailable".into(),
+                                    iron::status::Status::ServiceUnavailable,
+                                ),
+                                _ => (
+                                    "internal server error".into(),
+                                    iron::status::Status::InternalServerError,
+                                ),
                             }
-                            _ => iron::status::Status::InternalServerError,
-                        },
-                    },
-                }),
+                        }
+                    };
+
+                    AutocompleteResponse::Error(CustomError {
+                        short: "query error".to_string(),
+                        long: long_error,
+                        status: status,
+                    })
+                }
             }
         }
     }

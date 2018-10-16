@@ -35,6 +35,7 @@ use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
+use super::to_json;
 use super::BragiHandler;
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
@@ -173,4 +174,7 @@ pub fn bragi_invalid_es_test(_es_wrapper: ::ElasticSearchWrapper) {
     // the autocomplete gives a 503
     let resp = bragi.raw_get("/autocomplete?q=toto").unwrap();
     assert_eq!(resp.status, Some(iron::status::Status::ServiceUnavailable));
+    let json = to_json(resp);
+    assert_eq!(json.get("short"), Some(&json!("query error")));
+    assert_eq!(json.get("long"), Some(&json!("service unavailable")));
 }
