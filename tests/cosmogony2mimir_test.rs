@@ -94,8 +94,8 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     let sem = &res[0];
     match sem {
         &mimir::Place::Admin(ref sem) => {
-            assert_eq!(sem.id, "admin:osm:relation:424253843");
             assert_eq!(sem.name, "Fausse Seine-et-Marne");
+            assert_eq!(sem.id, "admin:osm:relation:424253843");
             assert_eq!(sem.label, "Fausse Seine-et-Marne, France hexagonale");
             assert_eq!(sem.insee, "77");
             assert_eq!(sem.zip_codes, Vec::<String>::new());

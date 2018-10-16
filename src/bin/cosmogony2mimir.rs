@@ -42,7 +42,7 @@ extern crate osmpbfreader;
 use cosmogony::{Cosmogony, Zone, ZoneIndex};
 use failure::Error;
 use mimir::objects::Admin;
-use mimir::rubber::Rubber;
+use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils::normalize_admin_weight;
@@ -95,10 +95,15 @@ impl IntoAdmin for Zone {
     }
 }
 
-fn send_to_es(admins: Vec<Admin>, cnx_string: &str, dataset: &str) -> Result<(), Error> {
+fn send_to_es(
+    admins: Vec<Admin>,
+    cnx_string: &str,
+    dataset: &str,
+    index_settings: IndexSettings,
+) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, admins.into_iter())?;
+    let nb_admins = rubber.index(dataset, &index_settings, admins.into_iter())?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }
@@ -126,7 +131,16 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
 
     normalize_admin_weight(&mut admins);
 
-    send_to_es(admins, &args.connection_string, &args.dataset)?;
+    let index_settings = IndexSettings {
+        nb_shards: args.nb_shards,
+        nb_replicas: args.nb_replicas,
+    };
+    send_to_es(
+        admins,
+        &args.connection_string,
+        &args.dataset,
+        index_settings,
+    )?;
 
     Ok(())
 }
@@ -146,6 +160,12 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
 }
 
 fn main() {

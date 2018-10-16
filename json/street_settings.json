@@ -1,7 +1,6 @@
 {
     "template": "munin_street_*",
     "settings": {
-        "number_of_shards": "2",
         "analysis": {
             "filter": {
                 "prefix_filter": {

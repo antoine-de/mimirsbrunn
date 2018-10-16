@@ -31,7 +31,7 @@
 use admin_geofinder::AdminGeoFinder;
 use failure::{Error, ResultExt};
 use mimir;
-use mimir::rubber::{Rubber, TypedIndex};
+use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
 use std::collections::HashMap;
 use std::mem::replace;
 use std::sync::Arc;
@@ -57,6 +57,7 @@ pub fn import_stops(
     mut stops: Vec<mimir::Stop>,
     connection_string: &str,
     dataset: &str,
+    index_settings: IndexSettings,
 ) -> Result<(), Error> {
     info!("creation of indexes");
     let mut rubber = Rubber::new(connection_string);
@@ -68,10 +69,11 @@ pub fn import_stops(
         stop.coverages.push(dataset.to_string());
     }
 
-    let global_index = update_global_stop_index(&mut rubber, stops.iter(), dataset)?;
+    let global_index =
+        update_global_stop_index(&mut rubber, stops.iter(), dataset, &index_settings)?;
 
     info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.index(dataset, stops.into_iter())?;
+    let nb_stops = rubber.index(dataset, &index_settings, stops.into_iter())?;
     info!("Nb of indexed stops: {}", nb_stops);
 
     publish_global_index(&mut rubber, &global_index)
@@ -171,6 +173,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     rubber: &mut Rubber,
     stops: It,
     dataset: &str,
+    index_settings: &IndexSettings,
 ) -> Result<String, Error> {
     let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
     let stops_indexes = rubber
@@ -189,7 +192,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
     let all_merged_stops = merge_stops(all_es_stops);
     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
 
-    rubber.create_index(&es_index_name)?;
+    rubber.create_index(&es_index_name, &index_settings)?;
     let typed_index = TypedIndex::new(es_index_name.clone());
 
     let nb_stops_added = rubber.bulk_index(&typed_index, all_merged_stops)?;

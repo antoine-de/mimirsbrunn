@@ -1,6 +1,6 @@
 use csv;
 use failure::ResultExt;
-use mimir::rubber::Rubber;
+use mimir::rubber::{IndexSettings, Rubber};
 use mimir::Addr;
 use par_map::ParMap;
 use serde::de::DeserializeOwned;
@@ -12,6 +12,7 @@ pub fn import_addresses<T, F>(
     rubber: &mut Rubber,
     has_headers: bool,
     nb_threads: usize,
+    index_settings: IndexSettings,
     dataset: &str,
     files: impl IntoIterator<Item = PathBuf>,
     into_addr: F,
@@ -21,7 +22,7 @@ where
     T: DeserializeOwned + Send + 'static,
 {
     let addr_index = rubber
-        .make_index(dataset)
+        .make_index(dataset, &index_settings)
         .with_context(|_| format!("Error occurred when making index {}", dataset))?;
     info!("Add data in elasticsearch db.");
 

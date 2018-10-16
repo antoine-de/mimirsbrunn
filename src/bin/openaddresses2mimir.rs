@@ -44,7 +44,7 @@ extern crate num_cpus;
 #[macro_use]
 extern crate lazy_static;
 
-use mimir::rubber::Rubber;
+use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use std::fs;
@@ -107,6 +107,7 @@ impl OpenAddresse {
 fn index_oa<I>(
     cnx_string: &str,
     dataset: &str,
+    index_settings: IndexSettings,
     files: I,
     nb_threads: usize,
 ) -> Result<(), mimirsbrunn::Error>
@@ -130,6 +131,7 @@ where
         &mut rubber,
         true,
         nb_threads,
+        index_settings,
         dataset,
         files,
         move |a: OpenAddresse| a.into_addr(&admins_geofinder),
@@ -161,6 +163,12 @@ struct Args {
         raw(default_value = "&DEFAULT_NB_THREADS")
     )]
     nb_threads: usize,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "5")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
@@ -170,11 +178,16 @@ fn run(args: Args) -> Result<(), failure::Error> {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
+    let index_settings = IndexSettings {
+        nb_shards: args.nb_shards,
+        nb_replicas: args.nb_replicas,
+    };
     if args.input.is_dir() {
         let paths: std::fs::ReadDir = fs::read_dir(&args.input)?;
         index_oa(
             &args.connection_string,
             &args.dataset,
+            index_settings,
             paths.map(|p| p.unwrap().path()),
             args.nb_threads,
         )
@@ -182,6 +195,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
         index_oa(
             &args.connection_string,
             &args.dataset,
+            index_settings,
             std::iter::once(args.input),
             args.nb_threads,
         )

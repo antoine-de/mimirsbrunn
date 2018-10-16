@@ -1,7 +1,6 @@
 {
     "template": "munin_poi_*",
     "settings": {
-        "number_of_shards": "1",
         "analysis": {
             "filter": {
                 "prefix_filter": {

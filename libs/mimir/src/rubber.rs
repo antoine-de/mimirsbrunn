@@ -100,6 +100,12 @@ impl<T> TypedIndex<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct IndexSettings {
+    pub nb_shards: usize,
+    pub nb_replicas: usize,
+}
+
 /// return the index associated to the given type and dataset
 /// this will be an alias over another real index
 pub fn get_main_type_and_dataset_index<T: MimirObject>(dataset: &str) -> String {
@@ -255,21 +261,25 @@ impl Rubber {
         rs_es::do_req(result)
     }
 
-    pub fn make_index<T: MimirObject>(&self, dataset: &str) -> Result<TypedIndex<T>, Error> {
+    pub fn make_index<T: MimirObject>(
+        &self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+    ) -> Result<TypedIndex<T>, Error> {
         let index_name = get_date_index_name(&get_main_type_and_dataset_index::<T>(dataset));
         info!("creating index {}", index_name);
-        self.create_index(&index_name.to_string())?;
+        self.create_index(&index_name.to_string(), index_settings)?;
         Ok(TypedIndex::new(index_name))
     }
 
-    pub fn create_index(&self, name: &String) -> Result<(), Error> {
+    pub fn create_index(&self, name: &String, index_settings: &IndexSettings) -> Result<(), Error> {
         debug!("creating index");
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
-        let analysis = include_str!("../../../json/settings.json");
+        let settings = include_str!("../../../json/settings.json");
 
-        let mut analysis_json_value = try!(
-            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| format_err!(
+        let mut settings_json_value = try!(
+            serde_json::from_str::<serde_json::Value>(&settings).map_err(|err| format_err!(
                 "Error occurred when creating index: {} err: {}",
                 name,
                 err
@@ -281,11 +291,18 @@ impl Rubber {
             .map(|s| serde_json::Value::String(s.to_string()))
             .collect();
 
-        *analysis_json_value
+        *settings_json_value
             .pointer_mut("/settings/analysis/filter/synonym_filter/synonyms")
             .unwrap() = serde_json::Value::Array(synonyms);
 
-        self.put(name, &analysis_json_value.to_string())
+        *settings_json_value
+            .pointer_mut("/settings/number_of_shards")
+            .unwrap() = serde_json::Value::from(index_settings.nb_shards);
+        *settings_json_value
+            .pointer_mut("/settings/number_of_replicas")
+            .unwrap() = serde_json::Value::from(index_settings.nb_replicas);
+
+        self.put(name, &settings_json_value.to_string())
             .map_err(|e| {
                 format_err!(
                     "Error: {},  while creating new index {}, ",
@@ -543,14 +560,19 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, Error>
+    pub fn index<T, I>(
+        &mut self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+        iter: I,
+    ) -> Result<usize, Error>
     where
         T: MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
         // TODO better error handling
         let index = self
-            .make_index(dataset)
+            .make_index(dataset, index_settings)
             .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)?;
         self.publish_index(dataset, index)?;
@@ -615,7 +637,7 @@ pub fn test_invalid_url_no_port() {
 }
 
 #[test]
-fn test_make_indexes_impl() {
+fn test_get_indexes_impl() {
     // all_data
     assert_eq!(get_indexes(true, &[], &[]), vec!["munin"]);
 
