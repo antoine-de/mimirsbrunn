@@ -34,6 +34,7 @@ use chrono;
 use failure::{Error, ResultExt};
 use hyper;
 use hyper::status::StatusCode;
+use prometheus;
 use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::ScanResult;
@@ -68,6 +69,14 @@ const SYNONYMS: [&'static str; 17] = [
     "cpam,securite sociale",
     "anpe,pole emploi",
 ];
+
+lazy_static! {
+    static ref ES_REQ_HISTOGRAM: prometheus::Histogram = register_histogram!(
+        "bragi_elasticsearch_reverse_duration_seconds",
+        "The elasticsearch reverse request latencies in seconds.",
+        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+    ).unwrap();
+}
 
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
@@ -395,6 +404,8 @@ impl Rubber {
             .with_must(geo_distance)
             .build();
 
+        let timer = ES_REQ_HISTOGRAM.start_timer();
+
         let result: SearchResult<serde_json::Value> = self
             .es_client
             .search_query()
@@ -407,6 +418,7 @@ impl Rubber {
             ).with_query(&query)
             .with_size(1)
             .send()?;
+        timer.observe_duration();
         collect(result)
     }
 
