@@ -107,6 +107,9 @@
                                 "enabled": false
                             }
                         }
+                    },
+                    "norms": {
+                        "enabled": false
                     }
                 },
                 "label": {
@@ -133,6 +136,9 @@
                                 "enabled": false
                             }
                         }
+                    },
+                    "norms": {
+                        "enabled": false
                     }
                 },
                 "properties": {
