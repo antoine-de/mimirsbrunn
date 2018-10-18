@@ -100,20 +100,21 @@ pub struct Args {
         env = "BRAGI_NB_THREADS"
     )]
     nb_threads: usize,
-    /// Default timeout in ms on ES connection. It's the network timeout, not a timeout given to ES.
+    /// Default Max timeout in ms on ES connection.
+    /// This timeout is both a network timeout and a timeout given to ES.
     #[structopt(
         short = "e",
-        long = "default-es-timeout",
-        env = "BRAGI_DEFAULT_ES_TIMEOUT"
+        long = "default-es-max-timeout",
+        env = "BRAGI_DEFAULT_ES_MAX_TIMEOUT"
     )]
-    default_es_timeout: Option<u64>,
+    default_es_max_timeout: Option<u64>,
 }
 
 pub fn runserver() {
     let args = Args::from_args();
     let api = api::ApiEndPoint {
         es_cnx_string: args.connection_string,
-        default_es_timeout: args.default_es_timeout.map(time::Duration::from_millis),
+        default_es_max_timeout: args.default_es_max_timeout.map(time::Duration::from_millis),
     }.root();
     let app = Application::new(api);
 

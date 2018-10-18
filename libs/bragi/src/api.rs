@@ -86,7 +86,10 @@ fn parse_timeout(
         .find("timeout")
         .and_then(|v| v.as_u64())
         .map(time::Duration::from_millis)
-        .or(default_timeout)
+        .and_then(|t| match default_timeout {
+            Some(dt) => Some(t.min(dt)),
+            None => Some(t),
+        }).or(default_timeout)
 }
 
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
@@ -115,7 +118,7 @@ where
 
 pub struct ApiEndPoint {
     pub es_cnx_string: String,
-    pub default_es_timeout: Option<time::Duration>,
+    pub default_es_max_timeout: Option<time::Duration>,
 }
 
 impl ApiEndPoint {
@@ -246,7 +249,7 @@ impl ApiEndPoint {
                     timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.default_es_max_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let coord = ::mimir::Coord::new(
                         params.find("lon").and_then(|p| p.as_f64()).unwrap(),
@@ -256,8 +259,9 @@ impl ApiEndPoint {
                     let timeout = parse_timeout(params, default_timeout);
                     rubber.set_read_timeout(timeout);
                     rubber.set_write_timeout(timeout);
-                    let model_autocomplete =
-                        rubber.get_address(&coord).map_err(model::BragiError::from);
+                    let model_autocomplete = rubber
+                        .get_address(&coord, timeout)
+                        .map_err(model::BragiError::from);
 
                     let response = model::v1::AutocompleteResponse::from(model_autocomplete);
                     render(client, response)
@@ -276,7 +280,7 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.default_es_max_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
@@ -305,7 +309,7 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.default_es_max_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")
@@ -366,7 +370,7 @@ impl ApiEndPoint {
                     timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.default_es_max_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")

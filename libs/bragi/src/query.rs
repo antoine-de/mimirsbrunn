@@ -244,6 +244,7 @@ fn query(
     coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     types: &[&str],
+    timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
@@ -264,18 +265,37 @@ fn query(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
 
-    let result: SearchResult<serde_json::Value> = client
-        .search_query()
-        .with_ignore_unavailable(true)
-        .with_indexes(
-            &indexes
-                .iter()
-                .map(|index| index.as_str())
-                .collect::<Vec<&str>>(),
-        ).with_query(&query)
-        .with_from(offset)
-        .with_size(limit)
-        .send()?;
+    let result: SearchResult<serde_json::Value> = match timeout {
+        Some(t) => {
+            let duration = t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9;
+
+            client
+                .search_query()
+                .with_timeout(&format!("{}s", duration.to_string()))
+                .with_ignore_unavailable(true)
+                .with_indexes(
+                    &indexes
+                        .iter()
+                        .map(|index| index.as_str())
+                        .collect::<Vec<&str>>(),
+                ).with_query(&query)
+                .with_from(offset)
+                .with_size(limit)
+                .send()?
+        }
+        _ => client
+            .search_query()
+            .with_ignore_unavailable(true)
+            .with_indexes(
+                &indexes
+                    .iter()
+                    .map(|index| index.as_str())
+                    .collect::<Vec<&str>>(),
+            ).with_query(&query)
+            .with_from(offset)
+            .with_size(limit)
+            .send()?,
+    };
 
     timer.map(|t| t.observe_duration());
 
@@ -319,18 +339,37 @@ pub fn features(
         .map_err(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
-    let result: SearchResult<serde_json::Value> = try!(
-        client
-            .search_query()
-            .with_ignore_unavailable(true)
-            .with_indexes(
-                &indexes
-                    .iter()
-                    .map(|index| index.as_str())
-                    .collect::<Vec<&str>>()
-            ).with_query(&query)
-            .send()
-    );
+    let result: SearchResult<serde_json::Value> = match timeout {
+        Some(t) => {
+            let duration = t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9;
+            try!(
+                client
+                    .search_query()
+                    .with_timeout(&format!("{}s", duration.to_string()))
+                    .with_ignore_unavailable(true)
+                    .with_indexes(
+                        &indexes
+                            .iter()
+                            .map(|index| index.as_str())
+                            .collect::<Vec<&str>>()
+                    ).with_query(&query)
+                    .send()
+            )
+        }
+        _ => try!(
+            client
+                .search_query()
+                .with_ignore_unavailable(true)
+                .with_indexes(
+                    &indexes
+                        .iter()
+                        .map(|index| index.as_str())
+                        .collect::<Vec<&str>>()
+                ).with_query(&query)
+                .send()
+        ),
+    };
+
     timer.map(|t| t.observe_duration());
 
     if result.hits.total == 0 {
@@ -375,6 +414,7 @@ pub fn autocomplete(
         &coord,
         make_shape(&shape),
         &types,
+        timeout,
     ).map_err(model::BragiError::from)?;
     if results.is_empty() {
         query(
@@ -388,6 +428,7 @@ pub fn autocomplete(
             &coord,
             make_shape(&shape),
             &types,
+            timeout,
         ).map_err(model::BragiError::from)
     } else {
         Ok(results)
