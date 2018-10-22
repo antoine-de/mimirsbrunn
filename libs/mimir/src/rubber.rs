@@ -432,8 +432,9 @@ impl Rubber {
 
         let timer = ES_REQ_HISTOGRAM.start_timer();
 
-        let timeout =
-            timeout.map(|t| format!("{:?}", t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9));
+        let timeout = timeout
+            .map(|t| t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9)
+            .map(|t| format!("{}s", t.to_string()));
         let mut search_query = self.es_client.search_query();
         let search_query = search_query
             .with_ignore_unavailable(true)

@@ -267,8 +267,9 @@ fn query(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
 
-    let timeout =
-        timeout.map(|t| format!("{:?}", t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9));
+    let timeout = timeout
+        .map(|t| t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9)
+        .map(|t| format!("{}s", t.to_string()));
     let mut search_query = client.search_query();
     let search_query = search_query
         .with_ignore_unavailable(true)
@@ -330,8 +331,9 @@ pub fn features(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
 
-    let timeout =
-        timeout.map(|t| format!("{:?}", t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9));
+    let timeout = timeout
+        .map(|t| t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9)
+        .map(|t| format!("{}s", t.to_string()));
     let mut search_query = client.search_query();
 
     let search_query = search_query
