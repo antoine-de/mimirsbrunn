@@ -250,9 +250,10 @@ fn query(
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
-    let indexes = indexes.iter()
-                            .map(|index| index.as_str())
-                            .collect::<Vec<&str>>();
+    let indexes = indexes
+        .iter()
+        .map(|index| index.as_str())
+        .collect::<Vec<&str>>();
     debug!("ES indexes: {:?}", indexes);
 
     if indexes.is_empty() {
@@ -269,14 +270,17 @@ fn query(
 
     let timeout = timeout.map(|t| format!("{:?}", t));
     let mut search_query = client.search_query();
-    let search_query = search_query.with_ignore_unavailable(true)
-                .with_indexes(&indexes)
-                .with_query(&query)
-                .with_from(offset)
-                .with_size(limit);
+    let search_query = search_query
+        .with_ignore_unavailable(true)
+        .with_indexes(&indexes)
+        .with_query(&query)
+        .with_from(offset)
+        .with_size(limit);
     let search_query = if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str())
-    } else { search_query };
+    } else {
+        search_query
+    };
     let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
