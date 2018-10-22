@@ -274,9 +274,9 @@ fn query(
                 .with_query(&query)
                 .with_from(offset)
                 .with_size(limit);
-    if let Some(timeout) = &timeout {
-        search_query.with_timeout(timeout.as_str());
-    }
+    let search_query = if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str())
+    } else { search_query };
     let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
