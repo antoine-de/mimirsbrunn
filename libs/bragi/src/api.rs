@@ -118,7 +118,7 @@ where
 
 pub struct ApiEndPoint {
     pub es_cnx_string: String,
-    pub default_es_max_timeout: Option<time::Duration>,
+    pub max_es_timeout: Option<time::Duration>,
 }
 
 impl ApiEndPoint {
@@ -249,7 +249,7 @@ impl ApiEndPoint {
                     timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_max_timeout.clone();
+                let default_timeout = self.max_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let coord = ::mimir::Coord::new(
                         params.find("lon").and_then(|p| p.as_f64()).unwrap(),
@@ -280,7 +280,7 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_max_timeout.clone();
+                let default_timeout = self.max_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
@@ -309,7 +309,7 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_max_timeout.clone();
+                let default_timeout = self.max_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")
@@ -370,7 +370,7 @@ impl ApiEndPoint {
                     timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_max_timeout.clone();
+                let default_timeout = self.max_es_timeout.clone();
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")

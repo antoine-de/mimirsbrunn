@@ -34,7 +34,6 @@ use mimir::rubber::{collect, get_indexes};
 use prometheus;
 use rs_es;
 use rs_es::error::EsError;
-use rs_es::operations::search::SearchResult;
 use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
@@ -250,7 +249,10 @@ fn query(
     let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
-
+    let indexes = indexes
+        .iter()
+        .map(|index| index.as_str())
+        .collect::<Vec<&str>>();
     debug!("ES indexes: {:?}", indexes);
 
     if indexes.is_empty() {
@@ -265,37 +267,21 @@ fn query(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
 
-    let result: SearchResult<serde_json::Value> = match timeout {
-        Some(t) => {
-            let duration = t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9;
-
-            client
-                .search_query()
-                .with_timeout(&format!("{}s", duration.to_string()))
-                .with_ignore_unavailable(true)
-                .with_indexes(
-                    &indexes
-                        .iter()
-                        .map(|index| index.as_str())
-                        .collect::<Vec<&str>>(),
-                ).with_query(&query)
-                .with_from(offset)
-                .with_size(limit)
-                .send()?
-        }
-        _ => client
-            .search_query()
-            .with_ignore_unavailable(true)
-            .with_indexes(
-                &indexes
-                    .iter()
-                    .map(|index| index.as_str())
-                    .collect::<Vec<&str>>(),
-            ).with_query(&query)
-            .with_from(offset)
-            .with_size(limit)
-            .send()?,
+    let timeout =
+        timeout.map(|t| format!("{:?}", t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9));
+    let mut search_query = client.search_query();
+    let search_query = search_query
+        .with_ignore_unavailable(true)
+        .with_indexes(&indexes)
+        .with_query(&query)
+        .with_from(offset)
+        .with_size(limit);
+    let search_query = if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str())
+    } else {
+        search_query
     };
+    let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
 
@@ -324,6 +310,10 @@ pub fn features(
     client.set_write_timeout(timeout);
 
     let indexes = get_indexes(all_data, &pt_datasets, &[]);
+    let indexes = indexes
+        .iter()
+        .map(|index| index.as_str())
+        .collect::<Vec<&str>>();
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -339,36 +329,22 @@ pub fn features(
         .map_err(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
-    let result: SearchResult<serde_json::Value> = match timeout {
-        Some(t) => {
-            let duration = t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9;
-            try!(
-                client
-                    .search_query()
-                    .with_timeout(&format!("{}s", duration.to_string()))
-                    .with_ignore_unavailable(true)
-                    .with_indexes(
-                        &indexes
-                            .iter()
-                            .map(|index| index.as_str())
-                            .collect::<Vec<&str>>()
-                    ).with_query(&query)
-                    .send()
-            )
-        }
-        _ => try!(
-            client
-                .search_query()
-                .with_ignore_unavailable(true)
-                .with_indexes(
-                    &indexes
-                        .iter()
-                        .map(|index| index.as_str())
-                        .collect::<Vec<&str>>()
-                ).with_query(&query)
-                .send()
-        ),
+
+    let timeout =
+        timeout.map(|t| format!("{:?}", t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9));
+    let mut search_query = client.search_query();
+
+    let search_query = search_query
+        .with_ignore_unavailable(true)
+        .with_indexes(&indexes)
+        .with_query(&query);
+
+    let search_query = if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str())
+    } else {
+        search_query
     };
+    let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
 

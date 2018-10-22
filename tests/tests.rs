@@ -244,7 +244,7 @@ impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
         let api = bragi::api::ApiEndPoint {
             es_cnx_string: url,
-            default_es_max_timeout: None,
+            max_es_timeout: None,
         }.root();
         BragiHandler {
             app: rustless::Application::new(api),

@@ -417,6 +417,11 @@ impl Rubber {
     ) -> Result<Vec<Place>, EsError> {
         let types = vec!["house".into(), "street".into()];
         let indexes = get_indexes(false, &[], &types);
+        let indexes = indexes
+            .iter()
+            .map(|index| index.as_str())
+            .collect::<Vec<&str>>();
+
         let distance = rs_u::Distance::new(1000., rs_u::DistanceUnit::Meter);
         let geo_distance =
             Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance).build();
@@ -427,36 +432,21 @@ impl Rubber {
 
         let timer = ES_REQ_HISTOGRAM.start_timer();
 
-        let result: SearchResult<serde_json::Value> = match timeout {
-            Some(t) => {
-                let duration = t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9;
-
-                self.es_client
-                    .search_query()
-                    .with_timeout(&format!("{}s", duration.to_string()))
-                    .with_ignore_unavailable(true)
-                    .with_indexes(
-                        &indexes
-                            .iter()
-                            .map(|index| index.as_str())
-                            .collect::<Vec<_>>(),
-                    ).with_query(&query)
-                    .with_size(1)
-                    .send()?
-            }
-            _ => self
-                .es_client
-                .search_query()
-                .with_ignore_unavailable(true)
-                .with_indexes(
-                    &indexes
-                        .iter()
-                        .map(|index| index.as_str())
-                        .collect::<Vec<_>>(),
-                ).with_query(&query)
-                .with_size(1)
-                .send()?,
+        let timeout =
+            timeout.map(|t| format!("{:?}", t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9));
+        let mut search_query = self.es_client.search_query();
+        let search_query = search_query
+            .with_ignore_unavailable(true)
+            .with_indexes(&indexes)
+            .with_query(&query)
+            .with_size(1);
+        let search_query = if let Some(timeout) = &timeout {
+            search_query.with_timeout(timeout.as_str())
+        } else {
+            search_query
         };
+        let result = search_query.send()?;
+
         timer.observe_duration();
         collect(result)
     }
