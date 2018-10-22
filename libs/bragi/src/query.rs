@@ -269,13 +269,11 @@ fn query(
 
     let timeout = timeout.map(|t| format!("{:?}", t));
     let mut search_query = client.search_query();
-    {
-        search_query.with_ignore_unavailable(true)
-                    .with_indexes(&indexes)
-                    .with_query(&query)
-                    .with_from(offset)
-                    .with_size(limit);
-    }
+    let search_query = search_query.with_ignore_unavailable(true)
+                .with_indexes(&indexes)
+                .with_query(&query)
+                .with_from(offset)
+                .with_size(limit);
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
     }
