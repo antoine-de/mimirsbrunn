@@ -86,10 +86,11 @@ fn parse_timeout(
         .find("timeout")
         .and_then(|v| v.as_u64())
         .map(time::Duration::from_millis)
-        .and_then(|t| match default_timeout {
-            Some(dt) => Some(t.min(dt)),
-            None => Some(t),
-        }).or(default_timeout)
+        .map(|t| match default_timeout {
+            Some(dt) => t.min(dt),
+            None => t,
+        })
+        .or(default_timeout)
 }
 
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
