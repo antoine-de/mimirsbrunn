@@ -267,21 +267,19 @@ fn query(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
 
-    let timeout = timeout
-        .map(|t| t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9)
-        .map(|t| format!("{}s", t.to_string()));
+    let timeout = timeout.map(|t| format!("{:?}", t));
     let mut search_query = client.search_query();
+
     let search_query = search_query
         .with_ignore_unavailable(true)
         .with_indexes(&indexes)
         .with_query(&query)
         .with_from(offset)
         .with_size(limit);
-    let search_query = if let Some(timeout) = &timeout {
-        search_query.with_timeout(timeout.as_str())
-    } else {
-        search_query
-    };
+
+    if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str());
+    }
     let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
@@ -331,9 +329,7 @@ pub fn features(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
         ).ok();
 
-    let timeout = timeout
-        .map(|t| t.as_secs() as f64 + t.subsec_nanos() as f64 * 1e-9)
-        .map(|t| format!("{}s", t.to_string()));
+    let timeout = timeout.map(|t| format!("{:?}", t));
     let mut search_query = client.search_query();
 
     let search_query = search_query
@@ -341,11 +337,10 @@ pub fn features(
         .with_indexes(&indexes)
         .with_query(&query);
 
-    let search_query = if let Some(timeout) = &timeout {
-        search_query.with_timeout(timeout.as_str())
-    } else {
-        search_query
-    };
+    if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str());
+    }
+
     let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
