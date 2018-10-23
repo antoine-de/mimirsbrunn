@@ -102,7 +102,7 @@ where
         builder
     };
     let drain = slog_async::Async::new(builder.build())
-        .chan_size(2560)
+        .chan_size(256)
         .build();
 
     let log = slog::Logger::root(drain.fuse(), slog_o!());
