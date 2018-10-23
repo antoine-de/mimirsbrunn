@@ -89,8 +89,7 @@ fn parse_timeout(
         .map(|t| match default_timeout {
             Some(dt) => t.min(dt),
             None => t,
-        })
-        .or(default_timeout)
+        }).or(default_timeout)
 }
 
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
