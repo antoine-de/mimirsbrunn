@@ -109,6 +109,9 @@
                                 "enabled": false
                             }
                         }
+                    },
+                    "norms": {
+                        "enabled": false
                     }
                 },
                 "full_label": {
@@ -134,6 +137,9 @@
                                 "enabled": false
                             }
                         }
+                    },
+                    "norms": {
+                        "enabled": false
                     }
                 },
                 "weight": { "type": "double" },
