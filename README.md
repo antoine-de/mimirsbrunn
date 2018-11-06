@@ -33,7 +33,7 @@ To import these locations Mimirsbrunn comes along with the following specific to
 
 Data Types | Data Sources | [Import Tools](#components)
 :---: | :---: | :---:
-Addresses | OpenAddresses  or BANO | openaddresses2mimir or bano2mimir
+Addresses | OpenAddresses  or BANO (the french opendata dataset) | openaddresses2mimir or bano2mimir
 Streets | OpenStreetMap | osm2mimir
 POI | OpenStreetMap | osm2mimir
 Public Transport Stops | Navitia.io data platform  or any GTFS data repository | ntfs2mimir or stops2mimir
@@ -50,7 +50,8 @@ All the Mimirsbrunn's components described below implement the `--help` (or `-h`
 ### Import Tools
 
 Before using [Bragi](#bragi), you have to import data into Elasticsearch.
-To do so the following import tools are possible.
+The default and easiest way to import data is to use the [docker_mimir](https://github.com/QwantResearch/docker_mimir) tool.
+However the following import tools are still possible.
 
 #### osm2mimir
 
@@ -60,30 +61,30 @@ curl -O http://download.geofabrik.de/europe/france-latest.osm.pbf
 ```
 - Then to import all those data into Mimir, you only have to do:
 ```shell
-./target/release/osm2mimir --input=france-latest.osm.pbf --level=8 --level=9 --import-way --import-admin --import-poi --dataset=france --connection-string=http://localhost:9200
+cargo run --release --osm2mimir --input=france-latest.osm.pbf --level=8 --level=9 --import-way --import-admin --import-poi --dataset=france --connection-string=http://localhost:9200
 ```
-- The `level` parameter refers to administrative levels in OpenStreetMap.
+- The `level` parameter refers to [administrative levels](https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative) in OpenStreetMap and is used to control which `Admin` to import.
 
 #### bano2mimir
 
-- This tool imports bano's data into Mimir. It is recommanded to run bano integration **after** OSM integration in order to attach addresses to admins. You can get bano's data from [OpenStreetMap](http://bano.openstreetmap.fr/data/), for instance:
+- This tool imports bano's data into Mimir. It is recommanded to run bano integration **after** OSM or cosmogony integration in order to attach addresses to admins. You can get bano's data from [OpenStreetMap](http://bano.openstreetmap.fr/data/), for instance:
 ```shell
 curl -O http://bano.openstreetmap.fr/data/full.csv.gz
 gunzip full.csv.gz
 ```
 - To import all those data into Mimir, you only have to do:
 ```shell
-./target/release/bano2mimir -i full.csv --dataset=france --connection-string=http://localhost:9200/
+cargo run --release --bano2mimir -i full.csv --dataset=france --connection-string=http://localhost:9200/
 ```
 - The `--connection-string` argument refers to the ElasticSearch url.
 
 #### ntfs2mimir
 
-- This tool imports data from the ntfs files into Mimir. It is recommended to run ntfs integration **after** osm integration so that stops are attached to admins.
+- This tool imports data from the ntfs files into Mimir. It is recommended to run ntfs integration **after** OSM or cosmogony integration so that stops are attached to admins.
 
 - To import all those data into Mimir, you only have to do:
 ```shell
-./target/release/ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
+cargo run --release --ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
 ```
 
 - The `--connection-string` argument refers to the ElasticSearch url
@@ -103,7 +104,7 @@ This is a format used by other geocoding API such as [Addok](https://github.com/
 
 - To run Bragi:
 ```shell
-./target/release/bragi --connection-string=http://localhost:9200/munin
+cargo run --release --bragi --connection-string=http://localhost:9200/munin
 ```
 
 - Then you can call the API (the default Bragi's listening port is 4000):
@@ -124,7 +125,7 @@ munin -> munin_addr -> munin_addr_dataset1 -> munin_addr_dataset1_20160101T12320
 Munin is the root index, it's an alias used by the frontend (bragi), it pointing to an index for each dataset/document type.
 So if we have address data for France and Belgium we will have two indexes: "addr_fr" and "addr_be". These are also aliases, they point to a dated index, this way we can import data in another index without impacting anyone, then switch the alias to point to the new data.
 
-This will give us the ability to only a part of the world without any downtime.
+This will give us the ability to only import a part of the world without any downtime.
 
 During an update the indexes will be (for the previous example say we update addr_dataset1):
 
