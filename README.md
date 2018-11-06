@@ -67,7 +67,7 @@ cargo run --release --osm2mimir --input=france-latest.osm.pbf --level=8 --level=
 
 #### bano2mimir
 
-- This tool imports bano's data into Mimir. It is recommanded to run bano integration **after** OSM or cosmogony integration in order to attach addresses to admins. You can get bano's data from [OpenStreetMap](http://bano.openstreetmap.fr/data/), for instance:
+- This tool imports bano's data into Mimir. It is recommended to run bano integration **after** OSM or cosmogony integration in order to attach addresses to admins. You can get bano's data from [OpenStreetMap](http://bano.openstreetmap.fr/data/), for instance:
 ```shell
 curl -O http://bano.openstreetmap.fr/data/full.csv.gz
 gunzip full.csv.gz
@@ -80,7 +80,7 @@ cargo run --release --bano2mimir -i full.csv --dataset=france --connection-strin
 
 #### ntfs2mimir
 
-- This tool imports data from the ntfs files into Mimir. It is recommended to run ntfs integration **after** OSM or cosmogony integration so that stops are attached to admins.
+- This tool imports data from the ntfs files into Mimir. It is recommended to run ntfs integration **after** OSM or cosmogony integration so that stops are attached to admins. You can get these data from [Navitia](https://navitia.opendatasoft.com/explore).
 
 - To import all those data into Mimir, you only have to do:
 ```shell
