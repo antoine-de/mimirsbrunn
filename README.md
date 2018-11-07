@@ -1,11 +1,10 @@
 [![travis](https://travis-ci.org/CanalTP/mimirsbrunn.svg?branch=master)](https://travis-ci.org/CanalTP/mimirsbrunn)
 [![GitHub license](https://img.shields.io/github/license/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/blob/master/LICENSE)
 [![GitHub tag](https://img.shields.io/github/tag/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/tag)
-[![Twitter](https://img.shields.io/twitter/url/https/github.com/CanalTP/mimirsbrunn.svg?style=social)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2FCanalTP%2Fmimirsbrunn)
 
-# Mimirsbrunn
+# Mímirsbrunn
 
-Mimirsbrunn is an independent geocoding and reverse-geocoding system written in [Rust](https://www.rust-lang.org/en-US/) and build upon [Elasticsearch](https://www.elastic.co).
+Mimirsbrunn is an independent geocoding and reverse-geocoding system written in [Rust](https://www.rust-lang.org/en-US/) and built upon [Elasticsearch](https://www.elastic.co).
 It can handle addresses, streets, points-of-interest (POI), administrative regions or public transport stops.
 In particular [Navitia](https://github.com/CanalTP/navitia) uses it as its global geocoding service.
 
@@ -15,11 +14,8 @@ Mimirsbrunn is composed of several [parts](#components): some of them manage the
 
 ### Install
 
-- To use the Mimirsbrunn components you need an Elasticsearch database (Elasticsearch version needs to be > 2.x).
-- To build you must first install rust:
-```shell
-curl https://sh.rustup.rs -sSf | sh
-```
+- To use the Mimirsbrunn components you need an Elasticsearch database (Elasticsearch version needs to be 2.x).
+- To build you must first install rust following [these instructions](https://www.rust-lang.org/en-US/install.html).
 - Then to build Mimirsbrunn:
 ```shell
 cargo build --release
