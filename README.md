@@ -134,3 +134,18 @@ We use [geocoder-tester](https://github.com/geocoders/geocoder-tester) to run re
 Feel free to add some tests cases here.
 
 When a new Pull Request is submitted, it will be manually tested using [this repo](https://gitlab.com/QwantResearch/mimir-geocoder-tester/) that loads a bunch of data into the geocoder, runs geocoder-tester and then add the results as a comment in the PR.
+
+
+## Troubleshooting
+
+### Multiple streets with the same name and admin in OSM
+
+Some almost identical streets are difficult to distinguish in OSM, as
+they are in the same admin and have the same name, but still
+they are distinct ones.  
+Ex: Rue Jean Jaurès in Lille (France)
+
+osm2mimir merges ways with same name and admin by default.
+
+It can also distinguish them if they are part of different Relation:associatedStreet, so
+it's the way to go if one wants to have distinct entries: https://wiki.openstreetmap.org/wiki/Relation:associatedStreet

@@ -113,7 +113,7 @@ pub fn streets(
             }
         }
 
-        // Add osmid of all the relation members in de set
+        // Add osmid of all the relation members in the set
         // We don't create any street for all the osmid present in street_rel
         for ref_obj in &rel.refs {
             if ref_obj.member.is_way() {
