@@ -134,3 +134,8 @@ We use [geocoder-tester](https://github.com/geocoders/geocoder-tester) to run re
 Feel free to add some tests cases here.
 
 When a new Pull Request is submitted, it will be manually tested using [this repo](https://gitlab.com/QwantResearch/mimir-geocoder-tester/) that loads a bunch of data into the geocoder, runs geocoder-tester and then add the results as a comment in the PR.
+
+
+## More documentation
+
+For more precise documentation on use, troubleshooting, development please check the [documentation directory](documentation/readme.md).
