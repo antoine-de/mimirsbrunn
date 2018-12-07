@@ -111,13 +111,21 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     };
     // As we merge all ways with same name and of the same admin(level=city_level)
     // Here we have only one way
-    let four_a_chaux_street: Vec<mimir::Place> = es_wrapper.search_and_filter("label:Rue du Four à Chaux (Livry-sur-Seine)", place_filter).collect();
+    let four_a_chaux_street: Vec<mimir::Place> = es_wrapper
+        .search_and_filter("label:Rue du Four à Chaux (Livry-sur-Seine)", place_filter)
+        .collect();
 
     let nb = four_a_chaux_street.len();
     assert_eq!(nb, 1);
 
     // Test the id is the min(=40812939) of all the ways composing the street
-    assert!(four_a_chaux_street[0].address().map_or(false, |a| if let mimir::Address::Street(s) = a {s.id == "street:osm:way:40812939"} else {false}));
+    assert!(four_a_chaux_street[0].address().map_or(false, |a| {
+        if let mimir::Address::Street(s) = a {
+            s.id == "street:osm:way:40812939"
+        } else {
+            false
+        }
+    }));
 
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {

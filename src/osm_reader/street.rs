@@ -85,7 +85,6 @@ pub fn streets(
 
     for rel in objs_map.iter().filter_map(|(_, obj)| obj.relation()) {
         let way_name = rel.tags.get("name");
-
         for ref_obj in &rel.refs {
             use mdo::option::*;
             let objs_map = &objs_map;
@@ -154,7 +153,6 @@ pub fn streets(
         let objs_map = &objs_map;
         let street_list = &mut street_list;
         let admins_geofinder = &admins_geofinder;
-
         mdo! {
             min_id =<< way_ids.iter().min();
             obj =<< objs_map.get(&min_id);
