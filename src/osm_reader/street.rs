@@ -193,7 +193,8 @@ fn get_street_admin(
         .map(|node| geo::Coordinate {
             x: node.lon(),
             y: node.lat(),
-        }).next()
+        })
+        .next()
         .map_or(vec![], |c| admins_geofinder.get(&c))
 }
 

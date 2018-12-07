@@ -49,7 +49,8 @@ lazy_static! {
         "The elasticsearch request latencies in seconds.",
         &["search_type"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 /// takes a ES json blob and build a Place from it
@@ -105,8 +106,10 @@ fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
                 "coord",
                 rs_u::Location::LatLon(coord.lat, coord.lon),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
-            ).build_gauss(),
-        ).build()
+            )
+            .build_gauss(),
+        )
+        .build()
 }
 
 // filter to handle PT coverages
@@ -122,7 +125,8 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
             Query::build_terms("coverages")
                 .with_values(pt_datasets)
                 .build(),
-        ]).build()
+        ])
+        .build()
 }
 
 fn build_query(
@@ -148,7 +152,8 @@ fn build_query(
             match_type_with_boost::<Stop>(18.),
             match_type_with_boost::<Poi>(1.5),
             match_type_with_boost::<Street>(1.),
-        ]).with_boost(30.)
+        ])
+        .with_boost(30.)
         .build();
 
     // Priorization by query string
@@ -185,7 +190,8 @@ fn build_query(
                 .with_must_not(Query::build_exists("house_number").build())
                 .build(),
             Query::build_match("house_number", q.to_string()).build(),
-        ]).build();
+        ])
+        .build();
 
     use rs_es::query::CombinationMinimumShouldMatch;
     use rs_es::query::MinimumShouldMatch;
@@ -212,7 +218,8 @@ fn build_query(
                 CombinationMinimumShouldMatch::new(1i64, 75f64),
                 CombinationMinimumShouldMatch::new(6i64, 60f64),
                 CombinationMinimumShouldMatch::new(9i64, 40f64),
-            ])).build(),
+            ]))
+            .build(),
     };
 
     let mut filters = vec![house_number_condition, matching_condition];
@@ -265,7 +272,8 @@ fn query(
         .map(|h| h.start_timer())
         .map_err(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
-        ).ok();
+        )
+        .ok();
 
     let timeout = timeout.map(|t| format!("{:?}", t));
     let mut search_query = client.search_query();
@@ -327,7 +335,8 @@ pub fn features(
         .map(|h| h.start_timer())
         .map_err(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
-        ).ok();
+        )
+        .ok();
 
     let timeout = timeout.map(|t| format!("{:?}", t));
     let mut search_query = client.search_query();
@@ -388,7 +397,8 @@ pub fn autocomplete(
         make_shape(&shape),
         &types,
         timeout,
-    ).map_err(model::BragiError::from)?;
+    )
+    .map_err(model::BragiError::from)?;
     if results.is_empty() {
         query(
             &q,
@@ -402,7 +412,8 @@ pub fn autocomplete(
             make_shape(&shape),
             &types,
             timeout,
-        ).map_err(model::BragiError::from)
+        )
+        .map_err(model::BragiError::from)
     } else {
         Ok(results)
     }

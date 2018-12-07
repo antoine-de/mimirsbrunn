@@ -42,7 +42,8 @@ where
                             .ok()
                     })
                 })
-        }).with_nb_threads(nb_threads)
+        })
+        .with_nb_threads(nb_threads)
         .par_map(into_addr)
         .filter(|a| {
             !a.street.name.is_empty() || {

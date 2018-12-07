@@ -103,11 +103,13 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
     let place_filter = |place: &mimir::Place| {
-        place.is_street() && place.label() == "Rue du Four à Chaux (Livry-sur-Seine)" && place
-            .admins()
-            .first()
-            .map(|admin| admin.label() == "Livry-sur-Seine (77000)")
-            .unwrap_or(false)
+        place.is_street()
+            && place.label() == "Rue du Four à Chaux (Livry-sur-Seine)"
+            && place
+                .admins()
+                .first()
+                .map(|admin| admin.label() == "Livry-sur-Seine (77000)")
+                .unwrap_or(false)
     };
     // As we merge all ways with same name and of the same admin(level=city_level)
     // Here we have only one way
@@ -129,11 +131,13 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
-        place.is_street() && place.label() == "Rue du Port (Melun)" && place
-            .admins()
-            .first()
-            .map(|admin| admin.label() == "Melun (77000-CP77001)")
-            .unwrap_or(false)
+        place.is_street()
+            && place.label() == "Rue du Port (Melun)"
+            && place
+                .admins()
+                .first()
+                .map(|admin| admin.label() == "Melun (77000-CP77001)")
+                .unwrap_or(false)
     };
     let nb = es_wrapper
         .search_and_filter("label:Rue du Port (Melun)", place_filter)
@@ -147,13 +151,11 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
         .collect();
     assert!(res.len() != 0);
     assert_eq!(res[0].label(), "Rue Marcel Houdet (Melun)");
-    assert!(
-        res[0]
-            .admins()
-            .iter()
-            .filter(|a| a.is_city())
-            .any(|a| a.name == "Melun")
-    );
+    assert!(res[0]
+        .admins()
+        .iter()
+        .filter(|a| a.is_city())
+        .any(|a| a.name == "Melun"));
 
     // Test: search Pois by label
     let res: Vec<_> = es_wrapper
@@ -162,17 +164,15 @@ pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res.len() != 0);
 
     let poi_type_post_office = "poi_type:amenity:post_office";
-    assert!(res.iter().any(|r| {
-        r.poi()
-            .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)
-    }));
+    assert!(res.iter().any(|r| r
+        .poi()
+        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)));
 
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Melun Rp", |_| true)
         .collect();
     assert!(res.len() != 0);
-    assert!(res.iter().any(|r| {
-        r.poi()
-            .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)
-    }));
+    assert!(res.iter().any(|r| r
+        .poi()
+        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)));
 }

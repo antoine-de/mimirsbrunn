@@ -159,7 +159,8 @@ where
         .map(|mut a| {
             a.boundary = None; // to save some space we remove the admin boundary
             (a.insee.clone(), Arc::new(a))
-        }).collect();
+        })
+        .collect();
 
     let index_settings = IndexSettings {
         nb_shards: nb_shards,

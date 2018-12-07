@@ -63,17 +63,20 @@ lazy_static! {
         "bragi_http_requests_total",
         "Total number of HTTP requests made.",
         &["handler", "method", "status"]
-    ).unwrap();
+    )
+    .unwrap();
     static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
         "bragi_http_request_duration_seconds",
         "The HTTP request latencies in seconds.",
         &["handler", "method"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
-    ).unwrap();
+    )
+    .unwrap();
     static ref HTTP_IN_FLIGHT: prometheus::Gauge = register_gauge!(
         "bragi_http_requests_in_flight",
         "current number of http request being served"
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 /// get the timeout from the query 'timeout' parameter
@@ -89,7 +92,8 @@ fn parse_timeout(
         .map(|t| match default_timeout {
             Some(dt) => t.min(dt),
             None => t,
-        }).or(default_timeout)
+        })
+        .or(default_timeout)
 }
 
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
@@ -162,12 +166,14 @@ impl ApiEndPoint {
                 let method = client.endpoint.method.to_string();
 
                 HTTP_REQ_HISTOGRAM
-                    .get_metric_with(&labels!{
+                    .get_metric_with(&labels! {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
-                    }).map(|timer| {
+                    })
+                    .map(|timer| {
                         client.ext.insert::<Timer>(timer.start_timer());
-                    }).unwrap_or_else(|err| {
+                    })
+                    .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_REQ_HISTOGRAM metrics";
                                "err" => err.to_string());
                     });
@@ -181,11 +187,12 @@ impl ApiEndPoint {
                 HTTP_IN_FLIGHT.dec();
 
                 HTTP_COUNTER
-                    .get_metric_with(&labels!{
+                    .get_metric_with(&labels! {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
                         "status" => code.as_str(),
-                    }).map(|counter| counter.inc())
+                    })
+                    .map(|counter| counter.inc())
                     .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
                     });
