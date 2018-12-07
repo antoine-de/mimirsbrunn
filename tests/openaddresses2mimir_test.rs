@@ -71,7 +71,8 @@ pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
         s =<< s.get("aliases");
         s =<< s.as_object();
         ret ret(s.keys().cloned().collect())
-    }.unwrap_or_else(Vec::new);
+    }
+    .unwrap_or_else(Vec::new);
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(
         aliases,
@@ -108,7 +109,8 @@ pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
         s =<< s.get("aliases");
         s =<< s.as_object();
         ret ret(s.keys().cloned().collect())
-    }.unwrap_or_else(Vec::new);
+    }
+    .unwrap_or_else(Vec::new);
     assert_eq!(
         aliases,
         vec!["munin", "munin_addr", "munin_addr_fr", "munin_geo_data"]

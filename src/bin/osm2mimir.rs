@@ -151,7 +151,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
                 &args.dataset,
                 &admin_index_settings,
                 admins_geofinder.admins(),
-            ).with_context(|_| {
+            )
+            .with_context(|_| {
                 format!(
                     "Error occurred when requesting admin number in {}",
                     args.dataset

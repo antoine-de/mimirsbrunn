@@ -75,7 +75,8 @@ lazy_static! {
         "bragi_elasticsearch_reverse_duration_seconds",
         "The elasticsearch reverse request latencies in seconds.",
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 // Rubber is an wrapper around elasticsearch API
@@ -189,8 +190,10 @@ pub fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
                 "coord",
                 rs_u::Location::LatLon(coord.lat(), coord.lon()),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
-            ).build_gauss(),
-        ).build()
+            )
+            .build_gauss(),
+        )
+        .build()
 }
 
 pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<String> {
@@ -278,13 +281,12 @@ impl Rubber {
         // storing the mapping in json is more convenient
         let settings = include_str!("../../../json/settings.json");
 
-        let mut settings_json_value = try!(
-            serde_json::from_str::<serde_json::Value>(&settings).map_err(|err| format_err!(
+        let mut settings_json_value = try!(serde_json::from_str::<serde_json::Value>(&settings)
+            .map_err(|err| format_err!(
                 "Error occurred when creating index: {} err: {}",
                 name,
                 err
-            ))
-        );
+            )));
 
         let synonyms: Vec<_> = SYNONYMS
             .iter()
@@ -309,7 +311,8 @@ impl Rubber {
                     name,
                     e.to_string()
                 )
-            }).and_then(|res| {
+            })
+            .and_then(|res| {
                 if res.status == StatusCode::Ok {
                     Ok(())
                 } else {
@@ -324,7 +327,8 @@ impl Rubber {
             .map_err(|e| {
                 info!("Error while creating template {}", name);
                 format_err!("Error: {} while creating template {}", e.to_string(), name)
-            }).and_then(|res| {
+            })
+            .and_then(|res| {
                 if res.status == StatusCode::Ok {
                     Ok(())
                 } else {
@@ -378,8 +382,10 @@ impl Rubber {
                                 a.pointer("/aliases")
                                     .and_then(|a| a.as_object())
                                     .map(|aliases| (i.clone(), aliases.keys().cloned().collect()))
-                            }).collect()
-                    }).unwrap_or_else(|| {
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_else(|| {
                         info!("no aliases for {}", base_index);
                         BTreeMap::new()
                     }))
@@ -552,7 +558,8 @@ impl Rubber {
                     v.es_id()
                         .into_iter()
                         .fold(Action::index(v), |action, id| action.with_id(id))
-                }).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
         });
         for chunk in chunks.filter(|c| !c.is_empty()) {
             nb += chunk.len();

@@ -175,7 +175,8 @@ fn run(args: Args) -> Result<(), failure::Error> {
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
             stop.try_into_with_warn()
-        }).collect();
+        })
+        .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
 
     let index_settings = IndexSettings {
@@ -188,7 +189,8 @@ fn run(args: Args) -> Result<(), failure::Error> {
         &args.connection_string,
         &args.dataset,
         index_settings,
-    ).context("Error while importing stops")?;
+    )
+    .context("Error while importing stops")?;
     Ok(())
 }
 
@@ -208,7 +210,8 @@ fn test_load_stops() {
         .filter_map(|stop: GtfsStop| {
             stop.incr_stop_point(&mut nb_stop_points);
             stop.try_into_with_warn()
-        }).collect();
+        })
+        .collect();
     let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
     assert_eq!(
         ids,

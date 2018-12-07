@@ -157,7 +157,8 @@ pub fn read_administrative_regions(
                         .get("population")?
                         .parse()
                         .ok()
-                }).unwrap_or(0.);
+                })
+                .unwrap_or(0.);
 
             let admin = mimir::Admin {
                 id: admin_id,
