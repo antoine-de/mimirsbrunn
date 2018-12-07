@@ -99,7 +99,7 @@ pub fn streets(
                 way_name =<< way_name.or_else(|| way.tags.get("name"));
                 let admin = get_street_admin(admins_geofinder, objs_map, way);
                 ret ret(street_list.push(mimir::Street {
-                    id: format!("street:osm:rel:{}", rel.id.0.to_string()),
+                    id: format!("street:osm:relation:{}", rel.id.0.to_string()),
                     name: way_name.to_string(),
                     label: format_label(&admin, way_name),
                     weight: 0.,
