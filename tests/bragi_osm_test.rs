@@ -128,10 +128,15 @@ fn zip_code_admin_test(bragi: &BragiHandler) {
 fn bbox_admin_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
     let first_city = all_20.iter().find(|e| get_value(e, "type") == "city");
-    assert_eq!(
-        *first_city.unwrap().get("bbox").unwrap(),
-        json!(vec![2.663446, 48.5064094, 2.7334936, 48.5419672])
-    );
+    let result = first_city.unwrap().get("bbox").unwrap().as_array().unwrap();
+    let expected = vec![2.663446, 48.5064094, 2.7334936, 48.5419672];
+    assert_eq!(expected.len(), result.len());
+    //check that coords are "close" from the expected value
+    for i in 0..expected.len() {
+        let r = result[i].as_f64().unwrap();
+        let e = expected[i];
+        assert_f64_near!(e, r, 1);
+    }
 }
 
 fn city_admin_test(bragi: &BragiHandler) {

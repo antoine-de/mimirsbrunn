@@ -34,6 +34,7 @@ cosmogony = "0.3.1"
 par-map = "0.1.4"
 lazy_static = "1.1.0"
 num_cpus = "1.8.0"
+assert_float_eq = "1"
 
 [dev-dependencies]
 hyper = "0.10"
