@@ -94,10 +94,8 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                     "stop_area:SA:known_by_all_dataset" => {
                         assert_eq!(stop.coverages, vec!["dataset1", "dataset2"]);
                         // we don't control which label is taken
-                        assert!(
-                            vec!["All known stop", "All known stop, but different name"]
-                                .contains(&stop.label.as_ref())
-                        );
+                        assert!(vec!["All known stop", "All known stop, but different name"]
+                            .contains(&stop.label.as_ref()));
                     }
                     "stop_area:SA:second_station:dataset2" => {
                         assert_eq!(stop.coverages, vec!["dataset2"])

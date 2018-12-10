@@ -131,7 +131,8 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
                     ("ISO3166-1:alpha2", "FR"),
                     ("ISO3166-1:alpha3", "FRA"),
                     ("ISO3166-1:numeric", "250"),
-                ].into_iter()
+                ]
+                .into_iter()
                 .collect()
             );
             assert_eq!(fr.weight, 0f64);
@@ -146,7 +147,8 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
         .search_and_filter(
             "label:Melun (77000-CP77001), Fausse Seine-et-Marne, France hexagonale",
             |_| true,
-        ).collect();
+        )
+        .collect();
     assert!(res.len() >= 1);
 
     let fausse_seine_max_weight = &res[0];

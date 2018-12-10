@@ -147,11 +147,11 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(
         cityhall_admins[2]["codes"],
         json!([
-                    {"name": "ISO3166-1", "value": "FR"},
-                    {"name": "ISO3166-1:alpha2", "value": "FR"},
-                    {"name": "ISO3166-1:alpha3", "value": "FRA"},
-                    {"name": "ISO3166-1:numeric", "value": "250"},
-    ])
+                        {"name": "ISO3166-1", "value": "FR"},
+                        {"name": "ISO3166-1:alpha2", "value": "FR"},
+                        {"name": "ISO3166-1:alpha3", "value": "FRA"},
+                        {"name": "ISO3166-1:numeric", "value": "250"},
+        ])
     );
 
     // the poi should have been associated to an address

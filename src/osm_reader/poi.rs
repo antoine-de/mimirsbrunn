@@ -87,7 +87,8 @@ impl PoiConfig {
                 rule.osm_tags_filters
                     .iter()
                     .all(|f| tags.get(&f.key).map_or(false, |v| v == &f.value))
-            }).and_then(|rule| {
+            })
+            .and_then(|rule| {
                 self.poi_types
                     .iter()
                     .find(|poi_type| poi_type.id == rule.poi_type_id)
@@ -197,7 +198,8 @@ fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Property> {
         .map(|property| mimir::Property {
             key: property.0.to_string(),
             value: property.1.to_string(),
-        }).collect()
+        })
+        .collect()
 }
 
 fn parse_poi(
@@ -361,7 +363,8 @@ mod tests {
             ],
             "rules": []
         }"#,
-        ).unwrap_err();
+        )
+        .unwrap_err();
         from_str(
             r#"{
             "poi_types": [{"id": "bob", "name": "Bob"}],
@@ -372,7 +375,8 @@ mod tests {
                 }
             ]
         }"#,
-        ).unwrap_err();
+        )
+        .unwrap_err();
     }
     #[test]
     fn check_with_colon() {

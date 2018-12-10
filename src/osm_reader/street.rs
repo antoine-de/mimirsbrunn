@@ -99,7 +99,7 @@ pub fn streets(
                 way_name =<< way_name.or_else(|| way.tags.get("name"));
                 let admin = get_street_admin(admins_geofinder, objs_map, way);
                 ret ret(street_list.push(mimir::Street {
-                    id: way.id.0.to_string(),
+                    id: format!("street:osm:relation:{}", rel.id.0.to_string()),
                     name: way_name.to_string(),
                     label: format_label(&admin, way_name),
                     weight: 0.,
@@ -147,19 +147,20 @@ pub fn streets(
         };
     }
 
-    // Create a street for each way with osmid present in in objs_map
+    // Create a street for each way with osmid present in objs_map
     for way_ids in name_admin_map.values() {
         use mdo::option::*;
         let objs_map = &objs_map;
         let street_list = &mut street_list;
         let admins_geofinder = &admins_geofinder;
         mdo! {
-            obj =<< objs_map.get(&way_ids[0]);
+            min_id =<< way_ids.iter().min();
+            obj =<< objs_map.get(&min_id);
             way =<< obj.way();
             way_name =<< way.tags.get("name");
             let admins = get_street_admin(admins_geofinder, objs_map, way);
             ret ret(street_list.push(mimir::Street {
-                id: way.id.0.to_string(),
+                id: format!("street:osm:way:{}", way.id.0.to_string()),
                 name: way_name.to_string(),
                 label: format_label(&admins, way_name),
                 weight: 0.,
@@ -192,7 +193,8 @@ fn get_street_admin(
         .map(|node| geo::Coordinate {
             x: node.lon(),
             y: node.lat(),
-        }).next()
+        })
+        .next()
         .map_or(vec![], |c| admins_geofinder.get(&c))
 }
 

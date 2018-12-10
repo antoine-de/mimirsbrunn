@@ -77,5 +77,6 @@ pub fn get_osm_codes_from_tags(tags: &osmpbfreader::Tags) -> Vec<mimir::Code> {
         .map(|property| mimir::Code {
             name: property.0.to_string(),
             value: property.1.to_string(),
-        }).collect()
+        })
+        .collect()
 }
