@@ -132,9 +132,7 @@ fn bbox_admin_test(bragi: &BragiHandler) {
     let expected = vec![2.663446, 48.5064094, 2.7334936, 48.5419672];
     assert_eq!(expected.len(), result.len());
     //check that coords are "close" from the expected value
-    for i in 0..expected.len() {
-        let r = result[i].as_f64().unwrap();
-        let e = expected[i];
+    for (r, e) in result.iter().map(|r| r.as_f64().unwrap()).zip(expected) {
         assert_f64_near!(e, r, 1);
     }
 }
