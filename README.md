@@ -15,7 +15,8 @@ Mimirsbrunn is composed of several [parts](#components): some of them manage the
 ### Install
 
 - To use the Mimirsbrunn components you need an Elasticsearch database (Elasticsearch version needs to be 2.x).
-- To build you must first install rust following [these instructions](https://www.rust-lang.org/en-US/install.html).
+- To build you must first install rust following [these instructions](https://www.rust-lang.org/tools/install).
+- You need some development packages: make libssl1.0-dev libgeos-dev
 - Then to build Mimirsbrunn:
 ```shell
 cargo build --release
