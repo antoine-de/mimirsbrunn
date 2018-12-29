@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate failure;
-extern crate geo;
-extern crate mimir;
-extern crate mimirsbrunn;
+
+use geo;
+use mimir;
+use mimirsbrunn;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -40,7 +40,7 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate structopt;
-extern crate num_cpus;
+use num_cpus;
 #[macro_use]
 extern crate lazy_static;
 

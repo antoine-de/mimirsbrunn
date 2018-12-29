@@ -1,6 +1,6 @@
-extern crate failure;
-extern crate mimir;
-extern crate osmpbfreader;
+
+
+use osmpbfreader;
 
 use std::fs::File;
 use std::path::Path;

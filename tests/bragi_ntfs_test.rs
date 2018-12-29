@@ -28,14 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron;
-extern crate iron_test;
-extern crate serde_json;
+
+
+
+
 use super::get_value;
 use super::BragiHandler;
 
-pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper) {
+pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");

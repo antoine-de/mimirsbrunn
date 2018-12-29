@@ -28,9 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
+
+
+
 use super::count_types;
 use super::filter_by_type;
 use super::get_poi_type_ids;
@@ -40,7 +40,7 @@ use super::get_values;
 use super::BragiHandler;
 use mimir::{MimirObject, Poi};
 
-pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper) {
+pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************

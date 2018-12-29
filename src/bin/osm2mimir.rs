@@ -33,9 +33,9 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-extern crate failure;
-extern crate mimir;
-extern crate mimirsbrunn;
+
+
+use mimirsbrunn;
 #[macro_use]
 extern crate structopt;
 

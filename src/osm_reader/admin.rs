@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate geo;
-extern crate mimir;
-extern crate osm_boundaries_utils;
-extern crate osmpbfreader;
+use geo;
+use mimir;
+use osm_boundaries_utils;
+use osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;

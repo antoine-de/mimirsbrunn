@@ -28,9 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimir;
-extern crate osm_boundaries_utils;
-extern crate osmpbfreader;
+use mimir;
+use osm_boundaries_utils;
+use osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::osm_utils::get_way_coord;
@@ -68,7 +68,7 @@ impl Default for PoiConfig {
     }
 }
 impl PoiConfig {
-    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<Error>> {
+    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<dyn Error>> {
         let mut res: PoiConfig = r#try!(serde_json::from_reader(r));
         r#try!(res.check());
         res.convert_id();
@@ -94,7 +94,7 @@ impl PoiConfig {
                     .find(|poi_type| poi_type.id == rule.poi_type_id)
             })
     }
-    pub fn check(&self) -> Result<(), Box<Error>> {
+    pub fn check(&self) -> Result<(), Box<dyn Error>> {
         use std::collections::BTreeSet;
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
@@ -310,7 +310,7 @@ mod tests {
     fn tags(v: &[(&str, &str)]) -> osmpbfreader::Tags {
         v.iter().map(|&(k, v)| (k.into(), v.into())).collect()
     }
-    fn from_str(s: &str) -> Result<PoiConfig, Box<Error>> {
+    fn from_str(s: &str) -> Result<PoiConfig, Box<dyn Error>> {
         PoiConfig::from_reader(io::Cursor::new(s))
     }
     #[test]

@@ -28,9 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate iron;
-extern crate mimir;
-extern crate serde_json;
+use iron;
+
+use serde_json;
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
@@ -44,7 +44,7 @@ use super::BragiHandler;
 /// First we import cosmogony,
 /// then openaddress (or bano),
 /// then osm (without any admins)
-pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper) {
+pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
     crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
@@ -164,7 +164,7 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["city"], "Melun");
 }
 
-pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper) {
+pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
 
     // the status does not check the ES connexion, so for the status all is good

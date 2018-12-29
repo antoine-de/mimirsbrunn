@@ -28,15 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
+
+use iron_test;
+
 use super::get_values;
 use super::BragiHandler;
 use super::{count_types, get_types, get_value, to_json};
 use rustless::server::status::StatusCode::{BadRequest, NotFound};
 
-pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper) {
+pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************

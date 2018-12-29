@@ -28,8 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate mimir;
+use bragi;
+use mimir;
 
 #[macro_use]
 extern crate slog;

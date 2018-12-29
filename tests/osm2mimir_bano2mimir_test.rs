@@ -32,7 +32,7 @@ use super::ToJson;
 use hyper;
 use hyper::client::Client;
 
-pub fn osm2mimir_bano2mimir_test(es_wrapper: crate::ElasticSearchWrapper) {
+pub fn osm2mimir_bano2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
     crate::launch_and_assert(
         osm2mimir,

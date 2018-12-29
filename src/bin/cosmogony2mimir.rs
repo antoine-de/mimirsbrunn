@@ -28,16 +28,16 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate cosmogony;
-extern crate failure;
+
+use failure;
 #[macro_use]
 extern crate log;
-extern crate mimir;
-extern crate mimirsbrunn;
-extern crate serde_json;
+use mimir;
+use mimirsbrunn;
+use serde_json;
 #[macro_use]
 extern crate structopt;
-extern crate osmpbfreader;
+use osmpbfreader;
 
 use cosmogony::{Cosmogony, Zone, ZoneIndex};
 use failure::Error;

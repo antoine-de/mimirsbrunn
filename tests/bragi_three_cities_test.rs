@@ -28,16 +28,16 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
+
+
+
 use super::count_types;
 use super::get_types;
 use super::get_value;
 use super::get_values;
 use super::BragiHandler;
 
-pub fn bragi_three_cities_test(es_wrapper: crate::ElasticSearchWrapper) {
+pub fn bragi_three_cities_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // *********************************

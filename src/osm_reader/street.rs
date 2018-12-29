@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate failure;
-extern crate geo;
-extern crate mimir;
-extern crate osmpbfreader;
+use failure;
+use geo;
+use mimir;
+use osmpbfreader;
 
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
