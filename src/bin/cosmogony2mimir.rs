@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
 use failure;
 #[macro_use]
 extern crate log;

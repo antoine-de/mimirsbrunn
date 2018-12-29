@@ -30,13 +30,13 @@
 
 use iron;
 
-use serde_json;
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
 use super::to_json;
 use super::BragiHandler;
+use serde_json;
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
 /// and test thourgh bragi in the end

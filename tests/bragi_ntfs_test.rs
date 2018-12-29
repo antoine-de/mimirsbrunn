@@ -28,10 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
-
-
-
 use super::get_value;
 use super::BragiHandler;
 

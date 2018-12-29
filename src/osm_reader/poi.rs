@@ -37,12 +37,12 @@ use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
+use crate::utils::{format_label, get_zip_codes_from_admins};
 use mimir::{rubber, Poi, PoiType};
 use serde_json;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
-use crate::utils::{format_label, get_zip_codes_from_admins};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {

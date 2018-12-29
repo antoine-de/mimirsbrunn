@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
 use mimir;
 use mimirsbrunn;
 use navitia_model;

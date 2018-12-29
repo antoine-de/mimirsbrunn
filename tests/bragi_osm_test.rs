@@ -28,9 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
-
-
 use super::count_types;
 use super::get_types;
 use super::get_value;

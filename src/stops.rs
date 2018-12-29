@@ -29,13 +29,13 @@
 // www.navitia.io
 
 use crate::admin_geofinder::AdminGeoFinder;
+use crate::utils::{format_label, get_zip_codes_from_admins};
 use failure::{Error, ResultExt};
 use mimir;
 use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
 use std::collections::HashMap;
 use std::mem::replace;
 use std::sync::Arc;
-use crate::utils::{format_label, get_zip_codes_from_admins};
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
 

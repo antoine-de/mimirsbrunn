@@ -33,8 +33,6 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-
-
 use mimirsbrunn;
 #[macro_use]
 extern crate structopt;

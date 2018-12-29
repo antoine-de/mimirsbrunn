@@ -32,12 +32,9 @@
 extern crate failure;
 use geo;
 
-
 #[macro_use]
 extern crate mdo;
 use mimir;
-
-
 
 #[macro_use]
 extern crate serde_derive;
@@ -48,8 +45,6 @@ extern crate slog;
 extern crate slog_scope;
 
 use csv;
-
-
 
 pub mod addr_reader;
 pub mod admin_geofinder;

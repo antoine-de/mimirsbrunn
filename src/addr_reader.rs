@@ -1,3 +1,4 @@
+use crate::Error;
 use csv;
 use failure::ResultExt;
 use mimir::rubber::{IndexSettings, Rubber};
@@ -6,7 +7,6 @@ use par_map::ParMap;
 use serde::de::DeserializeOwned;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
-use crate::Error;
 
 pub fn import_addresses<T, F>(
     rubber: &mut Rubber,

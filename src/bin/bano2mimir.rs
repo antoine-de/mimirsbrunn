@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
 use geo;
 use mimir;
 use mimirsbrunn;

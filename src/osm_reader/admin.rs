@@ -35,12 +35,12 @@ use osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
+use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
+use crate::utils::normalize_admin_weight;
 use cosmogony::ZoneType;
 use geo::prelude::BoundingBox;
 use itertools::Itertools;
-use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
 use std::collections::BTreeSet;
-use crate::utils::normalize_admin_weight;
 
 pub type StreetsVec = Vec<mimir::Street>;
 

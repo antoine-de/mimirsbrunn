@@ -1,10 +1,8 @@
-
-
 use osmpbfreader;
 
+use crate::Error;
 use std::fs::File;
 use std::path::Path;
-use crate::Error;
 
 pub mod admin;
 pub mod osm_utils;

@@ -30,7 +30,6 @@
 
 use mimir;
 
-
 /// Simple call to a stops2mimir load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {

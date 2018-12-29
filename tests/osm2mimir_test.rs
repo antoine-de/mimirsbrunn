@@ -30,7 +30,6 @@
 
 use mimir;
 
-
 use mimir::Members;
 
 /// Simple call to a BANO load into ES base

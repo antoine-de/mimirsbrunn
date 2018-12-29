@@ -28,9 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
 use iron;
-
 
 use super::get_results;
 use super::get_value;
