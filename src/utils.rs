@@ -32,7 +32,7 @@ use mimir;
 use std::process::exit;
 use std::sync::Arc;
 use structopt::StructOpt;
-use Error;
+use crate::Error;
 
 pub fn format_label(admins: &[Arc<mimir::Admin>], name: &str) -> String {
     match admins.iter().position(|adm| adm.is_city()) {

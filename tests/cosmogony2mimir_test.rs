@@ -35,8 +35,8 @@ use std::f64;
 
 /// load a cosmogony file in mimir.
 /// The cosmogony file has been generated using the osm_fixture.osm.pbf file
-pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
-    ::launch_and_assert(
+pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper) {
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
             "--input=./tests/fixtures/cosmogony.json".into(),

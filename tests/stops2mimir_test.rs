@@ -33,9 +33,9 @@ extern crate serde_json;
 
 /// Simple call to a stops2mimir load into ES base
 /// Checks that we are able to find one object (a specific address)
-pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper) {
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         stops2mimir,
         vec![
             "--input=./tests/fixtures/stops.txt".into(),
@@ -71,7 +71,7 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res.iter().all(|r| r.is_stop()));
 
     // we then import another stop fixture
-    ::launch_and_assert(
+    crate::launch_and_assert(
         stops2mimir,
         vec![
             "--input=./tests/fixtures/stops_dataset2.txt".into(),

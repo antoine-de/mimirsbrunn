@@ -4,7 +4,7 @@ extern crate osmpbfreader;
 
 use std::fs::File;
 use std::path::Path;
-use Error;
+use crate::Error;
 
 pub mod admin;
 pub mod osm_utils;

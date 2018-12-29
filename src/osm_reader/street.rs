@@ -35,12 +35,12 @@ extern crate osmpbfreader;
 
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
-use admin_geofinder::AdminGeoFinder;
+use crate::admin_geofinder::AdminGeoFinder;
 use failure::ResultExt;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use utils::{format_label, get_zip_codes_from_admins};
-use Error;
+use crate::utils::{format_label, get_zip_codes_from_admins};
+use crate::Error;
 
 pub type AdminSet = BTreeSet<Arc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;

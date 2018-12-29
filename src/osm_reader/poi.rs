@@ -36,13 +36,13 @@ use self::osm_boundaries_utils::build_boundary;
 use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
-use admin_geofinder::AdminGeoFinder;
+use crate::admin_geofinder::AdminGeoFinder;
 use mimir::{rubber, Poi, PoiType};
 use serde_json;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
-use utils::{format_label, get_zip_codes_from_admins};
+use crate::utils::{format_label, get_zip_codes_from_admins};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {
@@ -69,8 +69,8 @@ impl Default for PoiConfig {
 }
 impl PoiConfig {
     pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<Error>> {
-        let mut res: PoiConfig = try!(serde_json::from_reader(r));
-        try!(res.check());
+        let mut res: PoiConfig = r#try!(serde_json::from_reader(r));
+        r#try!(res.check());
         res.convert_id();
         Ok(res)
     }
@@ -99,7 +99,7 @@ impl PoiConfig {
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
             if !ids.insert(&poi_type.id) {
-                try!(Err(format!(
+                r#try!(Err(format!(
                     "poi_type_id {:?} present several times",
                     poi_type.id
                 )));
@@ -107,7 +107,7 @@ impl PoiConfig {
         }
         for rule in &self.rules {
             if !ids.contains(rule.poi_type_id.as_str()) {
-                try!(Err(format!(
+                r#try!(Err(format!(
                     "poi_type_id {:?} in a rule not declared",
                     rule.poi_type_id
                 )));

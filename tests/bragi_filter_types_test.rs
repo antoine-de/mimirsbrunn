@@ -36,7 +36,7 @@ use super::BragiHandler;
 use super::{count_types, get_types, get_value, to_json};
 use rustless::server::status::StatusCode::{BadRequest, NotFound};
 
-pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
@@ -47,7 +47,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     // - stops.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -61,7 +61,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
@@ -71,7 +71,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         stops2mimir,
         vec![
             "--input=./tests/fixtures/stops.txt".into(),

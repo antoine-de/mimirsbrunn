@@ -44,9 +44,9 @@ use super::BragiHandler;
 /// First we import cosmogony,
 /// then openaddress (or bano),
 /// then osm (without any admins)
-pub fn canonical_import_process_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
-    ::launch_and_assert(
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
             "--input=./tests/fixtures/cosmogony.json".into(),
@@ -55,7 +55,7 @@ pub fn canonical_import_process_test(es_wrapper: ::ElasticSearchWrapper) {
         &es_wrapper,
     );
 
-    ::launch_and_assert(
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../bano2mimir"),
         vec![
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
@@ -64,7 +64,7 @@ pub fn canonical_import_process_test(es_wrapper: ::ElasticSearchWrapper) {
         &es_wrapper,
     );
 
-    ::launch_and_assert(
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../osm2mimir"),
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -164,7 +164,7 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["city"], "Melun");
 }
 
-pub fn bragi_invalid_es_test(_es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper) {
     let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
 
     // the status does not check the ES connexion, so for the status all is good

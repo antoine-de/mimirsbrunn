@@ -6,7 +6,7 @@ use par_map::ParMap;
 use serde::de::DeserializeOwned;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
-use Error;
+use crate::Error;
 
 pub fn import_addresses<T, F>(
     rubber: &mut Rubber,
