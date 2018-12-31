@@ -99,8 +99,11 @@ fn parse_timeout(
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
     for feature in &mut autocomp_resp.features {
         if let ::geojson::Value::Point(p) = &feature.geometry.value {
-            if let [mut lon, mut lat] = p.as_slice() {
-                let feature_coord = Coord { lon, lat };
+            if let [lon, lat] = p.as_slice() {
+                let feature_coord = Coord {
+                    lon: *lon,
+                    lat: *lat,
+                };
                 feature.distance = Some(feature_coord.distance_to(&origin_coord) as u32);
             }
         }
