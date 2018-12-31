@@ -28,16 +28,16 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::query;
-use hyper::mime::Mime;
-use iron::status::Status as IronStatus;
-use iron::typemap::Key;
-use mimir::rubber::Rubber;
 use crate::model;
 use crate::model::v1::*;
 use crate::params::{
     coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
     types_param,
 };
+use hyper::mime::Mime;
+use iron::status::Status as IronStatus;
+use iron::typemap::Key;
+use mimir::rubber::Rubber;
 use prometheus;
 use prometheus::Encoder;
 use rustless;

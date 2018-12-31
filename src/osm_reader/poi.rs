@@ -69,8 +69,8 @@ impl Default for PoiConfig {
 }
 impl PoiConfig {
     pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<dyn Error>> {
-        let mut res: PoiConfig = r#try!(serde_json::from_reader(r));
-        r#try!(res.check());
+        let mut res: PoiConfig = serde_json::from_reader(r)?;
+        res.check()?;
         res.convert_id();
         Ok(res)
     }
@@ -99,18 +99,18 @@ impl PoiConfig {
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
             if !ids.insert(&poi_type.id) {
-                r#try!(Err(format!(
+                Err(format!(
                     "poi_type_id {:?} present several times",
                     poi_type.id
-                )));
+                ))?;
             }
         }
         for rule in &self.rules {
             if !ids.contains(rule.poi_type_id.as_str()) {
-                r#try!(Err(format!(
+                Err(format!(
                     "poi_type_id {:?} in a rule not declared",
                     rule.poi_type_id
-                )));
+                ))?;
             }
         }
         Ok(())
