@@ -32,9 +32,9 @@ use hyper::mime::Mime;
 use iron::status::Status as IronStatus;
 use iron::typemap::Key;
 use mimir::rubber::Rubber;
-use model;
-use model::v1::*;
-use params::{
+use crate::model;
+use crate::model::v1::*;
+use crate::params::{
     coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
     types_param,
 };
@@ -425,7 +425,7 @@ impl ApiEndPoint {
                     let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
 
                     // Optional : add distance for each feature (in meters)
-                    use model::v1::AutocompleteResponse::Autocomplete;
+                    use crate::model::v1::AutocompleteResponse::Autocomplete;
                     if let (Some(coord), Autocomplete(autocomplete_resp)) = (&coord, &mut response)
                     {
                         add_distance(autocomplete_resp, coord);

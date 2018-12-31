@@ -53,7 +53,7 @@ impl DockerWrapper {
 
     fn setup(&mut self) -> Result<(), Box<Error>> {
         info!("Launching ES docker");
-        let status = try!(Command::new("docker")
+        let status = r#try!(Command::new("docker")
             .args(&["run", "-d", "--name=mimirsbrunn_tests", "elasticsearch:2"])
             .status());
         if !status.success() {
@@ -61,7 +61,7 @@ impl DockerWrapper {
         }
 
         // we need to get the ip of the container if the container has been run on another machine
-        let container_ip_cmd = try!(Command::new("docker")
+        let container_ip_cmd = r#try!(Command::new("docker")
             .args(&[
                 "inspect",
                 "--format={{.NetworkSettings.IPAddress}}",
@@ -94,7 +94,7 @@ impl DockerWrapper {
 
     pub fn new() -> Result<DockerWrapper, Box<Error>> {
         let mut wrapper = DockerWrapper { ip: "".to_string() };
-        try!(wrapper.setup());
+        r#try!(wrapper.setup());
         let rubber = Rubber::new(&wrapper.host());
         rubber.initialize_templates().unwrap();
         Ok(wrapper)

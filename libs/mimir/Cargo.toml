@@ -2,6 +2,7 @@
 name = "mimir"
 version = "1.2.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
+edition = "2018"
 
 [dependencies]
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
