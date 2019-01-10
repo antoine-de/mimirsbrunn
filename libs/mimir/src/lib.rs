@@ -62,7 +62,7 @@ extern crate prometheus;
 pub mod objects;
 pub mod rubber;
 
-pub use objects::*;
+pub use crate::objects::*;
 use std::env;
 
 use slog::Drain;

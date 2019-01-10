@@ -26,25 +26,25 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate docker_wrapper;
-extern crate geo;
-extern crate hyper;
-extern crate iron;
-extern crate iron_test;
+use bragi;
+
+use geo;
+use hyper;
+use iron;
+use iron_test;
 #[macro_use]
 extern crate mdo;
-extern crate mime;
-extern crate mimir;
-extern crate rs_es;
-extern crate rustless;
+use mime;
+use mimir;
+
+use rustless;
 #[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-extern crate cosmogony;
+
 #[macro_use]
 extern crate approx;
 #[macro_use]
@@ -115,7 +115,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
     }
 
-    pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper {
+    pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper<'_> {
         let mut es_wrapper = ElasticSearchWrapper {
             docker_wrapper: docker_wrapper,
             rubber: mimir::rubber::Rubber::new(&docker_wrapper.host()),
@@ -148,7 +148,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -159,7 +159,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -171,7 +171,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         word: &str,
         predicate: F,
         search_on_global_stops: bool,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -221,19 +221,19 @@ impl<'a> ElasticSearchWrapper<'a> {
                                 })
                                 .filter(predicate),
                         )
-                            as Box<Iterator<Item = mimir::Place>>)
+                            as Box<dyn Iterator<Item = mimir::Place>>)
                     }
                     _ => None,
                 }
             })
-            .unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+            .unwrap_or(Box::new(None.into_iter()) as Box<dyn Iterator<Item = mimir::Place>>)
     }
 }
 
 fn launch_and_assert(
     cmd: &'static str,
     args: Vec<std::string::String>,
-    es_wrapper: &ElasticSearchWrapper,
+    es_wrapper: &ElasticSearchWrapper<'_>,
 ) {
     let status = Command::new(cmd).args(&args).status().unwrap();
     assert!(status.success(), "`{}` failed {}", cmd, &status);

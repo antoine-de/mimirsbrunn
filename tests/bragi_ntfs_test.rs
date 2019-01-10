@@ -28,18 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron;
-extern crate iron_test;
-extern crate serde_json;
 use super::get_value;
 use super::BragiHandler;
 
-pub fn bragi_ntfs_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         ntfs2mimir,
         vec![
             "--input=./tests/fixtures/ntfs/".into(),
@@ -52,7 +48,7 @@ pub fn bragi_ntfs_test(es_wrapper: ::ElasticSearchWrapper) {
     gare_de_lyon(&bragi);
 
     let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         ntfs2mimir,
         vec![
             "--input=./tests/fixtures/ntfs2/".into(),

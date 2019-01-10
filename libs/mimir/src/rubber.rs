@@ -246,21 +246,21 @@ impl Rubber {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client.get(&url).send());
+        let result = self.http_client.get(&url).send()?;
         rs_es::do_req(result)
     }
     fn put(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client.put(&url).body(body).send());
+        let result = self.http_client.put(&url).body(body).send()?;
         rs_es::do_req(result)
     }
     fn post(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a post on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client.post(&url).body(body).send());
+        let result = self.http_client.post(&url).body(body).send()?;
         rs_es::do_req(result)
     }
 
@@ -281,12 +281,10 @@ impl Rubber {
         // storing the mapping in json is more convenient
         let settings = include_str!("../../../json/settings.json");
 
-        let mut settings_json_value = try!(serde_json::from_str::<serde_json::Value>(&settings)
-            .map_err(|err| format_err!(
-                "Error occurred when creating index: {} err: {}",
-                name,
-                err
-            )));
+        let mut settings_json_value = serde_json::from_str::<serde_json::Value>(&settings)
+            .map_err(|err| {
+                format_err!("Error occurred when creating index: {} err: {}", name, err)
+            })?;
 
         let synonyms: Vec<_> = SYNONYMS
             .iter()
@@ -465,7 +463,7 @@ impl Rubber {
         index: TypedIndex<T>,
     ) -> Result<(), Error> {
         debug!("publishing index");
-        let last_indexes = try!(self.get_last_index(&index, dataset));
+        let last_indexes = self.get_last_index(&index, dataset)?;
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
         self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes)
@@ -624,7 +622,7 @@ impl Rubber {
             .with_types(&[&T::doc_type()])
             .scan(&Duration::minutes(1))?;
         loop {
-            let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
+            let page = scan.scroll(&mut self.es_client, &Duration::minutes(1))?;
             if page.hits.hits.len() == 0 {
                 break;
             }
@@ -636,7 +634,7 @@ impl Rubber {
                     .map(|ad| *ad),
             );
         }
-        try!(scan.close(&mut self.es_client));
+        scan.close(&mut self.es_client)?;
         Ok(result)
     }
 }

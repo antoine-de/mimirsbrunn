@@ -2,6 +2,7 @@
 name = "docker_wrapper"
 version = "1.2.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
+edition = "2018"
 
 [dependencies]
 hyper = "0.10"

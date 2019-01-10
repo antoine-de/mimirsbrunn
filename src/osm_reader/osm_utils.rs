@@ -28,8 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimir;
-extern crate osmpbfreader;
+use mimir;
+use osmpbfreader;
 
 use geo::centroid::Centroid;
 use geo::MultiPolygon;

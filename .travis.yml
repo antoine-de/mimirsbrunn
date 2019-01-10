@@ -14,7 +14,7 @@ matrix:
   include:
     - rust: stable
       env: RUN=RUSTFMT
-      before_script: rustup component add rustfmt-preview
+      before_script: rustup component add rustfmt
       script: cargo fmt --all -- --check
   allow_failures:
     - rust: nightly

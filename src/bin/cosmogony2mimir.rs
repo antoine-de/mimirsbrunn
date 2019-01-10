@@ -28,16 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate cosmogony;
-extern crate failure;
+use failure;
 #[macro_use]
 extern crate log;
-extern crate mimir;
-extern crate mimirsbrunn;
-extern crate serde_json;
+use mimir;
+use mimirsbrunn;
+use serde_json;
 #[macro_use]
 extern crate structopt;
-extern crate osmpbfreader;
+use osmpbfreader;
 
 use cosmogony::{Cosmogony, Zone, ZoneIndex};
 use failure::Error;
@@ -49,7 +48,7 @@ use mimirsbrunn::utils::normalize_admin_weight;
 use std::collections::BTreeMap;
 
 trait IntoAdmin {
-    fn into_admin(self, &BTreeMap<ZoneIndex, String>) -> Admin;
+    fn into_admin(self, _: &BTreeMap<ZoneIndex, String>) -> Admin;
 }
 
 fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f64 {

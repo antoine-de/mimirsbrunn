@@ -28,14 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use admin_geofinder::AdminGeoFinder;
+use crate::admin_geofinder::AdminGeoFinder;
+use crate::utils::{format_label, get_zip_codes_from_admins};
 use failure::{Error, ResultExt};
 use mimir;
 use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
 use std::collections::HashMap;
 use std::mem::replace;
 use std::sync::Arc;
-use utils::{format_label, get_zip_codes_from_admins};
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
 
@@ -141,7 +141,7 @@ fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
 /// (and we take the data from the first stop inserted)
 fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     stops: It,
-) -> Box<Iterator<Item = mimir::Stop>> {
+) -> Box<dyn Iterator<Item = mimir::Stop>> {
     let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
     for mut stop in stops.into_iter() {
         let cov = replace(&mut stop.coverages, vec![]);
@@ -151,7 +151,7 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
         let properties = replace(&mut stop.properties, vec![]);
         let feed_publishers = replace(&mut stop.feed_publishers, vec![]);
 
-        let mut stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
+        let stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
 
         merge_collection(&mut stop_in_map.codes, codes);
         merge_collection(&mut stop_in_map.physical_modes, physical_modes);

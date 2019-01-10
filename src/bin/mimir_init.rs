@@ -28,9 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate failure;
-extern crate mimir;
-extern crate mimirsbrunn;
+use failure;
+
+use mimirsbrunn;
 #[macro_use]
 extern crate slog;
 #[macro_use]

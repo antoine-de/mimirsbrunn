@@ -28,11 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate csv;
-extern crate failure;
-extern crate itertools;
-extern crate mimir;
-extern crate mimirsbrunn;
+use csv;
+use failure;
+
+use mimir;
+use mimirsbrunn;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]

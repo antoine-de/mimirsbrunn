@@ -28,16 +28,16 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::query;
+use crate::model;
+use crate::model::v1::*;
+use crate::params::{
+    coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
+    types_param,
+};
 use hyper::mime::Mime;
 use iron::status::Status as IronStatus;
 use iron::typemap::Key;
 use mimir::rubber::Rubber;
-use model;
-use model::v1::*;
-use params::{
-    coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
-    types_param,
-};
 use prometheus;
 use prometheus::Encoder;
 use rustless;
@@ -99,8 +99,11 @@ fn parse_timeout(
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
     for feature in &mut autocomp_resp.features {
         if let ::geojson::Value::Point(p) = &feature.geometry.value {
-            if let [mut lon, mut lat] = p.as_slice() {
-                let feature_coord = Coord { lon, lat };
+            if let [lon, lat] = p.as_slice() {
+                let feature_coord = Coord {
+                    lon: *lon,
+                    lat: *lat,
+                };
                 feature.distance = Some(feature_coord.distance_to(&origin_coord) as u32);
             }
         }
@@ -425,7 +428,7 @@ impl ApiEndPoint {
                     let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
 
                     // Optional : add distance for each feature (in meters)
-                    use model::v1::AutocompleteResponse::Autocomplete;
+                    use crate::model::v1::AutocompleteResponse::Autocomplete;
                     if let (Some(coord), Autocomplete(autocomplete_resp)) = (&coord, &mut response)
                     {
                         add_distance(autocomplete_resp, coord);

@@ -35,9 +35,9 @@ use mdo::option::{bind, ret};
 
 /// Simple call to a OA load into ES base
 /// Checks that we are able to find one object (a specific address)
-pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let oa2mimir = concat!(env!("OUT_DIR"), "/../../../openaddresses2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         oa2mimir,
         vec![
             "--input=./tests/fixtures/sample-oa.csv".into(),
@@ -80,7 +80,7 @@ pub fn oa2mimir_simple_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     // then we import again the open addresse file:
-    ::launch_and_assert(
+    crate::launch_and_assert(
         oa2mimir,
         vec![
             "--input=./tests/fixtures/sample-oa.csv".into(),

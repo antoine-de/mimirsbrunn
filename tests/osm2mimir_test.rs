@@ -28,16 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimir;
-extern crate serde_json;
+use mimir;
 
 use mimir::Members;
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
-pub fn osm2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn osm2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),

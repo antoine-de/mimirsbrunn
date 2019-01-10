@@ -28,21 +28,21 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimir;
-extern crate osm_boundaries_utils;
-extern crate osmpbfreader;
+use mimir;
+use osm_boundaries_utils;
+use osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
-use admin_geofinder::AdminGeoFinder;
+use crate::admin_geofinder::AdminGeoFinder;
+use crate::utils::{format_label, get_zip_codes_from_admins};
 use mimir::{rubber, Poi, PoiType};
 use serde_json;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
-use utils::{format_label, get_zip_codes_from_admins};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {
@@ -68,9 +68,9 @@ impl Default for PoiConfig {
     }
 }
 impl PoiConfig {
-    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<Error>> {
-        let mut res: PoiConfig = try!(serde_json::from_reader(r));
-        try!(res.check());
+    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<dyn Error>> {
+        let mut res: PoiConfig = serde_json::from_reader(r)?;
+        res.check()?;
         res.convert_id();
         Ok(res)
     }
@@ -94,23 +94,23 @@ impl PoiConfig {
                     .find(|poi_type| poi_type.id == rule.poi_type_id)
             })
     }
-    pub fn check(&self) -> Result<(), Box<Error>> {
+    pub fn check(&self) -> Result<(), Box<dyn Error>> {
         use std::collections::BTreeSet;
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
             if !ids.insert(&poi_type.id) {
-                try!(Err(format!(
+                Err(format!(
                     "poi_type_id {:?} present several times",
                     poi_type.id
-                )));
+                ))?;
             }
         }
         for rule in &self.rules {
             if !ids.contains(rule.poi_type_id.as_str()) {
-                try!(Err(format!(
+                Err(format!(
                     "poi_type_id {:?} in a rule not declared",
                     rule.poi_type_id
-                )));
+                ))?;
             }
         }
         Ok(())
@@ -310,7 +310,7 @@ mod tests {
     fn tags(v: &[(&str, &str)]) -> osmpbfreader::Tags {
         v.iter().map(|&(k, v)| (k.into(), v.into())).collect()
     }
-    fn from_str(s: &str) -> Result<PoiConfig, Box<Error>> {
+    fn from_str(s: &str) -> Result<PoiConfig, Box<dyn Error>> {
         PoiConfig::from_reader(io::Cursor::new(s))
     }
     #[test]

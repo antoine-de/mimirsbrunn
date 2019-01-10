@@ -28,19 +28,19 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate geo;
-extern crate mimir;
-extern crate osm_boundaries_utils;
-extern crate osmpbfreader;
+use geo;
+use mimir;
+use osm_boundaries_utils;
+use osmpbfreader;
 
 use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
+use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
+use crate::utils::normalize_admin_weight;
 use cosmogony::ZoneType;
 use geo::prelude::BoundingBox;
 use itertools::Itertools;
-use osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
 use std::collections::BTreeSet;
-use utils::normalize_admin_weight;
 
 pub type StreetsVec = Vec<mimir::Street>;
 

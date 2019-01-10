@@ -37,14 +37,14 @@ use mimir::{Admin, Coord, MimirObject, Street};
 use serde_json::value::Value;
 use std;
 
-fn check_has_elt<F: FnMut(&Value)>(es: &::ElasticSearchWrapper, mut fun: F) {
+fn check_has_elt<F: FnMut(&Value)>(es: &crate::ElasticSearchWrapper<'_>, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
                                    // we should have our elt
     assert_eq!(search.pointer("/hits/total"), Some(&json!(1)));
     fun(search.pointer("/hits/hits/0").unwrap());
 }
 
-fn check_has_bob(es: &::ElasticSearchWrapper) {
+fn check_has_bob(es: &crate::ElasticSearchWrapper<'_>) {
     let check_is_bob = |es_elt: &Value| {
         assert_eq!(
             es_elt.pointer("/_type").and_then(|t| t.as_str()).unwrap(),
@@ -62,7 +62,7 @@ fn check_has_bob(es: &::ElasticSearchWrapper) {
 /// check the zero downtime update
 /// first load a batch a data, and then upload a second one
 /// during the second batch we should be able to query Elasticsearch and find the first batch
-pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
+pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
     info!("running rubber_zero_downtime_test");
     let dataset = "my_dataset";
 
@@ -142,7 +142,7 @@ pub fn rubber_zero_downtime_test(mut es: ::ElasticSearchWrapper) {
     check_has_elt(&es, check_is_bobette);
 }
 
-pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
+pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
     info!("running rubber_custom_id");
     let dataset = "my_dataset";
     let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
@@ -238,7 +238,7 @@ pub fn rubber_custom_id(mut es: ::ElasticSearchWrapper) {
 /// test that rubber correctly cleanup ghost indexes
 /// (indexes that are not aliases to anything, for example
 /// if an import has been stopped in the middle)
-pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
+pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
     // we create a ghost ES index
     let client = hyper::client::Client::new();
     let old_idx_name = "munin_admin_fr_20170313_113227_006297916";
@@ -293,7 +293,7 @@ pub fn rubber_ghost_index_cleanup(mut es: ::ElasticSearchWrapper) {
 }
 
 // return the list of the munin indexes
-fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
+fn get_munin_indexes(es: &crate::ElasticSearchWrapper<'_>) -> Vec<String> {
     use super::ToJson;
     let client = hyper::client::Client::new();
     let res = client
@@ -308,7 +308,7 @@ fn get_munin_indexes(es: &::ElasticSearchWrapper) -> Vec<String> {
 }
 
 // return the list of the munin indexes
-fn get_index_info(es: &::ElasticSearchWrapper, index: &str) -> Value {
+fn get_index_info(es: &crate::ElasticSearchWrapper<'_>, index: &str) -> Value {
     use super::ToJson;
     let client = hyper::client::Client::new();
     let res = client
@@ -320,7 +320,7 @@ fn get_index_info(es: &::ElasticSearchWrapper, index: &str) -> Value {
     res.to_json()
 }
 
-pub fn rubber_empty_bulk(mut es: ::ElasticSearchWrapper) {
+pub fn rubber_empty_bulk(mut es: crate::ElasticSearchWrapper<'_>) {
     // we don't want an empty bulk to crash
     info!("running rubber_empty_bulk");
     let dataset = rubber::TypedIndex::<Admin>::new("my_dataset".into());
