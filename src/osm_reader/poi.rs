@@ -39,6 +39,7 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::utils::{format_label, get_zip_codes_from_admins};
 use mimir::{rubber, Poi, PoiType};
+use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::collections::BTreeMap;
 use std::error::Error;

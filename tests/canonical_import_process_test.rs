@@ -36,7 +36,7 @@ use super::get_types;
 use super::get_value;
 use super::to_json;
 use super::BragiHandler;
-use serde_json;
+use serde_json::{self, json};
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
 /// and test thourgh bragi in the end

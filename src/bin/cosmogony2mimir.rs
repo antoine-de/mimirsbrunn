@@ -28,15 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use failure;
 #[macro_use]
-extern crate log;
-use mimir;
-use mimirsbrunn;
-use serde_json;
+extern crate slog;
 #[macro_use]
-extern crate structopt;
-use osmpbfreader;
+extern crate slog_scope;
 
 use cosmogony::{Cosmogony, Zone, ZoneIndex};
 use failure::Error;
@@ -46,6 +41,7 @@ use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils::normalize_admin_weight;
 use std::collections::BTreeMap;
+use structopt::StructOpt;
 
 trait IntoAdmin {
     fn into_admin(self, _: &BTreeMap<ZoneIndex, String>) -> Admin;

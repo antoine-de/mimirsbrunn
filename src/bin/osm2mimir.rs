@@ -33,10 +33,6 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-use mimirsbrunn;
-#[macro_use]
-extern crate structopt;
-
 use failure::ResultExt;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -45,6 +41,7 @@ use mimirsbrunn::osm_reader::make_osm_reader;
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Args {

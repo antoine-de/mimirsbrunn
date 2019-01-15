@@ -30,6 +30,7 @@
 
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::utils::{format_label, get_zip_codes_from_admins};
+use failure::format_err;
 use failure::{Error, ResultExt};
 use mimir;
 use mimir::rubber::{IndexSettings, Rubber, TypedIndex};

@@ -28,29 +28,22 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use geo;
-use mimir;
-use mimirsbrunn;
-#[macro_use]
-extern crate serde_derive;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-#[macro_use]
-extern crate structopt;
-use num_cpus;
-#[macro_use]
-extern crate lazy_static;
 
+use lazy_static::lazy_static;
 use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+use structopt::StructOpt;
 
 type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
 

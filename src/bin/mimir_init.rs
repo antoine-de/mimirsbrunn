@@ -28,17 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use failure;
-
-use mimirsbrunn;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-#[macro_use]
-extern crate structopt;
 
 use mimir::rubber::Rubber;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Args {
