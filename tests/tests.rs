@@ -148,7 +148,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
+    ) -> impl Iterator<Item = mimir::Place> + 'b
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -159,7 +159,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
+    ) -> impl Iterator<Item = mimir::Place> + 'b
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -171,7 +171,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         word: &str,
         predicate: F,
         search_on_global_stops: bool,
-    ) -> Box<dyn Iterator<Item = mimir::Place> + 'b>
+    ) -> impl Iterator<Item = mimir::Place> + 'b
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -196,37 +196,28 @@ impl<'a> ElasticSearchWrapper<'a> {
         };
         get(json, "hits")
             .and_then(|json| get(json, "hits"))
-            .and_then(|hits| {
-                match hits {
-                    Value::Array(v) => {
-                        Some(Box::new(
-                            v.into_iter()
-                                .filter_map(|json| {
-                                    into_object(json).and_then(|obj| {
-                                        let doc_type = obj
-                                            .get("_type")
-                                            .and_then(|doc_type| doc_type.as_str())
-                                            .map(|doc_type| doc_type.into());
-
-                                        doc_type.and_then(|doc_type| {
-                                            // The real object is contained in the _source section.
-                                            obj.get("_source").and_then(|src| {
-                                                bragi::query::make_place(
-                                                    doc_type,
-                                                    Some(Box::new(src.clone())),
-                                                )
-                                            })
-                                        })
-                                    })
-                                })
-                                .filter(predicate),
-                        )
-                            as Box<dyn Iterator<Item = mimir::Place>>)
-                    }
-                    _ => None,
-                }
+            .and_then(|hits| match hits {
+                Value::Array(v) => Some(v),
+                _ => None,
             })
-            .unwrap_or(Box::new(None.into_iter()) as Box<dyn Iterator<Item = mimir::Place>>)
+            .unwrap_or_else(Vec::default)
+            .into_iter()
+            .filter_map(|json| {
+                into_object(json).and_then(|obj| {
+                    let doc_type = obj
+                        .get("_type")
+                        .and_then(|doc_type| doc_type.as_str())
+                        .map(|doc_type| doc_type.into());
+
+                    doc_type.and_then(|doc_type| {
+                        // The real object is contained in the _source section.
+                        obj.get("_source").and_then(|src| {
+                            bragi::query::make_place(doc_type, Some(Box::new(src.clone())))
+                        })
+                    })
+                })
+            })
+            .filter(predicate)
     }
 }
 
