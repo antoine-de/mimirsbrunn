@@ -141,7 +141,7 @@ fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
 /// (and we take the data from the first stop inserted)
 fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     stops: It,
-) -> Box<dyn Iterator<Item = mimir::Stop>> {
+) -> impl Iterator<Item = mimir::Stop> {
     let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
     for mut stop in stops.into_iter() {
         let cov = replace(&mut stop.coverages, vec![]);
@@ -160,7 +160,7 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
         merge_collection(&mut stop_in_map.properties, properties);
         merge_collection(&mut stop_in_map.feed_publishers, feed_publishers);
     }
-    Box::new(stops_by_id.into_iter().map(|(_, v)| v))
+    stops_by_id.into_iter().map(|(_, v)| v)
 }
 
 fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, Error> {
