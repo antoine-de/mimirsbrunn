@@ -39,6 +39,8 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
+            "--lang=fr".into(),
+            "--lang=ru".into(),
             "--input=./tests/fixtures/cosmogony.json".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
@@ -48,7 +50,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // we should be able to find the imported admins
 
     // All results should be admins, and have some basic information
-    let all_objects: Vec<_> = es_wrapper.search_and_filter("*.*", |_| true).collect();
+    let all_objects: Vec<_> = es_wrapper.search_and_filter("label:*", |_| true).collect();
     assert_eq!(all_objects.len(), 7);
 
     assert!(all_objects.iter().any(|r| r.is_admin()));
@@ -87,7 +89,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     // check the state_district Fausse Seine-et-Marne
     let res: Vec<_> = es_wrapper
-        .search_and_filter("label:Fausse Seine-et-Marne", |_| true)
+        .search_and_filter("name:Seine-et-Marne", |_| true)
         .collect();
     assert!(res.len() >= 1);
 
@@ -108,7 +110,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     // we can even get the whole france
     let res: Vec<_> = es_wrapper
-        .search_and_filter("label:France hexagonale", |_| true)
+        .search_and_filter("name:France", |_| true)
         .collect();
     assert!(res.len() >= 1);
 
@@ -138,16 +140,24 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
             assert_eq!(fr.weight, 0f64);
             assert!(fr.coord.is_valid());
             assert_eq!(fr.zone_type, Some(ZoneType::Country));
+            assert!(fr
+                .names
+                .0
+                .iter()
+                .any(|p| p.key == "ru" && p.value == "Метрополия Франции"));
+
+            assert!(fr
+                .labels
+                .0
+                .iter()
+                .any(|p| p.key == "ru" && p.value == "Метрополия Франции"));
         }
         _ => panic!("should be an admin"),
     }
 
     // we check the weight is max on the admin with the highest population number
     let res: Vec<_> = es_wrapper
-        .search_and_filter(
-            "label:Melun (77000-CP77001), Fausse Seine-et-Marne, France hexagonale",
-            |_| true,
-        )
+        .search_and_filter("label:Melun", |_| true)
         .collect();
     assert!(res.len() >= 1);
 

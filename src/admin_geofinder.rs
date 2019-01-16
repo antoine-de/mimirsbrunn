@@ -267,6 +267,8 @@ mod tests {
             zone_type: zt,
             parent_id: parent_offset.map(|id| id.into()),
             codes: vec![],
+            names: ::mimir::I18nProperties::default(),
+            labels: ::mimir::I18nProperties::default(),
         }
     }
 
