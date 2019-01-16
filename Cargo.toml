@@ -26,7 +26,6 @@ serde_json = "1"
 geo = "0.6"
 gst = "0.1"
 ordered-float = "0.0.2"
-mdo = "*"
 itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = "0.2"

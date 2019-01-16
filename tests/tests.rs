@@ -26,25 +26,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use bragi;
-
-use geo;
-use hyper;
-use iron;
-use iron_test;
-#[macro_use]
-extern crate mdo;
-use mime;
-use mimir;
-
-use rustless;
-#[macro_use]
-extern crate serde_json;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-
 #[macro_use]
 extern crate approx;
 #[macro_use]
@@ -344,6 +329,16 @@ fn get_poi_type_ids(e: &Map<String, Value>) -> Vec<&str> {
         .filter_map(|v| v.as_object().and_then(|o| o.get("id")))
         .filter_map(|o| o.as_str())
         .collect()
+}
+
+fn get_first_index_aliases(indexes: &serde_json::Map<String, Value>) -> Vec<String> {
+    indexes
+        .get(indexes.keys().next().unwrap())
+        .and_then(Value::as_object)
+        .and_then(|s| s.get("aliases"))
+        .and_then(Value::as_object)
+        .map(|s| s.keys().cloned().collect())
+        .unwrap_or_else(Vec::new)
 }
 
 /// Main test method (regroups all tests)

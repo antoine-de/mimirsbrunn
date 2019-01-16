@@ -28,10 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use super::get_first_index_aliases;
 use super::ToJson;
 use hyper;
 use hyper::client::Client;
-use mdo::option::{bind, ret};
 
 /// Returns the total number of results in the ES
 fn get_nb_elements(es_wrapper: &crate::ElasticSearchWrapper<'_>) -> u64 {
@@ -69,14 +69,8 @@ pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     assert_eq!(first_indexes.len(), 1);
     // our index should be aliased by the master_index + an alias over the document type + dataset
-    let aliases = mdo! {
-        s =<< raw_indexes.get(first_indexes.first().unwrap());
-        s =<< s.as_object();
-        s =<< s.get("aliases");
-        s =<< s.as_object();
-        ret ret(s.keys().cloned().collect())
-    }
-    .unwrap_or_else(Vec::new);
+    let aliases = get_first_index_aliases(raw_indexes);
+
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(
         aliases,
@@ -107,14 +101,7 @@ pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     assert_eq!(final_indexes.len(), 1);
     assert!(final_indexes != first_indexes);
 
-    let aliases = mdo! {
-        s =<< raw_indexes.get(final_indexes.first().unwrap());
-        s =<< s.as_object();
-        s =<< s.get("aliases");
-        s =<< s.as_object();
-        ret ret(s.keys().cloned().collect())
-    }
-    .unwrap_or_else(Vec::new);
+    let aliases = get_first_index_aliases(raw_indexes);
     assert_eq!(
         aliases,
         vec!["munin", "munin_addr", "munin_addr_fr", "munin_geo_data"]

@@ -28,25 +28,18 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use csv;
-use failure;
-
-use mimir;
-use mimirsbrunn;
-#[macro_use]
-extern crate serde_derive;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-#[macro_use]
-extern crate structopt;
 
 use failure::ResultExt;
 use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
+use serde_derive::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 const MAX_LAT: f64 = 90f64;
 const MIN_LAT: f64 = -90f64;

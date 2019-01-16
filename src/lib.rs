@@ -29,22 +29,9 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate failure;
-use geo;
-
-#[macro_use]
-extern crate mdo;
-use mimir;
-
-#[macro_use]
-extern crate serde_derive;
-use serde_json;
-#[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-
-use csv;
 
 pub mod addr_reader;
 pub mod admin_geofinder;

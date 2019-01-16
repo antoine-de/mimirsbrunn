@@ -85,33 +85,25 @@ pub fn streets(
 
     for rel in objs_map.iter().filter_map(|(_, obj)| obj.relation()) {
         let way_name = rel.tags.get("name");
-        for ref_obj in &rel.refs {
-            use mdo::option::*;
-            let objs_map = &objs_map;
-            let street_list = &mut street_list;
-            let admins_geofinder = &admins_geofinder;
-
-            let inserted = mdo! {
-                when ref_obj.member.is_way();
-                when ref_obj.role == "street";
-                obj =<< objs_map.get(&ref_obj.member);
-                way =<< obj.way();
-                way_name =<< way_name.or_else(|| way.tags.get("name"));
-                let admin = get_street_admin(admins_geofinder, objs_map, way);
-                ret ret(street_list.push(mimir::Street {
+        rel.refs
+            .iter()
+            .filter(|ref_obj| ref_obj.member.is_way() && ref_obj.role == "street")
+            .filter_map(|ref_obj| {
+                let way = objs_map.get(&ref_obj.member)?.way()?;
+                let way_name = way_name.or_else(|| way.tags.get("name"))?;
+                let admin = get_street_admin(admins_geofinder, &objs_map, way);
+                Some(mimir::Street {
                     id: format!("street:osm:relation:{}", rel.id.0.to_string()),
                     name: way_name.to_string(),
                     label: format_label(&admin, way_name),
                     weight: 0.,
                     zip_codes: get_zip_codes_from_admins(&admin),
                     administrative_regions: admin,
-                    coord: get_way_coord(objs_map, way),
-                }))
-            };
-            if inserted.is_some() {
-                break;
-            }
-        }
+                    coord: get_way_coord(&objs_map, way),
+                })
+            })
+            .next()
+            .map(|street| street_list.push(street));
 
         // Add osmid of all the relation members in the set
         // We don't create any street for all the osmid present in street_rel
@@ -124,52 +116,40 @@ pub fn streets(
 
     // we merge all the ways with a key = way_name + admin list of level(=city_level)
     // we use a map NameAdminMap <key, value> to manage the merging of ways
-    let mut name_admin_map: NameAdminMap = BTreeMap::new();
-    for (osmid, obj) in &objs_map {
-        if street_rel.contains(osmid) {
-            continue;
-        }
-        use mdo::option::*;
-        let admins_geofinder = &admins_geofinder;
-        let objs_map = &objs_map;
-        let name_admin_map = &mut name_admin_map;
-        mdo! {
-            way =<< obj.way();
-            let admins: BTreeSet<Arc<mimir::Admin>> = get_street_admin(admins_geofinder,
-                objs_map, way)
+    let keys_ids = objs_map
+        .iter()
+        .filter(|(osmid, _)| !street_rel.contains(osmid))
+        .filter_map(|(osmid, obj)| {
+            let way = obj.way()?;
+            let name = way.tags.get("name")?.to_string();
+            let admins = get_street_admin(admins_geofinder, &objs_map, way)
                 .into_iter()
                 .filter(|admin| admin.is_city())
                 .collect();
-
-            way_name =<< way.tags.get("name");
-            let key = StreetKey{name: way_name.to_string(), admins: admins};
-            ret ret(name_admin_map.entry(key).or_insert(vec![]).push(*osmid))
-        };
+            Some((StreetKey { name, admins }, osmid))
+        });
+    let mut name_admin_map = NameAdminMap::default();
+    for (key, id) in keys_ids {
+        name_admin_map.entry(key).or_insert(vec![]).push(*id);
     }
 
     // Create a street for each way with osmid present in objs_map
-    for way_ids in name_admin_map.values() {
-        use mdo::option::*;
-        let objs_map = &objs_map;
-        let street_list = &mut street_list;
-        let admins_geofinder = &admins_geofinder;
-        mdo! {
-            min_id =<< way_ids.iter().min();
-            obj =<< objs_map.get(&min_id);
-            way =<< obj.way();
-            way_name =<< way.tags.get("name");
-            let admins = get_street_admin(admins_geofinder, objs_map, way);
-            ret ret(street_list.push(mimir::Street {
-                id: format!("street:osm:way:{}", way.id.0.to_string()),
-                name: way_name.to_string(),
-                label: format_label(&admins, way_name),
-                weight: 0.,
-                zip_codes: get_zip_codes_from_admins(&admins),
-                administrative_regions: admins,
-                coord: get_way_coord(objs_map, way),
-            }))
-        };
-    }
+    let streets = name_admin_map.values().filter_map(|way_ids| {
+        let min_id = way_ids.iter().min()?;
+        let way = objs_map.get(&min_id)?.way()?;
+        let name = way.tags.get("name")?.to_string();
+        let admins = get_street_admin(admins_geofinder, &objs_map, way);
+        Some(mimir::Street {
+            id: format!("street:osm:way:{}", way.id.0.to_string()),
+            label: format_label(&admins, &name),
+            name,
+            weight: 0.,
+            zip_codes: get_zip_codes_from_admins(&admins),
+            administrative_regions: admins,
+            coord: get_way_coord(&objs_map, way),
+        })
+    });
+    street_list.extend(streets);
 
     Ok(street_list)
 }

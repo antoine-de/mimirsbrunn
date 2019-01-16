@@ -28,27 +28,19 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use failure;
-use geo;
-use mimir;
-use mimirsbrunn;
-#[macro_use]
-extern crate serde_derive;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-#[macro_use]
-extern crate structopt;
-use num_cpus;
-#[macro_use]
-extern crate lazy_static;
 
+use lazy_static::lazy_static;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 lazy_static! {
     static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();

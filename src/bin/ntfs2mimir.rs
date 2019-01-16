@@ -28,15 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use mimir;
-use mimirsbrunn;
-use navitia_model;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-#[macro_use]
-extern crate structopt;
 
 use failure::ResultExt;
 use mimir::rubber::IndexSettings;
@@ -44,6 +39,7 @@ use mimirsbrunn::stops::*;
 use navitia_model::collection::Idx;
 use navitia_model::objects as navitia;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Args {

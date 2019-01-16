@@ -34,7 +34,7 @@ use geo::prelude::BoundingBox;
 use hyper;
 use mimir::rubber::{self, IndexSettings, Rubber};
 use mimir::{Admin, Coord, MimirObject, Street};
-use serde_json::value::Value;
+use serde_json::{json, Value};
 use std;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &crate::ElasticSearchWrapper<'_>, mut fun: F) {
