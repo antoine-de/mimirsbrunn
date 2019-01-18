@@ -145,7 +145,7 @@ pub fn get_param_array<'a>(params: &'a JsonValue, param_name: &str) -> Vec<&'a s
         .find(param_name)
         .and_then(|val| val.as_array())
         .map(|val| val.iter().map(|val| val.as_str().unwrap()).collect())
-        .unwrap_or(vec![])
+        .unwrap_or_else(|| vec![])
 }
 
 fn check_bound(

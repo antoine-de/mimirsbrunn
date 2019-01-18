@@ -143,11 +143,11 @@ impl ToGeom for geo::Coordinate<f64> {
     }
 }
 
-impl From<mimir::Place> for Feature {
-    fn from(other: mimir::Place) -> Feature {
+impl FromWithLang<mimir::Place> for Feature {
+    fn from_with_lang(other: mimir::Place, lang: Option<&str>) -> Feature {
         let geom = other.to_geom();
         let geocoding = match other {
-            mimir::Place::Admin(admin) => GeocodingResponse::from(admin),
+            mimir::Place::Admin(admin) => GeocodingResponse::from_with_lang(admin, lang),
             mimir::Place::Street(street) => GeocodingResponse::from(street),
             mimir::Place::Addr(addr) => GeocodingResponse::from(addr),
             mimir::Place::Poi(poi) => GeocodingResponse::from(poi),
@@ -164,10 +164,23 @@ impl From<mimir::Place> for Feature {
     }
 }
 
-impl From<mimir::Admin> for GeocodingResponse {
-    fn from(other: mimir::Admin) -> GeocodingResponse {
+trait FromWithLang<T> {
+    fn from_with_lang(_: T, lang: Option<&str>) -> Self;
+}
+
+impl FromWithLang<mimir::Admin> for GeocodingResponse {
+    fn from_with_lang(other: mimir::Admin, lang: Option<&str>) -> GeocodingResponse {
+        let (name, label) = if let Some(code) = lang {
+            (other.names.get(code)
+                .unwrap_or(&other.name),
+            other.labels.get(code).unwrap_or(&other.label))
+        }
+        else {
+            (other.name.as_ref(), other.label.as_ref())
+        };
+
         let type_ = get_admin_type(&other);
-        let name = Some(other.name);
+        let name = Some(name.to_owned());
         let insee = Some(other.insee);
         let level = Some(other.level); //might be used for type_ and become useless
         let postcode = if other.zip_codes.is_empty() {
@@ -175,7 +188,7 @@ impl From<mimir::Admin> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
-        let label = Some(other.label);
+        let label = Some(label.to_owned());
         GeocodingResponse {
             id: other.id,
             citycode: insee,
@@ -367,16 +380,17 @@ impl Autocomplete {
     }
 }
 
-impl From<Vec<mimir::Place>> for Autocomplete {
-    fn from(places: Vec<mimir::Place>) -> Autocomplete {
+impl FromWithLang<Vec<mimir::Place>> for Autocomplete {
+    fn from_with_lang(places: Vec<mimir::Place>, lang: Option<&str>) -> Autocomplete {
         Autocomplete::new(
             "".to_string(),
-            places.into_iter().map(|p| Feature::from(p)).collect(),
+            places.into_iter().map(|p| Feature::from_with_lang(p, lang)).collect(),
         )
     }
 }
 
 pub mod v1 {
+    use crate::model::FromWithLang;
     use super::BragiError;
     use iron;
     use mimir;
@@ -453,10 +467,10 @@ pub mod v1 {
         }
     }
 
-    impl From<Result<Vec<mimir::Place>, BragiError>> for AutocompleteResponse {
-        fn from(r: Result<Vec<mimir::Place>, BragiError>) -> AutocompleteResponse {
+    impl AutocompleteResponse {
+        pub fn from_with_lang(r: Result<Vec<mimir::Place>, BragiError>, lang: Option<&str>) -> AutocompleteResponse {
             match r {
-                Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
+                Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from_with_lang(places, lang)),
                 Err(e) => {
                     let (long_error, status) = match &e {
                         BragiError::ObjectNotFound | BragiError::IndexNotFound => {
