@@ -32,7 +32,7 @@ use super::get_values;
 use super::BragiHandler;
 
 pub fn bragi_synonyms_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
     // we the OSM dataset, three-cities bano dataset and a stop file
@@ -76,10 +76,10 @@ pub fn bragi_synonyms_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    synonyms_test(&bragi);
+    synonyms_test(&mut bragi);
 }
 
-fn synonyms_test(bragi: &BragiHandler) {
+fn synonyms_test(bragi: &mut BragiHandler) {
     // Test that we find Hôtel de Ville
     let response = bragi.get("/autocomplete?q=hotel de ville");
     assert!(get_values(&response, "label")

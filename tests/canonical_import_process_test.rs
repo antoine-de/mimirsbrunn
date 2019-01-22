@@ -34,7 +34,6 @@ use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
-use super::to_json;
 use super::BragiHandler;
 use serde_json::{self, json};
 
@@ -45,7 +44,7 @@ use serde_json::{self, json};
 /// then openaddress (or bano),
 /// then osm (without any admins)
 pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
     crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
@@ -77,11 +76,11 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
         &es_wrapper,
     );
 
-    melun_test(&bragi);
-    lang_test(&bragi);
+    melun_test(&mut bragi);
+    lang_test(&mut bragi);
 }
 
-fn melun_test(bragi: &BragiHandler) {
+fn melun_test(bragi: &mut BragiHandler) {
     let all_melun = bragi.get("/autocomplete?q=Melun");
     let types = get_types(&all_melun);
     let count = count_types(&types, "city");
@@ -171,7 +170,7 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["city"], "Melun");
 }
 
-fn lang_test(bragi: &BragiHandler) {
+fn lang_test(bragi: &mut BragiHandler) {
     let all_francia = bragi.get("/autocomplete?q=Francia&lang=es");
     let result = all_francia.first().unwrap();
     assert_eq!(result["name"], "Francia");
@@ -217,16 +216,19 @@ fn lang_test(bragi: &BragiHandler) {
 }
 
 pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
+    let mut bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
 
     // the status does not check the ES connexion, so for the status all is good
     let resp = bragi.raw_get("/status").unwrap();
-    assert_eq!(resp.status, Some(iron::status::Status::Ok));
+    assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
     // the autocomplete gives a 503
     let resp = bragi.raw_get("/autocomplete?q=toto").unwrap();
-    assert_eq!(resp.status, Some(iron::status::Status::ServiceUnavailable));
-    let json = to_json(resp);
+    assert_eq!(
+        resp.status(),
+        actix_web::http::StatusCode::SERVICE_UNAVAILABLE
+    );
+    let json = bragi.to_json(resp);
     assert_eq!(json.get("short"), Some(&json!("query error")));
     assert_eq!(json.get("long"), Some(&json!("service unavailable")));
 }

@@ -35,7 +35,7 @@ use super::get_values;
 use super::BragiHandler;
 
 pub fn bragi_three_cities_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // *********************************
     // We load the OSM dataset and three-cities bano dataset
@@ -66,13 +66,13 @@ pub fn bragi_three_cities_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    three_cities_housenumber_zip_code_test(&bragi);
-    three_cities_zip_code_test(&bragi);
-    three_cities_zip_code_address_test(&bragi);
-    three_cities_shape_test(&bragi);
+    three_cities_housenumber_zip_code_test(&mut bragi);
+    three_cities_zip_code_test(&mut bragi);
+    three_cities_zip_code_address_test(&mut bragi);
+    three_cities_shape_test(&mut bragi);
 }
 
-fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
+fn three_cities_housenumber_zip_code_test(bragi: &mut BragiHandler) {
     // we search for a house number with a postcode, we should be able to find
     // the house number with this number in this city
     let all_20 = bragi.get("/autocomplete?q=3 rue 77255");
@@ -97,7 +97,7 @@ fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
     );
 }
 
-fn three_cities_zip_code_test(bragi: &BragiHandler) {
+fn three_cities_zip_code_test(bragi: &mut BragiHandler) {
     // we query with only a zip code, we should be able to find admins,
     // and some street of it (and all on this admin)
     let res = bragi.get("/autocomplete?q=77000");
@@ -110,7 +110,7 @@ fn three_cities_zip_code_test(bragi: &BragiHandler) {
     assert_eq!(count_types(&types, "house"), 0);
 }
 
-fn three_cities_zip_code_address_test(bragi: &BragiHandler) {
+fn three_cities_zip_code_address_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77288 2 Rue de la Reine Blanche");
     assert_eq!(all_20.len(), 1);
     assert!(get_values(&all_20, "postcode")
@@ -132,7 +132,7 @@ fn three_cities_zip_code_address_test(bragi: &BragiHandler) {
     );
 }
 
-fn three_cities_shape_test(bragi: &BragiHandler) {
+fn three_cities_shape_test(bragi: &mut BragiHandler) {
     //      A ---------------------D
     //      |                      |
     //      |        === street    |

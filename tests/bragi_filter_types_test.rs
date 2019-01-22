@@ -28,15 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use iron_test;
-
 use super::get_values;
 use super::BragiHandler;
-use super::{count_types, get_types, get_value, to_json};
-use rustless::server::status::StatusCode::{BadRequest, NotFound};
+use super::{count_types, get_types, get_value};
+use actix_web::http::StatusCode;
 
 pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
     // we the OSM dataset, three-cities bano dataset and a stop file
@@ -80,22 +78,22 @@ pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    no_type_no_dataset_test(&bragi);
-    type_stop_area_no_dataset_test(&bragi);
-    type_poi_and_dataset_test(&bragi);
-    type_poi_and_city_no_dataset_test(&bragi);
-    type_poi_and_city_with_percent_encoding_no_dataset_test(&bragi);
-    type_stop_area_dataset_test(&bragi);
-    unvalid_type_test(&bragi);
-    addr_by_id_test(&bragi);
-    admin_by_id_test(&bragi);
-    street_by_id_test(&bragi);
-    stop_by_id_test(&bragi);
-    stop_area_that_does_not_exists(&bragi);
-    stop_area_invalid_index(&bragi);
+    no_type_no_dataset_test(&mut bragi);
+    type_stop_area_no_dataset_test(&mut bragi);
+    type_poi_and_dataset_test(&mut bragi);
+    type_poi_and_city_no_dataset_test(&mut bragi);
+    type_poi_and_city_with_percent_encoding_no_dataset_test(&mut bragi);
+    type_stop_area_dataset_test(&mut bragi);
+    unvalid_type_test(&mut bragi);
+    addr_by_id_test(&mut bragi);
+    admin_by_id_test(&mut bragi);
+    street_by_id_test(&mut bragi);
+    stop_by_id_test(&mut bragi);
+    stop_area_that_does_not_exists(&mut bragi);
+    stop_area_invalid_index(&mut bragi);
 }
 
-fn no_type_no_dataset_test(bragi: &BragiHandler) {
+fn no_type_no_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should not find any stops
     let response = bragi.get("/autocomplete?q=Parking vélo Saint-Martin");
     let types = get_types(&response);
@@ -103,14 +101,14 @@ fn no_type_no_dataset_test(bragi: &BragiHandler) {
     assert_eq!(count, 0);
 }
 
-fn type_stop_area_no_dataset_test(bragi: &BragiHandler) {
+fn type_stop_area_no_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should return an empty response
     let response =
         bragi.get("/autocomplete?q=Parking vélo Saint-Martin&type[]=public_transport:stop_area");
     assert!(response.is_empty());
 }
 
-fn type_poi_and_dataset_test(bragi: &BragiHandler) {
+fn type_poi_and_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should only find pois
     let response =
         bragi.get("/autocomplete?q=Parking vélo Saint-Martin&pt_dataset=dataset1&type[]=poi");
@@ -125,7 +123,7 @@ fn type_poi_and_dataset_test(bragi: &BragiHandler) {
     assert_eq!(get_value(poi, "name"), "Parking vélo");
 }
 
-fn type_poi_and_city_no_dataset_test(bragi: &BragiHandler) {
+fn type_poi_and_city_no_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should only find pois and cities
     let response = bragi.get("/autocomplete?q=melun&type[]=poi&type[]=city");
     let types = get_types(&response);
@@ -136,7 +134,7 @@ fn type_poi_and_city_no_dataset_test(bragi: &BragiHandler) {
     assert!(count_types(&types, "poi") > 0);
 }
 
-fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &BragiHandler) {
+fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &mut BragiHandler) {
     // Same test as before but with percent encoded type param
     let response = bragi.get("/autocomplete?q=melun&type%5B%5D=poi&type%5B%5D=city");
     let types = get_types(&response);
@@ -147,7 +145,7 @@ fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &BragiHandler)
     assert!(count_types(&types, "poi") > 0);
 }
 
-fn type_stop_area_dataset_test(bragi: &BragiHandler) {
+fn type_stop_area_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should only find stop areas
     let response = bragi.get(
         "/autocomplete?q=Vaux-le-Pénil&pt_dataset=dataset1&type[]=public_transport:\
@@ -161,20 +159,21 @@ fn type_stop_area_dataset_test(bragi: &BragiHandler) {
     assert_eq!(count_types(&types, "poi"), 0);
 }
 
-fn unvalid_type_test(bragi: &BragiHandler) {
+fn unvalid_type_test(bragi: &mut BragiHandler) {
     let response = bragi.raw_get("/autocomplete?q=melun&type[]=unvalid");
-    assert!(response.is_err());
+    unimplemented!()
+    // assert!(response.is_err());
 
-    let iron_error = response.unwrap_err();
-    assert_eq!(iron_error.response.status.unwrap(), BadRequest);
+    // let error = response.unwrap_err();
+    // assert_eq!(error.response.status.unwrap(), StatusCode::BAD_REQUEST);
 
-    let json = to_json(iron_error.response);
-    let error_msg = json.pointer("/long").unwrap().as_str().unwrap();
+    // let json = to_json(error.response);
+    // let error_msg = json.pointer("/long").unwrap().as_str().unwrap();
 
-    assert!(error_msg.contains("unvalid is not a valid type"))
+    // assert!(error_msg.contains("unvalid is not a valid type"))
 }
 
-fn admin_by_id_test(bragi: &BragiHandler) {
+fn admin_by_id_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/features/admin:fr:77288");
     assert_eq!(all_20.len(), 1);
     let types = get_types(&all_20);
@@ -184,7 +183,7 @@ fn admin_by_id_test(bragi: &BragiHandler) {
     assert_eq!(get_values(&all_20, "id"), vec!["admin:fr:77288"]);
 }
 
-fn street_by_id_test(bragi: &BragiHandler) {
+fn street_by_id_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/features/street:osm:way:161162362");
     assert_eq!(all_20.len(), 1);
     let types = get_types(&all_20);
@@ -195,7 +194,7 @@ fn street_by_id_test(bragi: &BragiHandler) {
     assert_eq!(get_values(&all_20, "id"), vec!["street:osm:way:161162362"]);
 }
 
-fn addr_by_id_test(bragi: &BragiHandler) {
+fn addr_by_id_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/features/addr:2.68385;48.50539");
     assert_eq!(all_20.len(), 1);
     let types = get_types(&all_20);
@@ -204,7 +203,7 @@ fn addr_by_id_test(bragi: &BragiHandler) {
     assert_eq!(get_values(&all_20, "id"), vec!["addr:2.68385;48.50539"]);
 }
 
-fn stop_by_id_test(bragi: &BragiHandler) {
+fn stop_by_id_test(bragi: &mut BragiHandler) {
     // search with id
     let response = bragi.get("/features/stop_area:SA:second_station?pt_dataset=dataset1");
     assert_eq!(response.len(), 1);
@@ -212,19 +211,20 @@ fn stop_by_id_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
 }
 
-fn stop_area_that_does_not_exists(bragi: &BragiHandler) {
+fn stop_area_that_does_not_exists(bragi: &mut BragiHandler) {
     // search with id
     let response = bragi
         .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1")
         .unwrap();
 
-    assert_eq!(response.status, Some(NotFound));
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    unimplemented!()
 
-    let result_body = iron_test::response::extract_body_to_string(response);
-    assert!(result_body.contains("Unable to find object"));
+    // let result_body = iron_test::response::extract_body_to_string(response);
+    // assert!(result_body.contains("Unable to find object"));
 }
 
-fn stop_area_invalid_index(bragi: &BragiHandler) {
+fn stop_area_invalid_index(bragi: &mut BragiHandler) {
     // if the index does not exists, we get a 404 with "Unable to find object" too
     // it's not trivial to get a better error than a not found object (like a 'not found dataset' error)
     // because the data might just not have been imported yet
@@ -232,8 +232,9 @@ fn stop_area_invalid_index(bragi: &BragiHandler) {
         .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=invalid_dataset")
         .unwrap();
 
-    assert_eq!(response.status, Some(NotFound));
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    unimplemented!()
 
-    let result_body = iron_test::response::extract_body_to_string(response);
-    assert!(result_body.contains("Unable to find object"));
+    // let result_body = iron_test::response::extract_body_to_string(response);
+    // assert!(result_body.contains("Unable to find object"));
 }
