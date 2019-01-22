@@ -73,6 +73,8 @@ mod model;
 mod params;
 pub mod query;
 use logger::Logger;
+mod routes;
+pub mod server;
 
 lazy_static! {
     static ref BRAGI_NB_THREADS: String = (8 * ::num_cpus::get()).to_string();
@@ -103,6 +105,21 @@ pub struct Args {
     /// This timeout is both a network timeout and a timeout given to ES.
     #[structopt(short = "e", long = "max-es-timeout", env = "BRAGI_MAX_ES_TIMEOUT")]
     max_es_timeout: Option<u64>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Context {
+    pub es_cnx_string: String, //TODO create a rs-es client
+    pub max_es_timeout: Option<time::Duration>,
+}
+
+impl From<&Args> for Context {
+    fn from(args: &Args) -> Self {
+        Self {
+            es_cnx_string: args.connection_string.clone(),
+            max_es_timeout: args.max_es_timeout.map(time::Duration::from_millis),
+        }
+    }
 }
 
 pub fn runserver() {
