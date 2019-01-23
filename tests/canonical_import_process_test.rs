@@ -50,6 +50,8 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
             "--input=./tests/fixtures/cosmogony.json".into(),
+            "--lang=fr".into(),
+            "--lang=es".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
@@ -76,6 +78,7 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
     );
 
     melun_test(&bragi);
+    lang_test(&bragi);
 }
 
 fn melun_test(bragi: &BragiHandler) {
@@ -162,6 +165,28 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["street"], "Rue de la Reine Blanche");
     assert_eq!(poi_addr["postcode"], "77288");
     assert_eq!(poi_addr["city"], "Melun");
+}
+
+fn lang_test(bragi: &BragiHandler) {
+    let all_francia = bragi.get("/autocomplete?q=Francia&lang=es");
+    let result = all_francia.first().unwrap();
+    assert_eq!(result["name"], "Francia");
+    assert_eq!(result["type"], "country");
+    assert_eq!(result["label"], "Francia");
+
+    let all_melun = bragi.get("/autocomplete?q=Melun&lang=es");
+    let result = all_melun.first().unwrap();
+    assert_eq!(result["name"], "Melun");
+    assert_eq!(result["type"], "city");
+    assert_eq!(
+        result["label"],
+        "Melun (77000-CP77001), Sena y Marne, Francia"
+    );
+
+    // Multiple 'lang' causes 400
+    let raw = bragi.raw_get("/autocomplete?q=Melun&lang=es&lang=fr");
+    let resp = raw.unwrap_err().response;
+    assert_eq!(resp.status, Some(iron::status::Status::BadRequest));
 }
 
 pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {

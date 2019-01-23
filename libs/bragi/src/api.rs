@@ -273,7 +273,8 @@ impl ApiEndPoint {
                         .get_address(&coord, timeout)
                         .map_err(model::BragiError::from);
 
-                    let response = model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, None);
+                    let response =
+                        model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, None);
                     render(client, response)
                 })
             });
@@ -316,6 +317,7 @@ impl ApiEndPoint {
                     shape_param(params);
                     types_param(params);
                     timeout_param(params);
+                    params.opt_typed("lang", json_dsl::string());
                 });
 
                 let cnx = self.es_cnx_string.clone();
@@ -353,7 +355,12 @@ impl ApiEndPoint {
                         ));
                     }
                     let types = get_param_array(params, "type");
-                    let langs = get_param_array(params, "lang");
+                    let langs = params
+                        .find("lang")
+                        .and_then(|val| val.as_str())
+                        .map(|val| vec![val])
+                        .unwrap_or_else(|| vec![]);
+
                     let timeout = parse_timeout(params, default_timeout);
                     let model_autocomplete = query::autocomplete(
                         &q,
@@ -369,7 +376,8 @@ impl ApiEndPoint {
                         timeout,
                     );
                     let lang = langs.first().map(|s| s.clone());
-                    let response = model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
+                    let response =
+                        model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
                     render(client, response)
                 })
             });
@@ -381,6 +389,7 @@ impl ApiEndPoint {
                     coord_param(params, true);
                     types_param(params);
                     timeout_param(params);
+                    params.opt_typed("lang", json_dsl::string());
                 });
                 let cnx = self.es_cnx_string.clone();
                 let default_timeout = self.max_es_timeout;
@@ -414,8 +423,11 @@ impl ApiEndPoint {
                     });
 
                     let types = get_param_array(params, "type");
-
-                    let langs = get_param_array(params, "lang");
+                    let langs = params
+                        .find("lang")
+                        .and_then(|val| val.as_str())
+                        .map(|val| vec![val])
+                        .unwrap_or_else(|| vec![]);
 
                     let timeout = parse_timeout(params, default_timeout);
                     let model_autocomplete = query::autocomplete(
@@ -433,7 +445,8 @@ impl ApiEndPoint {
                     );
 
                     let lang = langs.first().map(|s| s.clone());
-                    let mut response = model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
+                    let mut response =
+                        model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
 
                     // Optional : add distance for each feature (in meters)
                     use crate::model::v1::AutocompleteResponse::Autocomplete;

@@ -94,6 +94,7 @@ pub struct GeocodingResponse {
     // pub state: Option<String>,
     // pub country: Option<String>,
     // pub geohash: Option<String>,
+    #[serde(serialize_with = "serialize_administrative_regions")]
     pub administrative_regions: Vec<Arc<mimir::Admin>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
@@ -171,11 +172,11 @@ trait FromWithLang<T> {
 impl FromWithLang<mimir::Admin> for GeocodingResponse {
     fn from_with_lang(other: mimir::Admin, lang: Option<&str>) -> GeocodingResponse {
         let (name, label) = if let Some(code) = lang {
-            (other.names.get(code)
-                .unwrap_or(&other.name),
-            other.labels.get(code).unwrap_or(&other.label))
-        }
-        else {
+            (
+                other.names.get(code).unwrap_or(&other.name),
+                other.labels.get(code).unwrap_or(&other.label),
+            )
+        } else {
             (other.name.as_ref(), other.label.as_ref())
         };
 
@@ -223,6 +224,27 @@ fn get_citycode(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.insee.clone())
+}
+
+fn serialize_administrative_regions<'a, S>(
+    admins: &'a Vec<Arc<mimir::Admin>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    use serde::ser::SerializeSeq;
+    let mut seq = serializer.serialize_seq(Some(admins.len()))?;
+    for a in admins {
+        if let Some(mut json_value) = serde_json::to_value(a).ok() {
+            if let Some(json_map) = json_value.as_object_mut() {
+                json_map.remove("labels");
+                json_map.remove("names");
+                seq.serialize_element(json_map)?;
+            }
+        }
+    }
+    seq.end()
 }
 
 impl From<mimir::Street> for GeocodingResponse {
@@ -384,14 +406,17 @@ impl FromWithLang<Vec<mimir::Place>> for Autocomplete {
     fn from_with_lang(places: Vec<mimir::Place>, lang: Option<&str>) -> Autocomplete {
         Autocomplete::new(
             "".to_string(),
-            places.into_iter().map(|p| Feature::from_with_lang(p, lang)).collect(),
+            places
+                .into_iter()
+                .map(|p| Feature::from_with_lang(p, lang))
+                .collect(),
         )
     }
 }
 
 pub mod v1 {
-    use crate::model::FromWithLang;
     use super::BragiError;
+    use crate::model::FromWithLang;
     use iron;
     use mimir;
     use rs_es::error::EsError;
@@ -468,9 +493,14 @@ pub mod v1 {
     }
 
     impl AutocompleteResponse {
-        pub fn from_with_lang(r: Result<Vec<mimir::Place>, BragiError>, lang: Option<&str>) -> AutocompleteResponse {
+        pub fn from_with_lang(
+            r: Result<Vec<mimir::Place>, BragiError>,
+            lang: Option<&str>,
+        ) -> AutocompleteResponse {
             match r {
-                Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from_with_lang(places, lang)),
+                Ok(places) => AutocompleteResponse::Autocomplete(
+                    super::Autocomplete::from_with_lang(places, lang),
+                ),
                 Err(e) => {
                     let (long_error, status) = match &e {
                         BragiError::ObjectNotFound | BragiError::IndexNotFound => {

@@ -34,14 +34,14 @@ use mimir::rubber::{collect, get_indexes};
 use prometheus;
 use rs_es;
 use rs_es::error::EsError;
+use rs_es::query::compound::BoostMode;
 use rs_es::query::Query;
 use rs_es::units as rs_u;
-use rs_es::query::compound::BoostMode;
 use serde;
 use serde_json;
 use std::fmt;
-use std::time;
 use std::iter;
+use std::time;
 
 use navitia_model::objects::Coord;
 
@@ -138,7 +138,7 @@ fn build_query<'a>(
     shape: Option<Vec<rs_es::units::Location>>,
     pt_datasets: &[&str],
     all_data: bool,
-    langs: &'a[&'a str],
+    langs: &'a [&'a str],
 ) -> Query {
     use rs_es::query::functions::Function;
 
@@ -163,25 +163,34 @@ fn build_query<'a>(
     let format_labels_field = |lang| format!("labels.{}", lang);
     let format_labels_prefix_field = |lang| format!("labels.{}.prefix", lang);
 
-    let build_multi_match = |default_field: &str, lang_field_formatter: &Fn(&'a &'a str) -> String| {
-        let fields: Vec<String> = iter::once(default_field.into())
-            .chain(langs.iter().map(lang_field_formatter))
-            .collect();
-        Query::build_multi_match(fields, q)
-    };
+    let build_multi_match =
+        |default_field: &str, lang_field_formatter: &Fn(&'a &'a str) -> String| {
+            let fields: Vec<String> = iter::once(default_field.into())
+                .chain(langs.iter().map(lang_field_formatter))
+                .collect();
+            Query::build_multi_match(fields, q)
+        };
 
     // Priorization by query string
     let mut string_should = vec![
-        build_multi_match("name", &format_names_field).with_boost(1.8).build(),
-        build_multi_match("label", &format_labels_field).with_boost(0.6).build(),
-        build_multi_match("label.prefix", &format_labels_prefix_field).with_boost(0.6).build(),
+        build_multi_match("name", &format_names_field)
+            .with_boost(1.8)
+            .build(),
+        build_multi_match("label", &format_labels_field)
+            .with_boost(0.6)
+            .build(),
+        build_multi_match("label.prefix", &format_labels_prefix_field)
+            .with_boost(0.6)
+            .build(),
         Query::build_match("zip_codes", q).with_boost(1.).build(),
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
         string_should.push(
             build_multi_match("label.ngram", &format_labels_ngram_field)
-            .with_boost(1.).build());
+                .with_boost(1.)
+                .build(),
+        );
     }
     let string_query = Query::build_bool()
         .with_should(string_should)
@@ -194,9 +203,9 @@ fn build_query<'a>(
         &None => Query::build_function_score()
             .with_function(
                 Function::build_field_value_factor("weight")
-                .with_factor(0.1)
-                .with_missing(0.)
-                .build()
+                    .with_factor(0.1)
+                    .with_missing(0.)
+                    .build(),
             )
             .with_boost_mode(BoostMode::Replace)
             .build(),
