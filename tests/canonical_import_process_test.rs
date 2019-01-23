@@ -28,8 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use iron;
-
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
@@ -78,6 +76,8 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
 
     melun_test(&mut bragi);
     lang_test(&mut bragi);
+    invalid_parameter_autocomplete_test(&mut bragi);
+    wrong_shape_test(&mut bragi);
 }
 
 fn melun_test(bragi: &mut BragiHandler) {
@@ -223,12 +223,53 @@ pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
     assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
     // the autocomplete gives a 503
-    let resp = bragi.raw_get("/autocomplete?q=toto").unwrap();
+    let r = bragi.get_unchecked_json("/autocomplete?q=toto");
+
     assert_eq!(
-        resp.status(),
-        actix_web::http::StatusCode::SERVICE_UNAVAILABLE
+        r,
+        (
+            actix_web::http::StatusCode::SERVICE_UNAVAILABLE,
+            json!({
+                "short": "query error",
+                "long": "service unavailable",
+            })
+        )
     );
-    let json = bragi.to_json(resp);
-    assert_eq!(json.get("short"), Some(&json!("query error")));
-    assert_eq!(json.get("long"), Some(&json!("service unavailable")));
+}
+
+fn invalid_parameter_autocomplete_test(bragi: &mut BragiHandler) {
+    // if a param is not correct, we should have a nice error
+    let r = bragi.get_unchecked_json("/autocomplete?limit=limit_should_be_an_int");
+
+    assert_eq!(
+        r,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "query error",
+                "long": "invalid argument: invalid digit found in string", //TODO better errors
+            })
+        )
+    );
+}
+
+fn wrong_shape_test(bragi: &mut BragiHandler) {
+    // The shape should be a valid geojson object
+    // there, the shape has no 'property' field
+    let shape = r#"{"shape":{"type":"Feature","geometry":{"type":"Polygon",
+        "coordinates":[[[2.376488, 48.846431],
+        [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}}"#;
+    let r = bragi
+        .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
+        .unwrap();
+
+    assert_eq!(r.status(), actix_web::http::StatusCode::BAD_REQUEST);
+
+    assert_eq!(
+        bragi.to_json(r),
+        json!({
+            "short": "query error",
+            "long": "invalid json: expected a GeoJSON 'property' at line 3 column 79",
+        })
+    );
 }

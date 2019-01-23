@@ -25,6 +25,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+#![recursion_limit = "128"]
 
 #[macro_use]
 extern crate slog;
@@ -52,7 +53,7 @@ mod osm2mimir_test;
 mod rubber_test;
 mod stops2mimir_test;
 
-use actix_web::client::{ClientResponse, SendRequestError};
+use actix_web::client::ClientResponse;
 use docker_wrapper::*;
 use failure::{format_err, Error};
 use hyper::client::response::Response;
@@ -241,8 +242,6 @@ impl BragiHandler {
             .execute(
                 self.app
                     .client(actix_web::http::Method::GET, q)
-                    // .get()
-                    // .uri(q)
                     .finish()
                     .map_err(|e| format_err!("invalid query: {}", e))?
                     .send(),
@@ -262,25 +261,31 @@ impl BragiHandler {
         self.to_json(r)
     }
 
-    pub fn raw_post_shape(&self, q: &str, shape: &str) -> Result<ClientResponse, Error> {
-        unimplemented!()
-        // let mut header = iron::Headers::new();
-        // let mime: mime::Mime = "application/json".parse().unwrap();
-        // header.set(iron::headers::ContentType(mime));
-
-        // iron_test::request::post(
-        //     &format!("http://localhost:3000{}", q),
-        //     header,
-        //     shape,
-        //     &self.app,
-        // )
+    pub fn get_unchecked_json(&mut self, q: &str) -> (actix_web::http::StatusCode, Value) {
+        let r = self.raw_get(q).unwrap();
+        (r.status(), self.to_json(r))
     }
 
-    pub fn post_shape(&mut self, q: &str, shape: &str) -> Vec<Map<String, Value>> {
-        self.get_results(
-            self.raw_post_shape(q, shape).unwrap(),
-            Some("/properties/geocoding".to_string()),
-        )
+    pub fn raw_post_shape(
+        &mut self,
+        q: &str,
+        shape: &'static str,
+    ) -> Result<ClientResponse, Error> {
+        self.app
+            .execute(
+                self.app
+                    .client(actix_web::http::Method::POST, q)
+                    .header(actix_web::http::header::CONTENT_TYPE, "application/json")
+                    .body(shape)
+                    .map_err(|e| format_err!("invalid query: {}", e))?
+                    .send(),
+            )
+            .map_err(|e| format_err!("impossible to query bragi: {}", e))
+    }
+
+    pub fn post_shape(&mut self, q: &str, shape: &'static str) -> Vec<Map<String, Value>> {
+        let r = self.raw_post_shape(q, shape).unwrap();
+        self.get_results(r, Some("/properties/geocoding".to_string()))
     }
 
     pub fn to_json(&mut self, r: ClientResponse) -> Value {
@@ -316,12 +321,6 @@ impl BragiHandler {
             .collect()
     }
 }
-
-// pub fn to_json(r: ClientResponse) -> Value {
-//     let body = std::str::from_utf8(&r).unwrap();
-
-//     serde_json::from_str(body).unwrap()
-// }
 
 pub fn get_values<'a>(r: &'a [Map<String, Value>], val: &'a str) -> Vec<&'a str> {
     r.iter().map(|e| get_value(e, val)).collect()
@@ -380,7 +379,7 @@ fn all_tests() {
     let docker_wrapper = DockerWrapper::new().unwrap();
 
     // we call all tests here
-    bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
+    // bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_test::osm2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     stops2mimir_test::stops2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(ElasticSearchWrapper::new(

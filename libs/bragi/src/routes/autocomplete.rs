@@ -1,6 +1,8 @@
+use crate::model::v1::AutocompleteResponse;
+use crate::model::BragiError;
 use crate::{model, query, Context};
-use actix_web::{Json, Query, Result, State};
-use derivative::Derivative;
+use actix_web::{Json, Query, State};
+use geojson::GeoJson;
 use navitia_model::objects::Coord;
 use std::time::Duration;
 
@@ -33,8 +35,11 @@ impl Type {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Derivative)]
-#[derivative(Default)]
+fn default_limit() -> u64 {
+    10u64
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Params {
     q: String,
     #[serde(rename = "pt_dataset[]", default)]
@@ -42,8 +47,7 @@ pub struct Params {
     #[serde(rename = "_all_data", default)]
     all_data: bool,
     //Note: for the moment we can't use an external struct and flatten it (https://github.com/nox/serde_urlencoded/issues/33)
-    #[serde(default)]
-    #[derivative(Default(value = "10u64"))]
+    #[serde(default = "default_limit")]
     limit: u64,
     #[serde(default)]
     offset: u64,
@@ -59,12 +63,11 @@ impl Params {
     }
 }
 
-pub fn autocomplete(
-    params: Query<Params>,
-    state: State<Context>,
-) -> Result<Json<model::v1::AutocompleteResponse>> {
-    println!("{:?}", *params);
-    let res = query::autocomplete(
+pub fn call_autocomplete(
+    params: &Params,
+    state: &Context,
+    shape: Option<Vec<(f64, f64)>>,
+) -> Result<Json<AutocompleteResponse>, model::BragiError> {let res = query::autocomplete(
         &params.q,
         &params
             .pt_datasets
@@ -76,9 +79,66 @@ pub fn autocomplete(
         params.limit,
         params.coord,
         &state.es_cnx_string,
-        None,
+        shape,
         &params.types_as_str(),
         params.timeout,
     );
-    Ok(Json(res.into()))
+    res.map(AutocompleteResponse::from).map(Json)
+}
+
+pub fn autocomplete(
+    params: Query<Params>,
+    state: State<Context>,
+) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+    println!("{:?}", *params);
+    call_autocomplete(&*params, &*state, None)
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct JsonParams {
+    shape: GeoJson,
+}
+
+impl JsonParams {
+    fn get_es_shape(&self) -> Result<Vec<(f64, f64)>, model::BragiError> {
+        match &self.shape {
+            GeoJson::Feature(f) => {
+                match &f.geometry {
+                    Some(geom) => {
+                        match &geom.value {
+                            geojson::Value::Polygon(p) => {
+                                match p.as_slice() {
+                                    [p] => {
+                                        dbg!(Ok(p
+                                        .iter()
+                                        .filter_map(|c: &Vec<f64>| c.get(0..=1))
+                                        .map(|c| (c[1], c[0])) // Note: the coord are inverted for ES
+                                        .collect()))
+                                    },
+                                    _ => Err(BragiError::InvalidShape(
+                                        "only polygon without holes are supported",
+                                    )), //only polygon without holes are supported by elasticsearch
+                                }
+                            }
+                            _ => Err(BragiError::InvalidShape("only polygon are supported")),
+                        }
+                    }
+                    None => Err(BragiError::InvalidShape("no geometry")),
+                }
+            }
+            _ => Err(BragiError::InvalidShape("only 'feature' is supported")),
+        }
+    }
+}
+
+pub fn post_autocomplete(
+    params: Query<Params>,
+    state: State<Context>,
+    json_params: Json<JsonParams>,
+) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+    println!(
+        "POST autocomplete {:?} -------- {:?}",
+        *params, *json_params
+    );
+    call_autocomplete(&*params, &*state, Some(json_params.get_es_shape()?))
 }

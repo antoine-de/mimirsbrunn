@@ -28,7 +28,6 @@ num_cpus = "1.8"
 cosmogony = "0.3.3"
 actix-web = "0.7"
 actix = "0.7"
-derivative = "*"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"

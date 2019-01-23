@@ -64,24 +64,44 @@ fn status_test(bragi: &mut BragiHandler) {
 }
 
 fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
-    unimplemented!()
-    // let resp = bragi
-    //     .raw_get("/autocomplete?q=15 Rue Hector Malot, (Paris)")
-    //     .unwrap();
-    // let result_body = iron_test::response::extract_body_to_string(resp);
-    // let result = concat!(
-    //     r#"{"type":"FeatureCollection","#,
-    //     r#""geocoding":{"version":"0.1.0","query":""},"#,
-    //     r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-    //     r#"[2.376379,48.846495],"type":"Point"},"#,
-    //     r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
-    //     r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
-    //     r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-    //     r#""street":"Rue Hector Malot","postcode":"75012","#,
-    //     r#""city":null,"citycode":null,"#,
-    //     r#""administrative_regions":[]}}}]}"#
-    // );
-    // assert_eq!(result_body, result);
+    assert_eq!(
+        bragi.get_json("/autocomplete?q=15 Rue Hector Malot, (Paris)"),
+        json!(
+        {
+            "features": [
+                {
+                    "geometry": {
+                        "coordinates": [
+                            2.376379,
+                            48.846495
+                        ],
+                        "type": "Point"
+                    },
+                    "properties": {
+                        "geocoding": {
+                            "administrative_regions": [],
+                            "city": null,
+                            "citycode": null,
+                            "housenumber": "15",
+                            "id": "addr:2.376379;48.846495",
+                            "label": "15 Rue Hector Malot (Paris)",
+                            "name": "15 Rue Hector Malot",
+                            "postcode": "75012",
+                            "street": "Rue Hector Malot",
+                            "type": "house"
+                        }
+                    },
+                    "type": "Feature"
+                }
+            ],
+            "geocoding": {
+                "query": "",
+                "version": "0.1.0"
+            },
+            "type": "FeatureCollection"
+        }
+        )
+    );
 }
 
 // A(48.846431 2.376488)
@@ -100,40 +120,74 @@ fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
 //      |                      |
 //      B ---------------------C
 fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
-    unimplemented!()
     // // Search with shape where house number in shape
-    // let shape = r#"{"shape":{"type":"Feature","geometry":{"type":"Polygon",
-    //     "coordinates":[[[2.376488, 48.846431],
-    //     [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}}"#;
-    // let resp = bragi
-    //     .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
-    //     .unwrap();
+    let shape = r#"{"shape":{"type":"Feature","properties":{},"geometry":{"type":"Polygon",
+        "coordinates":[[[2.376488, 48.846431],
+        [2.376306, 48.846430],[2.376309, 48.846606],[2.376486, 48.846603]]]}}}"#;
+    let r = bragi
+        .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
+        .unwrap();
 
-    // let result_body = iron_test::response::extract_body_to_string(resp);
-    // let result = concat!(
-    //     r#"{"type":"FeatureCollection","#,
-    //     r#""geocoding":{"version":"0.1.0","query":""},"#,
-    //     r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-    //     r#"[2.376379,48.846495],"type":"Point"},"#,
-    //     r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
-    //     r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
-    //     r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-    //     r#""street":"Rue Hector Malot","postcode":"75012","#,
-    //     r#""city":null,"citycode":null,"#,
-    //     r#""administrative_regions":[]}}}]}"#
-    // );
-    // assert_eq!(result_body, result);
+    assert!(r.status().is_success(), "invalid status: {}", r.status());
+    let json_resp = bragi.to_json(r);
 
-    // // Search with shape where house number out of shape
-    // let resp = bragi
-    //     .raw_post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape)
-    //     .unwrap();
-    // let result_body = iron_test::response::extract_body_to_string(resp);
-    // let result = concat!(
-    //     r#"{"type":"FeatureCollection","#,
-    //     r#""geocoding":{"version":"0.1.0","query":""},"features":[]}"#
-    // );
-    // assert_eq!(result_body, result);
+    assert_eq!(
+        json_resp,
+        json!({
+          "type": "FeatureCollection",
+          "geocoding": {
+            "version": "0.1.0",
+            "query": ""
+          },
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "coordinates": [
+                  2.376379,
+                  48.846495
+                ],
+                "type": "Point"
+              },
+              "properties": {
+                "geocoding": {
+                  "id": "addr:2.376379;48.846495",
+                  "type": "house",
+                  "label": "15 Rue Hector Malot (Paris)",
+                  "name": "15 Rue Hector Malot",
+                  "housenumber": "15",
+                  "street": "Rue Hector Malot",
+                  "postcode": "75012",
+                  "city": null,
+                  "citycode": null,
+                  "administrative_regions": []
+                }
+              }
+            }
+          ]
+        }
+        )
+    );
+
+    // Search with shape where house number out of shape
+    let r = bragi
+        .raw_post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape)
+        .unwrap();
+    assert!(r.status().is_success(), "invalid status: {}", r.status());
+    let json_resp = bragi.to_json(r);
+
+    assert_eq!(
+        json_resp,
+        json!({
+          "type": "FeatureCollection",
+          "geocoding": {
+            "version": "0.1.0",
+            "query": ""
+          },
+          "features": []
+        }
+        )
+    )
 }
 
 fn simple_bano_lon_lat_test(bragi: &mut BragiHandler) {

@@ -44,6 +44,33 @@ pub enum BragiError {
     IndexNotFound,
     #[fail(display = "invalid query {}", _0)]
     Es(EsError),
+    #[fail(display = "invalid shape: {}", _0)]
+    InvalidShape(&'static str),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ApiError {
+    pub short: String,
+    pub long: String,
+}
+
+//Q: It would be better to move it to ::v1 as it depends on the api interface
+// how can we do this ?
+impl actix_web::error::ResponseError for BragiError {
+    fn error_response(&self) -> actix_web::HttpResponse {
+        error!("hoooo une erreur: {:?}", self);
+        match *self {
+            BragiError::ObjectNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
+                short: "query error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::InvalidShape(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
+                short: "query error".to_owned(),
+                long: format!("{}", self),
+            }),
+            _ => unimplemented!(),
+        }
+    }
 }
 
 impl From<EsError> for BragiError {
@@ -569,6 +596,7 @@ pub mod v1 {
                                 ),
                             }
                         }
+                        _ => unimplemented!(),
                     };
 
                     AutocompleteResponse::Error(CustomError {
