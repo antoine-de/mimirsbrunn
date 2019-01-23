@@ -52,7 +52,8 @@ pub struct Params {
     #[serde(default)]
     offset: u64,
     timeout: Option<Duration>, //TODO custom default timeout
-    coord: Option<Coord>,
+    lat: Option<f64>,
+    lon: Option<f64>,
     #[serde(rename = "types[]", default)]
     types: Vec<Type>, // TODO make the multiple params work
 }
@@ -61,13 +62,20 @@ impl Params {
     fn types_as_str(&self) -> Vec<&str> {
         self.types.iter().map(Type::as_str).collect()
     }
+    fn coord(&self) -> Option<Coord> {
+        match (self.lon, self.lat) {
+            (Some(lon), Some(lat)) => Some(Coord { lon, lat }),
+            _ => None,
+        }
+    }
 }
 
 pub fn call_autocomplete(
     params: &Params,
     state: &Context,
     shape: Option<Vec<(f64, f64)>>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {let res = query::autocomplete(
+) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+    let res = query::autocomplete(
         &params.q,
         &params
             .pt_datasets
@@ -77,7 +85,7 @@ pub fn call_autocomplete(
         params.all_data,
         params.offset,
         params.limit,
-        params.coord,
+        params.coord(),
         &state.es_cnx_string,
         shape,
         &params.types_as_str(),
@@ -110,11 +118,11 @@ impl JsonParams {
                                 match p.as_slice() {
                                     [p] => {
                                         dbg!(Ok(p
-                                        .iter()
-                                        .filter_map(|c: &Vec<f64>| c.get(0..=1))
-                                        .map(|c| (c[1], c[0])) // Note: the coord are inverted for ES
-                                        .collect()))
-                                    },
+                                            .iter()
+                                            .filter_map(|c: &Vec<f64>| c.get(0..=1))
+                                            .map(|c| (c[1], c[0])) // Note: the coord are inverted for ES
+                                            .collect()))
+                                    }
                                     _ => Err(BragiError::InvalidShape(
                                         "only polygon without holes are supported",
                                     )), //only polygon without holes are supported by elasticsearch
