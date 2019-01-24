@@ -78,6 +78,8 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
     lang_test(&mut bragi);
     invalid_parameter_autocomplete_test(&mut bragi);
     wrong_shape_test(&mut bragi);
+    invalid_type_test(&mut bragi);
+    invalid_route_test(&mut bragi);
 }
 
 fn melun_test(bragi: &mut BragiHandler) {
@@ -263,6 +265,21 @@ fn invalid_type_test(bragi: &mut BragiHandler) {
             json!({
                 "long": "invalid argument: failed with reason: unknown variant `invalid_type`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`",
                 "short": "validation error"
+            })
+        )
+    );
+}
+
+fn invalid_route_test(bragi: &mut BragiHandler) {
+    let r = bragi.get_unchecked_json("/invalid_route");
+
+    assert_eq!(
+        r,
+        (
+            actix_web::http::StatusCode::NOT_FOUND,
+            json!({
+                "long": "route '/autocom' does not exists",
+                "short": "no route"
             })
         )
     );

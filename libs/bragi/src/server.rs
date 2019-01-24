@@ -1,11 +1,15 @@
+use crate::extractors::ActixError;
 use crate::prometheus_middleware;
 use crate::routes::{
     autocomplete, entry_point, features, metrics, post_autocomplete, reverse, status,
 };
 use crate::{Args, Context};
-use actix_web::{http, middleware, server, App};
+use actix_web::{http, middleware, server, App, HttpRequest, Json};
 use structopt::StructOpt;
-use crate::extractors::ActixError;
+
+fn default_404(req: &HttpRequest<Context>) -> Result<Json<()>, ActixError> {
+    Err(ActixError::RouteNotFound(req.path().to_string()))
+}
 
 pub fn create_server(ctx: Context) -> App<Context> {
     App::with_state(ctx)
@@ -19,6 +23,7 @@ pub fn create_server(ctx: Context) -> App<Context> {
         .resource("/", |r| r.f(entry_point))
         .resource("/autocomplete", |r| {
             r.method(http::Method::GET).with(autocomplete);
+
             r.method(http::Method::POST)
                 .with_config(post_autocomplete, |(_, _, json_cfg)| {
                     json_cfg.error_handler(|err, _req| {
@@ -30,6 +35,10 @@ pub fn create_server(ctx: Context) -> App<Context> {
         .resource("/features/{id}", |r| r.with(features))
         .resource("/reverse", |r| r.with(reverse))
         .resource("/metrics", |r| r.f(metrics))
+        .default_resource(|r| {
+            // custom error for 404
+            r.f(default_404)
+        })
 }
 
 pub fn runserver() {

@@ -16,12 +16,13 @@ pub enum ActixError {
     #[fail(display = "invalid json: {}", _0)]
     InvalidJson(String), //TODO: error instead of string ?
     #[fail(display = "invalid argument: {}", _0)]
-    InvalidQueryParam(String), //TODO: error instead of string ?
+    InvalidQueryParam(String),
+    #[fail(display = "route '{}' does not exists", _0)]
+    RouteNotFound(String),
 }
 
 impl actix_web::error::ResponseError for ActixError {
     fn error_response(&self) -> actix_web::HttpResponse {
-        error!("hoooo une erreur actix: {:?}", self);
         match *self {
             ActixError::InvalidJson(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
                 short: "validation error".to_owned(),
@@ -33,6 +34,10 @@ impl actix_web::error::ResponseError for ActixError {
                     long: format!("{}", self),
                 })
             }
+            ActixError::RouteNotFound(_) => actix_web::HttpResponse::NotFound().json(ApiError {
+                short: "no route".to_owned(),
+                long: format!("{}", self),
+            }),
         }
     }
 }
