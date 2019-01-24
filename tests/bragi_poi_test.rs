@@ -150,7 +150,7 @@ fn poi_zip_code_test(bragi: &mut BragiHandler) {
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
                 "short": "validation error",
-                "long": "invalid argument: invalid digit found in string",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
             })
         )
     );
@@ -163,7 +163,7 @@ fn poi_zip_code_test(bragi: &mut BragiHandler) {
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
                 "short": "validation error",
-                "long": "invalid argument: invalid digit found in string",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
             })
         )
     );

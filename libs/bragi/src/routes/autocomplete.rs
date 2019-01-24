@@ -40,8 +40,8 @@ fn default_limit() -> u64 {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Params {
     q: String,
-    #[serde(rename = "pt_dataset[]", default)]
-    pt_datasets: Vec<String>, // TODO make the multiple params work
+    #[serde(default)]
+    pt_dataset: Vec<String>,
     #[serde(rename = "_all_data", default)]
     all_data: bool,
     //Note: for the moment we can't use an external struct and flatten it (https://github.com/nox/serde_urlencoded/issues/33)
@@ -52,8 +52,8 @@ pub struct Params {
     timeout: Option<Duration>, //TODO custom default timeout
     lat: Option<f64>,
     lon: Option<f64>,
-    #[serde(rename = "types[]", default)]
-    types: Vec<Type>, // TODO make the multiple params work
+    #[serde(default)]
+    types: Vec<Type>,
 }
 
 impl Params {
@@ -113,7 +113,7 @@ pub fn call_autocomplete(
     let res = query::autocomplete(
         &params.q,
         &params
-            .pt_datasets
+            .pt_dataset
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>(),

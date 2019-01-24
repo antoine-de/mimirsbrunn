@@ -9,10 +9,9 @@
 use crate::model::ApiError;
 use actix_web::FromRequest;
 use actix_web::HttpRequest;
-use serde_qs::actix::{QsQuery, QsQueryConfig};
 use std::ops::{Deref, DerefMut};
 
-#[derive(Fail, Deserialize, Debug)]
+#[derive(Fail, Debug)]
 pub enum ActixError {
     #[fail(display = "invalid json: {}", _0)]
     InvalidJson(String), //TODO: error instead of string ?
@@ -38,19 +37,19 @@ impl actix_web::error::ResponseError for ActixError {
     }
 }
 
-pub struct BragiQuery<T>(QsQuery<T>);
+pub struct BragiQuery<T>(T);
 
 impl<T> Deref for BragiQuery<T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        &*self.0
+        &self.0
     }
 }
 
 impl<T> DerefMut for BragiQuery<T> {
     fn deref_mut(&mut self) -> &mut T {
-        &mut *self.0
+        &mut self.0
     }
 }
 
@@ -58,13 +57,17 @@ impl<T, S> FromRequest<S> for BragiQuery<T>
 where
     T: serde::de::DeserializeOwned,
 {
-    type Config = QsQueryConfig<S>;
+    type Config = actix_web::dev::QueryConfig<S>;
     type Result = Result<Self, ActixError>;
 
     #[inline]
-    fn from_request(req: &HttpRequest<S>, cfg: &Self::Config) -> Self::Result {
-        QsQuery::from_request(req, cfg)
-            .map(|e| BragiQuery(e))
-            .map_err(|e| ActixError::InvalidQueryParam(format!("{}", e)))
+    fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
+        serde_qs::from_str::<T>(req.query_string())
+            // .map_err(move |e| (*err)(e, &req2))
+            .map_err(|e| {
+                error!("error: {:?}", e);
+                ActixError::InvalidQueryParam(format!("{}", e))
+            })
+            .map(BragiQuery)
     }
 }

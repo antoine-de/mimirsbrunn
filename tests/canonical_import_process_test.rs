@@ -253,6 +253,21 @@ fn invalid_parameter_autocomplete_test(bragi: &mut BragiHandler) {
     );
 }
 
+fn invalid_type_test(bragi: &mut BragiHandler) {
+    let r = bragi.get_unchecked_json("/autocomplete?q=a&types[]=invalid_type");
+
+    assert_eq!(
+        r,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "long": "invalid argument: failed with reason: unknown variant `invalid_type`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`",
+                "short": "validation error"
+            })
+        )
+    );
+}
+
 fn wrong_shape_test(bragi: &mut BragiHandler) {
     // The shape should be a valid geojson object
     // there, the shape has no 'property' field
