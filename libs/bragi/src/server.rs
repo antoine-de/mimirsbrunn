@@ -47,5 +47,6 @@ pub fn runserver() {
     server::new(move || create_server(ctx.clone()))
         .bind(&args.bind)
         .unwrap()
+        .workers(args.nb_threads)
         .run();
 }
