@@ -172,6 +172,8 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         zone_type: Some(ZoneType::City),
         parent_id: None,
         codes: vec![],
+        names: mimir::I18nProperties::default(),
+        labels: mimir::I18nProperties::default(),
     };
 
     // we index our admin
@@ -271,6 +273,8 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         zone_type: Some(ZoneType::City),
         parent_id: None,
         codes: vec![],
+        names: mimir::I18nProperties::default(),
+        labels: mimir::I18nProperties::default(),
     };
 
     // we index our admin

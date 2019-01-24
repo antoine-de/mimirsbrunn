@@ -463,6 +463,12 @@ impl Rubber {
         index: TypedIndex<T>,
     ) -> Result<(), Error> {
         debug!("publishing index");
+
+        // Refresh index before publishing
+        self.es_client
+            .refresh()
+            .with_indexes(&[&index.name])
+            .send()?;
         let last_indexes = self.get_last_index(&index, dataset)?;
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
