@@ -32,6 +32,7 @@ use super::get_values;
 use super::BragiHandler;
 use super::{count_types, get_types, get_value};
 use actix_web::http::StatusCode;
+use serde_json::json;
 
 pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
@@ -160,16 +161,17 @@ fn type_stop_area_dataset_test(bragi: &mut BragiHandler) {
 }
 
 fn unvalid_type_test(bragi: &mut BragiHandler) {
-    let response = bragi.raw_get("/autocomplete?q=melun&type[]=unvalid");
-    unimplemented!()
-    // assert!(response.is_err());
-
-    // let error = response.unwrap_err();
-    // assert_eq!(error.response.status.unwrap(), StatusCode::BAD_REQUEST);
-
-    // let json = to_json(error.response);
-    // let error_msg = json.pointer("/long").unwrap().as_str().unwrap();
-
+    let response = bragi.get_unchecked_json("/autocomplete?q=melun&type[]=unvalid");
+    assert_eq!(
+        response,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "query error",
+                "long": "invalid argument: invalid digit found in string",
+            })
+        )
+    );
     // assert!(error_msg.contains("unvalid is not a valid type"))
 }
 

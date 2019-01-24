@@ -1,6 +1,8 @@
 use crate::model::ApiError;
 use crate::prometheus_middleware;
-use crate::routes::{autocomplete, entry_point, post_autocomplete, status, metrics};
+use crate::routes::{
+    autocomplete, entry_point, features, metrics, post_autocomplete, reverse, status,
+};
 use crate::{Args, Context};
 use actix_web::{http, middleware, server, App};
 use structopt::StructOpt;
@@ -61,9 +63,9 @@ pub fn create_server(ctx: Context) -> App<Context> {
             );
         })
         .resource("/status", |r| r.with(status))
-    // .resource("/features", |r| r.with(features))
-    // .resource("/reverse", |r| r.with(reverse))
-    .resource("/metrics", |r| r.f(metrics))
+        .resource("/features/{id}", |r| r.with(features))
+        .resource("/reverse", |r| r.with(reverse))
+        .resource("/metrics", |r| r.f(metrics))
 }
 
 pub fn runserver() {

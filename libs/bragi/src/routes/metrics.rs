@@ -1,5 +1,5 @@
 use crate::Context;
-use actix_web::{HttpRequest, Responder, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, Responder};
 use prometheus;
 use prometheus::Encoder;
 

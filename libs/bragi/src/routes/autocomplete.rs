@@ -6,9 +6,6 @@ use geojson::GeoJson;
 use navitia_model::objects::Coord;
 use std::time::Duration;
 
-// TODO: pretty errors, async es
-
-// TODO use params::Type
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 enum Type {
     #[serde(rename = "city")]
@@ -70,38 +67,6 @@ impl Params {
     }
 }
 
-pub fn call_autocomplete(
-    params: &Params,
-    state: &Context,
-    shape: Option<Vec<(f64, f64)>>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {
-    let res = query::autocomplete(
-        &params.q,
-        &params
-            .pt_datasets
-            .iter()
-            .map(String::as_str)
-            .collect::<Vec<_>>(),
-        params.all_data,
-        params.offset,
-        params.limit,
-        params.coord(),
-        &state.es_cnx_string,
-        shape,
-        &params.types_as_str(),
-        params.timeout,
-    );
-    res.map(AutocompleteResponse::from).map(Json)
-}
-
-pub fn autocomplete(
-    params: Query<Params>,
-    state: State<Context>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {
-    println!("{:?}", *params);
-    call_autocomplete(&*params, &*state, None)
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JsonParams {
     shape: GeoJson,
@@ -137,6 +102,38 @@ impl JsonParams {
             _ => Err(BragiError::InvalidShape("only 'feature' is supported")),
         }
     }
+}
+
+pub fn call_autocomplete(
+    params: &Params,
+    state: &Context,
+    shape: Option<Vec<(f64, f64)>>,
+) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+    let res = query::autocomplete(
+        &params.q,
+        &params
+            .pt_datasets
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        params.all_data,
+        params.offset,
+        params.limit,
+        params.coord(),
+        &state.es_cnx_string,
+        shape,
+        &params.types_as_str(),
+        params.timeout,
+    );
+    res.map(AutocompleteResponse::from).map(Json)
+}
+
+pub fn autocomplete(
+    params: Query<Params>,
+    state: State<Context>,
+) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+    println!("{:?}", *params);
+    call_autocomplete(&*params, &*state, None)
 }
 
 pub fn post_autocomplete(

@@ -140,7 +140,7 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
     //      |                      |
     //      B ---------------------C
     // Search with shape where street in shape
-    let shape = r#"{"shape": {"type": "Feature", "geometry":{"type":"Polygon",
+    let shape = r#"{"shape": {"type": "Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates": [[[2.656546, 48.537227],
         [2.657608, 48.537244],[2.656476, 48.536545],[2.657340, 48.536602]]]}}}"#;
 
@@ -158,7 +158,7 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
     //      |                      |
     //      B ---------------------C
     // Search with shape where street outside shape
-    let shape = r#"{"shape": {"type": "Feature", "geometry":{"type":"Polygon",
+    let shape = r#"{"shape": {"type": "Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates":[[[2.656546, 68.537227],
         [2.657608, 68.537244],[2.656476, 68.536545],[2.657340, 68.536602]]]}}}"#;
 
@@ -172,7 +172,7 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
     //      |                      |
     //      B ---------------------C
     // Search with shape where admin in shape
-    let shape = r#"{"shape": {"type": "Feature", "geometry":{"type":"Polygon",
+    let shape = r#"{"shape": {"type": "Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates":[[[2.656546, 48.538927]
         ,[2.670816, 48.538927],[2.676476, 48.546545],[2.656546, 48.546545]]]}}}"#;
 
@@ -187,7 +187,7 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
     //      |                      |
     //      B ---------------------C
     // Search with shape where admin outside shape
-    let shape = r#"{"shape": {"type": "Feature", "geometry":{"type":"Polygon",
+    let shape = r#"{"shape": {"type": "Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates":[[[2.656546, 66.538927],
         [2.670816, 68.538927],[2.676476, 68.546545],[2.656546, 68.546545]]]}}}"#;
 

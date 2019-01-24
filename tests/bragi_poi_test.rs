@@ -143,12 +143,30 @@ fn poi_zip_code_test(bragi: &mut BragiHandler) {
     assert_eq!(count_types(&types, "street"), 8);
 
     // search by zip code and limit is string type
-    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=ABCD");
-    assert!(geocodings.is_err(), true);
+    let geocodings = bragi.get_unchecked_json("/autocomplete?q=77000&limit=ABCD");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: invalid digit found in string",
+            })
+        )
+    );
 
     // search by zip code and limit < 0
-    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=-1");
-    assert!(geocodings.is_err(), true);
+    let geocodings = bragi.get_unchecked_json("/autocomplete?q=77000&limit=-1");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: invalid digit found in string",
+            })
+        )
+    );
 
     // search by zip code and limit and offset
     let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=0");

@@ -58,14 +58,13 @@ pub struct ApiError {
 // how can we do this ?
 impl actix_web::error::ResponseError for BragiError {
     fn error_response(&self) -> actix_web::HttpResponse {
-        error!("hoooo une erreur: {:?}", self);
         match *self {
             BragiError::ObjectNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
                 short: "query error".to_owned(),
                 long: format!("{}", self),
             }),
             BragiError::InvalidShape(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
-                short: "query error".to_owned(),
+                short: "validation error".to_owned(),
                 long: format!("{}", self),
             }),
             _ => unimplemented!(),
