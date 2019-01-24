@@ -40,6 +40,8 @@ use std::sync::Arc;
 pub enum BragiError {
     #[fail(display = "Unable to find object")]
     ObjectNotFound,
+    #[fail(display = "Invalid parameter: {}", _0)]
+    InvalidParam(&'static str),
     #[fail(display = "Impossible to find object")]
     IndexNotFound,
     #[fail(display = "invalid query {}", _0)]
@@ -54,7 +56,7 @@ pub struct ApiError {
     pub long: String,
 }
 
-//Q: It would be better to move it to ::v1 as it depends on the api interface
+// Q: It would be better to move it to ::v1 as it depends on the api interface
 // how can we do this ?
 impl actix_web::error::ResponseError for BragiError {
     fn error_response(&self) -> actix_web::HttpResponse {
@@ -67,7 +69,26 @@ impl actix_web::error::ResponseError for BragiError {
                 short: "validation error".to_owned(),
                 long: format!("{}", self),
             }),
-            _ => unimplemented!(),
+            BragiError::InvalidParam(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
+                short: "validation error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::IndexNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
+                short: "query error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::Es(ref es_error) => match es_error {
+                EsError::HttpError(_) => {
+                    actix_web::HttpResponse::ServiceUnavailable().json(ApiError {
+                        short: "service unavailable".to_owned(),
+                        long: format!("{}", self),
+                    })
+                }
+                _ => actix_web::HttpResponse::InternalServerError().json(ApiError {
+                    short: "internal server error".to_owned(),
+                    long: format!("{}", self),
+                }),
+            },
         }
     }
 }

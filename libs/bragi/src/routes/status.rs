@@ -1,7 +1,6 @@
 use crate::Context;
 use actix_web::{Json, State};
 
-//TODO remove modell::v1::Status
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Status {
     pub version: String,

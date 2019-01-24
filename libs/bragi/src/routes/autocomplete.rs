@@ -1,5 +1,6 @@
 use crate::extractors::BragiQuery;
 use crate::model::{Autocomplete, BragiError};
+use crate::routes::params;
 use crate::{model, query, Context};
 use actix_web::{Json, State};
 use geojson::GeoJson;
@@ -48,7 +49,7 @@ pub struct Params {
     limit: u64,
     #[serde(default)]
     offset: u64,
-    timeout: Option<Duration>, //TODO custom default timeout
+    timeout: Option<Duration>,
     lat: Option<f64>,
     lon: Option<f64>,
     #[serde(default)]
@@ -59,10 +60,13 @@ impl Params {
     fn types_as_str(&self) -> Vec<&str> {
         self.types.iter().map(Type::as_str).collect()
     }
-    fn coord(&self) -> Option<Coord> {
+    fn coord(&self) -> Result<Option<Coord>, BragiError> {
         match (self.lon, self.lat) {
-            (Some(lon), Some(lat)) => Some(Coord { lon, lat }),
-            _ => None,
+            (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
+            (None, None) => Ok(None),
+            _ => Err(BragiError::InvalidParam(
+                "you should provide a 'lon' AND a 'lat' parametr if you provide one of them",
+            )),
         }
     }
 }
@@ -109,7 +113,7 @@ pub fn call_autocomplete(
     state: &Context,
     shape: Option<Vec<(f64, f64)>>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
-    // let timeout =
+    let timeout = params::get_timeout(&params.timeout, &state.max_es_timeout);
     let res = query::autocomplete(
         &params.q,
         &params
@@ -120,11 +124,11 @@ pub fn call_autocomplete(
         params.all_data,
         params.offset,
         params.limit,
-        params.coord(),
+        params.coord()?,
         &state.es_cnx_string,
         shape,
         &params.types_as_str(),
-        params.timeout,
+        timeout,
     );
     res.map(Autocomplete::from).map(Json)
 }

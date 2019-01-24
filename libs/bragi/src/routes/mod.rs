@@ -2,6 +2,7 @@ mod autocomplete;
 mod entry_point;
 mod features;
 mod metrics;
+mod params;
 mod reverse;
 mod status;
 
