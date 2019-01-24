@@ -1,6 +1,7 @@
+use crate::extractors::BragiQuery;
 use crate::model::v1::AutocompleteResponse;
 use crate::{model, query, Context};
-use actix_web::{Json, Path, Query, State};
+use actix_web::{Json, Path, State};
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -13,7 +14,7 @@ pub struct Params {
 }
 
 pub fn features(
-    params: Query<Params>,
+    params: BragiQuery<Params>,
     state: State<Context>,
     id: Path<String>,
 ) -> Result<Json<AutocompleteResponse>, model::BragiError> {

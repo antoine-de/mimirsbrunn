@@ -1,7 +1,8 @@
+use crate::extractors::BragiQuery;
 use crate::model::v1::AutocompleteResponse;
 use crate::model::BragiError;
 use crate::{model, query, Context};
-use actix_web::{Json, Query, State};
+use actix_web::{Json, State};
 use geojson::GeoJson;
 use navitia_model::objects::Coord;
 use std::time::Duration;
@@ -129,7 +130,7 @@ pub fn call_autocomplete(
 }
 
 pub fn autocomplete(
-    params: Query<Params>,
+    params: BragiQuery<Params>,
     state: State<Context>,
 ) -> Result<Json<AutocompleteResponse>, model::BragiError> {
     println!("{:?}", *params);
@@ -137,7 +138,7 @@ pub fn autocomplete(
 }
 
 pub fn post_autocomplete(
-    params: Query<Params>,
+    params: BragiQuery<Params>,
     state: State<Context>,
     json_params: Json<JsonParams>,
 ) -> Result<Json<AutocompleteResponse>, model::BragiError> {

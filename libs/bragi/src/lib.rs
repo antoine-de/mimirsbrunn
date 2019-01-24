@@ -73,6 +73,7 @@ mod model;
 mod params;
 pub mod query;
 use logger::Logger;
+mod extractors;
 mod prometheus_middleware;
 mod routes;
 pub mod server;

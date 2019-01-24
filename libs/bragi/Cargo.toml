@@ -28,6 +28,8 @@ num_cpus = "1.8"
 cosmogony = "0.3.3"
 actix-web = "0.7"
 actix = "0.7"
+serde_qs = { version = "0.4", features = ["actix"] }
+futures = "0.1"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"
