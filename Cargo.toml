@@ -38,9 +38,7 @@ assert_float_eq = "1"
 
 [dev-dependencies]
 hyper = "0.10"
-iron-test = "0.4"
 rustless = "*"
-iron = "0.4"
 mime = "0.2"
 approx = "0.2.0"
 actix-web = "0.7"

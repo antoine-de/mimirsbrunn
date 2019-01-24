@@ -1,6 +1,5 @@
 use crate::extractors::BragiQuery;
-use crate::model::v1::AutocompleteResponse;
-use crate::model::BragiError;
+use crate::model::{Autocomplete, BragiError};
 use crate::{model, query, Context};
 use actix_web::{Json, State};
 use geojson::GeoJson;
@@ -109,7 +108,8 @@ pub fn call_autocomplete(
     params: &Params,
     state: &Context,
     shape: Option<Vec<(f64, f64)>>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+) -> Result<Json<Autocomplete>, model::BragiError> {
+    // let timeout =
     let res = query::autocomplete(
         &params.q,
         &params
@@ -126,13 +126,13 @@ pub fn call_autocomplete(
         &params.types_as_str(),
         params.timeout,
     );
-    res.map(AutocompleteResponse::from).map(Json)
+    res.map(Autocomplete::from).map(Json)
 }
 
 pub fn autocomplete(
     params: BragiQuery<Params>,
     state: State<Context>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+) -> Result<Json<Autocomplete>, model::BragiError> {
     println!("{:?}", *params);
     call_autocomplete(&*params, &*state, None)
 }
@@ -141,7 +141,7 @@ pub fn post_autocomplete(
     params: BragiQuery<Params>,
     state: State<Context>,
     json_params: Json<JsonParams>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+) -> Result<Json<Autocomplete>, model::BragiError> {
     println!(
         "POST autocomplete {:?} -------- {:?}",
         *params, *json_params

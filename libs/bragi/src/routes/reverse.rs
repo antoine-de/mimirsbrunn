@@ -1,5 +1,4 @@
 use crate::extractors::BragiQuery;
-use crate::model::v1::AutocompleteResponse;
 use crate::{model, Context};
 use actix_web::{Json, State};
 use mimir::objects::Coord;
@@ -16,7 +15,7 @@ pub struct Params {
 pub fn reverse(
     params: BragiQuery<Params>,
     state: State<Context>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+) -> Result<Json<model::Autocomplete>, model::BragiError> {
     let timeout = params.timeout; // TODO correct timeout handling
     let mut rubber = Rubber::new(&state.es_cnx_string);
     rubber.set_read_timeout(timeout);
@@ -25,6 +24,6 @@ pub fn reverse(
     rubber
         .get_address(&coord, timeout)
         .map_err(model::BragiError::from)
-        .map(AutocompleteResponse::from)
+        .map(model::Autocomplete::from)
         .map(Json)
 }

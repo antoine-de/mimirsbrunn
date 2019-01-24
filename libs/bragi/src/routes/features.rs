@@ -1,5 +1,4 @@
 use crate::extractors::BragiQuery;
-use crate::model::v1::AutocompleteResponse;
 use crate::{model, query, Context};
 use actix_web::{Json, Path, State};
 use std::time::Duration;
@@ -17,7 +16,7 @@ pub fn features(
     params: BragiQuery<Params>,
     state: State<Context>,
     id: Path<String>,
-) -> Result<Json<AutocompleteResponse>, model::BragiError> {
+) -> Result<Json<model::Autocomplete>, model::BragiError> {
     let timeout = params.timeout; // TODO correct timeout handling
     let features = query::features(
         &params
@@ -30,5 +29,5 @@ pub fn features(
         &*id,
         timeout,
     );
-    Ok(Json(model::v1::AutocompleteResponse::from(features)))
+    features.map(model::Autocomplete::from).map(Json)
 }
