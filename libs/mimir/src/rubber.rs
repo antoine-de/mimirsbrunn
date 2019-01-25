@@ -138,11 +138,15 @@ pub fn get_indexes_by_type(a_type: &str) -> String {
     format!("munin_{}", doc_type)
 }
 
-pub fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<Place>, EsError> {
+pub fn read_places(
+    result: SearchResult<serde_json::Value>,
+    coord: Option<&Coord>, // coord used to compute the distance of the place to the object
+) -> Result<Vec<Place>, EsError> {
     debug!(
         "{} documents found in {} ms",
         result.hits.total, result.took
     );
+    let point: Option<geo::Point<f64>> = coord.map(|c| c.0.into());
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(result
@@ -150,6 +154,14 @@ pub fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<Place>, Es
         .hits
         .into_iter()
         .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .map(|mut place| {
+            if let Some(ref p) = point {
+                use geo::prelude::HaversineDistance;
+                let distance = p.haversine_distance(&place.coord().0.into()) as u32;
+                place.set_distance(distance);
+            }
+            place
+        })
         .collect())
 }
 
@@ -451,7 +463,7 @@ impl Rubber {
         let result = search_query.send()?;
 
         timer.observe_duration();
-        collect(result)
+        read_places(result, Some(coord))
     }
 
     /// publish the index as the new index for this doc_type and this dataset

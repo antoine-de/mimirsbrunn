@@ -2,7 +2,6 @@ use crate::extractors::BragiQuery;
 use crate::routes::params;
 use crate::{model, Context};
 use actix_web::{Json, State};
-use mimir::objects::Coord;
 use mimir::rubber::Rubber;
 use std::time::Duration;
 
@@ -22,7 +21,6 @@ pub fn reverse(
     rubber.set_read_timeout(timeout);
     rubber.set_write_timeout(timeout);
     let coord = params::make_coord(params.lon, params.lat)?;
-    let coord = Coord::new(coord.lon, coord.lat); //we have 2 structures for coord...
     rubber
         .get_address(&coord, timeout)
         .map_err(model::BragiError::from)

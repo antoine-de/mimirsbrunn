@@ -100,6 +100,7 @@ pub fn streets(
                     zip_codes: get_zip_codes_from_admins(&admin),
                     administrative_regions: admin,
                     coord: get_way_coord(&objs_map, way),
+                    distance: None,
                 })
             })
             .next()
@@ -147,6 +148,7 @@ pub fn streets(
             zip_codes: get_zip_codes_from_admins(&admins),
             administrative_regions: admins,
             coord: get_way_coord(&objs_map, way),
+            distance: None,
         })
     });
     street_list.extend(streets);

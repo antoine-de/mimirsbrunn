@@ -130,6 +130,36 @@ impl Place {
             Place::Stop(_) => None,
         }
     }
+
+    pub fn distance(&self) -> Option<u32> {
+        match *self {
+            Place::Admin(ref o) => o.distance,
+            Place::Street(ref o) => o.distance,
+            Place::Addr(ref o) => o.distance,
+            Place::Poi(ref o) => o.distance,
+            Place::Stop(ref o) => o.distance,
+        }
+    }
+
+    pub fn set_distance(&mut self, d: u32) {
+        match self {
+            Place::Admin(ref mut o) => o.distance = Some(d),
+            Place::Street(ref mut o) => o.distance = Some(d),
+            Place::Addr(ref mut o) => o.distance = Some(d),
+            Place::Poi(ref mut o) => o.distance = Some(d),
+            Place::Stop(ref mut o) => o.distance = Some(d),
+        }
+    }
+
+    pub fn coord(&self) -> &Coord {
+        match self {
+            Place::Admin(ref o) => &o.coord,
+            Place::Street(ref o) => &o.coord,
+            Place::Addr(ref o) => &o.coord,
+            Place::Poi(ref o) => &o.coord,
+            Place::Stop(ref o) => &o.coord,
+        }
+    }
 }
 
 pub trait MimirObject: serde::Serialize {
@@ -183,6 +213,10 @@ pub struct Poi {
     pub poi_type: PoiType,
     pub properties: Vec<Property>,
     pub address: Option<Address>,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -314,6 +348,10 @@ pub struct Stop {
     pub properties: Vec<Property>,
     #[serde(default)]
     pub feed_publishers: Vec<FeedPublisher>,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 
 impl MimirObject for Stop {
@@ -375,6 +413,10 @@ pub struct Admin {
 
     #[serde(default)]
     pub labels: I18nProperties,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 
 impl Admin {
@@ -519,6 +561,10 @@ pub struct Street {
     pub weight: f64,
     pub coord: Coord,
     pub zip_codes: Vec<String>,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 impl Incr for Street {
     fn id(&self) -> &str {
@@ -561,6 +607,10 @@ pub struct Addr {
     pub coord: Coord,
     pub weight: f64,
     pub zip_codes: Vec<String>,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 
 impl MimirObject for Addr {

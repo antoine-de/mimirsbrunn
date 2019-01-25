@@ -92,6 +92,7 @@ impl IntoAdmin for Zone {
                 .into_iter()
                 .filter(|(k, _)| langs.contains(&k))
                 .collect(),
+            distance: None,
         }
     }
 }

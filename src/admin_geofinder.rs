@@ -269,6 +269,7 @@ mod tests {
             codes: vec![],
             names: ::mimir::I18nProperties::default(),
             labels: ::mimir::I18nProperties::default(),
+            distance: None,
         }
     }
 

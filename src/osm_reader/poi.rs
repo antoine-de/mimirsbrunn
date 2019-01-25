@@ -259,6 +259,7 @@ fn parse_poi(
         poi_type: poi_type.clone(),
         properties: make_properties(osmobj.tags()),
         address: None,
+        distance: None,
     })
 }
 

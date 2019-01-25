@@ -243,6 +243,7 @@ impl ToGeom for geo::Coordinate<f64> {
 impl FromWithLang<mimir::Place> for Feature {
     fn from_with_lang(other: mimir::Place, lang: Option<&str>) -> Feature {
         let geom = other.to_geom();
+        let distance = other.distance();
         let geocoding = match other {
             mimir::Place::Admin(admin) => GeocodingResponse::from_with_lang(admin, lang),
             mimir::Place::Street(street) => GeocodingResponse::from_with_lang(street, lang),
@@ -256,7 +257,7 @@ impl FromWithLang<mimir::Place> for Feature {
             properties: Properties {
                 geocoding: geocoding,
             },
-            distance: None,
+            distance: distance,
         }
     }
 }

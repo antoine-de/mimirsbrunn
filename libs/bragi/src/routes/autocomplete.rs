@@ -4,7 +4,7 @@ use crate::routes::params;
 use crate::{model, query, Context};
 use actix_web::{Json, State};
 use geojson::GeoJson;
-use navitia_model::objects::Coord;
+use mimir::objects::Coord;
 use std::time::Duration;
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]

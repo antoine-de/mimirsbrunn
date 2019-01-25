@@ -38,7 +38,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate heck;
-extern crate navitia_model;
 extern crate serde_json;
 extern crate structopt;
 
