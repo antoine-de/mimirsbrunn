@@ -52,7 +52,7 @@ pub struct Params {
     timeout: Option<Duration>,
     lat: Option<f64>,
     lon: Option<f64>,
-    #[serde(default)]
+    #[serde(default, rename = "type")]
     types: Vec<Type>,
 }
 
