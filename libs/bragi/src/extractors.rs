@@ -1,5 +1,4 @@
-/// [Actix extractors](https://actix.rs/docs/extractors/) used to have
-/// a coherent error handling for all apis
+/// Override [Actix extractors](https://actix.rs/docs/extractors/) to have a coherent error handling for all apis
 ///
 /// All Bragi's api should use them instead of the default Actix's Query extractors
 /// We don't need a custom Path since the error handling for missing a Path extractor is to get a 404

@@ -137,7 +137,6 @@ pub fn autocomplete(
     params: BragiQuery<Params>,
     state: State<Context>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
-    println!("{:?}", *params);
     call_autocomplete(&*params, &*state, None)
 }
 
@@ -146,9 +145,5 @@ pub fn post_autocomplete(
     state: State<Context>,
     json_params: Json<JsonParams>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
-    println!(
-        "POST autocomplete {:?} -------- {:?}",
-        *params, *json_params
-    );
     call_autocomplete(&*params, &*state, Some(json_params.get_es_shape()?))
 }

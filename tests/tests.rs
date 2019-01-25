@@ -292,7 +292,6 @@ impl BragiHandler {
         use actix_web::HttpMessage;
         let bytes = self.app.execute(r.body()).unwrap();
         let body = std::str::from_utf8(&bytes).unwrap();
-        println!("body ==== {}", &body);
         serde_json::from_str(body).unwrap()
     }
 
