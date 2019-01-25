@@ -31,7 +31,6 @@
 use super::get_values;
 use super::BragiHandler;
 use super::{count_types, get_types, get_value};
-use actix_web::http::StatusCode;
 use serde_json::json;
 
 pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
@@ -215,28 +214,32 @@ fn stop_by_id_test(bragi: &mut BragiHandler) {
 
 fn stop_area_that_does_not_exists(bragi: &mut BragiHandler) {
     // search with id
-    let response = bragi
-        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset[]=dataset1")
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
-    unimplemented!()
-
-    // let result_body = iron_test::response::extract_body_to_string(response);
-    // assert!(result_body.contains("Unable to find object"));
+    assert_eq!(
+        bragi.get_unchecked_json("/features/stop_area:SA:second_station::AA?pt_dataset[]=dataset1"),
+        (
+            actix_web::http::StatusCode::NOT_FOUND,
+            json!({
+                "long": "Unable to find object",
+                "short": "query error"
+            })
+        )
+    );
 }
 
 fn stop_area_invalid_index(bragi: &mut BragiHandler) {
     // if the index does not exists, we get a 404 with "Unable to find object" too
     // it's not trivial to get a better error than a not found object (like a 'not found dataset' error)
     // because the data might just not have been imported yet
-    let response = bragi
-        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset[]=invalid_dataset")
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
-    unimplemented!()
-
-    // let result_body = iron_test::response::extract_body_to_string(response);
-    // assert!(result_body.contains("Unable to find object"));
+    assert_eq!(
+        bragi.get_unchecked_json(
+            "/features/stop_area:SA:second_station::AA?pt_dataset[]=invalid_dataset"
+        ),
+        (
+            actix_web::http::StatusCode::NOT_FOUND,
+            json!({
+                "long": "Unable to find object",
+                "short": "query error"
+            })
+        )
+    );
 }
