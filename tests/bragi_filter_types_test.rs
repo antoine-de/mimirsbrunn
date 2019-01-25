@@ -160,18 +160,16 @@ fn type_stop_area_dataset_test(bragi: &mut BragiHandler) {
 }
 
 fn unvalid_type_test(bragi: &mut BragiHandler) {
-    let response = bragi.get_unchecked_json("/autocomplete?q=melun&type[]=unvalid");
     assert_eq!(
-        response,
+        bragi.get_unchecked_json("/autocomplete?q=melun&type[]=unvalid"),
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
-                "short": "query error",
-                "long": "invalid argument: invalid digit found in string",
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: unknown variant `unvalid`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`",
             })
         )
     );
-    // assert!(error_msg.contains("unvalid is not a valid type"))
 }
 
 fn admin_by_id_test(bragi: &mut BragiHandler) {

@@ -68,9 +68,7 @@ where
     #[inline]
     fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
         serde_qs::from_str::<T>(req.query_string())
-            // .map_err(move |e| (*err)(e, &req2))
             .map_err(|e| {
-                error!("error: {:?}", e);
                 ActixError::InvalidQueryParam(format!("{}", e))
             })
             .map(BragiQuery)

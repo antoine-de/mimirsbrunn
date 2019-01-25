@@ -77,18 +77,21 @@ impl actix_web::error::ResponseError for BragiError {
                 short: "query error".to_owned(),
                 long: format!("{}", self),
             }),
-            BragiError::Es(ref es_error) => match es_error {
-                EsError::HttpError(_) => {
-                    actix_web::HttpResponse::ServiceUnavailable().json(ApiError {
-                        short: "service unavailable".to_owned(),
-                        long: format!("{}", self),
-                    })
+            BragiError::Es(ref es_error) => {
+                error!("es error on query: {}", &es_error);
+                match es_error {
+                    EsError::HttpError(_) => {
+                        actix_web::HttpResponse::ServiceUnavailable().json(ApiError {
+                            short: "query error".to_owned(),
+                            long: "service unavailable".to_owned(),
+                        })
+                    }
+                    _ => actix_web::HttpResponse::InternalServerError().json(ApiError {
+                        short: "query error".to_owned(),
+                        long: "internal server error".to_owned(),
+                    }),
                 }
-                _ => actix_web::HttpResponse::InternalServerError().json(ApiError {
-                    short: "internal server error".to_owned(),
-                    long: format!("{}", self),
-                }),
-            },
+            }
         }
     }
 }

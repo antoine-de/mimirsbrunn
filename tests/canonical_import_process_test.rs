@@ -248,8 +248,8 @@ fn invalid_parameter_autocomplete_test(bragi: &mut BragiHandler) {
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
-                "short": "query error",
-                "long": "invalid argument: invalid digit found in string",
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
             })
         )
     );
@@ -257,7 +257,7 @@ fn invalid_parameter_autocomplete_test(bragi: &mut BragiHandler) {
 
 fn invalid_type_test(bragi: &mut BragiHandler) {
     assert_eq!(
-        bragi.get_unchecked_json("/autocomplete?q=a&types[]=invalid_type"),
+        bragi.get_unchecked_json("/autocomplete?q=a&type[]=invalid_type"),
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
@@ -274,7 +274,7 @@ fn invalid_route_test(bragi: &mut BragiHandler) {
         (
             actix_web::http::StatusCode::NOT_FOUND,
             json!({
-                "long": "route '/autocom' does not exists",
+                "long": "route '/invalid_route' does not exists",
                 "short": "no route"
             })
         )
@@ -296,8 +296,8 @@ fn wrong_shape_test(bragi: &mut BragiHandler) {
     assert_eq!(
         bragi.to_json(r),
         json!({
-            "short": "query error",
-            "long": "invalid json: expected a GeoJSON 'property' at line 3 column 79",
+            "short": "validation error",
+            "long": "invalid json: Json deserialize error: expected a GeoJSON 'property' at line 3 column 79",
         })
     );
 }
@@ -316,7 +316,7 @@ fn invalid_coord_test(bragi: &mut BragiHandler) {
     // if we give an invalid type we get an error
     // this error could be more explicit (name of the field at least), but that will be for later
     assert_eq!(
-        bragi.get_unchecked_json("/autocomplete?q=a&lat=a&lont=12"),
+        bragi.get_unchecked_json("/autocomplete?q=a&lat=a&lon=12"),
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
@@ -327,7 +327,7 @@ fn invalid_coord_test(bragi: &mut BragiHandler) {
     );
     // we check that the lat/lon are valid latitude
     assert_eq!(
-        bragi.get_unchecked_json("/autocomplete?q=a&lat=12&lont=9999"),
+        bragi.get_unchecked_json("/autocomplete?q=a&lat=12&lon=9999"),
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
