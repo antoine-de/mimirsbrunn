@@ -152,14 +152,14 @@ fn stop_filtered_by_dataset_test(bragi: &mut BragiHandler) {
     );
 
     // filter by dataset1
-    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1");
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset[]=dataset1");
 
     assert_eq!(response.len(), 1);
 
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
     // filter by dataset2
-    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset2");
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset[]=dataset2");
 
     assert_eq!(response.len(), 1);
 

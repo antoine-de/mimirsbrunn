@@ -6,8 +6,8 @@ use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Params {
-    #[serde(rename = "pt_dataset[]", default)]
-    pt_datasets: Vec<String>, // TODO make the multiple params work
+    #[serde(default)]
+    pt_dataset: Vec<String>,
     #[serde(rename = "_all_data", default)]
     all_data: bool,
     timeout: Option<Duration>,
@@ -21,7 +21,7 @@ pub fn features(
     let timeout = params::get_timeout(&params.timeout, &state.max_es_timeout);
     let features = query::features(
         &params
-            .pt_datasets
+            .pt_dataset
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>(),

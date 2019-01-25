@@ -112,7 +112,7 @@ fn type_stop_area_no_dataset_test(bragi: &mut BragiHandler) {
 fn type_poi_and_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should only find pois
     let response =
-        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&pt_dataset=dataset1&type[]=poi");
+        bragi.get("/autocomplete?q=Parking vélo Saint-Martin&pt_dataset[]=dataset1&type[]=poi");
     let types = get_types(&response);
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "city"), 0);
@@ -149,7 +149,7 @@ fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &mut BragiHand
 fn type_stop_area_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should only find stop areas
     let response = bragi.get(
-        "/autocomplete?q=Vaux-le-Pénil&pt_dataset=dataset1&type[]=public_transport:\
+        "/autocomplete?q=Vaux-le-Pénil&pt_dataset[]=dataset1&type[]=public_transport:\
          stop_area",
     );
     let types = get_types(&response);
@@ -207,7 +207,7 @@ fn addr_by_id_test(bragi: &mut BragiHandler) {
 
 fn stop_by_id_test(bragi: &mut BragiHandler) {
     // search with id
-    let response = bragi.get("/features/stop_area:SA:second_station?pt_dataset=dataset1");
+    let response = bragi.get("/features/stop_area:SA:second_station?pt_dataset[]=dataset1");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
@@ -216,7 +216,7 @@ fn stop_by_id_test(bragi: &mut BragiHandler) {
 fn stop_area_that_does_not_exists(bragi: &mut BragiHandler) {
     // search with id
     let response = bragi
-        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=dataset1")
+        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset[]=dataset1")
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
@@ -231,7 +231,7 @@ fn stop_area_invalid_index(bragi: &mut BragiHandler) {
     // it's not trivial to get a better error than a not found object (like a 'not found dataset' error)
     // because the data might just not have been imported yet
     let response = bragi
-        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset=invalid_dataset")
+        .raw_get("/features/stop_area:SA:second_station::AA?pt_dataset[]=invalid_dataset")
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
