@@ -67,10 +67,10 @@ where
 
     #[inline]
     fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
-        serde_qs::from_str::<T>(req.query_string())
-            .map_err(|e| {
-                ActixError::InvalidQueryParam(format!("{}", e))
-            })
+        // Note: we need a non strict serde_qs to be able to parse the %5B / %5D as '[' / ']'
+        serde_qs::Config::new(5, false)
+            .deserialize_str(req.query_string())
+            .map_err(|e| ActixError::InvalidQueryParam(format!("{}", e)))
             .map(BragiQuery)
     }
 }
