@@ -134,6 +134,10 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(cityhall_admins[0]["name"], "Melun");
     assert_eq!(cityhall_admins[0]["zone_type"], "city");
 
+    // i18n labels and names have been cleaned up
+    assert_eq!(cityhall_admins[0].get("labels"), None);
+    assert_eq!(cityhall_admins[0].get("names"), None);
+
     assert_eq!(cityhall_admins[1]["id"], "admin:osm:relation:424253843");
     assert_eq!(cityhall_admins[1]["insee"], "77");
     assert_eq!(

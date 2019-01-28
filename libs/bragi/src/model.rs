@@ -129,11 +129,11 @@ trait ToGeom {
 impl ToGeom for mimir::Place {
     fn to_geom(&self) -> geojson::Geometry {
         match self {
-            &mimir::Place::Admin(ref admin) => admin.coord.to_geom(),
-            &mimir::Place::Street(ref street) => street.coord.to_geom(),
-            &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
-            &mimir::Place::Poi(ref poi) => poi.coord.to_geom(),
-            &mimir::Place::Stop(ref stop) => stop.coord.to_geom(),
+            mimir::Place::Admin(ref admin) => admin.coord.to_geom(),
+            mimir::Place::Street(ref street) => street.coord.to_geom(),
+            mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
+            mimir::Place::Poi(ref poi) => poi.coord.to_geom(),
+            mimir::Place::Stop(ref stop) => stop.coord.to_geom(),
         }
     }
 }
@@ -212,22 +212,27 @@ fn get_admin_type(adm: &mimir::Admin) -> String {
     }
 }
 
-fn get_city_name(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
+fn get_city_name(admins: &[Arc<mimir::Admin>]) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.name.clone())
 }
 
-fn get_citycode(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
+fn get_citycode(admins: &[Arc<mimir::Admin>]) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.insee.clone())
 }
 
-fn serialize_administrative_regions<'a, S>(
-    admins: &'a Vec<Arc<mimir::Admin>>,
+/// Serialize an array of admins to be part of GeocodingResponse
+///
+/// Admins are serialized as usual, except i18n properties
+/// ("labels" and "names" in all languages) are removed from
+/// the returned map.
+fn serialize_administrative_regions<S>(
+    admins: &[Arc<mimir::Admin>],
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -236,7 +241,7 @@ where
     use serde::ser::SerializeSeq;
     let mut seq = serializer.serialize_seq(Some(admins.len()))?;
     for a in admins {
-        if let Some(mut json_value) = serde_json::to_value(a).ok() {
+        if let Ok(mut json_value) = serde_json::to_value(a) {
             if let Some(json_map) = json_value.as_object_mut() {
                 json_map.remove("labels");
                 json_map.remove("names");
@@ -473,8 +478,8 @@ pub mod v1 {
             S: serde::Serializer,
         {
             match self {
-                &AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
-                &AutocompleteResponse::Error(ref e) => serializer.serialize_some(e),
+                AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
+                AutocompleteResponse::Error(ref e) => serializer.serialize_some(e),
             }
         }
     }

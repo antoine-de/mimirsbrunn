@@ -375,7 +375,7 @@ impl ApiEndPoint {
                         &langs,
                         timeout,
                     );
-                    let lang = langs.first().map(|s| s.clone());
+                    let lang = langs.first().cloned();
                     let response =
                         model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
                     render(client, response)
@@ -444,7 +444,7 @@ impl ApiEndPoint {
                         timeout,
                     );
 
-                    let lang = langs.first().map(|s| s.clone());
+                    let lang = langs.first().cloned();
                     let mut response =
                         model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
 

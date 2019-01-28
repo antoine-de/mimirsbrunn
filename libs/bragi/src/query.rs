@@ -199,8 +199,8 @@ fn build_query<'a>(
 
     // Priorization by importance
     let importance_query = match coord {
-        &Some(ref c) => build_proximity_with_boost(c, 100.),
-        &None => Query::build_function_score()
+        Some(ref c) => build_proximity_with_boost(c, 100.),
+        None => Query::build_function_score()
             .with_function(
                 Function::build_field_value_factor("weight")
                     .with_factor(0.1)
