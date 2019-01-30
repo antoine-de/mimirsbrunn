@@ -81,7 +81,6 @@ pub struct AssociatedAdmin {
     pub label: String,
     pub name: String,
     pub zip_codes: Vec<String>,
-    pub weight: f64,
     pub coord: mimir::Coord,
     #[serde(
         serialize_with = "mimir::objects::serialize_bbox",
@@ -117,7 +116,6 @@ impl FromWithLang<&mimir::Admin> for AssociatedAdmin {
             coord: admin.coord.clone(),
             level: admin.level,
             parent_id: admin.parent_id.clone(),
-            weight: admin.weight,
             zip_codes: admin.zip_codes.clone(),
             zone_type: admin.zone_type,
         }
