@@ -65,7 +65,7 @@ impl Params {
             (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
             (None, None) => Ok(None),
             _ => Err(BragiError::InvalidParam(
-                "you should provide a 'lon' AND a 'lat' parametr if you provide one of them",
+                "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
             )),
         }
     }

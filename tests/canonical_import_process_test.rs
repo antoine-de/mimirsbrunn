@@ -308,7 +308,7 @@ fn invalid_coord_test(bragi: &mut BragiHandler) {
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
-                "long": "Invalid parameter: you should provide a 'lon' AND a 'lat' parametr if you provide one of them",
+                "long": "Invalid parameter: you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
                 "short": "validation error"
             })
         )
