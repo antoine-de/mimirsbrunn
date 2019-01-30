@@ -187,6 +187,29 @@ fn lang_test(bragi: &BragiHandler) {
         "Melun (77000-CP77001), Sena y Marne, Francia"
     );
 
+    let all_cityhall = bragi.get("/autocomplete?q=Hotel+de+ville+melun&lang=es");
+    let result = all_cityhall.first().unwrap();
+    assert_eq!(result["name"], "Hôtel de Ville");
+    assert_eq!(result["label"], "Hôtel de Ville (Melun)");
+    let admins = result["administrative_regions"]
+        .as_array()
+        .expect("admins must be array");
+    let country = admins
+        .iter()
+        .find(|a| a["zone_type"] == "country")
+        .expect("POI should have a country among all admins");
+    assert_eq!(country["name"], "Francia");
+    assert_eq!(country["label"], "Francia");
+    let city = admins
+        .iter()
+        .find(|a| a["zone_type"] == "city")
+        .expect("POI should have a city among admins");
+    assert_eq!(city["name"], "Melun");
+    assert_eq!(
+        city["label"],
+        "Melun (77000-CP77001), Sena y Marne, Francia"
+    );
+
     // Multiple 'lang' causes 400
     let raw = bragi.raw_get("/autocomplete?q=Melun&lang=es&lang=fr");
     let resp = raw.unwrap_err().response;

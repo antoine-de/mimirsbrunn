@@ -147,6 +147,7 @@ dependencies = [
 name = "bragi"
 version = "1.2.0"
 dependencies = [
+ "cosmogony 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "geojson 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -292,7 +293,7 @@ dependencies = [
 
 [[package]]
 name = "cosmogony"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -913,7 +914,7 @@ name = "mimir"
 version = "1.2.0"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "cosmogony 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cosmogony 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "geojson 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -942,7 +943,7 @@ dependencies = [
  "assert_float_eq 1.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bragi 1.2.0",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "cosmogony 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cosmogony 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "csv 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "docker_wrapper 1.2.0",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2398,7 +2399,7 @@ dependencies = [
 "checksum conduit-mime-types 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)" = "95ca30253581af809925ef68c2641cc140d6183f43e12e0af4992d53768bd7b8"
 "checksum cookie 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0e3d6405328b6edb412158b3b7710e2634e23f3614b9bb1c412df7952489a626"
 "checksum cookie 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d53b80dde876f47f03cda35303e368a79b91c70b0d65ecba5fd5280944a08591"
-"checksum cosmogony 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f5bed00f5fc3b6d6c4382adb11afe4b990389b1082a34c774e6276b53909ba41"
+"checksum cosmogony 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "5ff06dc901169f29363433373ebbf170b8fcb3d120a2d3d41fe34c7447d1271d"
 "checksum crc 1.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d663548de7f5cca343f1e0a48d14dcfb0e9eb4e079ec58883b7251539fa10aeb"
 "checksum crc32fast 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e91d5240c6975ef33aeb5f148f35275c25eda8e8a5f95abe421978b05b8bf192"
 "checksum crossbeam 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)" = "bd66663db5a988098a89599d4857919b3acf7f61402e61365acfd3919857b9be"
