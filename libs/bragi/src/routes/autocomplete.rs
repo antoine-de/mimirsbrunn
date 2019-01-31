@@ -86,11 +86,10 @@ impl JsonParams {
                             geojson::Value::Polygon(p) => {
                                 match p.as_slice() {
                                     [p] => {
-                                        dbg!(Ok(p
-                                            .iter()
+                                        Ok(p.iter()
                                             .filter_map(|c: &Vec<f64>| c.get(0..=1))
                                             .map(|c| (c[1], c[0])) // Note: the coord are inverted for ES
-                                            .collect()))
+                                            .collect())
                                     }
                                     _ => Err(BragiError::InvalidShape(
                                         "only polygon without holes are supported",

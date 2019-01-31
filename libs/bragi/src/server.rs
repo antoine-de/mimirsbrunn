@@ -5,6 +5,7 @@ use crate::routes::{
 };
 use crate::{Args, Context};
 use actix_web::{http, middleware, server, App, HttpRequest, Json};
+use failure::Error;
 use structopt::StructOpt;
 
 fn default_404(req: &HttpRequest<Context>) -> Result<Json<()>, ActixError> {
@@ -56,12 +57,11 @@ pub fn create_server(ctx: Context) -> App<Context> {
         })
 }
 
-pub fn runserver() {
+pub fn runserver() -> Result<(), Error> {
     let args = Args::from_args();
     let ctx: Context = (&args).into();
-    server::new(move || create_server(ctx.clone()))
-        .bind(&args.bind)
-        .unwrap()
+    Ok(server::new(move || create_server(ctx.clone()))
+        .bind(&args.bind)?
         .workers(args.nb_threads)
-        .run();
+        .run())
 }

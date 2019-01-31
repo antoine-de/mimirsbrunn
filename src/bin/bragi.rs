@@ -36,5 +36,5 @@ extern crate slog_scope;
 fn main() {
     let _guard = mimir::logger_init();
     debug!("running bragi webserver");
-    bragi::server::runserver();
+    bragi::server::runserver().unwrap();
 }
