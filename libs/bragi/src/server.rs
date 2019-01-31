@@ -20,10 +20,13 @@ pub fn create_server(ctx: Context) -> App<Context> {
         )
         .middleware(middleware::Logger::default())
         .middleware(prometheus_middleware::PrometheusMiddleware::default())
-        .resource("/", |r| r.f(entry_point))
+        .resource("/", |r| {
+            r.name("/");
+            r.f(entry_point)
+        })
         .resource("/autocomplete", |r| {
+            r.name("autocomplete");
             r.method(http::Method::GET).with(autocomplete);
-
             r.method(http::Method::POST)
                 .with_config(post_autocomplete, |(_, _, json_cfg)| {
                     json_cfg.error_handler(|err, _req| {
@@ -31,10 +34,22 @@ pub fn create_server(ctx: Context) -> App<Context> {
                     });
                 });
         })
-        .resource("/status", |r| r.with(status))
-        .resource("/features/{id}", |r| r.with(features))
-        .resource("/reverse", |r| r.with(reverse))
-        .resource("/metrics", |r| r.f(metrics))
+        .resource("/status", |r| {
+            r.name("status");
+            r.with(status)
+        })
+        .resource("/features/{id}", |r| {
+            r.name("features");
+            r.with(features)
+        })
+        .resource("/reverse", |r| {
+            r.name("reverse");
+            r.with(reverse)
+        })
+        .resource("/metrics", |r| {
+            r.name("metrics");
+            r.f(metrics)
+        })
         .default_resource(|r| {
             // custom error for 404
             r.f(default_404)

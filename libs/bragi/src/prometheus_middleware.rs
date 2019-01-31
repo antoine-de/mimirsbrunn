@@ -35,7 +35,7 @@ impl<S> Middleware<S> for PrometheusMiddleware {
     fn start(&self, req: &HttpRequest<S>) -> Result<Started> {
         HTTP_REQ_HISTOGRAM
             .get_metric_with(&labels! {
-                "handler" => req.path(),
+                "handler" => req.resource().name(),
                 "method" => req.method().as_str(),
             })
             .map(|timer| {
@@ -55,7 +55,7 @@ impl<S> Middleware<S> for PrometheusMiddleware {
         let status = resp.status().to_string();
         HTTP_COUNTER
             .get_metric_with(&labels! {
-                "handler" => req.path(),
+                "handler" => req.resource().name(),
                 "method" => req.method().as_str(),
                 "status" => status.as_str(),
             })
