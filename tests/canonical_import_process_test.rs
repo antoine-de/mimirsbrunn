@@ -50,6 +50,8 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
             "--input=./tests/fixtures/cosmogony.json".into(),
+            "--lang=fr".into(),
+            "--lang=es".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
@@ -76,6 +78,7 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
     );
 
     melun_test(&bragi);
+    lang_test(&bragi);
 }
 
 fn melun_test(bragi: &BragiHandler) {
@@ -131,6 +134,10 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(cityhall_admins[0]["name"], "Melun");
     assert_eq!(cityhall_admins[0]["zone_type"], "city");
 
+    // i18n labels and names have been cleaned up
+    assert_eq!(cityhall_admins[0].get("labels"), None);
+    assert_eq!(cityhall_admins[0].get("names"), None);
+
     assert_eq!(cityhall_admins[1]["id"], "admin:osm:relation:424253843");
     assert_eq!(cityhall_admins[1]["insee"], "77");
     assert_eq!(
@@ -162,6 +169,51 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["street"], "Rue de la Reine Blanche");
     assert_eq!(poi_addr["postcode"], "77288");
     assert_eq!(poi_addr["city"], "Melun");
+}
+
+fn lang_test(bragi: &BragiHandler) {
+    let all_francia = bragi.get("/autocomplete?q=Francia&lang=es");
+    let result = all_francia.first().unwrap();
+    assert_eq!(result["name"], "Francia");
+    assert_eq!(result["type"], "country");
+    assert_eq!(result["label"], "Francia");
+
+    let all_melun = bragi.get("/autocomplete?q=Melun&lang=es");
+    let result = all_melun.first().unwrap();
+    assert_eq!(result["name"], "Melun");
+    assert_eq!(result["type"], "city");
+    assert_eq!(
+        result["label"],
+        "Melun (77000-CP77001), Sena y Marne, Francia"
+    );
+
+    let all_cityhall = bragi.get("/autocomplete?q=Hotel+de+ville+melun&lang=es");
+    let result = all_cityhall.first().unwrap();
+    assert_eq!(result["name"], "Hôtel de Ville");
+    assert_eq!(result["label"], "Hôtel de Ville (Melun)");
+    let admins = result["administrative_regions"]
+        .as_array()
+        .expect("admins must be array");
+    let country = admins
+        .iter()
+        .find(|a| a["zone_type"] == "country")
+        .expect("POI should have a country among all admins");
+    assert_eq!(country["name"], "Francia");
+    assert_eq!(country["label"], "Francia");
+    let city = admins
+        .iter()
+        .find(|a| a["zone_type"] == "city")
+        .expect("POI should have a city among admins");
+    assert_eq!(city["name"], "Melun");
+    assert_eq!(
+        city["label"],
+        "Melun (77000-CP77001), Sena y Marne, Francia"
+    );
+
+    // Multiple 'lang' causes 400
+    let raw = bragi.raw_get("/autocomplete?q=Melun&lang=es&lang=fr");
+    let resp = raw.unwrap_err().response;
+    assert_eq!(resp.status, Some(iron::status::Status::BadRequest));
 }
 
 pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {

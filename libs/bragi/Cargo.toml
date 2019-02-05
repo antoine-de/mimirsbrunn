@@ -25,6 +25,7 @@ heck = "0.3"
 failure = "0.1"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 num_cpus = "1.8"
+cosmogony = "0.3.3"
 
 [dependencies.logger]
 git = "https://github.com/iron/logger.git"

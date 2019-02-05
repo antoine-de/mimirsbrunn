@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use cosmogony;
 use geo;
 use geojson;
 use heck::SnakeCase;
@@ -72,6 +73,55 @@ pub struct Properties {
     pub geocoding: GeocodingResponse,
 }
 
+#[derive(Serialize, Debug)]
+pub struct AssociatedAdmin {
+    pub id: String,
+    pub insee: String,
+    pub level: u32,
+    pub label: String,
+    pub name: String,
+    pub zip_codes: Vec<String>,
+    pub coord: mimir::Coord,
+    #[serde(
+        serialize_with = "mimir::objects::serialize_bbox",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub bbox: Option<geo::Bbox<f64>>,
+    #[serde(default)]
+    pub zone_type: Option<cosmogony::ZoneType>,
+    #[serde(default)]
+    pub parent_id: Option<String>, // id of the Admin's parent (from the cosmogony's hierarchy)
+    #[serde(default)]
+    pub codes: Vec<mimir::objects::Code>,
+}
+
+impl FromWithLang<&mimir::Admin> for AssociatedAdmin {
+    fn from_with_lang(admin: &mimir::Admin, lang: Option<&str>) -> Self {
+        let (name, label) = if let Some(code) = lang {
+            (
+                admin.names.get(code).unwrap_or(&admin.name),
+                admin.labels.get(code).unwrap_or(&admin.label),
+            )
+        } else {
+            (admin.name.as_ref(), admin.label.as_ref())
+        };
+        AssociatedAdmin {
+            id: admin.id.clone(),
+            name: name.to_string(),
+            label: label.to_string(),
+            insee: admin.insee.clone(),
+            bbox: admin.bbox,
+            codes: admin.codes.clone(),
+            coord: admin.coord.clone(),
+            level: admin.level,
+            parent_id: admin.parent_id.clone(),
+            zip_codes: admin.zip_codes.clone(),
+            zone_type: admin.zone_type,
+        }
+    }
+}
+
 #[derive(Serialize, Debug, Default)]
 pub struct GeocodingResponse {
     pub id: String,
@@ -94,7 +144,7 @@ pub struct GeocodingResponse {
     // pub state: Option<String>,
     // pub country: Option<String>,
     // pub geohash: Option<String>,
-    pub administrative_regions: Vec<Arc<mimir::Admin>>,
+    pub administrative_regions: Vec<AssociatedAdmin>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<mimir::PoiType>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -128,11 +178,11 @@ trait ToGeom {
 impl ToGeom for mimir::Place {
     fn to_geom(&self) -> geojson::Geometry {
         match self {
-            &mimir::Place::Admin(ref admin) => admin.coord.to_geom(),
-            &mimir::Place::Street(ref street) => street.coord.to_geom(),
-            &mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
-            &mimir::Place::Poi(ref poi) => poi.coord.to_geom(),
-            &mimir::Place::Stop(ref stop) => stop.coord.to_geom(),
+            mimir::Place::Admin(ref admin) => admin.coord.to_geom(),
+            mimir::Place::Street(ref street) => street.coord.to_geom(),
+            mimir::Place::Addr(ref addr) => addr.coord.to_geom(),
+            mimir::Place::Poi(ref poi) => poi.coord.to_geom(),
+            mimir::Place::Stop(ref stop) => stop.coord.to_geom(),
         }
     }
 }
@@ -143,15 +193,15 @@ impl ToGeom for geo::Coordinate<f64> {
     }
 }
 
-impl From<mimir::Place> for Feature {
-    fn from(other: mimir::Place) -> Feature {
+impl FromWithLang<mimir::Place> for Feature {
+    fn from_with_lang(other: mimir::Place, lang: Option<&str>) -> Feature {
         let geom = other.to_geom();
         let geocoding = match other {
-            mimir::Place::Admin(admin) => GeocodingResponse::from(admin),
-            mimir::Place::Street(street) => GeocodingResponse::from(street),
-            mimir::Place::Addr(addr) => GeocodingResponse::from(addr),
-            mimir::Place::Poi(poi) => GeocodingResponse::from(poi),
-            mimir::Place::Stop(poi) => GeocodingResponse::from(poi),
+            mimir::Place::Admin(admin) => GeocodingResponse::from_with_lang(admin, lang),
+            mimir::Place::Street(street) => GeocodingResponse::from_with_lang(street, lang),
+            mimir::Place::Addr(addr) => GeocodingResponse::from_with_lang(addr, lang),
+            mimir::Place::Poi(poi) => GeocodingResponse::from_with_lang(poi, lang),
+            mimir::Place::Stop(poi) => GeocodingResponse::from_with_lang(poi, lang),
         };
         Feature {
             feature_type: "Feature".to_string(),
@@ -164,10 +214,23 @@ impl From<mimir::Place> for Feature {
     }
 }
 
-impl From<mimir::Admin> for GeocodingResponse {
-    fn from(other: mimir::Admin) -> GeocodingResponse {
+trait FromWithLang<T> {
+    fn from_with_lang(_: T, lang: Option<&str>) -> Self;
+}
+
+impl FromWithLang<mimir::Admin> for GeocodingResponse {
+    fn from_with_lang(other: mimir::Admin, lang: Option<&str>) -> GeocodingResponse {
+        let (name, label) = if let Some(code) = lang {
+            (
+                other.names.get(code).unwrap_or(&other.name),
+                other.labels.get(code).unwrap_or(&other.label),
+            )
+        } else {
+            (other.name.as_ref(), other.label.as_ref())
+        };
+
         let type_ = get_admin_type(&other);
-        let name = Some(other.name);
+        let name = Some(name.to_owned());
         let insee = Some(other.insee);
         let level = Some(other.level); //might be used for type_ and become useless
         let postcode = if other.zip_codes.is_empty() {
@@ -175,7 +238,7 @@ impl From<mimir::Admin> for GeocodingResponse {
         } else {
             Some(other.zip_codes.join(";"))
         };
-        let label = Some(other.label);
+        let label = Some(label.to_owned());
         GeocodingResponse {
             id: other.id,
             citycode: insee,
@@ -198,22 +261,22 @@ fn get_admin_type(adm: &mimir::Admin) -> String {
     }
 }
 
-fn get_city_name(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
+fn get_city_name(admins: &[Arc<mimir::Admin>]) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.name.clone())
 }
 
-fn get_citycode(admins: &Vec<Arc<mimir::Admin>>) -> Option<String> {
+fn get_citycode(admins: &[Arc<mimir::Admin>]) -> Option<String> {
     admins
         .iter()
         .find(|a| a.is_city())
         .map(|admin| admin.insee.clone())
 }
 
-impl From<mimir::Street> for GeocodingResponse {
-    fn from(other: mimir::Street) -> GeocodingResponse {
+impl FromWithLang<mimir::Street> for GeocodingResponse {
+    fn from_with_lang(other: mimir::Street, lang: Option<&str>) -> GeocodingResponse {
         let type_ = "street".to_string();
         let name = Some(other.name);
         let label = Some(other.label);
@@ -226,6 +289,11 @@ impl From<mimir::Street> for GeocodingResponse {
         };
         let citycode = get_citycode(&admins);
 
+        let associated_admins = admins
+            .iter()
+            .map(|a| AssociatedAdmin::from_with_lang(a, lang))
+            .collect();
+
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
@@ -235,14 +303,14 @@ impl From<mimir::Street> for GeocodingResponse {
             label: label,
             street: name,
             city: city,
-            administrative_regions: admins,
+            administrative_regions: associated_admins,
             ..Default::default()
         }
     }
 }
 
-impl From<mimir::Addr> for GeocodingResponse {
-    fn from(other: mimir::Addr) -> GeocodingResponse {
+impl FromWithLang<mimir::Addr> for GeocodingResponse {
+    fn from_with_lang(other: mimir::Addr, lang: Option<&str>) -> GeocodingResponse {
         let type_ = "house".to_string();
         let label = Some(other.label);
         let housenumber = Some(other.house_number.to_string());
@@ -257,6 +325,11 @@ impl From<mimir::Addr> for GeocodingResponse {
         };
         let citycode = get_citycode(&admins);
 
+        let associated_admins = admins
+            .iter()
+            .map(|a| AssociatedAdmin::from_with_lang(a, lang))
+            .collect();
+
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
@@ -267,14 +340,14 @@ impl From<mimir::Addr> for GeocodingResponse {
             housenumber: housenumber,
             street: street_name,
             city: city,
-            administrative_regions: admins,
+            administrative_regions: associated_admins,
             ..Default::default()
         }
     }
 }
 
-impl From<mimir::Poi> for GeocodingResponse {
-    fn from(other: mimir::Poi) -> GeocodingResponse {
+impl FromWithLang<mimir::Poi> for GeocodingResponse {
+    fn from_with_lang(other: mimir::Poi, lang: Option<&str>) -> GeocodingResponse {
         let type_ = "poi".to_string();
         let label = Some(other.label);
         let name = Some(other.name);
@@ -287,6 +360,11 @@ impl From<mimir::Poi> for GeocodingResponse {
         };
         let citycode = get_citycode(&admins);
 
+        let associated_admins = admins
+            .iter()
+            .map(|a| AssociatedAdmin::from_with_lang(a, lang))
+            .collect();
+
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
@@ -295,13 +373,15 @@ impl From<mimir::Poi> for GeocodingResponse {
             postcode: postcode,
             label: label,
             city: city,
-            administrative_regions: admins,
+            administrative_regions: associated_admins,
             poi_types: vec![other.poi_type],
             properties: other.properties,
             address: match other.address {
-                Some(mimir::Address::Addr(addr)) => Some(Box::new(GeocodingResponse::from(addr))),
+                Some(mimir::Address::Addr(addr)) => {
+                    Some(Box::new(GeocodingResponse::from_with_lang(addr, lang)))
+                }
                 Some(mimir::Address::Street(street)) => {
-                    Some(Box::new(GeocodingResponse::from(street)))
+                    Some(Box::new(GeocodingResponse::from_with_lang(street, lang)))
                 }
                 _ => None,
             },
@@ -310,8 +390,8 @@ impl From<mimir::Poi> for GeocodingResponse {
     }
 }
 
-impl From<mimir::Stop> for GeocodingResponse {
-    fn from(other: mimir::Stop) -> GeocodingResponse {
+impl FromWithLang<mimir::Stop> for GeocodingResponse {
+    fn from_with_lang(other: mimir::Stop, lang: Option<&str>) -> GeocodingResponse {
         let type_ = "public_transport:stop_area".to_string();
         let label = Some(other.label);
         let name = Some(other.name);
@@ -324,6 +404,11 @@ impl From<mimir::Stop> for GeocodingResponse {
         };
         let citycode = get_citycode(&admins);
 
+        let associated_admins = admins
+            .iter()
+            .map(|a| AssociatedAdmin::from_with_lang(a, lang))
+            .collect();
+
         GeocodingResponse {
             id: other.id,
             citycode: citycode,
@@ -332,7 +417,7 @@ impl From<mimir::Stop> for GeocodingResponse {
             postcode: postcode,
             label: label,
             city: city,
-            administrative_regions: admins,
+            administrative_regions: associated_admins,
             commercial_modes: other.commercial_modes,
             physical_modes: other.physical_modes,
             comments: other.comments,
@@ -367,17 +452,21 @@ impl Autocomplete {
     }
 }
 
-impl From<Vec<mimir::Place>> for Autocomplete {
-    fn from(places: Vec<mimir::Place>) -> Autocomplete {
+impl FromWithLang<Vec<mimir::Place>> for Autocomplete {
+    fn from_with_lang(places: Vec<mimir::Place>, lang: Option<&str>) -> Autocomplete {
         Autocomplete::new(
             "".to_string(),
-            places.into_iter().map(|p| Feature::from(p)).collect(),
+            places
+                .into_iter()
+                .map(|p| Feature::from_with_lang(p, lang))
+                .collect(),
         )
     }
 }
 
 pub mod v1 {
     use super::BragiError;
+    use crate::model::FromWithLang;
     use iron;
     use mimir;
     use rs_es::error::EsError;
@@ -434,8 +523,8 @@ pub mod v1 {
             S: serde::Serializer,
         {
             match self {
-                &AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
-                &AutocompleteResponse::Error(ref e) => serializer.serialize_some(e),
+                AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
+                AutocompleteResponse::Error(ref e) => serializer.serialize_some(e),
             }
         }
     }
@@ -453,10 +542,15 @@ pub mod v1 {
         }
     }
 
-    impl From<Result<Vec<mimir::Place>, BragiError>> for AutocompleteResponse {
-        fn from(r: Result<Vec<mimir::Place>, BragiError>) -> AutocompleteResponse {
+    impl AutocompleteResponse {
+        pub fn from_with_lang(
+            r: Result<Vec<mimir::Place>, BragiError>,
+            lang: Option<&str>,
+        ) -> AutocompleteResponse {
             match r {
-                Ok(places) => AutocompleteResponse::Autocomplete(super::Autocomplete::from(places)),
+                Ok(places) => AutocompleteResponse::Autocomplete(
+                    super::Autocomplete::from_with_lang(places, lang),
+                ),
                 Err(e) => {
                     let (long_error, status) = match &e {
                         BragiError::ObjectNotFound | BragiError::IndexNotFound => {
