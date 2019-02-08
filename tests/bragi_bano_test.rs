@@ -187,4 +187,10 @@ fn reverse_bano_test(bragi: &BragiHandler) {
         get_values(&res, "label"),
         vec!["20 Rue Hector Malot (Paris)"]
     );
+
+    let res = bragi.get("/reverse?lon=1.3787628&lat=43.6681995");
+    assert_eq!(
+        get_values(&res, "label"),
+        vec!["2 Rue des Pins (Beauzelle)"]
+    );
 }
