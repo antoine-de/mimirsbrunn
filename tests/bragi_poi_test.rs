@@ -28,9 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
 use super::count_types;
 use super::filter_by_type;
 use super::get_poi_type_ids;
@@ -39,8 +36,9 @@ use super::get_value;
 use super::get_values;
 use super::BragiHandler;
 use mimir::{MimirObject, Poi};
+use serde_json::json;
 
-pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
@@ -50,7 +48,7 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     // - osm_fixture.osm.pbf (including ways and pois)
     // ******************************************
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
@@ -60,7 +58,7 @@ pub fn bragi_poi_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),

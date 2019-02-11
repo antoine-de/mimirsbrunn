@@ -34,12 +34,13 @@ use mimir::rubber::{collect, get_indexes};
 use prometheus;
 use rs_es;
 use rs_es::error::EsError;
-use rs_es::operations::search::SearchResult;
+use rs_es::query::compound::BoostMode;
 use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
 use serde_json;
 use std::fmt;
+use std::iter;
 use std::time;
 
 use navitia_model::objects::Coord;
@@ -50,7 +51,8 @@ lazy_static! {
         "The elasticsearch request latencies in seconds.",
         &["search_type"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 /// takes a ES json blob and build a Place from it
@@ -106,8 +108,10 @@ fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
                 "coord",
                 rs_u::Location::LatLon(coord.lat, coord.lon),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
-            ).build_gauss(),
-        ).build()
+            )
+            .build_gauss(),
+        )
+        .build()
 }
 
 // filter to handle PT coverages
@@ -123,16 +127,18 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
             Query::build_terms("coverages")
                 .with_values(pt_datasets)
                 .build(),
-        ]).build()
+        ])
+        .build()
 }
 
-fn build_query(
+fn build_query<'a>(
     q: &str,
     match_type: MatchType,
     coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     pt_datasets: &[&str],
     all_data: bool,
+    langs: &'a [&'a str],
 ) -> Query {
     use rs_es::query::functions::Function;
 
@@ -149,18 +155,42 @@ fn build_query(
             match_type_with_boost::<Stop>(18.),
             match_type_with_boost::<Poi>(1.5),
             match_type_with_boost::<Street>(1.),
-        ]).with_boost(30.)
+        ])
+        .with_boost(30.)
         .build();
+
+    let format_names_field = |lang| format!("names.{}", lang);
+    let format_labels_field = |lang| format!("labels.{}", lang);
+    let format_labels_prefix_field = |lang| format!("labels.{}.prefix", lang);
+
+    let build_multi_match =
+        |default_field: &str, lang_field_formatter: &Fn(&'a &'a str) -> String| {
+            let fields: Vec<String> = iter::once(default_field.into())
+                .chain(langs.iter().map(lang_field_formatter))
+                .collect();
+            Query::build_multi_match(fields, q)
+        };
 
     // Priorization by query string
     let mut string_should = vec![
-        Query::build_match("name", q).with_boost(1.).build(),
-        Query::build_match("label", q).with_boost(1.).build(),
-        Query::build_match("label.prefix", q).with_boost(1.).build(),
+        build_multi_match("name", &format_names_field)
+            .with_boost(1.8)
+            .build(),
+        build_multi_match("label", &format_labels_field)
+            .with_boost(0.6)
+            .build(),
+        build_multi_match("label.prefix", &format_labels_prefix_field)
+            .with_boost(0.6)
+            .build(),
         Query::build_match("zip_codes", q).with_boost(1.).build(),
     ];
     if let MatchType::Fuzzy = match_type {
-        string_should.push(Query::build_match("label.ngram", q).with_boost(1.).build());
+        let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
+        string_should.push(
+            build_multi_match("label.ngram", &format_labels_ngram_field)
+                .with_boost(1.)
+                .build(),
+        );
     }
     let string_query = Query::build_bool()
         .with_should(string_should)
@@ -169,10 +199,15 @@ fn build_query(
 
     // Priorization by importance
     let importance_query = match coord {
-        &Some(ref c) => build_proximity_with_boost(c, 100.),
-        &None => Query::build_function_score()
-            .with_function(Function::build_field_value_factor("weight").build())
-            .with_boost(30.)
+        Some(ref c) => build_proximity_with_boost(c, 100.),
+        None => Query::build_function_score()
+            .with_function(
+                Function::build_field_value_factor("weight")
+                    .with_factor(0.1)
+                    .with_missing(0.)
+                    .build(),
+            )
+            .with_boost_mode(BoostMode::Replace)
             .build(),
     };
 
@@ -186,7 +221,8 @@ fn build_query(
                 .with_must_not(Query::build_exists("house_number").build())
                 .build(),
             Query::build_match("house_number", q.to_string()).build(),
-        ]).build();
+        ])
+        .build();
 
     use rs_es::query::CombinationMinimumShouldMatch;
     use rs_es::query::MinimumShouldMatch;
@@ -213,7 +249,8 @@ fn build_query(
                 CombinationMinimumShouldMatch::new(1i64, 75f64),
                 CombinationMinimumShouldMatch::new(6i64, 60f64),
                 CombinationMinimumShouldMatch::new(9i64, 40f64),
-            ])).build(),
+            ]))
+            .build(),
     };
 
     let mut filters = vec![house_number_condition, matching_condition];
@@ -244,12 +281,17 @@ fn query(
     coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     types: &[&str],
+    langs: &[&str],
+    timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
-    let query = build_query(q, match_type, coord, shape, pt_datasets, all_data);
+    let query = build_query(q, match_type, coord, shape, pt_datasets, all_data, langs);
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
-
+    let indexes = indexes
+        .iter()
+        .map(|index| index.as_str())
+        .collect::<Vec<&str>>();
     debug!("ES indexes: {:?}", indexes);
 
     if indexes.is_empty() {
@@ -262,20 +304,23 @@ fn query(
         .map(|h| h.start_timer())
         .map_err(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
-        ).ok();
+        )
+        .ok();
 
-    let result: SearchResult<serde_json::Value> = client
-        .search_query()
+    let timeout = timeout.map(|t| format!("{:?}", t));
+    let mut search_query = client.search_query();
+
+    let search_query = search_query
         .with_ignore_unavailable(true)
-        .with_indexes(
-            &indexes
-                .iter()
-                .map(|index| index.as_str())
-                .collect::<Vec<&str>>(),
-        ).with_query(&query)
+        .with_indexes(&indexes)
+        .with_query(&query)
         .with_from(offset)
-        .with_size(limit)
-        .send()?;
+        .with_size(limit);
+
+    if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str());
+    }
+    let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
 
@@ -304,6 +349,10 @@ pub fn features(
     client.set_write_timeout(timeout);
 
     let indexes = get_indexes(all_data, &pt_datasets, &[]);
+    let indexes = indexes
+        .iter()
+        .map(|index| index.as_str())
+        .collect::<Vec<&str>>();
 
     debug!("ES indexes: {:?}", indexes);
 
@@ -318,19 +367,23 @@ pub fn features(
         .map(|h| h.start_timer())
         .map_err(
             |err| error!("impossible to get ES_REQ_HISTOGRAM metrics"; "err" => err.to_string()),
-        ).ok();
-    let result: SearchResult<serde_json::Value> = try!(
-        client
-            .search_query()
-            .with_ignore_unavailable(true)
-            .with_indexes(
-                &indexes
-                    .iter()
-                    .map(|index| index.as_str())
-                    .collect::<Vec<&str>>()
-            ).with_query(&query)
-            .send()
-    );
+        )
+        .ok();
+
+    let timeout = timeout.map(|t| format!("{:?}", t));
+    let mut search_query = client.search_query();
+
+    let search_query = search_query
+        .with_ignore_unavailable(true)
+        .with_indexes(&indexes)
+        .with_query(&query);
+
+    if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str());
+    }
+
+    let result = search_query.send()?;
+
     timer.map(|t| t.observe_duration());
 
     if result.hits.total == 0 {
@@ -350,6 +403,7 @@ pub fn autocomplete(
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
     types: &[&str],
+    langs: &[&str],
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
@@ -375,7 +429,10 @@ pub fn autocomplete(
         &coord,
         make_shape(&shape),
         &types,
-    ).map_err(model::BragiError::from)?;
+        &langs,
+        timeout,
+    )
+    .map_err(model::BragiError::from)?;
     if results.is_empty() {
         query(
             &q,
@@ -388,7 +445,10 @@ pub fn autocomplete(
             &coord,
             make_shape(&shape),
             &types,
-        ).map_err(model::BragiError::from)
+            &langs,
+            timeout,
+        )
+        .map_err(model::BragiError::from)
     } else {
         Ok(results)
     }

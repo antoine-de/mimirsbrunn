@@ -62,7 +62,7 @@ extern crate prometheus;
 pub mod objects;
 pub mod rubber;
 
-pub use objects::*;
+pub use crate::objects::*;
 use std::env;
 
 use slog::Drain;
@@ -73,10 +73,10 @@ pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {
         let mut drain = slog_json::Json::new(std::io::stderr())
             .add_default_keys()
             .add_key_value(o!(
-                    "module" => slog::FnValue(|rinfo : &slog::Record| {
-                        rinfo.module()
-                    })
-        ));
+                        "module" => slog::FnValue(|rinfo : &slog::Record| {
+                            rinfo.module()
+                        })
+            ));
         if s == "pretty" {
             drain = drain.set_pretty(true);
         }

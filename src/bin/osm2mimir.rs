@@ -33,20 +33,15 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-extern crate failure;
-extern crate mimir;
-extern crate mimirsbrunn;
-#[macro_use]
-extern crate structopt;
-
 use failure::ResultExt;
-use mimir::rubber::Rubber;
+use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::osm_reader::admin::read_administrative_regions;
 use mimirsbrunn::osm_reader::make_osm_reader;
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -81,6 +76,24 @@ struct Args {
     /// POI configuration.
     #[structopt(short = "j", long = "poi-config", parse(from_os_str))]
     poi_config: Option<PathBuf>,
+    /// Number of shards for the admin es index
+    #[structopt(long = "nb-admin-shards", default_value = "1")]
+    nb_admin_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(long = "nb-admin-replicas", default_value = "1")]
+    nb_admin_replicas: usize,
+    /// Number of shards for the street es index
+    #[structopt(long = "nb-street-shards", default_value = "2")]
+    nb_street_shards: usize,
+    /// Number of replicas for the street es index
+    #[structopt(long = "nb-street-replicas", default_value = "1")]
+    nb_street_replicas: usize,
+    /// Number of shards for the es index
+    #[structopt(long = "nb-poi-shards", default_value = "1")]
+    nb_poi_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(long = "nb-poi-replicas", default_value = "1")]
+    nb_poi_replicas: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -107,9 +120,13 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         compute_street_weight(&mut streets);
 
         if args.import_way {
+            let street_index_settings = IndexSettings {
+                nb_shards: args.nb_street_shards,
+                nb_replicas: args.nb_street_replicas,
+            };
             info!("importing streets into Mimir");
             let nb_streets = rubber
-                .index(&args.dataset, streets.into_iter())
+                .index(&args.dataset, &street_index_settings, streets.into_iter())
                 .with_context(|_| {
                     format!(
                         "Error occurred when requesting street number in {}",
@@ -120,8 +137,16 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         }
     }
     if args.import_admin {
+        let admin_index_settings = IndexSettings {
+            nb_shards: args.nb_admin_shards,
+            nb_replicas: args.nb_admin_replicas,
+        };
         let nb_admins = rubber
-            .index(&args.dataset, admins_geofinder.admins())
+            .index(
+                &args.dataset,
+                &admin_index_settings,
+                admins_geofinder.admins(),
+            )
             .with_context(|_| {
                 format!(
                     "Error occurred when requesting admin number in {}",
@@ -150,9 +175,13 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         info!("Adding addresss in poi");
         add_address(&mut pois, &mut rubber);
 
+        let poi_index_settings = IndexSettings {
+            nb_shards: args.nb_poi_shards,
+            nb_replicas: args.nb_poi_replicas,
+        };
         info!("Importing pois into Mimir");
         let nb_pois = rubber
-            .index(&args.dataset, pois.into_iter())
+            .index(&args.dataset, &poi_index_settings, pois.into_iter())
             .context("Importing pois into Mimir")?;
 
         info!("Nb of indexed pois: {}", nb_pois);

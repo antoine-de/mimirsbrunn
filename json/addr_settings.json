@@ -1,7 +1,6 @@
 {
     "template": "munin_addr_*",
     "settings": {
-        "number_of_shards": "5",
         "analysis": {
             "filter": {
                 "prefix_filter": {
@@ -110,6 +109,9 @@
                                 "enabled": false
                             }
                         }
+                    },
+                    "norms": {
+                        "enabled": false
                     }
                 },
                 "full_label": {
@@ -135,6 +137,9 @@
                                 "enabled": false
                             }
                         }
+                    },
+                    "norms": {
+                        "enabled": false
                     }
                 },
                 "weight": { "type": "double" }

@@ -28,32 +28,23 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate failure;
-extern crate mimir;
-extern crate mimirsbrunn;
-extern crate navitia_model;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-#[macro_use]
-extern crate structopt;
 
 use failure::ResultExt;
+use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use navitia_model::collection::Idx;
 use navitia_model::objects as navitia;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Args {
     /// NTFS directory.
-    #[structopt(
-        short = "i",
-        long = "input",
-        parse(from_os_str),
-        default_value = "."
-    )]
+    #[structopt(short = "i", long = "input", parse(from_os_str), default_value = ".")]
     input: PathBuf,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
@@ -68,6 +59,12 @@ struct Args {
     /// Deprecated option.
     #[structopt(short = "C", long = "city-level")]
     city_level: Option<String>,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
 }
 
 fn to_mimir(
@@ -81,20 +78,23 @@ fn to_mimir(
         .map(|cm_idx| mimir::CommercialMode {
             id: format!("commercial_mode:{}", navitia.commercial_modes[cm_idx].id),
             name: navitia.commercial_modes[cm_idx].name.clone(),
-        }).collect();
+        })
+        .collect();
     let physical_modes = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
         .map(|pm_idx| mimir::PhysicalMode {
             id: format!("physical_mode:{}", navitia.physical_modes[pm_idx].id),
             name: navitia.physical_modes[pm_idx].name.clone(),
-        }).collect();
+        })
+        .collect();
     let comments = navitia
         .comments
         .iter_from(&stop_area.comment_links)
         .map(|comment| mimir::Comment {
             name: comment.name.clone(),
-        }).collect();
+        })
+        .collect();
     let feed_publishers = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
@@ -109,7 +109,8 @@ fn to_mimir(
                 .website
                 .clone()
                 .unwrap_or_else(|| "".into()),
-        }).collect();
+        })
+        .collect();
 
     mimir::Stop {
         id: format!("stop_area:{}", stop_area.id),
@@ -130,14 +131,16 @@ fn to_mimir(
             .map(|&(ref t, ref v)| mimir::Code {
                 name: t.clone(),
                 value: v.clone(),
-            }).collect(),
+            })
+            .collect(),
         properties: stop_area
             .object_properties
             .iter()
             .map(|&(ref k, ref v)| mimir::Property {
                 key: k.clone(),
                 value: v.clone(),
-            }).collect(),
+            })
+            .collect(),
         feed_publishers: feed_publishers,
     }
 }
@@ -145,6 +148,7 @@ fn to_mimir(
 fn main() {
     mimirsbrunn::utils::launch_run(run);
 }
+
 fn run(args: Args) -> Result<(), navitia_model::Error> {
     info!("Launching ntfs2mimir...");
 
@@ -162,14 +166,27 @@ fn run(args: Args) -> Result<(), navitia_model::Error> {
                 .get_corresponding_from_idx::<_, navitia::StopPoint>(idx)
                 .len();
             (id, nb_stop_points as u32)
-        }).collect();
+        })
+        .collect();
     let mut stops: Vec<mimir::Stop> = navitia
         .stop_areas
         .iter()
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
     set_weights(stops.iter_mut(), &nb_stop_points);
-    import_stops(stops, &args.connection_string, &args.dataset).with_context(|_| {
+
+    let index_settings = IndexSettings {
+        nb_shards: args.nb_shards,
+        nb_replicas: args.nb_replicas,
+    };
+
+    import_stops(
+        stops,
+        &args.connection_string,
+        &args.dataset,
+        index_settings,
+    )
+    .with_context(|_| {
         format!(
             "Error occurred when importing stops into {} on {}",
             args.dataset, args.connection_string
@@ -185,6 +202,8 @@ fn test_bad_connection_string() {
         connection_string: "http://localhost:1".to_string(),
         dataset: "bob".to_string(),
         city_level: None,
+        nb_replicas: 1,
+        nb_shards: 1,
     };
     let causes = run(args)
         .unwrap_err()
@@ -209,6 +228,8 @@ fn test_bad_file() {
         connection_string: "http://localhost:9200".to_string(),
         dataset: "bob".to_string(),
         city_level: None,
+        nb_replicas: 1,
+        nb_shards: 1,
     };
     let causes = run(args)
         .unwrap_err()

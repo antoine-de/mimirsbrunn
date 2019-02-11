@@ -26,27 +26,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate docker_wrapper;
-extern crate geo;
-extern crate hyper;
-extern crate iron;
-extern crate iron_test;
-#[macro_use]
-extern crate mdo;
-extern crate mime;
-extern crate mimir;
-extern crate rs_es;
-extern crate rustless;
-#[macro_use]
-extern crate serde_json;
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-extern crate cosmogony;
 #[macro_use]
 extern crate approx;
+#[macro_use]
+extern crate assert_float_eq;
 
 mod bano2mimir_test;
 mod bragi_bano_test;
@@ -113,7 +100,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
     }
 
-    pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper {
+    pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper<'_> {
         let mut es_wrapper = ElasticSearchWrapper {
             docker_wrapper: docker_wrapper,
             rubber: mimir::rubber::Rubber::new(&docker_wrapper.host()),
@@ -146,7 +133,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> impl Iterator<Item = mimir::Place> + 'b
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -157,7 +144,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         &self,
         word: &str,
         predicate: F,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> impl Iterator<Item = mimir::Place> + 'b
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -169,7 +156,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         word: &str,
         predicate: F,
         search_on_global_stops: bool,
-    ) -> Box<Iterator<Item = mimir::Place> + 'b>
+    ) -> impl Iterator<Item = mimir::Place> + 'b
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
@@ -194,42 +181,35 @@ impl<'a> ElasticSearchWrapper<'a> {
         };
         get(json, "hits")
             .and_then(|json| get(json, "hits"))
-            .and_then(|hits| {
-                match hits {
-                    Value::Array(v) => {
-                        Some(Box::new(
-                            v.into_iter()
-                                .filter_map(|json| {
-                                    into_object(json).and_then(|obj| {
-                                        let doc_type = obj
-                                            .get("_type")
-                                            .and_then(|doc_type| doc_type.as_str())
-                                            .map(|doc_type| doc_type.into());
+            .and_then(|hits| match hits {
+                Value::Array(v) => Some(v),
+                _ => None,
+            })
+            .unwrap_or_else(Vec::default)
+            .into_iter()
+            .filter_map(|json| {
+                into_object(json).and_then(|obj| {
+                    let doc_type = obj
+                        .get("_type")
+                        .and_then(|doc_type| doc_type.as_str())
+                        .map(|doc_type| doc_type.into());
 
-                                        doc_type.and_then(|doc_type| {
-                                            // The real object is contained in the _source section.
-                                            obj.get("_source").and_then(|src| {
-                                                bragi::query::make_place(
-                                                    doc_type,
-                                                    Some(Box::new(src.clone())),
-                                                )
-                                            })
-                                        })
-                                    })
-                                }).filter(predicate),
-                        )
-                            as Box<Iterator<Item = mimir::Place>>)
-                    }
-                    _ => None,
-                }
-            }).unwrap_or(Box::new(None.into_iter()) as Box<Iterator<Item = mimir::Place>>)
+                    doc_type.and_then(|doc_type| {
+                        // The real object is contained in the _source section.
+                        obj.get("_source").and_then(|src| {
+                            bragi::query::make_place(doc_type, Some(Box::new(src.clone())))
+                        })
+                    })
+                })
+            })
+            .filter(predicate)
     }
 }
 
 fn launch_and_assert(
     cmd: &'static str,
     args: Vec<std::string::String>,
-    es_wrapper: &ElasticSearchWrapper,
+    es_wrapper: &ElasticSearchWrapper<'_>,
 ) {
     let status = Command::new(cmd).args(&args).status().unwrap();
     assert!(status.success(), "`{}` failed {}", cmd, &status);
@@ -244,8 +224,9 @@ impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
         let api = bragi::api::ApiEndPoint {
             es_cnx_string: url,
-            default_es_timeout: None,
-        }.root();
+            max_es_timeout: None,
+        }
+        .root();
         BragiHandler {
             app: rustless::Application::new(api),
         }
@@ -309,7 +290,8 @@ pub fn get_results(r: iron::Response, pointer: Option<String>) -> Vec<Map<String
             } else {
                 f.as_object().unwrap().clone()
             }
-        }).collect()
+        })
+        .collect()
 }
 
 pub fn get_values<'a>(r: &'a [Map<String, Value>], val: &'a str) -> Vec<&'a str> {
@@ -347,6 +329,16 @@ fn get_poi_type_ids(e: &Map<String, Value>) -> Vec<&str> {
         .filter_map(|v| v.as_object().and_then(|o| o.get("id")))
         .filter_map(|o| o.as_str())
         .collect()
+}
+
+fn get_first_index_aliases(indexes: &serde_json::Map<String, Value>) -> Vec<String> {
+    indexes
+        .get(indexes.keys().next().unwrap())
+        .and_then(Value::as_object)
+        .and_then(|s| s.get("aliases"))
+        .and_then(Value::as_object)
+        .map(|s| s.keys().cloned().collect())
+        .unwrap_or_else(Vec::new)
 }
 
 /// Main test method (regroups all tests)

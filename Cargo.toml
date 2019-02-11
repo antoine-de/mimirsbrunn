@@ -4,6 +4,7 @@ version = "1.2.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 build = "build.rs"
 autotests = false
+edition = "2018"
 
 [workspace]
 
@@ -15,7 +16,7 @@ slog-envlogger = "2.1.0"
 slog-async = "2.2.0"
 structopt = "0.2"
 csv = "1.0.0-beta.4"
-rs-es = {version = "0.10", default-features = false}
+rs-es = {version = "0.10.5", default-features = false}
 regex = "*"
 osmpbfreader = "0.11.2"
 chrono = "0.4"
@@ -25,15 +26,15 @@ serde_json = "1"
 geo = "0.6"
 gst = "0.1"
 ordered-float = "0.0.2"
-mdo = "*"
 itertools = "*"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = "0.2"
 failure = "0.1"
-cosmogony = "0.3.1"
+cosmogony = "0.3.3"
 par-map = "0.1.4"
 lazy_static = "1.1.0"
 num_cpus = "1.8.0"
+assert_float_eq = "1"
 
 [dev-dependencies]
 hyper = "0.10"

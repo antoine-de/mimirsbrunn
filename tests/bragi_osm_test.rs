@@ -28,23 +28,20 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
 use super::count_types;
 use super::get_types;
 use super::get_value;
 use super::get_values;
 use super::BragiHandler;
 
-pub fn bragi_osm_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_osm_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // *********************************
     // We load the OSM dataset (including ways)
     // *********************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -71,11 +68,9 @@ fn zip_code_test(bragi: &BragiHandler) {
     for postcodes in get_values(&all_20, "postcode") {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
-    assert!(
-        get_values(&all_20, "postcode")
-            .iter()
-            .any(|r| *r == "77000;77003;77008;CP77001")
-    );
+    assert!(get_values(&all_20, "postcode")
+        .iter()
+        .any(|r| *r == "77000;77003;77008;CP77001"));
 
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
@@ -111,11 +106,9 @@ fn zip_code_street_test(bragi: &BragiHandler) {
 fn zip_code_admin_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
     assert_eq!(all_20.len(), 4);
-    assert!(
-        get_values(&all_20, "postcode")
-            .iter()
-            .all(|r| *r == "77000",)
-    );
+    assert!(get_values(&all_20, "postcode")
+        .iter()
+        .all(|r| *r == "77000",));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 3);
@@ -132,10 +125,13 @@ fn zip_code_admin_test(bragi: &BragiHandler) {
 fn bbox_admin_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
     let first_city = all_20.iter().find(|e| get_value(e, "type") == "city");
-    assert_eq!(
-        *first_city.unwrap().get("bbox").unwrap(),
-        json!(vec![2.663446, 48.5064094, 2.7334936, 48.5419672])
-    );
+    let result = first_city.unwrap().get("bbox").unwrap().as_array().unwrap();
+    let expected = vec![2.663446, 48.5064094, 2.7334936, 48.5419672];
+    assert_eq!(expected.len(), result.len());
+    //check that coords are "close" from the expected value
+    for (r, e) in result.iter().map(|r| r.as_f64().unwrap()).zip(expected) {
+        assert_f64_near!(e, r, 1);
+    }
 }
 
 fn city_admin_test(bragi: &BragiHandler) {

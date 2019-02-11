@@ -1,174 +1,110 @@
+[![travis](https://travis-ci.org/CanalTP/mimirsbrunn.svg?branch=master)](https://travis-ci.org/CanalTP/mimirsbrunn)
+[![GitHub license](https://img.shields.io/github/license/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/blob/master/LICENSE)
+[![GitHub tag](https://img.shields.io/github/tag/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/tag)
+
 # Mímirsbrunn
 
-Mimirsbrunn is a geocoding service build upon [Elasticsearch](https://www.elastic.co).
+Mimirsbrunn is an independent geocoding and reverse-geocoding system written in [Rust](https://www.rust-lang.org/en-US/) and built upon [Elasticsearch](https://www.elastic.co).
+It can handle addresses, streets, points-of-interest (POI), administrative regions or public transport stops.
+In particular [Navitia](https://github.com/CanalTP/navitia) uses it as its global geocoding service.
 
-It is an independent service, but [Navitia](https://github.com/CanalTP/navitia) uses it as it's global geocoding service.
+## Getting Started
 
-Mimirsbrunn is composed of several [parts](#components), some managing the data import in Elasticsearch, and a web service wrapping Elasticsearch responses to return formated responses (we use [geocodejson](https://github.com/geocoders/geocodejson-spec) as the responses format)
+Mimirsbrunn is composed of several [parts](#components): some of them manage the data import in Elasticsearch while a web service ([bragi](#bragi)) wraps Elasticsearch interactions in order to return formated responses (using [geocodejson](https://github.com/geocoders/geocodejson-spec) as the responses format)
 
-## Use
+### Install
 
-### Data
-
-Mimirsbrunn relies on geographical datasets to find what users are looking for. These locations belong to different data types and come from various sources.
-
-data type | data sources and components
---- | ---
-Addresses | OpenAddresses (openaddresses2mimir) or BANO (bano2mimir)
-Streets | OpenStreetMap (osm2mimir)
-POIs | OpenStreetMap (osm2mimir)
-Public Transport Stops | Navitia.io data platform (ntfs2mimir) or any GTFS data repository (stops2mimir)
-Administrative regions | OSM (osm2mimir) or Cosmogony (cosmogony2mimir)
-
-Check out the doc of each [component](#components) to know more about how to use.
-
-If you need to use another datasource, you can also write your own data importer. See for instance [Fafnir](https://github.com/QwantResearch/fafnir), an external component to import POIs from another database.
-
-## Install
-
-### manually
-
-To build, you must first install rust:
-
-```shell
-curl https://sh.rustup.rs -sSf | sh
-```
-
-To use the Mimirsbrunn components you will need an elasticsearch database.
-
-The elasticsearch version needs to be 2.x
-
-and then build Mimirsbrunn:
-
+- To use the Mimirsbrunn components you need an Elasticsearch database (Elasticsearch version needs to be 2.x).
+- To build you must first install rust following [these instructions](https://www.rust-lang.org/tools/install).
+- You need some development packages: make libssl1.0-dev libgeos-dev
+- Then to build Mimirsbrunn:
 ```shell
 cargo build --release
 ```
 
-## Architecture
+### Data Input
 
-## Indexes architecture
+Mimirsbrunn relies on geographical datasets to find what users are looking for.
+These locations belong to different data types and come from various sources.
+To import these locations Mimirsbrunn comes along with the following specific tools:
 
-Data are imported in multiple indexes with this structure:
-```
-munin -> munin_addr -> munin_addr_dataset1 -> munin_addr_dataset1_20160101T123200
-                   |-> munin_addr_dataset2 -> munin_addr_dataset2_20160101T123200
-     |-> munin_admin -> munin_admin_dataset1 -> munin_admin_dataset1_20160101T123200
-     |-> munin_street -> munin_street_dataset1 -> munin_street_dataset1_20160101T123200
-```
+Data Types | Data Sources | [Import Tools](#components)
+:---: | :---: | :---:
+Addresses | OpenAddresses  or BANO (the french opendata dataset) | openaddresses2mimir or bano2mimir
+Streets | OpenStreetMap | osm2mimir
+POI | OpenStreetMap | osm2mimir
+Public Transport Stops | Navitia.io data platform  or any GTFS data repository | ntfs2mimir or stops2mimir
+Administrative Regions | OpenStreetMap or Cosmogony | osm2mimir or cosmogony2mimir
 
-Munin is the root index, it's an alias used by the frontend (bragi), it pointing to an index for each dataset/document type.
-So if we have address data for France and Belgium we will have two indexes: "addr_fr" and "addr_be". These are also aliases, they point to a dated index, this way we can import data in another index without impacting anyone, then switch the alias to point to the new data.
+To use another datasource you have to write your own data importer.
+See for instance [Fafnir](https://github.com/QwantResearch/fafnir), an external component to import POIs from another database.
 
-This will give us the ability to only a part of the world without any downtime.
+## <a name=components> Components: Import Tools & Web Service </a>
 
-During an update the indexes will be (for the previous example say we update addr_dataset1):
+There are several components in Mimirsbrunn. Most of them are dedicated to the import of data while other are web services ([bragi](#bragi)) to wrap Elasticsearch interactions.
+All the Mimirsbrunn's components described below implement the `--help` (or `-h`) argument to explain their use.
 
-During the data update:
-```
-munin -> munin_addr -> munin_addr_dataset1 -> munin_addr_dataset1_20160101T123200
-                   |-> munin_addr_dataset2 -> munin_addr_dataset2_20160101T123200
-     |-> munin_admin -> munin_admin_dataset1 -> munin_admin_dataset1_20160101T123200
-     |-> munin_street -> munin_street_dataset1 -> munin_street_dataset1_20160101T123200
-     |-> munin_stop -> munin_stop_dataset1 -> munin_stop_dataset1_20160101T123200
+### Import Tools
 
-munin_addr_dataset1_20160201T123200
-```
+Before using [Bragi](#bragi), you have to import data into Elasticsearch.
+The default and easiest way to import data is to use the [docker_mimir](https://github.com/QwantResearch/docker_mimir) tool.
+However the following import tools are still possible.
 
-and when the loading is finished
-```
-munin -> munin_addr -> munin_addr_dataset1
-                                          |-> munin_addr_dataset1_20160201T123200
-                   |-> munin_addr_dataset2 -> munin_addr_dataset2_20160101T123200
-     |-> munin_admin -> munin_admin_dataset1 -> munin_admin_dataset1_20160101T123200
-     |-> munin_street -> munin_street_dataset1 -> munin_street_dataset1_20160101T123200
-     |-> munin_stop -> munin_stop_dataset1 -> munin_stop_dataset1_20160101T123200
+#### osm2mimir
 
-```
-
-
-There is one major drawback: dataset aren't hermetic since we import multiple OSM files, the area near the border will be in multiple dataset, for now we accept these duplicate. We will be able to filter with shape at import time and/or remove them in bragi.
-
-## <a name=components> components </a>
-
-All Mimirsbrunn's components implement the `--help` (or `-h`) argument to explain it's use
-
-There are several components in Mimirsbrunn:
-
-### osm2mimir
-
-This component imports openstreetmap data into Mimir.
-
-You can get openstreetmap data from <http://download.geofabrik.de/>
-
-eg:
-
+- This tool imports OpenStreetMap data into Mimir. You can get OpenStreetMap data from [Geofabrik](http://download.geofabrik.de/), for instance:
 ```shell
 curl -O http://download.geofabrik.de/europe/france-latest.osm.pbf
 ```
-
-To import all those data into Mimir, you only have to do:
-
+- Then to import all those data into Mimir, you only have to do:
 ```shell
-./target/release/osm2mimir --input=france-latest.osm.pbf --level=8 --level=9 --import-way --import-admin --import-poi --dataset=france --connection-string=http://localhost:9200
+cargo run --release --osm2mimir --input=france-latest.osm.pbf --level=8 --level=9 --import-way --import-admin --import-poi --dataset=france --connection-string=http://localhost:9200
 ```
+- The `level` parameter refers to [administrative levels](https://wiki.openstreetmap.org/wiki/Tag:boundary%3Dadministrative) in OpenStreetMap and is used to control which `Admin` to import.
 
-level: administrative levels in openstreetmap
+#### bano2mimir
 
-### bano2mimir
-
-This component imports bano's data into Mimir.
-It is recommanded to run bano integration after osm integration so that addresses are attached to admins.
-
-You can get bano's data from <http://bano.openstreetmap.fr/data/>
-
-eg:
-
+- This tool imports bano's data into Mimir. It is recommended to run bano integration **after** OSM or [Cosmogony](https://github.com/osm-without-borders/cosmogony) integration in order to attach addresses to admins. You can get bano's data from [OpenStreetMap](http://bano.openstreetmap.fr/data/), for instance:
 ```shell
 curl -O http://bano.openstreetmap.fr/data/full.csv.gz
 gunzip full.csv.gz
 ```
-
-To import all those data into Mimir, you only have to do:
-
+- To import all those data into Mimir, you only have to do:
 ```shell
-./target/release/bano2mimir -i full.csv --dataset=france --connection-string=http://localhost:9200/
+cargo run --release --bano2mimir -i full.csv --dataset=france --connection-string=http://localhost:9200/
+```
+- The `--connection-string` argument refers to the ElasticSearch url.
+
+#### ntfs2mimir
+
+- This tool imports data from the ntfs files into Mimir. It is recommended to run ntfs integration **after** OSM or [Cosmogony](https://github.com/osm-without-borders/cosmogony) integration so that stops are attached to admins. You can get these data from [Navitia](https://navitia.opendatasoft.com/explore).
+
+- To import all those data into Mimir, you only have to do:
+```shell
+cargo run --release --ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
 ```
 
-The `--connection-string` argument refers to the ElasticSearch url
+- The `--connection-string` argument refers to the ElasticSearch url
 
+- The ntfs input file needs to match the [NTFS specification](https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md).
 
-### ntfs2mimir
+#### stops2mimir
 
-This component imports data from the ntfs files into Mimir.
-It is recommended to run ntfs integration after osm integration so that stops are attached to admins.
+- This import tool is still available but is now deprecated because ntfs2mimir imports already stops.
 
-To import all those data into Mimir, you only have to do:
-
-```shell
-./target/release/ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
-```
-
-The `--connection-string` argument refers to the ElasticSearch url
-
-The ntfs input file needs to match the NTFS specification (https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md)
-
-Note: previously, another component was used: stops2mimir. Though it is still available, it is now deprecated because ntfs2mimir imports stops and every other files present in the ntfs.
-
-### Bragi
+### <a name=bragi> Web Service: Bragi </a>
 
 Bragi is the webservice built around ElasticSearch.
-It has been done to hide the ElasticSearch complexity and to return consistent formated response.
-
+Its purpose is to hide the ElasticSearch complexity and to return consistent formated responses.
 Its responses format follow the [geocodejson-spec](https://github.com/geocoders/geocodejson-spec).
-It's a format used by other geocoding API (https://github.com/addok/addok or https://github.com/komoot/photon).
+This is a format used by other geocoding API such as [Addok](https://github.com/addok/addok) or [Photon](https://github.com/komoot/photon).
 
-To run Bragi:
-
+- To run Bragi:
 ```shell
-./target/release/bragi --connection-string=http://localhost:9200/munin
+cargo run --release --bragi --connection-string=http://localhost:9200/munin
 ```
 
-then, you can call the API (the default Bragi's listening port is 4000):
+- Then you can call the API (the default Bragi's listening port is 4000):
 ```
 curl "http://localhost:4000/autocomplete?q=rue+hector+malot"
 ```
@@ -194,8 +130,13 @@ To write a new test:
 
 ### Geocoding tests
 
-We use [geocoder-tester](https://github.com/geocoders/geocoder-tester) to run real search queries and check the output against expected to prevent regressions. 
+We use [geocoder-tester](https://github.com/geocoders/geocoder-tester) to run real search queries and check the output against expected to prevent regressions.
 
 Feel free to add some tests cases here.
 
-When a new Pull Request is submitted, it will be manually tested using [this repo](https://gitlab.com/QwantResearch/mimir-geocoder-tester/), that loads a bunch of data into the geocoder, runs geocoder-tester and then add the results as a comment in the PR.
+When a new Pull Request is submitted, it will be manually tested using [this repo](https://gitlab.com/QwantResearch/mimir-geocoder-tester/) that loads a bunch of data into the geocoder, runs geocoder-tester and then add the results as a comment in the PR.
+
+
+## More documentation
+
+For more precise documentation on use, troubleshooting, development please check the [documentation directory](documentation/readme.md).

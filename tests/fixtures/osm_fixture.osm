@@ -5520,7 +5520,9 @@
     <tag k='border_type' v='territorial' />
     <tag k='boundary' v='administrative' />
     <tag k='name' v='France hexagonale' />
+    <tag k='name:es' v='Francia' />
     <tag k='name:ru' v='Метрополия Франции' />
+    <tag k='population' v='63070344' />
     <tag k='type' v='boundary' />
     <tag k='wikidata' v='Q142' />
   </relation>

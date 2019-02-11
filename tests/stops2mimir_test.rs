@@ -28,14 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate mimir;
-extern crate serde_json;
+use mimir;
 
 /// Simple call to a stops2mimir load into ES base
 /// Checks that we are able to find one object (a specific address)
-pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         stops2mimir,
         vec![
             "--input=./tests/fixtures/stops.txt".into(),
@@ -71,7 +70,7 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert!(res.iter().all(|r| r.is_stop()));
 
     // we then import another stop fixture
-    ::launch_and_assert(
+    crate::launch_and_assert(
         stops2mimir,
         vec![
             "--input=./tests/fixtures/stops_dataset2.txt".into(),
@@ -94,10 +93,8 @@ pub fn stops2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
                     "stop_area:SA:known_by_all_dataset" => {
                         assert_eq!(stop.coverages, vec!["dataset1", "dataset2"]);
                         // we don't control which label is taken
-                        assert!(
-                            vec!["All known stop", "All known stop, but different name"]
-                                .contains(&stop.label.as_ref())
-                        );
+                        assert!(vec!["All known stop", "All known stop, but different name"]
+                            .contains(&stop.label.as_ref()));
                     }
                     "stop_area:SA:second_station:dataset2" => {
                         assert_eq!(stop.coverages, vec!["dataset2"])

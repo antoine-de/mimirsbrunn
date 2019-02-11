@@ -140,35 +140,33 @@ impl AdminGeoFinder {
     }
 
     /// Iterates on all the admins with a not None boundary.
-    pub fn admins<'a>(&'a self) -> Box<Iterator<Item = Admin> + 'a> {
-        let iter = self
-            .admins
+    pub fn admins<'a>(&'a self) -> impl Iterator<Item = Admin> + 'a {
+        self.admins
             .get(&Rect::from_float(
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
-            )).into_iter()
+            ))
+            .into_iter()
             .map(|(_, a)| {
                 let mut admin = (*a.1).clone();
                 admin.boundary = a.0.clone();
                 admin
-            });
-        Box::new(iter)
+            })
     }
 
     /// Iterates on all the `Rc<Admin>` in the structure as returned by `get`.
-    pub fn admins_without_boundary<'a>(&'a self) -> Box<Iterator<Item = Arc<Admin>> + 'a> {
-        let iter = self
-            .admins
+    pub fn admins_without_boundary<'a>(&'a self) -> impl Iterator<Item = Arc<Admin>> + 'a {
+        self.admins
             .get(&Rect::from_float(
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
                 std::f32::NEG_INFINITY,
                 std::f32::INFINITY,
-            )).into_iter()
-            .map(|(_, a)| a.1.clone());
-        Box::new(iter)
+            ))
+            .into_iter()
+            .map(|(_, a)| a.1.clone())
     }
 }
 
@@ -269,6 +267,8 @@ mod tests {
             zone_type: zt,
             parent_id: parent_offset.map(|id| id.into()),
             codes: vec![],
+            names: ::mimir::I18nProperties::default(),
+            labels: ::mimir::I18nProperties::default(),
         }
     }
 

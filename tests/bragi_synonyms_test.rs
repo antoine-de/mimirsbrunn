@@ -28,13 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
 use super::get_values;
 use super::BragiHandler;
 
-pub fn bragi_synonyms_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_synonyms_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
@@ -45,7 +42,7 @@ pub fn bragi_synonyms_test(es_wrapper: ::ElasticSearchWrapper) {
     // - stops.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -59,7 +56,7 @@ pub fn bragi_synonyms_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
@@ -69,7 +66,7 @@ pub fn bragi_synonyms_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         stops2mimir,
         vec![
             "--input=./tests/fixtures/stops.txt".into(),
@@ -85,17 +82,13 @@ pub fn bragi_synonyms_test(es_wrapper: ::ElasticSearchWrapper) {
 fn synonyms_test(bragi: &BragiHandler) {
     // Test that we find Hôtel de Ville
     let response = bragi.get("/autocomplete?q=hotel de ville");
-    assert!(
-        get_values(&response, "label")
-            .iter()
-            .all(|r| r.contains("Hôtel de Ville"))
-    );
+    assert!(get_values(&response, "label")
+        .iter()
+        .all(|r| r.contains("Hôtel de Ville")));
 
     // Test we find the same result as above as mairie is synonym of hotel de ville
     let response = bragi.get("/autocomplete?q=mairie");
-    assert!(
-        get_values(&response, "label")
-            .iter()
-            .all(|r| r.contains("Hôtel de Ville"))
-    );
+    assert!(get_values(&response, "label")
+        .iter()
+        .all(|r| r.contains("Hôtel de Ville")));
 }

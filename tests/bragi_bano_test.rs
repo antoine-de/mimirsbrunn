@@ -28,21 +28,20 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
 use super::get_values;
 use super::to_json;
 use super::BragiHandler;
+use iron_test;
+use serde_json::json;
 
-pub fn bragi_bano_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_bano_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // *********************************
     // We load bano files
     // *********************************
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/sample-bano.csv".into(),
@@ -187,5 +186,11 @@ fn reverse_bano_test(bragi: &BragiHandler) {
     assert_eq!(
         get_values(&res, "label"),
         vec!["20 Rue Hector Malot (Paris)"]
+    );
+
+    let res = bragi.get("/reverse?lon=1.3787628&lat=43.6681995");
+    assert_eq!(
+        get_values(&res, "label"),
+        vec!["2 Rue des Pins (Beauzelle)"]
     );
 }

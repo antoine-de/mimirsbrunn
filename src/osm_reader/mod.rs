@@ -1,10 +1,8 @@
-extern crate failure;
-extern crate mimir;
-extern crate osmpbfreader;
+use osmpbfreader;
 
+use crate::Error;
 use std::fs::File;
 use std::path::Path;
-use Error;
 
 pub mod admin;
 pub mod osm_utils;

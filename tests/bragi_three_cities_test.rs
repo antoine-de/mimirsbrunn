@@ -28,16 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
 use super::count_types;
 use super::get_types;
 use super::get_value;
 use super::get_values;
 use super::BragiHandler;
 
-pub fn bragi_three_cities_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_three_cities_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // *********************************
@@ -47,7 +44,7 @@ pub fn bragi_three_cities_test(es_wrapper: ::ElasticSearchWrapper) {
     // - bano-three_cities
     // *********************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -60,7 +57,7 @@ pub fn bragi_three_cities_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
@@ -80,11 +77,9 @@ fn three_cities_housenumber_zip_code_test(bragi: &BragiHandler) {
     // the house number with this number in this city
     let all_20 = bragi.get("/autocomplete?q=3 rue 77255");
     assert_eq!(all_20.len(), 1);
-    assert!(
-        get_values(&all_20, "postcode")
-            .iter()
-            .all(|r| *r == "77255",)
-    );
+    assert!(get_values(&all_20, "postcode")
+        .iter()
+        .all(|r| *r == "77255",));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);
@@ -107,11 +102,9 @@ fn three_cities_zip_code_test(bragi: &BragiHandler) {
     // and some street of it (and all on this admin)
     let res = bragi.get("/autocomplete?q=77000");
     assert_eq!(res.len(), 10);
-    assert!(
-        get_values(&res, "postcode")
-            .iter()
-            .all(|r| r.contains("77000"),)
-    );
+    assert!(get_values(&res, "postcode")
+        .iter()
+        .all(|r| r.contains("77000"),));
     let types = get_types(&res);
     // since we did not ask for an house number, we should get none
     assert_eq!(count_types(&types, "house"), 0);
@@ -120,11 +113,9 @@ fn three_cities_zip_code_test(bragi: &BragiHandler) {
 fn three_cities_zip_code_address_test(bragi: &BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77288 2 Rue de la Reine Blanche");
     assert_eq!(all_20.len(), 1);
-    assert!(
-        get_values(&all_20, "postcode")
-            .iter()
-            .all(|r| *r == "77288",)
-    );
+    assert!(get_values(&all_20, "postcode")
+        .iter()
+        .all(|r| *r == "77288",));
     let types = get_types(&all_20);
     let count = count_types(&types, "street");
     assert_eq!(count, 0);

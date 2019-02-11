@@ -28,22 +28,22 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use super::get_first_index_aliases;
 use super::ToJson;
 use hyper;
 use hyper::client::Client;
-use mdo::option::{bind, ret};
 
 /// Returns the total number of results in the ES
-fn get_nb_elements(es_wrapper: &::ElasticSearchWrapper) -> u64 {
+fn get_nb_elements(es_wrapper: &crate::ElasticSearchWrapper<'_>) -> u64 {
     let json = es_wrapper.search("*.*");
     json["hits"]["total"].as_u64().unwrap()
 }
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
-pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/sample-bano.csv".into(),
@@ -69,13 +69,8 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
 
     assert_eq!(first_indexes.len(), 1);
     // our index should be aliased by the master_index + an alias over the document type + dataset
-    let aliases = mdo! {
-        s =<< raw_indexes.get(first_indexes.first().unwrap());
-        s =<< s.as_object();
-        s =<< s.get("aliases");
-        s =<< s.as_object();
-        ret ret(s.keys().cloned().collect())
-    }.unwrap_or_else(Vec::new);
+    let aliases = get_first_index_aliases(raw_indexes);
+
     // for the moment 'munin' is hard coded, but hopefully that will change
     assert_eq!(
         aliases,
@@ -83,7 +78,7 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     // then we import again the bano file:
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/sample-bano.csv".into(),
@@ -106,22 +101,16 @@ pub fn bano2mimir_sample_test(es_wrapper: ::ElasticSearchWrapper) {
     assert_eq!(final_indexes.len(), 1);
     assert!(final_indexes != first_indexes);
 
-    let aliases = mdo! {
-        s =<< raw_indexes.get(final_indexes.first().unwrap());
-        s =<< s.as_object();
-        s =<< s.get("aliases");
-        s =<< s.as_object();
-        ret ret(s.keys().cloned().collect())
-    }.unwrap_or_else(Vec::new);
+    let aliases = get_first_index_aliases(raw_indexes);
     assert_eq!(
         aliases,
         vec!["munin", "munin_addr", "munin_addr_fr", "munin_geo_data"]
     );
 
-    // we should have imported 32 elements
+    // we should have imported 34 elements
     // (we shouldn't have the badly formated line)
     let total = get_nb_elements(&es_wrapper);
-    assert_eq!(total, 32);
+    assert_eq!(total, 34);
 
     // We look for 'Fake-City' which should have been filtered since the street name is empty
     let res: Vec<_> = es_wrapper

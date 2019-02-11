@@ -28,14 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate iron;
-extern crate mimir;
-extern crate serde_json;
+use iron;
+
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
+use super::to_json;
 use super::BragiHandler;
+use serde_json::{self, json};
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
 /// and test thourgh bragi in the end
@@ -43,18 +44,20 @@ use super::BragiHandler;
 /// First we import cosmogony,
 /// then openaddress (or bano),
 /// then osm (without any admins)
-pub fn canonical_import_process_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
-    ::launch_and_assert(
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
             "--input=./tests/fixtures/cosmogony.json".into(),
+            "--lang=fr".into(),
+            "--lang=es".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    ::launch_and_assert(
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../bano2mimir"),
         vec![
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
@@ -63,7 +66,7 @@ pub fn canonical_import_process_test(es_wrapper: ::ElasticSearchWrapper) {
         &es_wrapper,
     );
 
-    ::launch_and_assert(
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../osm2mimir"),
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -75,6 +78,7 @@ pub fn canonical_import_process_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     melun_test(&bragi);
+    lang_test(&bragi);
 }
 
 fn melun_test(bragi: &BragiHandler) {
@@ -130,6 +134,10 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(cityhall_admins[0]["name"], "Melun");
     assert_eq!(cityhall_admins[0]["zone_type"], "city");
 
+    // i18n labels and names have been cleaned up
+    assert_eq!(cityhall_admins[0].get("labels"), None);
+    assert_eq!(cityhall_admins[0].get("names"), None);
+
     assert_eq!(cityhall_admins[1]["id"], "admin:osm:relation:424253843");
     assert_eq!(cityhall_admins[1]["insee"], "77");
     assert_eq!(
@@ -146,11 +154,11 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(
         cityhall_admins[2]["codes"],
         json!([
-                    {"name": "ISO3166-1", "value": "FR"},
-                    {"name": "ISO3166-1:alpha2", "value": "FR"},
-                    {"name": "ISO3166-1:alpha3", "value": "FRA"},
-                    {"name": "ISO3166-1:numeric", "value": "250"},
-    ])
+                        {"name": "ISO3166-1", "value": "FR"},
+                        {"name": "ISO3166-1:alpha2", "value": "FR"},
+                        {"name": "ISO3166-1:alpha3", "value": "FRA"},
+                        {"name": "ISO3166-1:numeric", "value": "250"},
+        ])
     );
 
     // the poi should have been associated to an address
@@ -163,7 +171,52 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["city"], "Melun");
 }
 
-pub fn bragi_invalid_es_test(_es_wrapper: ::ElasticSearchWrapper) {
+fn lang_test(bragi: &BragiHandler) {
+    let all_francia = bragi.get("/autocomplete?q=Francia&lang=es");
+    let result = all_francia.first().unwrap();
+    assert_eq!(result["name"], "Francia");
+    assert_eq!(result["type"], "country");
+    assert_eq!(result["label"], "Francia");
+
+    let all_melun = bragi.get("/autocomplete?q=Melun&lang=es");
+    let result = all_melun.first().unwrap();
+    assert_eq!(result["name"], "Melun");
+    assert_eq!(result["type"], "city");
+    assert_eq!(
+        result["label"],
+        "Melun (77000-CP77001), Sena y Marne, Francia"
+    );
+
+    let all_cityhall = bragi.get("/autocomplete?q=Hotel+de+ville+melun&lang=es");
+    let result = all_cityhall.first().unwrap();
+    assert_eq!(result["name"], "Hôtel de Ville");
+    assert_eq!(result["label"], "Hôtel de Ville (Melun)");
+    let admins = result["administrative_regions"]
+        .as_array()
+        .expect("admins must be array");
+    let country = admins
+        .iter()
+        .find(|a| a["zone_type"] == "country")
+        .expect("POI should have a country among all admins");
+    assert_eq!(country["name"], "Francia");
+    assert_eq!(country["label"], "Francia");
+    let city = admins
+        .iter()
+        .find(|a| a["zone_type"] == "city")
+        .expect("POI should have a city among admins");
+    assert_eq!(city["name"], "Melun");
+    assert_eq!(
+        city["label"],
+        "Melun (77000-CP77001), Sena y Marne, Francia"
+    );
+
+    // Multiple 'lang' causes 400
+    let raw = bragi.raw_get("/autocomplete?q=Melun&lang=es&lang=fr");
+    let resp = raw.unwrap_err().response;
+    assert_eq!(resp.status, Some(iron::status::Status::BadRequest));
+}
+
+pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
 
     // the status does not check the ES connexion, so for the status all is good
@@ -173,4 +226,7 @@ pub fn bragi_invalid_es_test(_es_wrapper: ::ElasticSearchWrapper) {
     // the autocomplete gives a 503
     let resp = bragi.raw_get("/autocomplete?q=toto").unwrap();
     assert_eq!(resp.status, Some(iron::status::Status::ServiceUnavailable));
+    let json = to_json(resp);
+    assert_eq!(json.get("short"), Some(&json!("query error")));
+    assert_eq!(json.get("long"), Some(&json!("service unavailable")));
 }

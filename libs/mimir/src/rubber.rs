@@ -75,7 +75,8 @@ lazy_static! {
         "bragi_elasticsearch_reverse_duration_seconds",
         "The elasticsearch reverse request latencies in seconds.",
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 // Rubber is an wrapper around elasticsearch API
@@ -98,6 +99,12 @@ impl<T> TypedIndex<T> {
             _type: PhantomData,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct IndexSettings {
+    pub nb_shards: usize,
+    pub nb_replicas: usize,
 }
 
 /// return the index associated to the given type and dataset
@@ -183,8 +190,10 @@ pub fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
                 "coord",
                 rs_u::Location::LatLon(coord.lat(), coord.lon()),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
-            ).build_gauss(),
-        ).build()
+            )
+            .build_exp(),
+        )
+        .build()
 }
 
 pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<String> {
@@ -237,62 +246,71 @@ impl Rubber {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client.get(&url).send());
+        let result = self.http_client.get(&url).send()?;
         rs_es::do_req(result)
     }
     fn put(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client.put(&url).body(body).send());
+        let result = self.http_client.put(&url).body(body).send()?;
         rs_es::do_req(result)
     }
     fn post(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a post on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = try!(self.http_client.post(&url).body(body).send());
+        let result = self.http_client.post(&url).body(body).send()?;
         rs_es::do_req(result)
     }
 
-    pub fn make_index<T: MimirObject>(&self, dataset: &str) -> Result<TypedIndex<T>, Error> {
+    pub fn make_index<T: MimirObject>(
+        &self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+    ) -> Result<TypedIndex<T>, Error> {
         let index_name = get_date_index_name(&get_main_type_and_dataset_index::<T>(dataset));
         info!("creating index {}", index_name);
-        self.create_index(&index_name.to_string())?;
+        self.create_index(&index_name.to_string(), index_settings)?;
         Ok(TypedIndex::new(index_name))
     }
 
-    pub fn create_index(&self, name: &String) -> Result<(), Error> {
+    pub fn create_index(&self, name: &String, index_settings: &IndexSettings) -> Result<(), Error> {
         debug!("creating index");
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
-        let analysis = include_str!("../../../json/settings.json");
+        let settings = include_str!("../../../json/settings.json");
 
-        let mut analysis_json_value = try!(
-            serde_json::from_str::<serde_json::Value>(&analysis).map_err(|err| format_err!(
-                "Error occurred when creating index: {} err: {}",
-                name,
-                err
-            ))
-        );
+        let mut settings_json_value = serde_json::from_str::<serde_json::Value>(&settings)
+            .map_err(|err| {
+                format_err!("Error occurred when creating index: {} err: {}", name, err)
+            })?;
 
         let synonyms: Vec<_> = SYNONYMS
             .iter()
             .map(|s| serde_json::Value::String(s.to_string()))
             .collect();
 
-        *analysis_json_value
+        *settings_json_value
             .pointer_mut("/settings/analysis/filter/synonym_filter/synonyms")
             .unwrap() = serde_json::Value::Array(synonyms);
 
-        self.put(name, &analysis_json_value.to_string())
+        *settings_json_value
+            .pointer_mut("/settings/number_of_shards")
+            .unwrap() = serde_json::Value::from(index_settings.nb_shards);
+        *settings_json_value
+            .pointer_mut("/settings/number_of_replicas")
+            .unwrap() = serde_json::Value::from(index_settings.nb_replicas);
+
+        self.put(name, &settings_json_value.to_string())
             .map_err(|e| {
                 format_err!(
                     "Error: {},  while creating new index {}, ",
                     name,
                     e.to_string()
                 )
-            }).and_then(|res| {
+            })
+            .and_then(|res| {
                 if res.status == StatusCode::Ok {
                     Ok(())
                 } else {
@@ -307,7 +325,8 @@ impl Rubber {
             .map_err(|e| {
                 info!("Error while creating template {}", name);
                 format_err!("Error: {} while creating template {}", e.to_string(), name)
-            }).and_then(|res| {
+            })
+            .and_then(|res| {
                 if res.status == StatusCode::Ok {
                     Ok(())
                 } else {
@@ -361,8 +380,10 @@ impl Rubber {
                                 a.pointer("/aliases")
                                     .and_then(|a| a.as_object())
                                     .map(|aliases| (i.clone(), aliases.keys().cloned().collect()))
-                            }).collect()
-                    }).unwrap_or_else(|| {
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_else(|| {
                         info!("no aliases for {}", base_index);
                         BTreeMap::new()
                     }))
@@ -393,9 +414,18 @@ impl Rubber {
             .collect())
     }
 
-    pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
+    pub fn get_address(
+        &mut self,
+        coord: &Coord,
+        timeout: Option<time::Duration>,
+    ) -> Result<Vec<Place>, EsError> {
         let types = vec!["house".into(), "street".into()];
         let indexes = get_indexes(false, &[], &types);
+        let indexes = indexes
+            .iter()
+            .map(|index| index.as_str())
+            .collect::<Vec<&str>>();
+
         let distance = rs_u::Distance::new(1000., rs_u::DistanceUnit::Meter);
         let geo_distance =
             Query::build_geo_distance("coord", (coord.lat(), coord.lon()), distance).build();
@@ -406,18 +436,20 @@ impl Rubber {
 
         let timer = ES_REQ_HISTOGRAM.start_timer();
 
-        let result: SearchResult<serde_json::Value> = self
-            .es_client
-            .search_query()
+        let timeout = timeout.map(|t| format!("{:?}", t));
+        let mut search_query = self.es_client.search_query();
+
+        let search_query = search_query
             .with_ignore_unavailable(true)
-            .with_indexes(
-                &indexes
-                    .iter()
-                    .map(|index| index.as_str())
-                    .collect::<Vec<_>>(),
-            ).with_query(&query)
-            .with_size(1)
-            .send()?;
+            .with_indexes(&indexes)
+            .with_query(&query)
+            .with_size(1);
+
+        if let Some(timeout) = &timeout {
+            search_query.with_timeout(timeout.as_str());
+        }
+        let result = search_query.send()?;
+
         timer.observe_duration();
         collect(result)
     }
@@ -431,7 +463,13 @@ impl Rubber {
         index: TypedIndex<T>,
     ) -> Result<(), Error> {
         debug!("publishing index");
-        let last_indexes = try!(self.get_last_index(&index, dataset));
+
+        // Refresh index before publishing
+        self.es_client
+            .refresh()
+            .with_indexes(&[&index.name])
+            .send()?;
+        let last_indexes = self.get_last_index(&index, dataset)?;
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
         self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes)
@@ -524,7 +562,8 @@ impl Rubber {
                     v.es_id()
                         .into_iter()
                         .fold(Action::index(v), |action, id| action.with_id(id))
-                }).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
         });
         for chunk in chunks.filter(|c| !c.is_empty()) {
             nb += chunk.len();
@@ -543,14 +582,19 @@ impl Rubber {
     /// To have zero downtime:
     /// first all the elements are added in a temporary index and when all has been indexed
     /// the index is published and the old index is removed
-    pub fn index<T, I>(&mut self, dataset: &str, iter: I) -> Result<usize, Error>
+    pub fn index<T, I>(
+        &mut self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+        iter: I,
+    ) -> Result<usize, Error>
     where
         T: MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
         // TODO better error handling
         let index = self
-            .make_index(dataset)
+            .make_index(dataset, index_settings)
             .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)?;
         self.publish_index(dataset, index)?;
@@ -584,7 +628,7 @@ impl Rubber {
             .with_types(&[&T::doc_type()])
             .scan(&Duration::minutes(1))?;
         loop {
-            let page = try!(scan.scroll(&mut self.es_client, &Duration::minutes(1)));
+            let page = scan.scroll(&mut self.es_client, &Duration::minutes(1))?;
             if page.hits.hits.len() == 0 {
                 break;
             }
@@ -596,7 +640,7 @@ impl Rubber {
                     .map(|ad| *ad),
             );
         }
-        try!(scan.close(&mut self.es_client));
+        scan.close(&mut self.es_client)?;
         Ok(result)
     }
 }
@@ -615,7 +659,7 @@ pub fn test_invalid_url_no_port() {
 }
 
 #[test]
-fn test_make_indexes_impl() {
+fn test_get_indexes_impl() {
     // all_data
     assert_eq!(get_indexes(true, &[], &[]), vec!["munin"]);
 

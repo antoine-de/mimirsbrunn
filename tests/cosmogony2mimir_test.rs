@@ -35,10 +35,12 @@ use std::f64;
 
 /// load a cosmogony file in mimir.
 /// The cosmogony file has been generated using the osm_fixture.osm.pbf file
-pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
-    ::launch_and_assert(
+pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
+    crate::launch_and_assert(
         concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
         vec![
+            "--lang=fr".into(),
+            "--lang=ru".into(),
             "--input=./tests/fixtures/cosmogony.json".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
@@ -48,7 +50,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
     // we should be able to find the imported admins
 
     // All results should be admins, and have some basic information
-    let all_objects: Vec<_> = es_wrapper.search_and_filter("*.*", |_| true).collect();
+    let all_objects: Vec<_> = es_wrapper.search_and_filter("label:*", |_| true).collect();
     assert_eq!(all_objects.len(), 7);
 
     assert!(all_objects.iter().any(|r| r.is_admin()));
@@ -76,7 +78,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
             assert_relative_eq!(
                 livry_sur_seine.weight,
-                0.048473060698678926,
+                0.000030426344273625653,
                 epsilon = f64::EPSILON
             );
             assert!(livry_sur_seine.coord.is_valid());
@@ -87,15 +89,15 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // check the state_district Fausse Seine-et-Marne
     let res: Vec<_> = es_wrapper
-        .search_and_filter("label:Fausse Seine-et-Marne", |_| true)
+        .search_and_filter("name:Seine-et-Marne", |_| true)
         .collect();
     assert!(res.len() >= 1);
 
     let sem = &res[0];
     match sem {
         &mimir::Place::Admin(ref sem) => {
-            assert_eq!(sem.id, "admin:osm:relation:424253843");
             assert_eq!(sem.name, "Fausse Seine-et-Marne");
+            assert_eq!(sem.id, "admin:osm:relation:424253843");
             assert_eq!(sem.label, "Fausse Seine-et-Marne, France hexagonale");
             assert_eq!(sem.insee, "77");
             assert_eq!(sem.zip_codes, Vec::<String>::new());
@@ -108,7 +110,7 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
 
     // we can even get the whole france
     let res: Vec<_> = es_wrapper
-        .search_and_filter("label:France hexagonale", |_| true)
+        .search_and_filter("name:France", |_| true)
         .collect();
     assert!(res.len() >= 1);
 
@@ -131,29 +133,39 @@ pub fn cosmogony2mimir_test(es_wrapper: ::ElasticSearchWrapper) {
                     ("ISO3166-1:alpha2", "FR"),
                     ("ISO3166-1:alpha3", "FRA"),
                     ("ISO3166-1:numeric", "250"),
-                ].into_iter()
+                ]
+                .into_iter()
                 .collect()
             );
-            assert_eq!(fr.weight, 0f64);
+            assert_eq!(fr.weight, 1.0);
             assert!(fr.coord.is_valid());
             assert_eq!(fr.zone_type, Some(ZoneType::Country));
+            assert!(fr
+                .names
+                .0
+                .iter()
+                .any(|p| p.key == "ru" && p.value == "Метрополия Франции"));
+
+            assert!(fr
+                .labels
+                .0
+                .iter()
+                .any(|p| p.key == "ru" && p.value == "Метрополия Франции"));
         }
         _ => panic!("should be an admin"),
     }
 
     // we check the weight is max on the admin with the highest population number
     let res: Vec<_> = es_wrapper
-        .search_and_filter(
-            "label:Melun (77000-CP77001), Fausse Seine-et-Marne, France hexagonale",
-            |_| true,
-        ).collect();
+        .search_and_filter("label:Melun", |_| true)
+        .collect();
     assert!(res.len() >= 1);
 
     let fausse_seine_max_weight = &res[0];
     match fausse_seine_max_weight {
-        &mimir::Place::Admin(ref fr) => {
-            assert_eq!(fr.id, "admin:osm:relation:80071");
-            assert_eq!(fr.weight, 1f64);
+        &mimir::Place::Admin(ref a) => {
+            assert_eq!(a.id, "admin:osm:relation:80071");
+            assert_relative_eq!(a.weight, 0.0006276959580242658, epsilon = f64::EPSILON);
         }
         _ => panic!("should be an admin"),
     }

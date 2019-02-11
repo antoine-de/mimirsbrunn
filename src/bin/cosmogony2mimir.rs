@@ -28,28 +28,23 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate cosmogony;
-extern crate failure;
 #[macro_use]
-extern crate log;
-extern crate mimir;
-extern crate mimirsbrunn;
-extern crate serde_json;
+extern crate slog;
 #[macro_use]
-extern crate structopt;
-extern crate osmpbfreader;
+extern crate slog_scope;
 
 use cosmogony::{Cosmogony, Zone, ZoneIndex};
 use failure::Error;
 use mimir::objects::Admin;
-use mimir::rubber::Rubber;
+use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils::normalize_admin_weight;
 use std::collections::BTreeMap;
+use structopt::StructOpt;
 
 trait IntoAdmin {
-    fn into_admin(self, &BTreeMap<ZoneIndex, String>) -> Admin;
+    fn into_admin(self, _: &BTreeMap<ZoneIndex, String>, langs: &[String]) -> Admin;
 }
 
 fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f64 {
@@ -64,7 +59,7 @@ fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f6
 }
 
 impl IntoAdmin for Zone {
-    fn into_admin(self, zones_osm_id: &BTreeMap<ZoneIndex, String>) -> Admin {
+    fn into_admin(self, zones_osm_id: &BTreeMap<ZoneIndex, String>, langs: &[String]) -> Admin {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
@@ -91,14 +86,25 @@ impl IntoAdmin for Zone {
             zone_type: self.zone_type,
             parent_id: parent_osm_id,
             codes: osm_utils::get_osm_codes_from_tags(&self.tags),
+            names: osm_utils::get_names_from_tags(&self.tags, &langs),
+            labels: self
+                .international_labels
+                .into_iter()
+                .filter(|(k, _)| langs.contains(&k))
+                .collect(),
         }
     }
 }
 
-fn send_to_es(admins: Vec<Admin>, cnx_string: &str, dataset: &str) -> Result<(), Error> {
+fn send_to_es(
+    admins: Vec<Admin>,
+    cnx_string: &str,
+    dataset: &str,
+    index_settings: IndexSettings,
+) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, admins.into_iter())?;
+    let nb_admins = rubber.index(dataset, &index_settings, admins.into_iter())?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }
@@ -121,12 +127,21 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
     let mut admins: Vec<_> = cosmogony
         .zones
         .into_iter()
-        .map(|z| z.into_admin(&cosmogony_id_to_osm_id))
+        .map(|z| z.into_admin(&cosmogony_id_to_osm_id, &args.langs))
         .collect();
 
     normalize_admin_weight(&mut admins);
 
-    send_to_es(admins, &args.connection_string, &args.dataset)?;
+    let index_settings = IndexSettings {
+        nb_shards: args.nb_shards,
+        nb_replicas: args.nb_replicas,
+    };
+    send_to_es(
+        admins,
+        &args.connection_string,
+        &args.dataset,
+        index_settings,
+    )?;
 
     Ok(())
 }
@@ -146,6 +161,15 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
+    /// Number of shards for the es index
+    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
+    nb_shards: usize,
+    /// Number of replicas for the es index
+    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    nb_replicas: usize,
+    /// Languages codes, used to build i18n names and labels
+    #[structopt(name = "lang", short, long)]
+    langs: Vec<String>,
 }
 
 fn main() {

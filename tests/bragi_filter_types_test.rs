@@ -28,15 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate bragi;
-extern crate iron_test;
-extern crate serde_json;
+use iron_test;
+
 use super::get_values;
 use super::BragiHandler;
 use super::{count_types, get_types, get_value, to_json};
 use rustless::server::status::StatusCode::{BadRequest, NotFound};
 
-pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
+pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
@@ -47,7 +46,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     // - stops.txt
     // ******************************************
     let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         osm2mimir,
         vec![
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
@@ -61,7 +60,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         bano2mimir,
         vec![
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
@@ -71,7 +70,7 @@ pub fn bragi_filter_types_test(es_wrapper: ::ElasticSearchWrapper) {
     );
 
     let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
-    ::launch_and_assert(
+    crate::launch_and_assert(
         stops2mimir,
         vec![
             "--input=./tests/fixtures/stops.txt".into(),
@@ -186,14 +185,14 @@ fn admin_by_id_test(bragi: &BragiHandler) {
 }
 
 fn street_by_id_test(bragi: &BragiHandler) {
-    let all_20 = bragi.get("/features/161162362");
+    let all_20 = bragi.get("/features/street:osm:way:161162362");
     assert_eq!(all_20.len(), 1);
     let types = get_types(&all_20);
 
     let count = count_types(&types, "street");
     assert_eq!(count, 1);
 
-    assert_eq!(get_values(&all_20, "id"), vec!["161162362"]);
+    assert_eq!(get_values(&all_20, "id"), vec!["street:osm:way:161162362"]);
 }
 
 fn addr_by_id_test(bragi: &BragiHandler) {

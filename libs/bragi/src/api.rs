@@ -28,16 +28,16 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::query;
+use crate::model;
+use crate::model::v1::*;
+use crate::params::{
+    coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
+    types_param,
+};
 use hyper::mime::Mime;
 use iron::status::Status as IronStatus;
 use iron::typemap::Key;
 use mimir::rubber::Rubber;
-use model;
-use model::v1::*;
-use params::{
-    coord_param, dataset_param, get_param_array, paginate_param, shape_param, timeout_param,
-    types_param,
-};
 use prometheus;
 use prometheus::Encoder;
 use rustless;
@@ -63,17 +63,20 @@ lazy_static! {
         "bragi_http_requests_total",
         "Total number of HTTP requests made.",
         &["handler", "method", "status"]
-    ).unwrap();
+    )
+    .unwrap();
     static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
         "bragi_http_request_duration_seconds",
         "The HTTP request latencies in seconds.",
         &["handler", "method"],
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
-    ).unwrap();
+    )
+    .unwrap();
     static ref HTTP_IN_FLIGHT: prometheus::Gauge = register_gauge!(
         "bragi_http_requests_in_flight",
         "current number of http request being served"
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 /// get the timeout from the query 'timeout' parameter
@@ -86,14 +89,21 @@ fn parse_timeout(
         .find("timeout")
         .and_then(|v| v.as_u64())
         .map(time::Duration::from_millis)
+        .map(|t| match default_timeout {
+            Some(dt) => t.min(dt),
+            None => t,
+        })
         .or(default_timeout)
 }
 
 fn add_distance(autocomp_resp: &mut model::Autocomplete, origin_coord: &Coord) {
     for feature in &mut autocomp_resp.features {
         if let ::geojson::Value::Point(p) = &feature.geometry.value {
-            if let [mut lon, mut lat] = p.as_slice() {
-                let feature_coord = Coord { lon, lat };
+            if let [lon, lat] = p.as_slice() {
+                let feature_coord = Coord {
+                    lon: *lon,
+                    lat: *lat,
+                };
                 feature.distance = Some(feature_coord.distance_to(&origin_coord) as u32);
             }
         }
@@ -115,7 +125,7 @@ where
 
 pub struct ApiEndPoint {
     pub es_cnx_string: String,
-    pub default_es_timeout: Option<time::Duration>,
+    pub max_es_timeout: Option<time::Duration>,
 }
 
 impl ApiEndPoint {
@@ -159,12 +169,14 @@ impl ApiEndPoint {
                 let method = client.endpoint.method.to_string();
 
                 HTTP_REQ_HISTOGRAM
-                    .get_metric_with(&labels!{
+                    .get_metric_with(&labels! {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
-                    }).map(|timer| {
+                    })
+                    .map(|timer| {
                         client.ext.insert::<Timer>(timer.start_timer());
-                    }).unwrap_or_else(|err| {
+                    })
+                    .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_REQ_HISTOGRAM metrics";
                                "err" => err.to_string());
                     });
@@ -178,11 +190,12 @@ impl ApiEndPoint {
                 HTTP_IN_FLIGHT.dec();
 
                 HTTP_COUNTER
-                    .get_metric_with(&labels!{
+                    .get_metric_with(&labels! {
                         "handler" => client.endpoint.path.path.as_str(),
                         "method" => method.as_str(),
                         "status" => code.as_str(),
-                    }).map(|counter| counter.inc())
+                    })
+                    .map(|counter| counter.inc())
                     .unwrap_or_else(|err| {
                         error!("impossible to get HTTP_COUNTER metrics"; "err" => err.to_string());
                     });
@@ -246,7 +259,7 @@ impl ApiEndPoint {
                     timeout_param(params);
                 });
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.max_es_timeout;
                 endpoint.handle(move |client, params| {
                     let coord = ::mimir::Coord::new(
                         params.find("lon").and_then(|p| p.as_f64()).unwrap(),
@@ -256,10 +269,12 @@ impl ApiEndPoint {
                     let timeout = parse_timeout(params, default_timeout);
                     rubber.set_read_timeout(timeout);
                     rubber.set_write_timeout(timeout);
-                    let model_autocomplete =
-                        rubber.get_address(&coord).map_err(model::BragiError::from);
+                    let model_autocomplete = rubber
+                        .get_address(&coord, timeout)
+                        .map_err(model::BragiError::from);
 
-                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    let response =
+                        model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, None);
                     render(client, response)
                 })
             });
@@ -276,7 +291,7 @@ impl ApiEndPoint {
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.max_es_timeout;
                 endpoint.handle(move |client, params| {
                     let id = params.find("id").unwrap().as_str().unwrap();
                     let pt_datasets = get_param_array(params, "pt_dataset");
@@ -285,7 +300,7 @@ impl ApiEndPoint {
                         .map_or(false, |val| val.as_bool().unwrap());
                     let timeout = parse_timeout(params, default_timeout);
                     let features = query::features(&pt_datasets, all_data, &cnx, &id, timeout);
-                    let response = model::v1::AutocompleteResponse::from(features);
+                    let response = model::v1::AutocompleteResponse::from_with_lang(features, None);
                     render(client, response)
                 })
             });
@@ -302,10 +317,11 @@ impl ApiEndPoint {
                     shape_param(params);
                     types_param(params);
                     timeout_param(params);
+                    params.opt_typed("lang", json_dsl::string());
                 });
 
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.max_es_timeout;
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")
@@ -339,6 +355,12 @@ impl ApiEndPoint {
                         ));
                     }
                     let types = get_param_array(params, "type");
+                    let langs = params
+                        .find("lang")
+                        .and_then(|val| val.as_str())
+                        .map(|val| vec![val])
+                        .unwrap_or_else(|| vec![]);
+
                     let timeout = parse_timeout(params, default_timeout);
                     let model_autocomplete = query::autocomplete(
                         &q,
@@ -350,9 +372,12 @@ impl ApiEndPoint {
                         &cnx,
                         Some(shape),
                         &types,
+                        &langs,
                         timeout,
                     );
-                    let response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    let lang = langs.first().cloned();
+                    let response =
+                        model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
                     render(client, response)
                 })
             });
@@ -364,9 +389,10 @@ impl ApiEndPoint {
                     coord_param(params, true);
                     types_param(params);
                     timeout_param(params);
+                    params.opt_typed("lang", json_dsl::string());
                 });
                 let cnx = self.es_cnx_string.clone();
-                let default_timeout = self.default_es_timeout.clone();
+                let default_timeout = self.max_es_timeout;
                 endpoint.handle(move |client, params| {
                     let q = params
                         .find("q")
@@ -397,6 +423,12 @@ impl ApiEndPoint {
                     });
 
                     let types = get_param_array(params, "type");
+                    let langs = params
+                        .find("lang")
+                        .and_then(|val| val.as_str())
+                        .map(|val| vec![val])
+                        .unwrap_or_else(|| vec![]);
+
                     let timeout = parse_timeout(params, default_timeout);
                     let model_autocomplete = query::autocomplete(
                         &q,
@@ -408,13 +440,16 @@ impl ApiEndPoint {
                         &cnx,
                         None,
                         &types,
+                        &langs,
                         timeout,
                     );
 
-                    let mut response = model::v1::AutocompleteResponse::from(model_autocomplete);
+                    let lang = langs.first().cloned();
+                    let mut response =
+                        model::v1::AutocompleteResponse::from_with_lang(model_autocomplete, lang);
 
                     // Optional : add distance for each feature (in meters)
-                    use model::v1::AutocompleteResponse::Autocomplete;
+                    use crate::model::v1::AutocompleteResponse::Autocomplete;
                     if let (Some(coord), Autocomplete(autocomplete_resp)) = (&coord, &mut response)
                     {
                         add_distance(autocomplete_resp, coord);
