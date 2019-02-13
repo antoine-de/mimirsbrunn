@@ -163,10 +163,15 @@ fn build_query<'a>(
     let format_labels_field = |lang| format!("labels.{}", lang);
     let format_labels_prefix_field = |lang| format!("labels.{}.prefix", lang);
 
+    const I18N_FIELD_BOOST: f64 = 1.2;
     let build_multi_match =
         |default_field: &str, lang_field_formatter: &Fn(&'a &'a str) -> String| {
+            let boosted_i18n_fields = langs
+                .iter()
+                .map(lang_field_formatter)
+                .map(|f| format!("{}^{:.2}", f, I18N_FIELD_BOOST));
             let fields: Vec<String> = iter::once(default_field.into())
-                .chain(langs.iter().map(lang_field_formatter))
+                .chain(boosted_i18n_fields)
                 .collect();
             Query::build_multi_match(fields, q)
         };
