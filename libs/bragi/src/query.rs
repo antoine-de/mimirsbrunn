@@ -34,6 +34,7 @@ use mimir::rubber::{collect, get_indexes};
 use prometheus;
 use rs_es;
 use rs_es::error::EsError;
+use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
 use rs_es::query::Query;
 use rs_es::units as rs_u;
@@ -320,7 +321,10 @@ fn query(
         .with_indexes(&indexes)
         .with_query(&query)
         .with_from(offset)
-        .with_size(limit);
+        .with_size(limit)
+        // No need to fetch "boundary" as it's not used in the geocoding response
+        // and is very large in some documents (countries...)
+        .with_source(Source::exclude(&["boundary"]));
 
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
