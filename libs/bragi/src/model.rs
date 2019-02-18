@@ -265,7 +265,7 @@ impl FromWithLang<mimir::Place> for Feature {
     }
 }
 
-trait FromWithLang<T> {
+pub trait FromWithLang<T> {
     fn from_with_lang(_: T, lang: Option<&str>) -> Self;
 }
 
@@ -514,4 +514,3 @@ impl FromWithLang<Vec<mimir::Place>> for Autocomplete {
         )
     }
 }
-

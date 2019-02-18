@@ -1,5 +1,5 @@
 use crate::extractors::BragiQuery;
-use crate::model::{Autocomplete, BragiError};
+use crate::model::{Autocomplete, BragiError, FromWithLang};
 use crate::routes::params;
 use crate::{model, query, Context};
 use actix_web::{Json, State};
@@ -54,6 +54,7 @@ pub struct Params {
     lon: Option<f64>,
     #[serde(default, rename = "type")]
     types: Vec<Type>,
+    lang: Option<String>,
 }
 
 impl Params {
@@ -68,6 +69,9 @@ impl Params {
                 "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
             )),
         }
+    }
+    fn langs(&self) -> Vec<&str> {
+        self.lang.iter().map(|l| l.as_str()).collect()
     }
 }
 
@@ -112,6 +116,7 @@ pub fn call_autocomplete(
     state: &Context,
     shape: Option<Vec<(f64, f64)>>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
+    let langs = params.langs();
     let timeout = params::get_timeout(&params.timeout, &state.max_es_timeout);
     let res = query::autocomplete(
         &params.q,
@@ -127,9 +132,11 @@ pub fn call_autocomplete(
         &state.es_cnx_string,
         shape,
         &params.types_as_str(),
+        &langs,
         timeout,
     );
-    res.map(Autocomplete::from).map(Json)
+    res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
+        .map(Json)
 }
 
 pub fn autocomplete(

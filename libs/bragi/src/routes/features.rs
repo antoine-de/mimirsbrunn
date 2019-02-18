@@ -1,6 +1,6 @@
 use crate::extractors::BragiQuery;
 use crate::routes::params;
-use crate::{model, query, Context};
+use crate::{model, model::FromWithLang, query, Context};
 use actix_web::{Json, Path, State};
 use std::time::Duration;
 
@@ -30,5 +30,7 @@ pub fn features(
         &*id,
         timeout,
     );
-    features.map(model::Autocomplete::from).map(Json)
+    features
+        .map(|r| model::Autocomplete::from_with_lang(r, None))
+        .map(Json)
 }

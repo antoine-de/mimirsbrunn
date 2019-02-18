@@ -1,6 +1,6 @@
 use crate::extractors::BragiQuery;
 use crate::routes::params;
-use crate::{model, Context};
+use crate::{model, model::FromWithLang, Context};
 use actix_web::{Json, State};
 use mimir::rubber::Rubber;
 use std::time::Duration;
@@ -24,6 +24,6 @@ pub fn reverse(
     rubber
         .get_address(&coord, timeout)
         .map_err(model::BragiError::from)
-        .map(model::Autocomplete::from)
+        .map(|r| model::Autocomplete::from_with_lang(r, None))
         .map(Json)
 }

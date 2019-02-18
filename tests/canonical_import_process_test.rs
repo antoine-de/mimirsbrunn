@@ -213,9 +213,18 @@ fn lang_test(bragi: &mut BragiHandler) {
     );
 
     // Multiple 'lang' causes 400
-    let raw = bragi.raw_get("/autocomplete?q=Melun&lang=es&lang=fr");
-    let resp = raw.unwrap_err().response;
-    assert_eq!(resp.status, Some(iron::status::Status::BadRequest));
+    let r = bragi.get_unchecked_json("/autocomplete?q=Melun&lang=es&lang=fr");
+
+    assert_eq!(
+        r,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: Multiple values for one key",
+            })
+        )
+    );
 }
 
 pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
