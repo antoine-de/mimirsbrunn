@@ -34,6 +34,7 @@ use mimir::rubber::{collect, get_indexes};
 use prometheus;
 use rs_es;
 use rs_es::error::EsError;
+use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
 use rs_es::query::Query;
 use rs_es::units as rs_u;
@@ -163,10 +164,15 @@ fn build_query<'a>(
     let format_labels_field = |lang| format!("labels.{}", lang);
     let format_labels_prefix_field = |lang| format!("labels.{}.prefix", lang);
 
+    const I18N_FIELD_BOOST: f64 = 1.2;
     let build_multi_match =
         |default_field: &str, lang_field_formatter: &Fn(&'a &'a str) -> String| {
+            let boosted_i18n_fields = langs
+                .iter()
+                .map(lang_field_formatter)
+                .map(|f| format!("{}^{:.2}", f, I18N_FIELD_BOOST));
             let fields: Vec<String> = iter::once(default_field.into())
-                .chain(langs.iter().map(lang_field_formatter))
+                .chain(boosted_i18n_fields)
                 .collect();
             Query::build_multi_match(fields, q)
         };
@@ -315,7 +321,10 @@ fn query(
         .with_indexes(&indexes)
         .with_query(&query)
         .with_from(offset)
-        .with_size(limit);
+        .with_size(limit)
+        // No need to fetch "boundary" as it's not used in the geocoding response
+        // and is very large in some documents (countries...)
+        .with_source(Source::exclude(&["boundary"]));
 
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
