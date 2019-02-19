@@ -1,5 +1,5 @@
 # docker file used in jenkins to build the project
-FROM jimmycuadra/rust:latest
+FROM rust:1.32-stretch
 
 # we also need a docker client
  RUN apt-get update &&\
