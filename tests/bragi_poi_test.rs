@@ -39,7 +39,7 @@ use mimir::{MimirObject, Poi};
 use serde_json::json;
 
 pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
 
     // ******************************************
     // We load three-cities bano dataset and then the OSM dataset (with the POIs)
@@ -71,15 +71,15 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    poi_admin_address_test(&bragi);
-    poi_admin_test(&bragi);
-    poi_zip_code_test(&bragi);
-    poi_from_osm_test(&bragi);
-    poi_misspelt_one_word_admin_test(&bragi);
-    poi_from_osm_with_address_addr_test(&bragi);
+    poi_admin_address_test(&mut bragi);
+    poi_admin_test(&mut bragi);
+    poi_zip_code_test(&mut bragi);
+    poi_from_osm_test(&mut bragi);
+    poi_misspelt_one_word_admin_test(&mut bragi);
+    poi_from_osm_with_address_addr_test(&mut bragi);
 }
 
-fn poi_admin_address_test(bragi: &BragiHandler) {
+fn poi_admin_address_test(bragi: &mut BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, Poi::doc_type()), 1);
@@ -111,7 +111,7 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
     assert_eq!(get_value(poi, "postcode"), "77350");
 }
 
-fn poi_admin_test(bragi: &BragiHandler) {
+fn poi_admin_test(bragi: &mut BragiHandler) {
     // with this search we should be able to find a poi called Melun Rp
     let geocodings = bragi.get("/autocomplete?q=Melun Rp");
     let types = get_types(&geocodings);
@@ -134,7 +134,7 @@ fn poi_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(melun, "label"), "Melun (77000-CP77001)");
 }
 
-fn poi_zip_code_test(bragi: &BragiHandler) {
+fn poi_zip_code_test(bragi: &mut BragiHandler) {
     // search by zip code
     let geocodings = bragi.get("/autocomplete?q=77000&limit=15");
     let types = get_types(&geocodings);
@@ -143,12 +143,30 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     assert_eq!(count_types(&types, "street"), 8);
 
     // search by zip code and limit is string type
-    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=ABCD");
-    assert!(geocodings.is_err(), true);
+    let geocodings = bragi.get_unchecked_json("/autocomplete?q=77000&limit=ABCD");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
+            })
+        )
+    );
 
     // search by zip code and limit < 0
-    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=-1");
-    assert!(geocodings.is_err(), true);
+    let geocodings = bragi.get_unchecked_json("/autocomplete?q=77000&limit=-1");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
+            })
+        )
+    );
 
     // search by zip code and limit and offset
     let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=0");
@@ -158,7 +176,7 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     assert_eq!(all_20.len(), 3);
 }
 
-fn poi_from_osm_test(bragi: &BragiHandler) {
+fn poi_from_osm_test(bragi: &mut BragiHandler) {
     // search poi: Poi as a relation in osm data
     let geocodings = bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)");
     let types = get_types(&geocodings);
@@ -194,7 +212,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère",));
 }
 
-fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
+fn poi_misspelt_one_word_admin_test(bragi: &mut BragiHandler) {
     // with this search we should be able to find a poi called "Melun"
     let geocodings = bragi.get("/autocomplete?q=Melun");
     let types = get_types(&geocodings);
@@ -214,7 +232,7 @@ fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(melun, "name"), "Melun");
 }
 
-fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
+fn poi_from_osm_with_address_addr_test(bragi: &mut BragiHandler) {
     // search poi: Poi as a way in osm data
     let geocodings = bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)");
     let types = get_types(&geocodings);

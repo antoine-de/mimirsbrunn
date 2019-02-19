@@ -30,21 +30,16 @@
 
 extern crate geo;
 extern crate geojson;
-extern crate iron;
 #[macro_use]
 extern crate lazy_static;
 extern crate mimir;
 extern crate rs_es;
-extern crate rustless;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate heck;
-extern crate navitia_model;
 extern crate serde_json;
 extern crate structopt;
-extern crate urlencoded;
-extern crate valico;
 
 #[macro_use]
 extern crate slog;
@@ -55,24 +50,20 @@ extern crate slog_scope;
 extern crate failure;
 extern crate num_cpus;
 
-use iron::prelude::Chain;
-use iron::{Iron, Protocol};
-use rustless::Application;
 use std::time;
 use structopt::StructOpt;
-
-extern crate logger;
 
 #[macro_use]
 extern crate prometheus;
 
 extern crate hyper;
 
-pub mod api;
+mod extractors;
 mod model;
-mod params;
+mod prometheus_middleware;
 pub mod query;
-use logger::Logger;
+mod routes;
+pub mod server;
 
 lazy_static! {
     static ref BRAGI_NB_THREADS: String = (8 * ::num_cpus::get()).to_string();
@@ -105,26 +96,17 @@ pub struct Args {
     max_es_timeout: Option<u64>,
 }
 
-pub fn runserver() {
-    let args = Args::from_args();
-    let api = api::ApiEndPoint {
-        es_cnx_string: args.connection_string,
-        max_es_timeout: args.max_es_timeout.map(time::Duration::from_millis),
+#[derive(Clone, Debug)]
+pub struct Context {
+    pub es_cnx_string: String, //TODO create a rs-es client
+    pub max_es_timeout: Option<time::Duration>,
+}
+
+impl From<&Args> for Context {
+    fn from(args: &Args) -> Self {
+        Self {
+            es_cnx_string: args.connection_string.clone(),
+            max_es_timeout: args.max_es_timeout.map(time::Duration::from_millis),
+        }
     }
-    .root();
-    let app = Application::new(api);
-
-    let (logger_before, logger_after) = Logger::new(None);
-
-    let mut chain = Chain::new(app);
-    // Link logger_before as your first before middleware.
-    chain.link_before(logger_before);
-
-    // Link logger_after as your *last* after middleware.
-    chain.link_after(logger_after);
-
-    println!("listening on {}", args.bind);
-    Iron::new(chain)
-        .listen_with(args.bind.as_str(), args.nb_threads, Protocol::Http, None)
-        .unwrap();
 }

@@ -38,11 +38,8 @@ assert_float_eq = "1"
 
 [dev-dependencies]
 hyper = "0.10"
-iron-test = "0.4"
-rustless = "*"
-iron = "0.4"
-mime = "0.2"
 approx = "0.2.0"
+actix-web = "0.7"
 
 [build-dependencies]
 git-version = "0.2"
@@ -59,7 +56,3 @@ path = "libs/docker_wrapper"
 # we just call one test method: cf. tests::all_tests()
 [[test]]
 name = "tests"
-
-[replace]
-# remove this line once queryst > 1.0.1 is released
-"queryst:1.0.1" = { git = "https://github.com/rustless/queryst", rev = "b29604af7bfb05c2b9d98d726ab1bafd0533cc10" }

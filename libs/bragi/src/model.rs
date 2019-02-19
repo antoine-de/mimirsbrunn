@@ -40,10 +40,60 @@ use std::sync::Arc;
 pub enum BragiError {
     #[fail(display = "Unable to find object")]
     ObjectNotFound,
+    #[fail(display = "Invalid parameter: {}", _0)]
+    InvalidParam(&'static str),
     #[fail(display = "Impossible to find object")]
     IndexNotFound,
     #[fail(display = "invalid query {}", _0)]
     Es(EsError),
+    #[fail(display = "invalid shape: {}", _0)]
+    InvalidShape(&'static str),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ApiError {
+    pub short: String,
+    pub long: String,
+}
+
+// Q: It would be better to move it to ::v1 as it depends on the api interface
+// how can we do this ?
+impl actix_web::error::ResponseError for BragiError {
+    fn error_response(&self) -> actix_web::HttpResponse {
+        match *self {
+            BragiError::ObjectNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
+                short: "query error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::InvalidShape(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
+                short: "validation error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::InvalidParam(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
+                short: "validation error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::IndexNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
+                short: "query error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::Es(ref es_error) => {
+                error!("es error on query: {}", &es_error);
+                match es_error {
+                    EsError::HttpError(_) => {
+                        actix_web::HttpResponse::ServiceUnavailable().json(ApiError {
+                            short: "query error".to_owned(),
+                            long: "service unavailable".to_owned(),
+                        })
+                    }
+                    _ => actix_web::HttpResponse::InternalServerError().json(ApiError {
+                        short: "query error".to_owned(),
+                        long: "internal server error".to_owned(),
+                    }),
+                }
+            }
+        }
+    }
 }
 
 impl From<EsError> for BragiError {
@@ -196,6 +246,7 @@ impl ToGeom for geo::Coordinate<f64> {
 impl FromWithLang<mimir::Place> for Feature {
     fn from_with_lang(other: mimir::Place, lang: Option<&str>) -> Feature {
         let geom = other.to_geom();
+        let distance = other.distance();
         let geocoding = match other {
             mimir::Place::Admin(admin) => GeocodingResponse::from_with_lang(admin, lang),
             mimir::Place::Street(street) => GeocodingResponse::from_with_lang(street, lang),
@@ -209,12 +260,12 @@ impl FromWithLang<mimir::Place> for Feature {
             properties: Properties {
                 geocoding: geocoding,
             },
-            distance: None,
+            distance: distance,
         }
     }
 }
 
-trait FromWithLang<T> {
+pub trait FromWithLang<T> {
     fn from_with_lang(_: T, lang: Option<&str>) -> Self;
 }
 
@@ -461,123 +512,5 @@ impl FromWithLang<Vec<mimir::Place>> for Autocomplete {
                 .map(|p| Feature::from_with_lang(p, lang))
                 .collect(),
         )
-    }
-}
-
-pub mod v1 {
-    use super::BragiError;
-    use crate::model::FromWithLang;
-    use iron;
-    use mimir;
-    use rs_es::error::EsError;
-
-    pub trait HasStatus {
-        fn status(&self) -> iron::status::Status;
-    }
-
-    // Note: I think this should be in api.rs but with the serde stuff it's easier for all
-    // serde struct to be in the same file
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub struct EndPoint {
-        pub description: String,
-    }
-
-    impl HasStatus for EndPoint {
-        fn status(&self) -> iron::status::Status {
-            default_status()
-        }
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub struct CustomError {
-        pub short: String,
-        pub long: String,
-        #[serde(skip, default = "default_status")]
-        pub status: iron::status::Status,
-    }
-
-    fn default_status() -> iron::status::Status {
-        iron::status::Status::Ok
-    }
-
-    #[derive(Debug)]
-    pub enum AutocompleteResponse {
-        Error(CustomError),
-        Autocomplete(super::Autocomplete),
-    }
-
-    impl HasStatus for AutocompleteResponse {
-        fn status(&self) -> iron::status::Status {
-            match self {
-                AutocompleteResponse::Error(e) => e.status,
-                AutocompleteResponse::Autocomplete(_) => iron::status::Status::Ok,
-            }
-        }
-    }
-
-    use serde;
-    impl serde::Serialize for AutocompleteResponse {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            match self {
-                AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
-                AutocompleteResponse::Error(ref e) => serializer.serialize_some(e),
-            }
-        }
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub struct Status {
-        pub version: String,
-        pub es: String,
-        pub status: String,
-    }
-
-    impl HasStatus for Status {
-        fn status(&self) -> iron::status::Status {
-            iron::status::Status::Ok
-        }
-    }
-
-    impl AutocompleteResponse {
-        pub fn from_with_lang(
-            r: Result<Vec<mimir::Place>, BragiError>,
-            lang: Option<&str>,
-        ) -> AutocompleteResponse {
-            match r {
-                Ok(places) => AutocompleteResponse::Autocomplete(
-                    super::Autocomplete::from_with_lang(places, lang),
-                ),
-                Err(e) => {
-                    let (long_error, status) = match &e {
-                        BragiError::ObjectNotFound | BragiError::IndexNotFound => {
-                            (format!("{}", e), iron::status::Status::NotFound)
-                        }
-                        BragiError::Es(es_error) => {
-                            error!("es error on query: {}", &es_error);
-                            match es_error {
-                                EsError::HttpError(_) => (
-                                    "service unavailable".into(),
-                                    iron::status::Status::ServiceUnavailable,
-                                ),
-                                _ => (
-                                    "internal server error".into(),
-                                    iron::status::Status::InternalServerError,
-                                ),
-                            }
-                        }
-                    };
-
-                    AutocompleteResponse::Error(CustomError {
-                        short: "query error".to_string(),
-                        long: long_error,
-                        status: status,
-                    })
-                }
-            }
-        }
     }
 }

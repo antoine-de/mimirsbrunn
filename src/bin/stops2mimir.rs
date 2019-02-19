@@ -138,6 +138,7 @@ impl GtfsStop {
                 properties: vec![],
                 feed_publishers: vec![],
                 comments: vec![],
+                distance: None,
             })
         }
     }

@@ -74,6 +74,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         weight: 0.42,
         zip_codes: vec![],
         coord: Coord::new(0., 0.),
+        distance: None,
     };
 
     // we index our bob
@@ -100,6 +101,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         weight: 0.24,
         zip_codes: vec![],
         coord: Coord::new(2.68326290f64, 48.5110722f64),
+        distance: None,
     };
 
     info!("inserting bobette");
@@ -174,6 +176,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         codes: vec![],
         names: mimir::I18nProperties::default(),
         labels: mimir::I18nProperties::default(),
+        distance: None,
     };
 
     // we index our admin
@@ -275,6 +278,7 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         codes: vec![],
         names: mimir::I18nProperties::default(),
         labels: mimir::I18nProperties::default(),
+        distance: None,
     };
 
     // we index our admin

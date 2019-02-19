@@ -29,8 +29,8 @@
 // www.navitia.io
 use super::model::{self, BragiError};
 use mimir;
-use mimir::objects::{Addr, Admin, MimirObject, Poi, Stop, Street};
-use mimir::rubber::{collect, get_indexes};
+use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
+use mimir::rubber::{get_indexes, read_places};
 use prometheus;
 use rs_es;
 use rs_es::error::EsError;
@@ -43,8 +43,6 @@ use serde_json;
 use std::fmt;
 use std::iter;
 use std::time;
-
-use navitia_model::objects::Coord;
 
 lazy_static! {
     static ref ES_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
@@ -107,7 +105,7 @@ fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
         .with_function(
             rs_es::query::functions::Function::build_decay(
                 "coord",
-                rs_u::Location::LatLon(coord.lat, coord.lon),
+                rs_u::Location::LatLon(coord.lat(), coord.lon()),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
             )
             .build_gauss(),
@@ -333,7 +331,7 @@ fn query(
 
     timer.map(|t| t.observe_duration());
 
-    collect(result)
+    read_places(result, coord.as_ref())
 }
 
 pub fn features(
@@ -398,7 +396,7 @@ pub fn features(
     if result.hits.total == 0 {
         Err(BragiError::ObjectNotFound)
     } else {
-        collect(result).map_err(model::BragiError::from)
+        read_places(result, None).map_err(model::BragiError::from)
     }
 }
 

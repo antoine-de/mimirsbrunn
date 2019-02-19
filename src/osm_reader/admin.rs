@@ -176,6 +176,7 @@ pub fn read_administrative_regions(
                 codes: get_osm_codes_from_tags(&relation.tags),
                 names: mimir::I18nProperties::default(),
                 labels: mimir::I18nProperties::default(),
+                distance: None,
             };
             administrative_regions.push(admin);
         }
