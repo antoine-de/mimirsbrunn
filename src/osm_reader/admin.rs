@@ -27,18 +27,12 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
-use geo;
-use mimir;
-use osm_boundaries_utils;
-use osmpbfreader;
-
-use self::osm_boundaries_utils::build_boundary;
+use osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
 use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
 use crate::utils::normalize_admin_weight;
 use cosmogony::ZoneType;
-use geo::prelude::BoundingBox;
+use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
 use std::collections::BTreeSet;
 
@@ -169,7 +163,7 @@ pub fn read_administrative_regions(
                 zip_codes: zip_codes,
                 weight: weight,
                 coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
-                bbox: boundary.as_ref().and_then(|b| b.bbox()),
+                bbox: boundary.as_ref().and_then(|b| b.bounding_rect()),
                 boundary: boundary,
                 zone_type: zone_type,
                 parent_id: None,

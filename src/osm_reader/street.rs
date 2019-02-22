@@ -27,12 +27,6 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
-use failure;
-use geo;
-use mimir;
-use osmpbfreader;
-
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
@@ -172,7 +166,7 @@ fn get_street_admin(
         .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|node_obj| node_obj.node())
-        .map(|node| geo::Coordinate {
+        .map(|node| geo_types::Coordinate {
             x: node.lon(),
             y: node.lat(),
         })

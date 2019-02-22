@@ -27,11 +27,8 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use geo;
-use geo::contains::Contains;
 use gst::rtree::{RTree, Rect};
 use mimir::Admin;
-use std;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
@@ -39,7 +36,7 @@ use std::sync::Arc;
 /// We want to strip the admin's boundary for the objects referencing it (for performance purpose)
 /// thus in the `AdminGeoFinder` we store an Admin without the boundary (the option is emptied)
 /// and we store the boundary aside
-struct BoundaryAndAdmin(Option<geo::MultiPolygon<f64>>, Arc<Admin>);
+struct BoundaryAndAdmin(Option<geo_types::MultiPolygon<f64>>, Arc<Admin>);
 
 impl BoundaryAndAdmin {
     fn new(mut admin: Admin) -> BoundaryAndAdmin {
@@ -74,15 +71,15 @@ impl AdminGeoFinder {
                 None => return,
             };
             let first_rect: Rect = {
-                let (x, y) = (first_coord.x() as f32, first_coord.y() as f32);
+                let (x, y) = (first_coord.x as f32, first_coord.y as f32);
                 Rect::from_float(down(x), up(x), down(y), up(y))
             };
             coords.fold(first_rect, |accu, p| {
                 Rect::from_float(
-                    min(accu.xmin, p.x()),
-                    max(accu.xmax, p.x()),
-                    min(accu.ymin, p.y()),
-                    max(accu.ymax, p.y()),
+                    min(accu.xmin, p.x),
+                    max(accu.xmax, p.x),
+                    min(accu.ymin, p.y),
+                    max(accu.ymax, p.y),
                 )
             })
         };
@@ -93,7 +90,8 @@ impl AdminGeoFinder {
     }
 
     /// Get all Admins overlapping the coordinate
-    pub fn get(&self, coord: &geo::Coordinate<f64>) -> Vec<Arc<Admin>> {
+    pub fn get(&self, coord: &geo_types::Coordinate<f64>) -> Vec<Arc<Admin>> {
+        use geo::algorithm::contains::Contains;
         let (x, y) = (coord.x as f32, coord.y as f32);
         let search = Rect::from_float(down(x), up(x), down(y), up(y));
         let mut rtree_results = self.admins.get(&search);
@@ -117,7 +115,7 @@ impl AdminGeoFinder {
                 // we don't want it, we already have this kind of ZoneType
             } else if boundary
                 .as_ref()
-                .map_or(false, |b| b.contains(&geo::Point(*coord)))
+                .map_or(false, |b| b.contains(&geo_types::Point(*coord)))
             {
                 // we found a valid admin, we save it's hierarchy not to have to test their boundaries
                 if let Some(zt) = admin.zone_type {
@@ -218,10 +216,10 @@ fn test_up_down() {
 mod tests {
     use super::*;
     use cosmogony::ZoneType;
-    use geo::prelude::BoundingBox;
+    use geo::prelude::BoundingRect;
 
-    fn p(x: f64, y: f64) -> ::geo::Point<f64> {
-        ::geo::Point(::geo::Coordinate { x: x, y: y })
+    fn p(x: f64, y: f64) -> geo_types::Point<f64> {
+        geo_types::Point(geo_types::Coordinate { x: x, y: y })
     }
 
     fn make_admin(offset: f64, zt: Option<ZoneType>) -> ::mimir::Admin {
@@ -237,21 +235,21 @@ mod tests {
     ) -> ::mimir::Admin {
         // the boundary is a big octogon
         // the zone_size param is used to control the area of the zone
-        let shape = ::geo::Polygon::new(
-            ::geo::LineString(vec![
-                p(3. * zone_size + offset, 0. * zone_size + offset),
-                p(6. * zone_size + offset, 0. * zone_size + offset),
-                p(9. * zone_size + offset, 3. * zone_size + offset),
-                p(9. * zone_size + offset, 6. * zone_size + offset),
-                p(6. * zone_size + offset, 9. * zone_size + offset),
-                p(3. * zone_size + offset, 9. * zone_size + offset),
-                p(0. * zone_size + offset, 6. * zone_size + offset),
-                p(0. * zone_size + offset, 3. * zone_size + offset),
-                p(3. * zone_size + offset, 0. * zone_size + offset),
+        let shape = geo_types::Polygon::new(
+            geo_types::LineString(vec![
+                (3. * zone_size + offset, 0. * zone_size + offset).into(),
+                (6. * zone_size + offset, 0. * zone_size + offset).into(),
+                (9. * zone_size + offset, 3. * zone_size + offset).into(),
+                (9. * zone_size + offset, 6. * zone_size + offset).into(),
+                (6. * zone_size + offset, 9. * zone_size + offset).into(),
+                (3. * zone_size + offset, 9. * zone_size + offset).into(),
+                (0. * zone_size + offset, 6. * zone_size + offset).into(),
+                (0. * zone_size + offset, 3. * zone_size + offset).into(),
+                (3. * zone_size + offset, 0. * zone_size + offset).into(),
             ]),
             vec![],
         );
-        let boundary = ::geo::MultiPolygon(vec![shape]);
+        let boundary = geo_types::MultiPolygon(vec![shape]);
 
         ::mimir::Admin {
             id: id.into(),
@@ -261,7 +259,7 @@ mod tests {
             zip_codes: vec!["421337".to_string()],
             weight: 0f64,
             coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
-            bbox: boundary.bbox(),
+            bbox: boundary.bounding_rect(),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
             zone_type: zt,
