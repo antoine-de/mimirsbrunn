@@ -10,7 +10,8 @@ pub struct Params {
     pt_dataset: Vec<String>,
     #[serde(rename = "_all_data", default)]
     all_data: bool,
-    timeout: Option<Duration>,
+    /// timeout in milliseconds
+    timeout: Option<u64>,
 }
 
 pub fn features(
@@ -18,7 +19,10 @@ pub fn features(
     state: State<Context>,
     id: Path<String>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
-    let timeout = params::get_timeout(&params.timeout, &state.max_es_timeout);
+    let timeout = params::get_timeout(
+        &params.timeout.map(Duration::from_millis),
+        &state.max_es_timeout,
+    );
     let features = query::features(
         &params
             .pt_dataset

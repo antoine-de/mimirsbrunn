@@ -49,7 +49,8 @@ pub struct Params {
     limit: u64,
     #[serde(default)]
     offset: u64,
-    timeout: Option<Duration>,
+    /// timeout in milliseconds
+    timeout: Option<u64>,
     lat: Option<f64>,
     lon: Option<f64>,
     #[serde(default, rename = "type")]
@@ -72,6 +73,9 @@ impl Params {
     }
     fn langs(&self) -> Vec<&str> {
         self.lang.iter().map(|l| l.as_str()).collect()
+    }
+    fn timeout(&self) -> Option<Duration> {
+        self.timeout.map(Duration::from_millis)
     }
 }
 
@@ -117,7 +121,7 @@ pub fn call_autocomplete(
     shape: Option<Vec<(f64, f64)>>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
     let langs = params.langs();
-    let timeout = params::get_timeout(&params.timeout, &state.max_es_timeout);
+    let timeout = params::get_timeout(&params.timeout(), &state.max_es_timeout);
     let res = query::autocomplete(
         &params.q,
         &params

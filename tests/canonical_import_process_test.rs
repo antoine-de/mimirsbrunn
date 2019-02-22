@@ -81,6 +81,7 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
     invalid_type_test(&mut bragi);
     invalid_route_test(&mut bragi);
     invalid_coord_test(&mut bragi);
+    valid_timeout_test(&mut bragi);
 }
 
 fn melun_test(bragi: &mut BragiHandler) {
@@ -355,4 +356,9 @@ fn invalid_coord_test(bragi: &mut BragiHandler) {
             })
         )
     );
+}
+
+// we just check that the timeout is correctly parser
+fn valid_timeout_test(bragi: &mut BragiHandler) {
+    let _ = bragi.get("/autocomplete?q=france&timeout=12340");
 }
