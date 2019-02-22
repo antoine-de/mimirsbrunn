@@ -22,7 +22,7 @@ geo = "0.10"
 geo-types = "0.2"
 geojson = "0.12"
 failure = "0.1"
-cosmogony = "0.4"
+cosmogony = "^0.4.1"
 par-map = "0.1.4"
 lazy_static = "1"
 prometheus = {version= "0.3"}

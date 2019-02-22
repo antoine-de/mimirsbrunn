@@ -27,13 +27,13 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
 use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
 use crate::utils::normalize_admin_weight;
 use cosmogony::ZoneType;
 use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
+use osm_boundaries_utils::build_boundary;
 use std::collections::BTreeSet;
 
 pub type StreetsVec = Vec<mimir::Street>;

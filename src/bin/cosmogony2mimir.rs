@@ -33,7 +33,7 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-use cosmogony::{Cosmogony, Zone, ZoneIndex};
+use cosmogony::{Zone, ZoneIndex};
 use failure::Error;
 use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
@@ -110,14 +110,10 @@ fn send_to_es(
     Ok(())
 }
 
-fn load_cosmogony(input: &str) -> Result<Cosmogony, Error> {
-    serde_json::from_reader(std::fs::File::open(&input)?)
-        .map_err(|e| failure::err_msg(e.to_string()))
-}
-
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("importing cosmogony into Mimir");
-    let cosmogony = load_cosmogony(&args.input)?;
+
+    let cosmogony = cosmogony::load_cosmogony_from_file(&args.input)?;
 
     let cosmogony_id_to_osm_id: BTreeMap<_, _> = cosmogony
         .zones

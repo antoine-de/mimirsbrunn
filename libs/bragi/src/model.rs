@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-
 use heck::SnakeCase;
 use rs_es::error::EsError;
 use std::sync::Arc;
