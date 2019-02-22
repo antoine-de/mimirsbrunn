@@ -28,35 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-extern crate geo;
-extern crate geojson;
-#[macro_use]
-extern crate lazy_static;
-extern crate mimir;
-extern crate rs_es;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate heck;
-extern crate serde_json;
-extern crate structopt;
-
 #[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
-
 #[macro_use]
 extern crate failure;
-extern crate num_cpus;
-
-use std::time;
 use structopt::StructOpt;
-
-#[macro_use]
-extern crate prometheus;
-
-extern crate hyper;
 
 mod extractors;
 mod model;
@@ -65,7 +45,7 @@ pub mod query;
 mod routes;
 pub mod server;
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref BRAGI_NB_THREADS: String = (8 * ::num_cpus::get()).to_string();
 }
 
@@ -99,14 +79,14 @@ pub struct Args {
 #[derive(Clone, Debug)]
 pub struct Context {
     pub es_cnx_string: String, //TODO create a rs-es client
-    pub max_es_timeout: Option<time::Duration>,
+    pub max_es_timeout: Option<std::time::Duration>,
 }
 
 impl From<&Args> for Context {
     fn from(args: &Args) -> Self {
         Self {
             es_cnx_string: args.connection_string.clone(),
-            max_es_timeout: args.max_es_timeout.map(time::Duration::from_millis),
+            max_es_timeout: args.max_es_timeout.map(std::time::Duration::from_millis),
         }
     }
 }

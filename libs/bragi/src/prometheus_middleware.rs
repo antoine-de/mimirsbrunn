@@ -1,8 +1,10 @@
 use actix_web::middleware::{Finished, Middleware, Started};
 use actix_web::{HttpRequest, HttpResponse, Result};
-use prometheus;
+use prometheus::{
+    histogram_opts, labels, opts, register_counter_vec, register_gauge, register_histogram_vec,
+};
 
-lazy_static! {
+lazy_static::lazy_static! {
     static ref HTTP_COUNTER: prometheus::CounterVec = register_counter_vec!(
         "bragi_http_requests_total",
         "Total number of HTTP requests made.",

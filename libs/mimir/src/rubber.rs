@@ -30,12 +30,9 @@
 
 use super::objects::{Admin, MimirObject};
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
-use chrono;
 use failure::{Error, ResultExt};
-use hyper;
 use hyper::status::StatusCode;
-use prometheus;
-use rs_es;
+use prometheus::{exponential_buckets, histogram_opts, register_histogram, Histogram};
 use rs_es::error::EsError;
 use rs_es::operations::search::ScanResult;
 use rs_es::operations::search::SearchResult;
@@ -43,9 +40,6 @@ use rs_es::query::Query;
 use rs_es::units as rs_u;
 use rs_es::units::Duration;
 use rs_es::EsResponse;
-use serde;
-use serde_json;
-use std;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::time;
@@ -70,11 +64,11 @@ const SYNONYMS: [&'static str; 17] = [
     "anpe,pole emploi",
 ];
 
-lazy_static! {
-    static ref ES_REQ_HISTOGRAM: prometheus::Histogram = register_histogram!(
+lazy_static::lazy_static! {
+    static ref ES_REQ_HISTOGRAM: Histogram = register_histogram!(
         "bragi_elasticsearch_reverse_duration_seconds",
         "The elasticsearch reverse request latencies in seconds.",
-        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+        exponential_buckets(0.001, 1.5, 25).unwrap()
     )
     .unwrap();
 }

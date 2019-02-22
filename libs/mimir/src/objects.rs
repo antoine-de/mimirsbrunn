@@ -28,9 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use cosmogony::ZoneType;
-use geo;
-use geojson;
-use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use std::cmp::Ordering;
@@ -720,7 +717,7 @@ impl<'de> Deserialize<'de> for Coord {
         impl<'de> Visitor<'de> for CoordVisitor {
             type Value = Coord;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct Coord")
             }
 
