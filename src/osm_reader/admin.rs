@@ -211,6 +211,7 @@ pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .sorted()
+        .collect()
 }
 
 pub fn read_insee(tags: &osmpbfreader::Tags) -> Option<&str> {

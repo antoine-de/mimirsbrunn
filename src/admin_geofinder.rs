@@ -63,7 +63,7 @@ impl AdminGeoFinder {
 
         let rect = {
             let mut coords = match admin.boundary {
-                Some(ref b) => b.0.iter().flat_map(|poly| (poly.exterior).0.iter()),
+                Some(ref b) => b.0.iter().flat_map(|poly| (poly.exterior()).0.iter()),
                 None => return,
             };
             let first_coord = match coords.next() {

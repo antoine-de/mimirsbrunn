@@ -206,7 +206,7 @@ fn test_load_stops() {
             stop.try_into_with_warn()
         })
         .collect();
-    let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted();
+    let ids: Vec<_> = stops.iter().map(|s| s.id.clone()).sorted().collect();
     assert_eq!(
         ids,
         vec![
