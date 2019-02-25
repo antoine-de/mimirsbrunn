@@ -9,14 +9,18 @@ use std::time::Duration;
 pub struct Params {
     lat: f64,
     lon: f64,
-    timeout: Option<Duration>,
+    /// timeout in milliseconds
+    timeout: Option<u64>,
 }
 
 pub fn reverse(
     params: BragiQuery<Params>,
     state: State<Context>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
-    let timeout = params::get_timeout(&params.timeout, &state.max_es_timeout);
+    let timeout = params::get_timeout(
+        &params.timeout.map(Duration::from_millis),
+        &state.max_es_timeout,
+    );
     let mut rubber = Rubber::new(&state.es_cnx_string);
     rubber.set_read_timeout(timeout);
     rubber.set_write_timeout(timeout);
