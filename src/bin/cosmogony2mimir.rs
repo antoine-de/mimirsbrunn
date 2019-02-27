@@ -44,7 +44,12 @@ use std::collections::BTreeMap;
 use structopt::StructOpt;
 
 trait IntoAdmin {
-    fn into_admin(self, _: &BTreeMap<ZoneIndex, String>, langs: &[String]) -> Admin;
+    fn into_admin(
+        self,
+        _: &BTreeMap<ZoneIndex, String>,
+        langs: &[String],
+        retrocompat_on_french_id: bool,
+    ) -> Admin;
 }
 
 fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f64 {
@@ -59,7 +64,12 @@ fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f6
 }
 
 impl IntoAdmin for Zone {
-    fn into_admin(self, zones_osm_id: &BTreeMap<ZoneIndex, String>, langs: &[String]) -> Admin {
+    fn into_admin(
+        self,
+        zones_osm_id: &BTreeMap<ZoneIndex, String>,
+        langs: &[String],
+        french_id_retrocompatibility: bool,
+    ) -> Admin {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
@@ -67,7 +77,15 @@ impl IntoAdmin for Zone {
         let center = self.center.map_or(mimir::Coord::default(), |c| {
             mimir::Coord::new(c.lng(), c.lat())
         });
-        let format_id = |id| format!("admin:osm:{}", id);
+        let format_id = |id| {
+            if french_id_retrocompatibility && insee != "" {
+                // for retrocompatibity reasons, Navitia needs the
+                // french admins to have an id with the insee
+                format!("admin:fr:{}", insee)
+            } else {
+                format!("admin:osm:{}", id)
+            }
+        };
         let parent_osm_id = self
             .parent
             .and_then(|id| zones_osm_id.get(&id))
@@ -128,7 +146,13 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
     let mut admins: Vec<_> = cosmogony
         .zones
         .into_iter()
-        .map(|z| z.into_admin(&cosmogony_id_to_osm_id, &args.langs))
+        .map(|z| {
+            z.into_admin(
+                &cosmogony_id_to_osm_id,
+                &args.langs,
+                args.french_id_retrocompatibility,
+            )
+        })
         .collect();
 
     normalize_admin_weight(&mut admins);
@@ -171,6 +195,11 @@ struct Args {
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
+    /// Retrocompatibiilty on french admin id
+    /// if activated, the french administrative regions will have an id like 'admin:fr:{insee}'
+    /// instead of 'admin:osm:{osm_id}'
+    #[structopt(long = "french-id-retrocompatibility")]
+    french_id_retrocompatibility: bool,
 }
 
 fn main() {
