@@ -28,9 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use cosmogony::ZoneType;
-use geo;
-use geojson;
-use serde;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use std::cmp::Ordering;
@@ -393,12 +390,12 @@ pub struct Admin {
     pub boundary: Option<geo::MultiPolygon<f64>>,
 
     #[serde(
-        serialize_with = "serialize_bbox",
-        deserialize_with = "deserialize_bbox",
+        serialize_with = "serialize_rect",
+        deserialize_with = "deserialize_rect",
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo::Bbox<f64>>,
+    pub bbox: Option<geo_types::Rect<f64>>,
 
     #[serde(default)]
     pub zone_type: Option<ZoneType>,
@@ -474,8 +471,8 @@ where
     })
 }
 
-pub fn serialize_bbox<'a, S>(
-    bbox: &'a Option<geo::Bbox<f64>>,
+pub fn serialize_rect<'a, S>(
+    bbox: &'a Option<geo_types::Rect<f64>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -488,25 +485,23 @@ where
             // bbox serialized as an array
             // using GeoJSON bounding box format
             // See RFC 7946: https://tools.ietf.org/html/rfc7946#section-5
-            let geojson_bbox: geojson::Bbox = vec![b.xmin, b.ymin, b.xmax, b.ymax];
+            let geojson_bbox: geojson::Bbox = vec![b.min.x, b.min.y, b.max.x, b.max.y];
             geojson_bbox.serialize(serializer)
         }
         None => serializer.serialize_none(),
     }
 }
 
-fn deserialize_bbox<'de, D>(d: D) -> Result<Option<geo::Bbox<f64>>, D::Error>
+fn deserialize_rect<'de, D>(d: D) -> Result<Option<geo_types::Rect<f64>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     use serde::Deserialize;
 
     Option::<Vec<f64>>::deserialize(d).map(|option| {
-        option.map(|b| geo::Bbox {
-            xmin: b[0],
-            ymin: b[1],
-            xmax: b[2],
-            ymax: b[3],
+        option.map(|b| geo_types::Rect {
+            min: geo_types::Coordinate { x: b[0], y: b[1] },
+            max: geo_types::Coordinate { x: b[2], y: b[3] },
         })
     })
 }
@@ -720,7 +715,7 @@ impl<'de> Deserialize<'de> for Coord {
         impl<'de> Visitor<'de> for CoordVisitor {
             type Value = Coord;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct Coord")
             }
 

@@ -27,8 +27,8 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-extern crate hyper;
-extern crate retry;
+use hyper;
+use retry;
 #[macro_use]
 extern crate slog;
 #[macro_use]
@@ -37,7 +37,6 @@ extern crate slog_scope;
 use std::error::Error;
 use std::process::Command;
 
-extern crate mimir;
 use mimir::rubber::Rubber;
 
 /// This struct wraps a docker (for the moment explicitly ElasticSearch)
@@ -51,7 +50,7 @@ impl DockerWrapper {
         format!("http://{}:9200", self.ip)
     }
 
-    fn setup(&mut self) -> Result<(), Box<Error>> {
+    fn setup(&mut self) -> Result<(), Box<dyn Error>> {
         info!("Launching ES docker");
         let status = Command::new("docker")
             .args(&["run", "-d", "--name=mimirsbrunn_tests", "elasticsearch:2"])
@@ -92,7 +91,7 @@ impl DockerWrapper {
         }
     }
 
-    pub fn new() -> Result<DockerWrapper, Box<Error>> {
+    pub fn new() -> Result<DockerWrapper, Box<dyn Error>> {
         let mut wrapper = DockerWrapper { ip: "".to_string() };
         wrapper.setup()?;
         let rubber = Rubber::new(&wrapper.host());

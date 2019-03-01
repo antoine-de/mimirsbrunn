@@ -5,10 +5,10 @@ authors = ["Canal TP <dt.ro@canaltp.fr>"]
 edition = "2018"
 
 [dependencies]
-slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
-slog-term = "2.3.0"
-slog-json = "2.2.0"
-slog-scope = "4.0"
+slog = { version = "2", features = ["max_level_trace", "release_max_level_info"]}
+slog-term = "2"
+slog-json = "2"
+slog-scope = "4"
 slog-envlogger = "2.1.0"
 slog-stdlog = "3.0.2"
 slog-async = "2.2.0"
@@ -18,10 +18,11 @@ serde_derive = "1"
 serde_json = "1"
 chrono = "0.4"
 hyper = "0.10"
-geo = "0.6"
-geojson = "0.9"
+geo = "0.12"
+geo-types = "0.4"
+geojson = "0.15"
 failure = "0.1"
-cosmogony = "0.3.1"
+cosmogony = "0.5"
 par-map = "0.1.4"
 lazy_static = "1"
 prometheus = {version= "0.3"}

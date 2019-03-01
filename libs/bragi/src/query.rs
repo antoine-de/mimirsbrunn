@@ -32,6 +32,7 @@ use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places};
 use prometheus;
+use prometheus::{exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
@@ -44,12 +45,12 @@ use std::fmt;
 use std::iter;
 use std::time;
 
-lazy_static! {
-    static ref ES_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
+lazy_static::lazy_static! {
+    static ref ES_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
         "bragi_elasticsearch_request_duration_seconds",
         "The elasticsearch request latencies in seconds.",
         &["search_type"],
-        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+        exponential_buckets(0.001, 1.5, 25).unwrap()
     )
     .unwrap();
 }
@@ -88,7 +89,7 @@ enum MatchType {
 }
 
 impl fmt::Display for MatchType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let printable = match *self {
             MatchType::Prefix => "prefix",
             MatchType::Fuzzy => "fuzzy",
@@ -164,7 +165,7 @@ fn build_query<'a>(
 
     const I18N_FIELD_BOOST: f64 = 1.2;
     let build_multi_match =
-        |default_field: &str, lang_field_formatter: &Fn(&'a &'a str) -> String| {
+        |default_field: &str, lang_field_formatter: &dyn Fn(&'a &'a str) -> String| {
             let boosted_i18n_fields = langs
                 .iter()
                 .map(lang_field_formatter)

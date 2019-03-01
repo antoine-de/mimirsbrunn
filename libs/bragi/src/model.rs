@@ -28,11 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use cosmogony;
-use geo;
-use geojson;
 use heck::SnakeCase;
-use mimir;
 use rs_es::error::EsError;
 use std::sync::Arc;
 
@@ -133,11 +129,11 @@ pub struct AssociatedAdmin {
     pub zip_codes: Vec<String>,
     pub coord: mimir::Coord,
     #[serde(
-        serialize_with = "mimir::objects::serialize_bbox",
+        serialize_with = "mimir::objects::serialize_rect",
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo::Bbox<f64>>,
+    pub bbox: Option<geo_types::Rect<f64>>,
     #[serde(default)]
     pub zone_type: Option<cosmogony::ZoneType>,
     #[serde(default)]
@@ -214,11 +210,11 @@ pub struct GeocodingResponse {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub feed_publishers: Vec<mimir::FeedPublisher>,
     #[serde(
-        serialize_with = "mimir::objects::serialize_bbox",
+        serialize_with = "mimir::objects::serialize_rect",
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo::Bbox<f64>>,
+    pub bbox: Option<geo_types::Rect<f64>>,
 }
 
 trait ToGeom {
@@ -237,7 +233,7 @@ impl ToGeom for mimir::Place {
     }
 }
 
-impl ToGeom for geo::Coordinate<f64> {
+impl ToGeom for geo_types::Coordinate<f64> {
     fn to_geom(&self) -> geojson::Geometry {
         geojson::Geometry::new(geojson::Value::Point(vec![self.x, self.y]))
     }

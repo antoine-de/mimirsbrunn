@@ -30,7 +30,7 @@
 
 use cosmogony::ZoneType;
 use geo;
-use geo::prelude::BoundingBox;
+use geo::prelude::BoundingRect;
 use hyper;
 use mimir::rubber::{self, IndexSettings, Rubber};
 use mimir::{Admin, Coord, MimirObject, Street};
@@ -147,15 +147,14 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
 pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
     info!("running rubber_custom_id");
     let dataset = "my_dataset";
-    let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
 
     let boundary = geo::MultiPolygon(vec![geo::Polygon::new(
         geo::LineString(vec![
-            p(2., 48.),
-            p(2., 49.),
-            p(3., 49.),
-            p(3., 48.),
-            p(2., 48.),
+            (2., 48.).into(),
+            (2., 49.).into(),
+            (3., 49.).into(),
+            (3., 48.).into(),
+            (2., 48.).into(),
         ]),
         vec![],
     )]);
@@ -169,7 +168,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
         coord: Coord::new(2.68326290f64, 48.5110722f64),
-        bbox: boundary.bbox(),
+        bbox: boundary.bounding_rect(),
         boundary: Some(boundary),
         zone_type: Some(ZoneType::City),
         parent_id: None,
