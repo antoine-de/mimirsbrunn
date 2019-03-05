@@ -39,7 +39,7 @@ use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
-use mimirsbrunn::utils::normalize_admin_weight;
+use mimirsbrunn::utils::normalize_weight;
 use std::collections::BTreeMap;
 use structopt::StructOpt;
 
@@ -49,6 +49,7 @@ trait IntoAdmin {
         _: &BTreeMap<ZoneIndex, String>,
         langs: &[String],
         retrocompat_on_french_id: bool,
+        max_weight: f64,
     ) -> Admin;
 }
 
@@ -69,6 +70,7 @@ impl IntoAdmin for Zone {
         zones_osm_id: &BTreeMap<ZoneIndex, String>,
         langs: &[String],
         french_id_retrocompatibility: bool,
+        max_weight: f64,
     ) -> Admin {
         let insee = admin::read_insee(&self.tags).unwrap_or("");
         let zip_codes = admin::read_zip_codes(&self.tags);
@@ -97,7 +99,7 @@ impl IntoAdmin for Zone {
             label: label,
             name: self.name,
             zip_codes: zip_codes,
-            weight: weight,
+            weight: normalize_weight(weight, max_weight),
             bbox: self.bbox,
             boundary: self.boundary,
             coord: center,
@@ -116,42 +118,45 @@ impl IntoAdmin for Zone {
 }
 
 fn send_to_es(
-    admins: Vec<Admin>,
+    admins: impl Iterator<Item = Admin>,
     cnx_string: &str,
     dataset: &str,
     index_settings: IndexSettings,
 ) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, &index_settings, admins.into_iter())?;
+    let nb_admins = rubber.index(dataset, &index_settings, admins)?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }
 
+fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
+    Ok(cosmogony::read_zones_from_file(input)?.filter_map(|r| {
+        r.map_err(|e| log::warn!("impossible to read zone: {}", e))
+            .ok()
+    }))
+}
+
 fn index_cosmogony(args: Args) -> Result<(), Error> {
-    info!("importing cosmogony into Mimir");
+    info!("building maps");
 
-    let cosmogony = cosmogony::load_cosmogony_from_file(&args.input)?;
-
-    let cosmogony_id_to_osm_id: BTreeMap<_, _> = cosmogony
-        .zones
-        .iter()
-        .map(|z| (z.id.clone(), z.osm_id.clone()))
-        .collect();
-
-    let mut admins: Vec<_> = cosmogony
-        .zones
-        .into_iter()
+    let mut max_weight = 0.0;
+    let cosmogony_id_to_osm_id: BTreeMap<_, _> = read_zones(&args.input)?
         .map(|z| {
-            z.into_admin(
-                &cosmogony_id_to_osm_id,
-                &args.langs,
-                args.french_id_retrocompatibility,
-            )
+            max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
+            (z.id.clone(), z.osm_id.clone())
         })
         .collect();
 
-    normalize_admin_weight(&mut admins);
+    info!("importing cosmogony into Mimir");
+    let admins = read_zones(&args.input)?.map(|z| {
+        z.into_admin(
+            &cosmogony_id_to_osm_id,
+            &args.langs,
+            args.french_id_retrocompatibility,
+            max_weight,
+        )
+    });
 
     let index_settings = IndexSettings {
         nb_shards: args.nb_shards,
