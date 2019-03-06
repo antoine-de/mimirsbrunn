@@ -140,7 +140,7 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
 
-    let mut max_weight = 0.0;
+    let mut max_weight = 1.0;
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     for z in read_zones(&args.input)? {
         max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
