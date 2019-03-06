@@ -141,12 +141,13 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
 
     let mut max_weight = 0.0;
-    let cosmogony_id_to_osm_id: BTreeMap<_, _> = read_zones(&args.input)?
-        .map(|z| {
-            max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
-            (z.id.clone(), z.osm_id.clone())
-        })
-        .collect();
+    let mut cosmogony_id_to_osm_id = BTreeMap::new();
+    for z in read_zones(&args.input)? {
+        max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
+        cosmogony_id_to_osm_id.insert(z.id.clone(), z.osm_id.clone());
+    }
+    let max_weight = max_weight;
+    let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
 
     info!("importing cosmogony into Mimir");
     let admins = read_zones(&args.input)?.map(|z| {
