@@ -63,8 +63,13 @@ pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
 pub fn normalize_admin_weight(admins: &mut [mimir::Admin]) {
     let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight));
     for ref mut a in admins {
-        a.weight = a.weight / max;
+        a.weight = normalize_weight(a.weight, max);
     }
+}
+
+/// normalize the weight for it to be in [0, 1]
+pub fn normalize_weight(weight: f64, max_weight: f64) -> f64 {
+    return weight / max_weight;
 }
 
 pub fn wrapped_launch_run<O, F>(run: F) -> Result<(), Error>
