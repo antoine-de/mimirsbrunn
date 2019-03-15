@@ -41,6 +41,39 @@ pub fn format_label(admins: &[Arc<mimir::Admin>], name: &str) -> String {
     }
 }
 
+pub fn format_international_labels(
+    admins: &[Arc<mimir::Admin>],
+    poi_names: &mimir::I18nProperties,
+    default_poi_name: &str,
+    default_poi_label: &str,
+    langs: &[String],
+) -> mimir::I18nProperties {
+    let labels = langs
+        .iter()
+        .filter_map(|ref lang| {
+            let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
+            let i18n_poi_label = match admins.iter().position(|adm| adm.is_city()) {
+                Some(idx) => {
+                    let default_admin_name = &admins[idx].name;
+                    let local_admin_name =
+                        admins[idx].names.get(lang).unwrap_or(&default_admin_name);
+                    format!("{} ({})", local_poi_name, local_admin_name)
+                }
+                _ => local_poi_name.to_string(),
+            };
+            if i18n_poi_label == default_poi_label {
+                None
+            } else {
+                Some(mimir::Property {
+                    key: lang.to_string(),
+                    value: i18n_poi_label,
+                })
+            }
+        })
+        .collect();
+    mimir::I18nProperties(labels)
+}
+
 pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
         if adm.level > level && !adm.zip_codes.is_empty() {

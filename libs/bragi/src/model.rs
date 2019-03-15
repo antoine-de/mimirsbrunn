@@ -395,9 +395,17 @@ impl FromWithLang<mimir::Addr> for GeocodingResponse {
 
 impl FromWithLang<mimir::Poi> for GeocodingResponse {
     fn from_with_lang(other: mimir::Poi, lang: Option<&str>) -> GeocodingResponse {
+        let (name, label) = if let Some(code) = lang {
+            (
+                other.names.get(code).unwrap_or(&other.name),
+                other.labels.get(code).unwrap_or(&other.label),
+            )
+        } else {
+            (other.name.as_ref(), other.label.as_ref())
+        };
+        let name = Some(name.to_owned());
+        let label = Some(label.to_owned());
         let type_ = "poi".to_string();
-        let label = Some(other.label);
-        let name = Some(other.name);
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
         let postcode = if other.zip_codes.is_empty() {
