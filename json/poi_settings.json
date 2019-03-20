@@ -1,7 +1,7 @@
 {
     "template": "munin_poi_*",
     "settings": {
-		"refresh_interval" : "60s",
+        "refresh_interval" : "60s",
         "analysis": {
             "filter": {
                 "prefix_filter": {
