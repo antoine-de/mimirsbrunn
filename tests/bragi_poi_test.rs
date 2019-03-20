@@ -257,8 +257,9 @@ fn poi_from_osm_with_address_addr_test(bragi: &mut BragiHandler) {
 
 // test 'labels' and 'names' fields work with i18n queries
 pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
-    // we define a simple test poi with 2 langs ('it' and 'es')
-    let i18n_poi = mimir::Poi {
+    // we define a simple test italian poi (the 'Colosseo'
+    // with 2 langs for labels and names fields ('fr' and 'es')
+    let colosseo = mimir::Poi {
         id: "".to_string(),
         label: "Colosseo (Roma)".to_string(),
         name: "Colosseo".to_string(),
@@ -302,7 +303,7 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
     // we index the poi above
     let result = es
         .rubber
-        .index("munin_poi", &index_settings, std::iter::once(i18n_poi));
+        .index("munin_poi", &index_settings, std::iter::once(colosseo));
 
     es.refresh();
 
@@ -320,16 +321,10 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
     assert_eq!(result["name"], "Colisée");
     assert_eq!(result["label"], "Colisée (Rome)");
 
-    // We look for the Colisée in italian
-    let poi = bragi.get("/autocomplete?q=Colosseo&lang=it");
-    let result = poi.first().unwrap();
-    assert_eq!(result["name"], "Colosseo");
-    assert_eq!(result["label"], "Colosseo (Roma)");
-
-    // We look for the Colisée in russian: since it has not been
+    // We look for the Colisée in italian: since it has not been
     // indexed in russian we expect the default name and label (ie the
     // local ones: italian).
-    let poi = bragi.get("/autocomplete?q=Colisée&lang=ru");
+    let poi = bragi.get("/autocomplete?q=Colosseo&lang=it");
     let result = poi.first().unwrap();
     assert_eq!(result["name"], "Colosseo");
     assert_eq!(result["label"], "Colosseo (Roma)");
