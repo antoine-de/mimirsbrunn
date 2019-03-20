@@ -52,18 +52,15 @@ pub fn format_international_labels(
         .iter()
         .filter_map(|ref lang| {
             let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
-            let i18n_poi_label = admins
-                .iter()
-                .find(|adm| adm.is_city())
-                .map_or(
-                    local_poi_name.to_string(),
-                    |adm|  {
+            let i18n_poi_label =
+                admins
+                    .iter()
+                    .find(|adm| adm.is_city())
+                    .map_or(local_poi_name.to_string(), |adm| {
                         let default_admin_name = &adm.name;
                         let local_admin_name = &adm.names.get(lang).unwrap_or(&default_admin_name);
                         format!("{} ({})", local_poi_name, local_admin_name)
-                    }
-
-                );
+                    });
 
             if i18n_poi_label == default_poi_label {
                 None
