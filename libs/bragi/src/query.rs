@@ -139,6 +139,8 @@ fn build_query<'a>(
     pt_datasets: &[&str],
     all_data: bool,
     langs: &'a [&'a str],
+    zone_types: &[&str],
+    poi_types: &[&str],
 ) -> Query {
     use rs_es::query::functions::Function;
 
@@ -269,9 +271,22 @@ fn build_query<'a>(
         filters.push(Query::build_geo_polygon("coord", s).build());
     }
 
+    let zone_types = Query::build_bool()
+        .with_should(
+            zone_types.iter().map(|x| Query::build_match(*x, q.to_string()).build()).collect::<Vec<_>>()
+        )
+        .build();
+    let poi_types = Query::build_bool()
+        .with_should(
+            poi_types.iter().map(|x| Query::build_match(*x, q.to_string()).build()).collect::<Vec<_>>()
+        )
+        .build();
+
     Query::build_bool()
         .with_must(vec![type_query, string_query, importance_query])
         .with_filter(Query::build_bool().with_must(filters).build())
+        .with_filter(Query::build_bool().with_must(zone_types).build())
+        .with_filter(Query::build_bool().with_must(poi_types).build())
         .build()
 }
 
@@ -286,11 +301,14 @@ fn query(
     coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     types: &[&str],
+    zone_types: &[&str],
+    poi_types: &[&str],
     langs: &[&str],
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
-    let query = build_query(q, match_type, coord, shape, pt_datasets, all_data, langs);
+    let query = build_query(q, match_type, coord, shape, pt_datasets, all_data, langs,
+                            zone_types, poi_types);
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
     let indexes = indexes
@@ -411,6 +429,8 @@ pub fn autocomplete(
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
     types: &[&str],
+    zone_types: &[&str],
+    poi_types: &[&str],
     langs: &[&str],
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
@@ -418,6 +438,14 @@ pub fn autocomplete(
         shape
             .as_ref()
             .map(|v| v.iter().map(|&l| l.into()).collect())
+    }
+
+    // Perform parameters validation.
+    if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
+        return Err(BragiError::InvalidParam("zone_type parameter requires to have 'type=zone'"));
+    }
+    if !poi_types.is_empty() && !types.iter().any(|s| *s == "poi") {
+        return Err(BragiError::InvalidParam("poi_type parameter requires to have 'type=poi'"));
     }
 
     let mut client = rs_es::Client::new(cnx).unwrap();
@@ -437,6 +465,8 @@ pub fn autocomplete(
         &coord,
         make_shape(&shape),
         &types,
+        &zone_types,
+        &poi_types,
         &langs,
         timeout,
     )
@@ -453,6 +483,8 @@ pub fn autocomplete(
             &coord,
             make_shape(&shape),
             &types,
+            &zone_types,
+            &poi_types,
             &langs,
             timeout,
         )

@@ -22,7 +22,7 @@ geo = "0.12"
 geo-types = "0.4"
 geojson = "0.15"
 failure = "0.1"
-cosmogony = "0.5"
+cosmogony = { path = "../../../cosmogony" } # "0.5"
 par-map = "0.1.4"
 lazy_static = "1"
 prometheus = {version= "0.3"}

@@ -124,7 +124,7 @@ pub fn get_date_index_name(base_index_name: &str) -> String {
 pub fn get_indexes_by_type(a_type: &str) -> String {
     let doc_type = match a_type {
         "public_transport:stop_area" => "stop",
-        "city" => "admin",
+        "city" | "zone" => "admin",
         "house" => "addr",
         _ => a_type,
     };
@@ -202,7 +202,11 @@ pub fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
         .build()
 }
 
-pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<String> {
+pub fn get_indexes(
+    all_data: bool,
+    pt_datasets: &[&str],
+    types: &[&str],
+) -> Vec<String> {
     if all_data {
         return vec!["munin".to_string()];
     }
