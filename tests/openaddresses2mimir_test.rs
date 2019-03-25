@@ -32,14 +32,17 @@ use super::get_first_index_aliases;
 use super::ToJson;
 use hyper;
 use hyper::client::Client;
+use std::path::Path;
 
 /// Simple call to a OA load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let oa2mimir = concat!(env!("OUT_DIR"), "/../../../openaddresses2mimir");
+    let oa2mimir = Path::new(env!("OUT_DIR")).join("../../../openaddresses2mimir")
+                                             .display()
+                                             .to_string();
     crate::launch_and_assert(
-        oa2mimir,
-        vec![
+        &oa2mimir,
+        &[
             "--input=./tests/fixtures/sample-oa.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
@@ -74,8 +77,8 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     // then we import again the open addresse file:
     crate::launch_and_assert(
-        oa2mimir,
-        vec![
+        &oa2mimir,
+        &[
             "--input=./tests/fixtures/sample-oa.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],

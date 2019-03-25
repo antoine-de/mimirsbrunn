@@ -31,6 +31,7 @@
 use super::get_values;
 use super::BragiHandler;
 use serde_json::json;
+use std::path::Path;
 
 pub fn bragi_bano_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
@@ -38,10 +39,10 @@ pub fn bragi_bano_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // *********************************
     // We load bano files
     // *********************************
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = Path::new(env!("OUT_DIR")).join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/sample-bano.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],

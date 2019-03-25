@@ -173,6 +173,8 @@ pub struct GeocodingResponse {
     pub id: String,
     #[serde(rename = "type")]
     pub place_type: String, // FIXME: use an enum?
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zone_type: Option<String>,
     pub label: Option<String>,
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -276,7 +278,8 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             (other.name.as_ref(), other.label.as_ref())
         };
 
-        let type_ = get_admin_type(&other);
+        let zone_type = other.zone_type.map(|x| x.as_str().to_snake_case())
+                                       .unwrap_or_else(|| "administrative_region".to_owned());
         let name = Some(name.to_owned());
         let insee = Some(other.insee);
         let level = Some(other.level); //might be used for type_ and become useless
@@ -289,22 +292,16 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
         GeocodingResponse {
             id: other.id,
             citycode: insee,
-            level: level,
-            place_type: type_,
-            name: name,
-            postcode: postcode,
-            label: label,
+            place_type: "zone".to_owned(),
+            level,
+            zone_type: if zone_type.is_empty() { None } else { Some(zone_type) },
+            name,
+            postcode,
+            label,
             bbox: other.bbox,
             codes: other.codes,
             ..Default::default()
         }
-    }
-}
-
-fn get_admin_type(adm: &mimir::Admin) -> String {
-    match adm.zone_type {
-        Some(t) => format!("{:?}", t).to_snake_case(),
-        None => "administrative_region".to_string(),
     }
 }
 

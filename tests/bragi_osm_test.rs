@@ -33,6 +33,7 @@ use super::get_types;
 use super::get_value;
 use super::get_values;
 use super::BragiHandler;
+use std::path::Path;
 
 pub fn bragi_osm_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
@@ -40,10 +41,10 @@ pub fn bragi_osm_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // *********************************
     // We load the OSM dataset (including ways)
     // *********************************
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = Path::new(env!("OUT_DIR")).join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-admin".into(),
             "--import-way".into(),
@@ -76,7 +77,7 @@ fn zip_code_test(bragi: &mut BragiHandler) {
     let count = count_types(&types, "street");
     assert_eq!(count, 7);
 
-    let count = count_types(&types, "city");
+    let count = count_types(&types, "zone");
     assert_eq!(count, 3);
 
     let count = count_types(&types, "house");
@@ -113,9 +114,9 @@ fn zip_code_admin_test(bragi: &mut BragiHandler) {
     let count = count_types(&types, "street");
     assert_eq!(count, 3);
 
-    let count = count_types(&types, "city");
+    let count = count_types(&types, "zone");
     assert_eq!(count, 1);
-    let first_city = all_20.iter().find(|e| get_value(e, "type") == "city");
+    let first_city = all_20.iter().find(|e| get_value(e, "type") == "zone");
     assert_eq!(get_value(first_city.unwrap(), "citycode"), "77487");
 
     let count = count_types(&types, "house");
@@ -124,7 +125,7 @@ fn zip_code_admin_test(bragi: &mut BragiHandler) {
 
 fn bbox_admin_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
-    let first_city = all_20.iter().find(|e| get_value(e, "type") == "city");
+    let first_city = all_20.iter().find(|e| get_value(e, "type") == "zone");
     let result = first_city.unwrap().get("bbox").unwrap().as_array().unwrap();
     let expected = vec![2.663446, 48.5064094, 2.7334936, 48.5419672];
     assert_eq!(expected.len(), result.len());
@@ -137,13 +138,20 @@ fn bbox_admin_test(bragi: &mut BragiHandler) {
 fn city_admin_test(bragi: &mut BragiHandler) {
     let all_melun = bragi.get("/autocomplete?q=Melun Rp");
     let types = get_types(&all_melun);
-    let count = count_types(&types, "city");
+    let count = count_types(&types, "zone");
     assert!(count > 0);
+
+    let nb_admin_region = all_melun.iter()
+                                   .filter(|e| get_value(e, "zone_type") == "city")
+                                   .count();
+    assert!(nb_admin_region > 0);
 }
 
 fn administrative_region_test(bragi: &mut BragiHandler) {
     let all_creteil = bragi.get("/autocomplete?q=Créteil");
-    let types = get_types(&all_creteil);
-    let count = count_types(&types, "administrative_region");
-    assert_eq!(count, 1);
+
+    let admin_region = all_creteil.iter()
+                                  .filter(|e| get_value(e, "zone_type") == "administrative_region")
+                                  .count();
+    assert_eq!(admin_region, 1);
 }

@@ -32,6 +32,7 @@ use super::get_first_index_aliases;
 use super::ToJson;
 use hyper;
 use hyper::client::Client;
+use std::path::Path;
 
 /// Returns the total number of results in the ES
 fn get_nb_elements(es_wrapper: &crate::ElasticSearchWrapper<'_>) -> u64 {
@@ -42,10 +43,10 @@ fn get_nb_elements(es_wrapper: &crate::ElasticSearchWrapper<'_>) -> u64 {
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = Path::new(env!("OUT_DIR")).join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/sample-bano.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
@@ -79,8 +80,8 @@ pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     // then we import again the bano file:
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/sample-bano.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],

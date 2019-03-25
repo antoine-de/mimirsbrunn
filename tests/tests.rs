@@ -210,11 +210,11 @@ impl<'a> ElasticSearchWrapper<'a> {
 }
 
 fn launch_and_assert(
-    cmd: &'static str,
-    args: Vec<std::string::String>,
+    cmd: &str,
+    args: &[std::string::String],
     es_wrapper: &ElasticSearchWrapper<'_>,
 ) {
-    let status = Command::new(cmd).args(&args).status().unwrap();
+    let status = Command::new(cmd).args(args).status().unwrap();
     assert!(status.success(), "`{}` failed {}", cmd, &status);
     es_wrapper.refresh();
 }
@@ -325,21 +325,29 @@ pub fn get_values<'a>(r: &'a [Map<String, Value>], val: &'a str) -> Vec<&'a str>
     r.iter().map(|e| get_value(e, val)).collect()
 }
 
-pub fn get_value<'a>(e: &'a Map<String, Value>, val: &'a str) -> &'a str {
-    e.get(val).and_then(|l| l.as_str()).unwrap_or("")
+pub fn get_value<'a>(e: &'a Map<String, Value>, val: &str) -> &'a str {
+    e.get(val).and_then(|l| l.as_str()).unwrap_or_else(|| "")
 }
 
 pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
+    get_given_types(r, "type")
+}
+
+pub fn get_given_types<'a>(r: &'a [Map<String, Value>], key: &str) -> Vec<&'a str> {
     r.iter()
-        .map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or(""))
+        .map(|e| e.get(key).and_then(|l| l.as_str()).unwrap_or_else(|| ""))
         .collect()
 }
 
-pub fn filter_by_type<'a>(r: &'a [Map<String, Value>], t: &'a str) -> Vec<Map<String, Value>> {
+pub fn filter_by(r: &[Map<String, Value>], key: &str, t: &str) -> Vec<Map<String, Value>> {
     r.iter()
-        .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
+        .filter(|e| e.get(key).and_then(|l| l.as_str()).unwrap_or_else(|| "") == t)
         .cloned()
         .collect()
+}
+
+pub fn filter_by_type(r: &[Map<String, Value>], t: &str) -> Vec<Map<String, Value>> {
+    filter_by(r, "type", t)
 }
 
 pub fn count_types(types: &[&str], value: &str) -> usize {

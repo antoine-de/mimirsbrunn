@@ -271,23 +271,26 @@ fn build_query<'a>(
         filters.push(Query::build_geo_polygon("coord", s).build());
     }
 
-    let zone_types = Query::build_bool()
-        .with_should(
-            zone_types.iter().map(|x| Query::build_match(*x, q.to_string()).build()).collect::<Vec<_>>()
-        )
-        .build();
-    let poi_types = Query::build_bool()
-        .with_should(
-            poi_types.iter().map(|x| Query::build_match(*x, q.to_string()).build()).collect::<Vec<_>>()
-        )
-        .build();
-
-    Query::build_bool()
+    let mut query = Query::build_bool()
         .with_must(vec![type_query, string_query, importance_query])
-        .with_filter(Query::build_bool().with_must(filters).build())
-        .with_filter(Query::build_bool().with_must(zone_types).build())
-        .with_filter(Query::build_bool().with_must(poi_types).build())
-        .build()
+        .with_filter(Query::build_bool().with_must(filters).build());
+
+    if !zone_types.is_empty() {
+        query = query.with_filter(Query::build_bool()
+            .with_should(
+                zone_types.iter().map(|x| Query::build_match("zone_type", *x).build()).collect::<Vec<_>>()
+            )
+            .build());
+    }
+    if !poi_types.is_empty() {
+        query = query.with_filter(Query::build_bool()
+            .with_should(
+                poi_types.iter().map(|x| Query::build_match("poi_type.id", *x).build()).collect::<Vec<_>>()
+            )
+            .build());
+    }
+
+    query.build()
 }
 
 fn query(
