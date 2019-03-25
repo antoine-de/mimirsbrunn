@@ -31,7 +31,7 @@ itertools = "0.8"
 navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
 osm_boundaries_utils = "0.4"
 failure = "0.1"
-cosmogony = { path = "../cosmogony" } # "0.5"
+cosmogony = "0.5"
 par-map = "0.1.4"
 lazy_static = "1.2"
 num_cpus = "1.10"
