@@ -41,7 +41,7 @@ pub fn format_label(admins: &[Arc<mimir::Admin>], name: &str) -> String {
     }
 }
 
-pub fn format_international_labels(
+pub fn format_international_poi_label(
     admins: &[Arc<mimir::Admin>],
     poi_names: &mimir::I18nProperties,
     default_poi_name: &str,
