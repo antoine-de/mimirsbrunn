@@ -66,7 +66,7 @@ pub struct Bano {
 impl Bano {
     pub fn insee(&self) -> &str {
         assert!(self.id.len() >= 5);
-        self.id[..5].trim_left_matches('0')
+        self.id[..5].trim_start_matches('0')
     }
     pub fn fantoir(&self) -> &str {
         assert!(self.id.len() >= 10);

@@ -31,7 +31,6 @@
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_given_types;
-use super::get_types;
 use super::get_value;
 use super::BragiHandler;
 use serde_json::{self, json};
