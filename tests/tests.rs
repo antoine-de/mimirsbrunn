@@ -390,6 +390,7 @@ fn all_tests() {
     rubber_test::rubber_empty_bulk(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_bano_test::bragi_bano_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_osm_test::bragi_osm_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_poi_test::test_i18n_poi(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_three_cities_test::bragi_three_cities_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_poi_test::bragi_poi_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_stops_test::bragi_stops_test(ElasticSearchWrapper::new(&docker_wrapper));

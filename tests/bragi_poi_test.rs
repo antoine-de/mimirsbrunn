@@ -254,3 +254,78 @@ fn poi_from_osm_with_address_addr_test(bragi: &mut BragiHandler) {
         Some(&json!("2 Rue de la Reine Blanche (Melun)"))
     );
 }
+
+// test 'labels' and 'names' fields work with i18n queries
+pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
+    // we define a simple test italian poi (the 'Colosseo'
+    // with 2 langs for labels and names fields ('fr' and 'es')
+    let colosseo = mimir::Poi {
+        id: "".to_string(),
+        label: "Colosseo (Roma)".to_string(),
+        name: "Colosseo".to_string(),
+        coord: mimir::Coord(geo::Coordinate { x: 0.0, y: 0.0 }),
+        administrative_regions: vec![],
+        weight: 0.0,
+        zip_codes: vec![],
+        poi_type: mimir::PoiType {
+            id: "".to_string(),
+            name: "".to_string(),
+        },
+        properties: vec![],
+        address: None,
+        names: mimir::I18nProperties(vec![
+            mimir::Property {
+                key: "fr".to_string(),
+                value: "Colisée".to_string(),
+            },
+            mimir::Property {
+                key: "es".to_string(),
+                value: "Coliseo".to_string(),
+            },
+        ]),
+        labels: mimir::I18nProperties(vec![
+            mimir::Property {
+                key: "fr".to_string(),
+                value: "Colisée (Rome)".to_string(),
+            },
+            mimir::Property {
+                key: "es".to_string(),
+                value: "Coliseo (Roma)".to_string(),
+            },
+        ]),
+        distance: None,
+    };
+
+    let index_settings = mimir::rubber::IndexSettings {
+        nb_shards: 2,
+        nb_replicas: 1,
+    };
+    // we index the poi above
+    let result = es
+        .rubber
+        .index("munin_poi", &index_settings, std::iter::once(colosseo));
+
+    es.refresh();
+
+    let mut bragi = BragiHandler::new(format!("{}/munin", es.host()));
+
+    // We look for the Colisée in spanish
+    let poi = bragi.get("/autocomplete?q=Coliseo&lang=es");
+    let result = poi.first().unwrap();
+    assert_eq!(result["name"], "Coliseo");
+    assert_eq!(result["label"], "Coliseo (Roma)");
+
+    // We look for the Colisée in french
+    let poi = bragi.get("/autocomplete?q=Colisée&lang=fr");
+    let result = poi.first().unwrap();
+    assert_eq!(result["name"], "Colisée");
+    assert_eq!(result["label"], "Colisée (Rome)");
+
+    // We look for the Colisée in italian: since it has not been
+    // indexed in russian we expect the default name and label (ie the
+    // local ones: italian).
+    let poi = bragi.get("/autocomplete?q=Colosseo&lang=it");
+    let result = poi.first().unwrap();
+    assert_eq!(result["name"], "Colosseo");
+    assert_eq!(result["label"], "Colosseo (Roma)");
+}

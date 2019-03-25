@@ -210,6 +210,12 @@ pub struct Poi {
     pub poi_type: PoiType,
     pub properties: Vec<Property>,
     pub address: Option<Address>,
+
+    #[serde(default)]
+    pub names: I18nProperties,
+    #[serde(default)]
+    pub labels: I18nProperties,
+
     /// Distance to the coord in query.
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
