@@ -278,8 +278,10 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             (other.name.as_ref(), other.label.as_ref())
         };
 
-        let zone_type = other.zone_type.map(|x| x.as_str().to_snake_case())
-                                       .unwrap_or_else(|| "administrative_region".to_owned());
+        let zone_type = other
+            .zone_type
+            .map(|x| x.as_str().to_snake_case())
+            .unwrap_or_else(|| "administrative_region".to_owned());
         let name = Some(name.to_owned());
         let insee = Some(other.insee);
         let level = Some(other.level); //might be used for type_ and become useless
@@ -294,7 +296,11 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             citycode: insee,
             place_type: "zone".to_owned(),
             level,
-            zone_type: if zone_type.is_empty() { None } else { Some(zone_type) },
+            zone_type: if zone_type.is_empty() {
+                None
+            } else {
+                Some(zone_type)
+            },
             name,
             postcode,
             label,

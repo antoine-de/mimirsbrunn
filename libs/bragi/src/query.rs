@@ -276,18 +276,28 @@ fn build_query<'a>(
         .with_filter(Query::build_bool().with_must(filters).build());
 
     if !zone_types.is_empty() {
-        query = query.with_filter(Query::build_bool()
-            .with_should(
-                zone_types.iter().map(|x| Query::build_match("zone_type", *x).build()).collect::<Vec<_>>()
-            )
-            .build());
+        query = query.with_filter(
+            Query::build_bool()
+                .with_should(
+                    zone_types
+                        .iter()
+                        .map(|x| Query::build_match("zone_type", *x).build())
+                        .collect::<Vec<_>>(),
+                )
+                .build(),
+        );
     }
     if !poi_types.is_empty() {
-        query = query.with_filter(Query::build_bool()
-            .with_should(
-                poi_types.iter().map(|x| Query::build_match("poi_type.id", *x).build()).collect::<Vec<_>>()
-            )
-            .build());
+        query = query.with_filter(
+            Query::build_bool()
+                .with_should(
+                    poi_types
+                        .iter()
+                        .map(|x| Query::build_match("poi_type.id", *x).build())
+                        .collect::<Vec<_>>(),
+                )
+                .build(),
+        );
     }
 
     query.build()
@@ -310,8 +320,17 @@ fn query(
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
-    let query = build_query(q, match_type, coord, shape, pt_datasets, all_data, langs,
-                            zone_types, poi_types);
+    let query = build_query(
+        q,
+        match_type,
+        coord,
+        shape,
+        pt_datasets,
+        all_data,
+        langs,
+        zone_types,
+        poi_types,
+    );
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
     let indexes = indexes
@@ -445,10 +464,14 @@ pub fn autocomplete(
 
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
-        return Err(BragiError::InvalidParam("zone_type parameter requires to have 'type=zone'"));
+        return Err(BragiError::InvalidParam(
+            "zone_type[] parameter requires to have 'type[]=zone'",
+        ));
     }
     if !poi_types.is_empty() && !types.iter().any(|s| *s == "poi") {
-        return Err(BragiError::InvalidParam("poi_type parameter requires to have 'type=poi'"));
+        return Err(BragiError::InvalidParam(
+            "poi_type[] parameter requires to have 'type[]=poi'",
+        ));
     }
 
     let mut client = rs_es::Client::new(cnx).unwrap();

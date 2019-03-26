@@ -34,7 +34,10 @@ use std::path::Path;
 /// Simple call to a stops2mimir load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let stops2mimir = Path::new(env!("OUT_DIR")).join("../../../stops2mimir").display().to_string();
+    let stops2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../stops2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &stops2mimir,
         &[

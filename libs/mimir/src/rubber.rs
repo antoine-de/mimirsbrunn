@@ -202,11 +202,7 @@ pub fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
         .build()
 }
 
-pub fn get_indexes(
-    all_data: bool,
-    pt_datasets: &[&str],
-    types: &[&str],
-) -> Vec<String> {
+pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<String> {
     if all_data {
         return vec!["munin".to_string()];
     }

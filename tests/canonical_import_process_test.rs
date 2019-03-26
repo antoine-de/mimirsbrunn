@@ -29,8 +29,8 @@
 // www.navitia.io
 
 use super::count_types;
-use super::get_poi_type_ids;
 use super::get_given_types;
+use super::get_poi_type_ids;
 use super::get_value;
 use super::BragiHandler;
 use serde_json::{self, json};
@@ -46,7 +46,10 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
     let out_dir = Path::new(env!("OUT_DIR"));
 
-    let cosmogony2mimir = out_dir.join("../../../cosmogony2mimir").display().to_string();
+    let cosmogony2mimir = out_dir
+        .join("../../../cosmogony2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &cosmogony2mimir,
         &[
@@ -380,21 +383,23 @@ fn filter_zone_type_test(bragi: &mut BragiHandler) {
     let types = get_given_types(&geocodings, "zone_type");
     assert_eq!(count_types(&types, "country"), 1);
 
-    let geocodings = bragi.get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district&zone_type[]=country");
+    let geocodings = bragi
+        .get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district&zone_type[]=country");
     let types = get_given_types(&geocodings, "zone_type");
     assert_eq!(count_types(&types, "state_district"), 1);
     assert_eq!(count_types(&types, "country"), 1);
 }
 
 fn zone_filter_error_message_test(bragi: &mut BragiHandler) {
-    let geocodings = bragi.get_unchecked_json("/autocomplete?q=France&type[]=poi&zone_type[]=country");
+    let geocodings =
+        bragi.get_unchecked_json("/autocomplete?q=France&type[]=poi&zone_type[]=country");
     assert_eq!(
         geocodings,
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
                 "short": "validation error",
-                "long": "Invalid parameter: zone_type parameter requires to have 'type=zone'",
+                "long": "Invalid parameter: zone_type[] parameter requires to have 'type[]=zone'",
             })
         )
     );

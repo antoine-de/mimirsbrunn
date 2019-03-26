@@ -37,7 +37,10 @@ use std::path::Path;
 /// load a cosmogony file in mimir.
 /// The cosmogony file has been generated using the osm_fixture.osm.pbf file
 pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let cosmogony2mimir = Path::new(env!("OUT_DIR")).join("../../../cosmogony2mimir").display().to_string();
+    let cosmogony2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../cosmogony2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &cosmogony2mimir,
         &[

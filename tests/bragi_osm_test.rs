@@ -41,7 +41,10 @@ pub fn bragi_osm_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // *********************************
     // We load the OSM dataset (including ways)
     // *********************************
-    let osm2mimir = Path::new(env!("OUT_DIR")).join("../../../osm2mimir").display().to_string();
+    let osm2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../osm2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &osm2mimir,
         &[
@@ -141,17 +144,19 @@ fn city_admin_test(bragi: &mut BragiHandler) {
     let count = count_types(&types, "zone");
     assert!(count > 0);
 
-    let nb_admin_region = all_melun.iter()
-                                   .filter(|e| get_value(e, "zone_type") == "city")
-                                   .count();
+    let nb_admin_region = all_melun
+        .iter()
+        .filter(|e| get_value(e, "zone_type") == "city")
+        .count();
     assert!(nb_admin_region > 0);
 }
 
 fn administrative_region_test(bragi: &mut BragiHandler) {
     let all_creteil = bragi.get("/autocomplete?q=Créteil");
 
-    let admin_region = all_creteil.iter()
-                                  .filter(|e| get_value(e, "zone_type") == "administrative_region")
-                                  .count();
+    let admin_region = all_creteil
+        .iter()
+        .filter(|e| get_value(e, "zone_type") == "administrative_region")
+        .count();
     assert_eq!(admin_region, 1);
 }

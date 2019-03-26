@@ -49,7 +49,10 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // - bano-three_cities
     // - osm_fixture.osm.pbf (including ways and pois)
     // ******************************************
-    let bano2mimir = Path::new(env!("OUT_DIR")).join("../../../bano2mimir").display().to_string();
+    let bano2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../bano2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &bano2mimir,
         &[
@@ -59,7 +62,10 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    let osm2mimir = Path::new(env!("OUT_DIR")).join("../../../osm2mimir").display().to_string();
+    let osm2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../osm2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &osm2mimir,
         &[
@@ -346,14 +352,15 @@ fn poi_filter_poi_type_test(bragi: &mut BragiHandler) {
 }
 
 fn poi_filter_error_message_test(bragi: &mut BragiHandler) {
-    let geocodings = bragi.get_unchecked_json("/autocomplete?q=77000&type[]=zone&poi_type[]=amenity:post_office");
+    let geocodings = bragi
+        .get_unchecked_json("/autocomplete?q=77000&type[]=zone&poi_type[]=amenity:post_office");
     assert_eq!(
         geocodings,
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
                 "short": "validation error",
-                "long": "Invalid parameter: poi_type parameter requires to have 'type=poi'",
+                "long": "Invalid parameter: poi_type[] parameter requires to have 'type[]=poi'",
             })
         )
     );

@@ -39,7 +39,10 @@ pub fn bragi_bano_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // *********************************
     // We load bano files
     // *********************************
-    let bano2mimir = Path::new(env!("OUT_DIR")).join("../../../bano2mimir").display().to_string();
+    let bano2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../bano2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &bano2mimir,
         &[

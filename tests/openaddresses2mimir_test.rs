@@ -37,9 +37,10 @@ use std::path::Path;
 /// Simple call to a OA load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let oa2mimir = Path::new(env!("OUT_DIR")).join("../../../openaddresses2mimir")
-                                             .display()
-                                             .to_string();
+    let oa2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../openaddresses2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &oa2mimir,
         &[

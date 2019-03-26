@@ -43,7 +43,10 @@ fn get_nb_elements(es_wrapper: &crate::ElasticSearchWrapper<'_>) -> u64 {
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bano2mimir = Path::new(env!("OUT_DIR")).join("../../../bano2mimir").display().to_string();
+    let bano2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../bano2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &bano2mimir,
         &[

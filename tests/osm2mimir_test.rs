@@ -35,7 +35,10 @@ use std::path::Path;
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn osm2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let osm2mimir = Path::new(env!("OUT_DIR")).join("../../../osm2mimir").display().to_string();
+    let osm2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../osm2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
         &osm2mimir,
         &[
