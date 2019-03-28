@@ -28,9 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::get_values;
 use super::BragiHandler;
-use super::{count_types, get_given_types, get_types, get_value};
+use super::{count_types, get_values, get_types, get_value};
 use serde_json::json;
 use std::path::Path;
 
@@ -129,7 +128,7 @@ fn type_poi_and_city_no_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should only find pois and cities
     let response = bragi.get("/autocomplete?q=melun&type[]=poi&type[]=city");
     let types = get_types(&response);
-    let zone_types = get_given_types(&response, "zone_type");
+    let zone_types = get_values(&response, "zone_type");
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "street"), 0);
     assert_eq!(count_types(&types, "house"), 0);
@@ -141,7 +140,7 @@ fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &mut BragiHand
     // Same test as before but with percent encoded type param
     let response = bragi.get("/autocomplete?q=melun&type%5B%5D=poi&type%5B%5D=city");
     let types = get_types(&response);
-    let zone_types = get_given_types(&response, "zone_type");
+    let zone_types = get_values(&response, "zone_type");
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "street"), 0);
     assert_eq!(count_types(&types, "house"), 0);
@@ -156,7 +155,7 @@ fn type_stop_area_dataset_test(bragi: &mut BragiHandler) {
          stop_area",
     );
     let types = get_types(&response);
-    let zone_types = get_given_types(&response, "zone_type");
+    let zone_types = get_values(&response, "zone_type");
     assert!(count_types(&types, "public_transport:stop_area") > 0);
     assert_eq!(count_types(&types, "street"), 0);
     assert_eq!(count_types(&types, "house"), 0);
@@ -180,7 +179,7 @@ fn unvalid_type_test(bragi: &mut BragiHandler) {
 fn admin_by_id_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/features/admin:fr:77288");
     assert_eq!(all_20.len(), 1);
-    let zone_types = get_given_types(&all_20, "zone_type");
+    let zone_types = get_values(&all_20, "zone_type");
     let count = count_types(&zone_types, "city");
     assert_eq!(count, 1);
 

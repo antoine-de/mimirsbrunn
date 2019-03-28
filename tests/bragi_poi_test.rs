@@ -30,7 +30,6 @@
 
 use super::count_types;
 use super::filter_by;
-use super::get_given_types;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
@@ -148,7 +147,7 @@ fn poi_zip_code_test(bragi: &mut BragiHandler) {
     // search by zip code
     let geocodings = bragi.get("/autocomplete?q=77000&limit=15");
     let types = get_types(&geocodings);
-    let zone_types = get_given_types(&geocodings, "zone_type");
+    let zone_types = get_values(&geocodings, "zone_type");
     assert_eq!(count_types(&types, Poi::doc_type()), 2);
     assert_eq!(count_types(&zone_types, "city"), 3);
     assert_eq!(count_types(&types, "street"), 8);

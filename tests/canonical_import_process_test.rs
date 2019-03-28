@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use super::count_types;
-use super::get_given_types;
+use super::get_values;
 use super::get_poi_type_ids;
 use super::get_value;
 use super::BragiHandler;
@@ -97,7 +97,7 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
 
 fn melun_test(bragi: &mut BragiHandler) {
     let all_melun = bragi.get("/autocomplete?q=Melun");
-    let types = get_given_types(&all_melun, "zone_type");
+    let types = get_values(&all_melun, "zone_type");
     let count = count_types(&types, "city");
     assert_eq!(count, 1);
 
@@ -376,16 +376,16 @@ fn valid_timeout_test(bragi: &mut BragiHandler) {
 
 fn filter_zone_type_test(bragi: &mut BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district");
-    let types = get_given_types(&geocodings, "zone_type");
+    let types = get_values(&geocodings, "zone_type");
     assert_eq!(count_types(&types, "state_district"), 1);
 
     let geocodings = bragi.get("/autocomplete?q=France&type[]=zone&zone_type[]=country");
-    let types = get_given_types(&geocodings, "zone_type");
+    let types = get_values(&geocodings, "zone_type");
     assert_eq!(count_types(&types, "country"), 1);
 
     let geocodings = bragi
         .get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district&zone_type[]=country");
-    let types = get_given_types(&geocodings, "zone_type");
+    let types = get_values(&geocodings, "zone_type");
     assert_eq!(count_types(&types, "state_district"), 1);
     assert_eq!(count_types(&types, "country"), 1);
 }

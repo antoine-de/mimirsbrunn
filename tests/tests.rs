@@ -330,13 +330,7 @@ pub fn get_value<'a>(e: &'a Map<String, Value>, val: &str) -> &'a str {
 }
 
 pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
-    get_given_types(r, "type")
-}
-
-pub fn get_given_types<'a>(r: &'a [Map<String, Value>], key: &str) -> Vec<&'a str> {
-    r.iter()
-        .map(|e| e.get(key).and_then(|l| l.as_str()).unwrap_or_else(|| ""))
-        .collect()
+    get_values(r, "type")
 }
 
 pub fn filter_by(r: &[Map<String, Value>], key: &str, t: &str) -> Vec<Map<String, Value>> {
