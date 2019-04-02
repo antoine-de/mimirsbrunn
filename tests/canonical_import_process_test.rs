@@ -29,9 +29,9 @@
 // www.navitia.io
 
 use super::count_types;
-use super::get_values;
 use super::get_poi_type_ids;
 use super::get_value;
+use super::get_values;
 use super::BragiHandler;
 use serde_json::{self, json};
 use std::path::Path;

@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use super::BragiHandler;
-use super::{count_types, get_values, get_types, get_value};
+use super::{count_types, get_types, get_value, get_values};
 use serde_json::json;
 use std::path::Path;
 

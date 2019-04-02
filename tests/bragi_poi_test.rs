@@ -341,18 +341,21 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
 }
 
 fn poi_filter_poi_type_test(bragi: &mut BragiHandler) {
-    let geocodings = bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:post_office");
+    let geocodings =
+        bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:post_office");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, Poi::doc_type()), 1);
 
-    let geocodings = bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:townhall");
+    let geocodings =
+        bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:townhall");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, Poi::doc_type()), 1);
 }
 
 fn poi_filter_error_message_test(bragi: &mut BragiHandler) {
-    let geocodings = bragi
-        .get_unchecked_json("/autocomplete?q=77000&type[]=zone&poi_type[]=poi_type:amenity:post_office");
+    let geocodings = bragi.get_unchecked_json(
+        "/autocomplete?q=77000&type[]=zone&poi_type[]=poi_type:amenity:post_office",
+    );
     assert_eq!(
         geocodings,
         (
