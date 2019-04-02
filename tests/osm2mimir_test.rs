@@ -165,7 +165,7 @@ pub fn osm2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         .collect();
     assert!(res.len() != 0);
 
-    let poi_type_post_office = "amenity:post_office";
+    let poi_type_post_office = "poi_type:amenity:post_office";
     assert!(res.iter().any(|r| r
         .poi()
         .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)));
