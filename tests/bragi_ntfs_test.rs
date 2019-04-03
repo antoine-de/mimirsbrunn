@@ -31,14 +31,16 @@
 use super::get_value;
 use super::BragiHandler;
 use serde_json::json;
+use std::path::Path;
 
 pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let out_dir = Path::new(env!("OUT_DIR"));
 
-    let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");
+    let ntfs2mimir = out_dir.join("../../../ntfs2mimir").display().to_string();
     crate::launch_and_assert(
-        ntfs2mimir,
-        vec![
+        &ntfs2mimir,
+        &[
             "--input=./tests/fixtures/ntfs/".into(),
             "--dataset=dataset1".into(),
             format!("--connection-string={}", es_wrapper.host()),
@@ -48,10 +50,10 @@ pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     gare_de_lyon(&mut bragi);
 
-    let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");
+    let ntfs2mimir = out_dir.join("../../../ntfs2mimir").display().to_string();
     crate::launch_and_assert(
-        ntfs2mimir,
-        vec![
+        &ntfs2mimir,
+        &[
             "--input=./tests/fixtures/ntfs2/".into(),
             "--dataset=dataset2".into(),
             format!("--connection-string={}", es_wrapper.host()),

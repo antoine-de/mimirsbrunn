@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use super::count_types;
-use super::filter_by_type;
+use super::filter_by;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
@@ -37,6 +37,7 @@ use super::get_values;
 use super::BragiHandler;
 use mimir::{MimirObject, Poi};
 use serde_json::json;
+use std::path::Path;
 
 pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
@@ -47,20 +48,26 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // - bano-three_cities
     // - osm_fixture.osm.pbf (including ways and pois)
     // ******************************************
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../bano2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../osm2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-admin".into(),
             "--import-way".into(),
@@ -77,6 +84,8 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     poi_from_osm_test(&mut bragi);
     poi_misspelt_one_word_admin_test(&mut bragi);
     poi_from_osm_with_address_addr_test(&mut bragi);
+    poi_filter_poi_type_test(&mut bragi);
+    poi_filter_error_message_test(&mut bragi);
 }
 
 fn poi_admin_address_test(bragi: &mut BragiHandler) {
@@ -126,7 +135,7 @@ fn poi_admin_test(bragi: &mut BragiHandler) {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
     // we should also be able to find the city of melun which will carry more postcodes
-    let cities = filter_by_type(&geocodings, "city");
+    let cities = filter_by(&geocodings, "zone_type", "city");
     assert_eq!(cities.len(), 1);
     let melun = &cities.first().unwrap();
     assert_eq!(get_value(melun, "name"), "Melun");
@@ -138,8 +147,9 @@ fn poi_zip_code_test(bragi: &mut BragiHandler) {
     // search by zip code
     let geocodings = bragi.get("/autocomplete?q=77000&limit=15");
     let types = get_types(&geocodings);
+    let zone_types = get_values(&geocodings, "zone_type");
     assert_eq!(count_types(&types, Poi::doc_type()), 2);
-    assert_eq!(count_types(&types, "city"), 3);
+    assert_eq!(count_types(&zone_types, "city"), 3);
     assert_eq!(count_types(&types, "street"), 8);
 
     // search by zip code and limit is string type
@@ -226,7 +236,7 @@ fn poi_misspelt_one_word_admin_test(bragi: &mut BragiHandler) {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
     // we should also be able to find the city of melun which will carry more postcodes
-    let cities = filter_by_type(&geocodings, "city");
+    let cities = filter_by(&geocodings, "zone_type", "city");
     assert_eq!(cities.len(), 1);
     let melun = &cities.first().unwrap();
     assert_eq!(get_value(melun, "name"), "Melun");
@@ -328,4 +338,32 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
     let result = poi.first().unwrap();
     assert_eq!(result["name"], "Colosseo");
     assert_eq!(result["label"], "Colosseo (Roma)");
+}
+
+fn poi_filter_poi_type_test(bragi: &mut BragiHandler) {
+    let geocodings =
+        bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:post_office");
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, Poi::doc_type()), 1);
+
+    let geocodings =
+        bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:townhall");
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, Poi::doc_type()), 1);
+}
+
+fn poi_filter_error_message_test(bragi: &mut BragiHandler) {
+    let geocodings = bragi.get_unchecked_json(
+        "/autocomplete?q=77000&type[]=zone&poi_type[]=poi_type:amenity:post_office",
+    );
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "Invalid parameter: poi_type[] parameter requires to have 'type[]=poi'",
+            })
+        )
+    );
 }

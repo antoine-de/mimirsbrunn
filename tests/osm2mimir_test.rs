@@ -29,16 +29,19 @@
 // www.navitia.io
 
 use mimir;
-
 use mimir::Members;
+use std::path::Path;
 
 /// Simple call to a BANO load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn osm2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../osm2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-way".into(),
             "--import-admin".into(),

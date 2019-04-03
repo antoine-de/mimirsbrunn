@@ -125,6 +125,7 @@ impl PoiConfig {
         }
     }
 }
+
 const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 {
   "poi_types": [

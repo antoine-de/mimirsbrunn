@@ -28,13 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::get_values;
 use super::BragiHandler;
-use super::{count_types, get_types, get_value};
+use super::{count_types, get_types, get_value, get_values};
 use serde_json::json;
+use std::path::Path;
 
 pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let out_dir = Path::new(env!("OUT_DIR"));
 
     // ******************************************
     // we the OSM dataset, three-cities bano dataset and a stop file
@@ -43,10 +44,10 @@ pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // - bano-three_cities
     // - stops.txt
     // ******************************************
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = out_dir.join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-way".into(),
             "--import-admin".into(),
@@ -57,20 +58,20 @@ pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    let stops2mimir = out_dir.join("../../../stops2mimir").display().to_string();
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops.txt".into(),
             "--dataset=dataset1".into(),
             format!("--connection-string={}", es_wrapper.host()),
@@ -127,10 +128,11 @@ fn type_poi_and_city_no_dataset_test(bragi: &mut BragiHandler) {
     // with this query we should only find pois and cities
     let response = bragi.get("/autocomplete?q=melun&type[]=poi&type[]=city");
     let types = get_types(&response);
+    let zone_types = get_values(&response, "zone_type");
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "street"), 0);
     assert_eq!(count_types(&types, "house"), 0);
-    assert!(count_types(&types, "city") > 0);
+    assert!(count_types(&zone_types, "city") > 0);
     assert!(count_types(&types, "poi") > 0);
 }
 
@@ -138,10 +140,11 @@ fn type_poi_and_city_with_percent_encoding_no_dataset_test(bragi: &mut BragiHand
     // Same test as before but with percent encoded type param
     let response = bragi.get("/autocomplete?q=melun&type%5B%5D=poi&type%5B%5D=city");
     let types = get_types(&response);
+    let zone_types = get_values(&response, "zone_type");
     assert_eq!(count_types(&types, "public_transport:stop_area"), 0);
     assert_eq!(count_types(&types, "street"), 0);
     assert_eq!(count_types(&types, "house"), 0);
-    assert!(count_types(&types, "city") > 0);
+    assert!(count_types(&zone_types, "city") > 0);
     assert!(count_types(&types, "poi") > 0);
 }
 
@@ -152,10 +155,11 @@ fn type_stop_area_dataset_test(bragi: &mut BragiHandler) {
          stop_area",
     );
     let types = get_types(&response);
+    let zone_types = get_values(&response, "zone_type");
     assert!(count_types(&types, "public_transport:stop_area") > 0);
     assert_eq!(count_types(&types, "street"), 0);
     assert_eq!(count_types(&types, "house"), 0);
-    assert_eq!(count_types(&types, "city"), 0);
+    assert_eq!(count_types(&zone_types, "city"), 0);
     assert_eq!(count_types(&types, "poi"), 0);
 }
 
@@ -166,7 +170,7 @@ fn unvalid_type_test(bragi: &mut BragiHandler) {
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
                 "short": "validation error",
-                "long": "invalid argument: failed with reason: unknown variant `unvalid`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`",
+                "long": "invalid argument: failed with reason: unknown variant `unvalid`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`, `zone`",
             })
         )
     );
@@ -175,8 +179,8 @@ fn unvalid_type_test(bragi: &mut BragiHandler) {
 fn admin_by_id_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/features/admin:fr:77288");
     assert_eq!(all_20.len(), 1);
-    let types = get_types(&all_20);
-    let count = count_types(&types, "city");
+    let zone_types = get_values(&all_20, "zone_type");
+    let count = count_types(&zone_types, "city");
     assert_eq!(count, 1);
 
     assert_eq!(get_values(&all_20, "id"), vec!["admin:fr:77288"]);

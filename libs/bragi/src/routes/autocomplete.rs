@@ -19,16 +19,33 @@ enum Type {
     StopArea,
     #[serde(rename = "street")]
     Street,
+    #[serde(rename = "zone")]
+    Zone,
 }
 
 impl Type {
     fn as_str(&self) -> &'static str {
-        match self {
-            &Type::City => "city",
-            &Type::House => "house",
-            &Type::Poi => "poi",
-            &Type::StopArea => "public_transport:stop_area",
-            &Type::Street => "street",
+        match *self {
+            Type::City => "city",
+            Type::House => "house",
+            Type::Poi => "poi",
+            Type::StopArea => "public_transport:stop_area",
+            Type::Street => "street",
+            Type::Zone => "zone",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum PoiType {
+    Whatever(String),
+}
+
+impl PoiType {
+    fn as_str(&self) -> &str {
+        match *self {
+            PoiType::Whatever(ref s) => s,
         }
     }
 }
@@ -55,12 +72,22 @@ pub struct Params {
     lon: Option<f64>,
     #[serde(default, rename = "type")]
     types: Vec<Type>,
+    #[serde(default, rename = "zone_type")]
+    zone_types: Vec<cosmogony::ZoneType>,
+    #[serde(default, rename = "poi_type")]
+    poi_types: Vec<PoiType>,
     lang: Option<String>,
 }
 
 impl Params {
     fn types_as_str(&self) -> Vec<&str> {
         self.types.iter().map(Type::as_str).collect()
+    }
+    fn zone_types_as_str(&self) -> Vec<&str> {
+        self.zone_types.iter().map(|x| x.as_str()).collect()
+    }
+    fn poi_types_as_str(&self) -> Vec<&str> {
+        self.poi_types.iter().map(PoiType::as_str).collect()
     }
     fn coord(&self) -> Result<Option<Coord>, BragiError> {
         match (self.lon, self.lat) {
@@ -136,6 +163,8 @@ pub fn call_autocomplete(
         &state.es_cnx_string,
         shape,
         &params.types_as_str(),
+        &params.zone_types_as_str(),
+        &params.poi_types_as_str(),
         &langs,
         timeout,
     );

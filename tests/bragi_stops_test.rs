@@ -30,9 +30,11 @@
 
 use super::get_value;
 use super::BragiHandler;
+use std::path::Path;
 
 pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let out_dir = Path::new(env!("OUT_DIR"));
 
     // ******************************************
     // we import the OSM dataset, three-cities bano dataset and 2 stop files
@@ -42,10 +44,10 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // - stops.txt
     // - stops_dataset2.txt
     // ******************************************
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = out_dir.join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-admin".into(),
             "--level=8".into(),
@@ -54,20 +56,20 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    let stops2mimir = out_dir.join("../../../stops2mimir").display().to_string();
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops.txt".into(),
             "--dataset=dataset1".into(),
             format!("--connection-string={}", es_wrapper.host()),
@@ -78,10 +80,10 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     stop_attached_to_admin_test(&mut bragi);
     stop_no_admin_test(&mut bragi);
 
-    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    let stops2mimir = out_dir.join("../../../stops2mimir").display().to_string();
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops_dataset2.txt".into(),
             "--dataset=dataset2".into(),
             format!("--connection-string={}", es_wrapper.host()),

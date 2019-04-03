@@ -30,9 +30,11 @@
 
 use super::get_values;
 use super::BragiHandler;
+use std::path::Path;
 
 pub fn bragi_synonyms_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let out_dir = Path::new(env!("OUT_DIR"));
 
     // ******************************************
     // we the OSM dataset, three-cities bano dataset and a stop file
@@ -41,10 +43,10 @@ pub fn bragi_synonyms_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // - bano-three_cities
     // - stops.txt
     // ******************************************
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = out_dir.join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-way".into(),
             "--import-admin".into(),
@@ -55,20 +57,20 @@ pub fn bragi_synonyms_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    let stops2mimir = out_dir.join("../../../stops2mimir").display().to_string();
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops.txt".into(),
             "--dataset=dataset1".into(),
             format!("--connection-string={}", es_wrapper.host()),

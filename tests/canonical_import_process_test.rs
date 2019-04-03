@@ -30,10 +30,11 @@
 
 use super::count_types;
 use super::get_poi_type_ids;
-use super::get_types;
 use super::get_value;
+use super::get_values;
 use super::BragiHandler;
 use serde_json::{self, json};
+use std::path::Path;
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
 /// and test thourgh bragi in the end
@@ -43,9 +44,15 @@ use serde_json::{self, json};
 /// then osm (without any admins)
 pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let out_dir = Path::new(env!("OUT_DIR"));
+
+    let cosmogony2mimir = out_dir
+        .join("../../../cosmogony2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
-        vec![
+        &cosmogony2mimir,
+        &[
             "--input=./tests/fixtures/cosmogony.json".into(),
             "--lang=fr".into(),
             "--lang=es".into(),
@@ -54,18 +61,20 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
         &es_wrapper,
     );
 
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        concat!(env!("OUT_DIR"), "/../../../bano2mimir"),
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
+    let osm2mimir = out_dir.join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        concat!(env!("OUT_DIR"), "/../../../osm2mimir"),
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-way".into(),
             "--import-poi".into(),
@@ -82,11 +91,13 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
     invalid_route_test(&mut bragi);
     invalid_coord_test(&mut bragi);
     valid_timeout_test(&mut bragi);
+    filter_zone_type_test(&mut bragi);
+    zone_filter_error_message_test(&mut bragi);
 }
 
 fn melun_test(bragi: &mut BragiHandler) {
     let all_melun = bragi.get("/autocomplete?q=Melun");
-    let types = get_types(&all_melun);
+    let types = get_values(&all_melun, "zone_type");
     let count = count_types(&types, "city");
     assert_eq!(count, 1);
 
@@ -101,7 +112,7 @@ fn melun_test(bragi: &mut BragiHandler) {
     );
     assert_eq!(melun["postcode"], "77000;77003;77008;CP77001");
     assert_eq!(melun["id"], "admin:osm:relation:80071");
-    assert_eq!(melun["type"], "city");
+    assert_eq!(melun["zone_type"], "city");
     assert_eq!(melun["city"], serde_json::Value::Null);
     assert_eq!(
         melun["bbox"],
@@ -157,10 +168,10 @@ fn melun_test(bragi: &mut BragiHandler) {
     assert_eq!(
         cityhall_admins[2]["codes"],
         json!([
-                        {"name": "ISO3166-1", "value": "FR"},
-                        {"name": "ISO3166-1:alpha2", "value": "FR"},
-                        {"name": "ISO3166-1:alpha3", "value": "FRA"},
-                        {"name": "ISO3166-1:numeric", "value": "250"},
+            {"name": "ISO3166-1", "value": "FR"},
+            {"name": "ISO3166-1:alpha2", "value": "FR"},
+            {"name": "ISO3166-1:alpha3", "value": "FRA"},
+            {"name": "ISO3166-1:numeric", "value": "250"},
         ])
     );
 
@@ -178,13 +189,13 @@ fn lang_test(bragi: &mut BragiHandler) {
     let all_francia = bragi.get("/autocomplete?q=Francia&lang=es");
     let result = all_francia.first().unwrap();
     assert_eq!(result["name"], "Francia");
-    assert_eq!(result["type"], "country");
+    assert_eq!(result["zone_type"], "country");
     assert_eq!(result["label"], "Francia");
 
     let all_melun = bragi.get("/autocomplete?q=Melun&lang=es");
     let result = all_melun.first().unwrap();
     assert_eq!(result["name"], "Melun");
-    assert_eq!(result["type"], "city");
+    assert_eq!(result["zone_type"], "city");
     assert_eq!(
         result["label"],
         "Melun (77000-CP77001), Sena y Marne, Francia"
@@ -271,7 +282,7 @@ fn invalid_type_test(bragi: &mut BragiHandler) {
         (
             actix_web::http::StatusCode::BAD_REQUEST,
             json!({
-                "long": "invalid argument: failed with reason: unknown variant `invalid_type`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`",
+                "long": "invalid argument: failed with reason: unknown variant `invalid_type`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`, `zone`",
                 "short": "validation error"
             })
         )
@@ -361,4 +372,35 @@ fn invalid_coord_test(bragi: &mut BragiHandler) {
 // we just check that the timeout is correctly parser
 fn valid_timeout_test(bragi: &mut BragiHandler) {
     let _ = bragi.get("/autocomplete?q=france&timeout=12340");
+}
+
+fn filter_zone_type_test(bragi: &mut BragiHandler) {
+    let geocodings = bragi.get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district");
+    let types = get_values(&geocodings, "zone_type");
+    assert_eq!(count_types(&types, "state_district"), 1);
+
+    let geocodings = bragi.get("/autocomplete?q=France&type[]=zone&zone_type[]=country");
+    let types = get_values(&geocodings, "zone_type");
+    assert_eq!(count_types(&types, "country"), 1);
+
+    let geocodings = bragi
+        .get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district&zone_type[]=country");
+    let types = get_values(&geocodings, "zone_type");
+    assert_eq!(count_types(&types, "state_district"), 1);
+    assert_eq!(count_types(&types, "country"), 1);
+}
+
+fn zone_filter_error_message_test(bragi: &mut BragiHandler) {
+    let geocodings =
+        bragi.get_unchecked_json("/autocomplete?q=France&type[]=poi&zone_type[]=country");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "Invalid parameter: zone_type[] parameter requires to have 'type[]=zone'",
+            })
+        )
+    );
 }
