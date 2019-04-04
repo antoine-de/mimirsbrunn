@@ -124,14 +124,14 @@ pub fn read_administrative_regions(
                     (format!("admin:fr:{}", val), val)
                 }
                 Some(val) => {
-                    let id = format!("admin:osm:{}", relation.id.0);
+                    let id = format!("admin:osm:relation:{}", relation.id.0);
                     warn!(
                         "relation/{}: have the INSEE {} that is already used, using {} as id",
                         relation.id.0, val, id
                     );
                     (id, val)
                 }
-                None => (format!("admin:osm:{}", relation.id.0), ""),
+                None => (format!("admin:osm:relation:{}", relation.id.0), ""),
             };
 
             let zip_codes = read_zip_codes(&relation.tags);
