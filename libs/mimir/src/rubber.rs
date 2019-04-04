@@ -30,12 +30,9 @@
 
 use super::objects::{Admin, MimirObject};
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
-use chrono;
 use failure::{Error, ResultExt};
-use hyper;
 use hyper::status::StatusCode;
-use prometheus;
-use rs_es;
+use prometheus::{exponential_buckets, histogram_opts, register_histogram, Histogram};
 use rs_es::error::EsError;
 use rs_es::operations::search::ScanResult;
 use rs_es::operations::search::SearchResult;
@@ -43,9 +40,6 @@ use rs_es::query::Query;
 use rs_es::units as rs_u;
 use rs_es::units::Duration;
 use rs_es::EsResponse;
-use serde;
-use serde_json;
-use std;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::time;
@@ -70,11 +64,11 @@ const SYNONYMS: [&'static str; 17] = [
     "anpe,pole emploi",
 ];
 
-lazy_static! {
-    static ref ES_REQ_HISTOGRAM: prometheus::Histogram = register_histogram!(
+lazy_static::lazy_static! {
+    static ref ES_REQ_HISTOGRAM: Histogram = register_histogram!(
         "bragi_elasticsearch_reverse_duration_seconds",
         "The elasticsearch reverse request latencies in seconds.",
-        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+        exponential_buckets(0.001, 1.5, 25).unwrap()
     )
     .unwrap();
 }
@@ -130,7 +124,7 @@ pub fn get_date_index_name(base_index_name: &str) -> String {
 pub fn get_indexes_by_type(a_type: &str) -> String {
     let doc_type = match a_type {
         "public_transport:stop_area" => "stop",
-        "city" => "admin",
+        "city" | "zone" => "admin",
         "house" => "addr",
         _ => a_type,
     };
@@ -138,11 +132,15 @@ pub fn get_indexes_by_type(a_type: &str) -> String {
     format!("munin_{}", doc_type)
 }
 
-pub fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<Place>, EsError> {
+pub fn read_places(
+    result: SearchResult<serde_json::Value>,
+    coord: Option<&Coord>, // coord used to compute the distance of the place to the object
+) -> Result<Vec<Place>, EsError> {
     debug!(
         "{} documents found in {} ms",
         result.hits.total, result.took
     );
+    let point: Option<geo::Point<f64>> = coord.map(|c| c.0.into());
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(result
@@ -150,6 +148,14 @@ pub fn collect(result: SearchResult<serde_json::Value>) -> Result<Vec<Place>, Es
         .hits
         .into_iter()
         .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .map(|mut place| {
+            if let Some(ref p) = point {
+                use geo::prelude::HaversineDistance;
+                let distance = p.haversine_distance(&place.coord().0.into()) as u32;
+                place.set_distance(distance);
+            }
+            place
+        })
         .collect())
 }
 
@@ -451,7 +457,7 @@ impl Rubber {
         let result = search_query.send()?;
 
         timer.observe_duration();
-        collect(result)
+        read_places(result, Some(coord))
     }
 
     /// publish the index as the new index for this doc_type and this dataset

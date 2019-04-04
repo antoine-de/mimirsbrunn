@@ -29,9 +29,10 @@
 // www.navitia.io
 use super::model::{self, BragiError};
 use mimir;
-use mimir::objects::{Addr, Admin, MimirObject, Poi, Stop, Street};
-use mimir::rubber::{collect, get_indexes};
+use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
+use mimir::rubber::{get_indexes, read_places};
 use prometheus;
+use prometheus::{exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
@@ -44,14 +45,12 @@ use std::fmt;
 use std::iter;
 use std::time;
 
-use navitia_model::objects::Coord;
-
-lazy_static! {
-    static ref ES_REQ_HISTOGRAM: prometheus::HistogramVec = register_histogram_vec!(
+lazy_static::lazy_static! {
+    static ref ES_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
         "bragi_elasticsearch_request_duration_seconds",
         "The elasticsearch request latencies in seconds.",
         &["search_type"],
-        prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
+        exponential_buckets(0.001, 1.5, 25).unwrap()
     )
     .unwrap();
 }
@@ -90,7 +89,7 @@ enum MatchType {
 }
 
 impl fmt::Display for MatchType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let printable = match *self {
             MatchType::Prefix => "prefix",
             MatchType::Fuzzy => "fuzzy",
@@ -107,7 +106,7 @@ fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
         .with_function(
             rs_es::query::functions::Function::build_decay(
                 "coord",
-                rs_u::Location::LatLon(coord.lat, coord.lon),
+                rs_u::Location::LatLon(coord.lat(), coord.lon()),
                 rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
             )
             .build_gauss(),
@@ -140,6 +139,8 @@ fn build_query<'a>(
     pt_datasets: &[&str],
     all_data: bool,
     langs: &'a [&'a str],
+    zone_types: &[&str],
+    poi_types: &[&str],
 ) -> Query {
     use rs_es::query::functions::Function;
 
@@ -166,7 +167,7 @@ fn build_query<'a>(
 
     const I18N_FIELD_BOOST: f64 = 1.2;
     let build_multi_match =
-        |default_field: &str, lang_field_formatter: &Fn(&'a &'a str) -> String| {
+        |default_field: &str, lang_field_formatter: &dyn Fn(&'a &'a str) -> String| {
             let boosted_i18n_fields = langs
                 .iter()
                 .map(lang_field_formatter)
@@ -270,10 +271,36 @@ fn build_query<'a>(
         filters.push(Query::build_geo_polygon("coord", s).build());
     }
 
-    Query::build_bool()
+    let mut query = Query::build_bool()
         .with_must(vec![type_query, string_query, importance_query])
-        .with_filter(Query::build_bool().with_must(filters).build())
-        .build()
+        .with_filter(Query::build_bool().with_must(filters).build());
+
+    if !zone_types.is_empty() {
+        query = query.with_filter(
+            Query::build_bool()
+                .with_should(
+                    zone_types
+                        .iter()
+                        .map(|x| Query::build_match("zone_type", *x).build())
+                        .collect::<Vec<_>>(),
+                )
+                .build(),
+        );
+    }
+    if !poi_types.is_empty() {
+        query = query.with_filter(
+            Query::build_bool()
+                .with_should(
+                    poi_types
+                        .iter()
+                        .map(|x| Query::build_match("poi_type.id", *x).build())
+                        .collect::<Vec<_>>(),
+                )
+                .build(),
+        );
+    }
+
+    query.build()
 }
 
 fn query(
@@ -287,11 +314,23 @@ fn query(
     coord: &Option<Coord>,
     shape: Option<Vec<rs_es::units::Location>>,
     types: &[&str],
+    zone_types: &[&str],
+    poi_types: &[&str],
     langs: &[&str],
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
-    let query = build_query(q, match_type, coord, shape, pt_datasets, all_data, langs);
+    let query = build_query(
+        q,
+        match_type,
+        coord,
+        shape,
+        pt_datasets,
+        all_data,
+        langs,
+        zone_types,
+        poi_types,
+    );
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
     let indexes = indexes
@@ -333,7 +372,7 @@ fn query(
 
     timer.map(|t| t.observe_duration());
 
-    collect(result)
+    read_places(result, coord.as_ref())
 }
 
 pub fn features(
@@ -398,7 +437,7 @@ pub fn features(
     if result.hits.total == 0 {
         Err(BragiError::ObjectNotFound)
     } else {
-        collect(result).map_err(model::BragiError::from)
+        read_places(result, None).map_err(model::BragiError::from)
     }
 }
 
@@ -412,6 +451,8 @@ pub fn autocomplete(
     cnx: &str,
     shape: Option<Vec<(f64, f64)>>,
     types: &[&str],
+    zone_types: &[&str],
+    poi_types: &[&str],
     langs: &[&str],
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
@@ -419,6 +460,18 @@ pub fn autocomplete(
         shape
             .as_ref()
             .map(|v| v.iter().map(|&l| l.into()).collect())
+    }
+
+    // Perform parameters validation.
+    if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
+        return Err(BragiError::InvalidParam(
+            "zone_type[] parameter requires to have 'type[]=zone'",
+        ));
+    }
+    if !poi_types.is_empty() && !types.iter().any(|s| *s == "poi") {
+        return Err(BragiError::InvalidParam(
+            "poi_type[] parameter requires to have 'type[]=poi'",
+        ));
     }
 
     let mut client = rs_es::Client::new(cnx).unwrap();
@@ -438,6 +491,8 @@ pub fn autocomplete(
         &coord,
         make_shape(&shape),
         &types,
+        &zone_types,
+        &poi_types,
         &langs,
         timeout,
     )
@@ -454,6 +509,8 @@ pub fn autocomplete(
             &coord,
             make_shape(&shape),
             &types,
+            &zone_types,
+            &poi_types,
             &langs,
             timeout,
         )

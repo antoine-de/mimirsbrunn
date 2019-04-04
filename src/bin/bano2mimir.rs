@@ -66,7 +66,7 @@ pub struct Bano {
 impl Bano {
     pub fn insee(&self) -> &str {
         assert!(self.id.len() >= 5);
-        self.id[..5].trim_left_matches('0')
+        self.id[..5].trim_start_matches('0')
     }
     pub fn fantoir(&self) -> &str {
         assert!(self.id.len() >= 10);
@@ -107,6 +107,7 @@ impl Bano {
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             coord: mimir::Coord::new(self.lon, self.lat),
+            distance: None,
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
@@ -117,6 +118,7 @@ impl Bano {
             coord: mimir::Coord::new(self.lon, self.lat),
             weight: weight,
             zip_codes: vec![self.zip.clone()],
+            distance: None,
         }
     }
 }

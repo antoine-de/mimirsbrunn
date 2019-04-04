@@ -125,6 +125,7 @@ impl PoiConfig {
         }
     }
 }
+
 const DEFAULT_JSON_POI_TYPES: &'static str = r#"
 {
   "poi_types": [
@@ -259,6 +260,9 @@ fn parse_poi(
         poi_type: poi_type.clone(),
         properties: make_properties(osmobj.tags()),
         address: None,
+        names: mimir::I18nProperties::default(),
+        labels: mimir::I18nProperties::default(),
+        distance: None,
     })
 }
 

@@ -41,6 +41,40 @@ pub fn format_label(admins: &[Arc<mimir::Admin>], name: &str) -> String {
     }
 }
 
+pub fn format_international_poi_label(
+    admins: &[Arc<mimir::Admin>],
+    poi_names: &mimir::I18nProperties,
+    default_poi_name: &str,
+    default_poi_label: &str,
+    langs: &[String],
+) -> mimir::I18nProperties {
+    let labels = langs
+        .iter()
+        .filter_map(|ref lang| {
+            let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
+            let i18n_poi_label =
+                admins
+                    .iter()
+                    .find(|adm| adm.is_city())
+                    .map_or(local_poi_name.to_string(), |adm| {
+                        let default_admin_name = &adm.name;
+                        let local_admin_name = &adm.names.get(lang).unwrap_or(&default_admin_name);
+                        format!("{} ({})", local_poi_name, local_admin_name)
+                    });
+
+            if i18n_poi_label == default_poi_label {
+                None
+            } else {
+                Some(mimir::Property {
+                    key: lang.to_string(),
+                    value: i18n_poi_label,
+                })
+            }
+        })
+        .collect();
+    mimir::I18nProperties(labels)
+}
+
 pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
         if adm.level > level && !adm.zip_codes.is_empty() {
@@ -63,8 +97,13 @@ pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
 pub fn normalize_admin_weight(admins: &mut [mimir::Admin]) {
     let max = admins.iter().fold(1f64, |m, a| f64::max(m, a.weight));
     for ref mut a in admins {
-        a.weight = a.weight / max;
+        a.weight = normalize_weight(a.weight, max);
     }
+}
+
+/// normalize the weight for it to be in [0, 1]
+pub fn normalize_weight(weight: f64, max_weight: f64) -> f64 {
+    return weight / max_weight;
 }
 
 pub fn wrapped_launch_run<O, F>(run: F) -> Result<(), Error>

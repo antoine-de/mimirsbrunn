@@ -82,6 +82,7 @@ impl OpenAddresse {
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
             coord: mimir::Coord::new(self.lon, self.lat),
+            distance: None,
         };
         mimir::Addr {
             id: format!("addr:{};{}", self.lon, self.lat),
@@ -92,6 +93,7 @@ impl OpenAddresse {
             coord: mimir::Coord::new(self.lon, self.lat),
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
+            distance: None,
         }
     }
 }

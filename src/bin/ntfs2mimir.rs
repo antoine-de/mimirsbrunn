@@ -142,6 +142,7 @@ fn to_mimir(
             })
             .collect(),
         feed_publishers: feed_publishers,
+        distance: None,
     }
 }
 

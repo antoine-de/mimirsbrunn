@@ -31,12 +31,15 @@
 use super::ToJson;
 use hyper;
 use hyper::client::Client;
+use std::path::Path;
 
 pub fn osm2mimir_bano2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let out_dir = Path::new(env!("OUT_DIR"));
+
+    let osm2mimir = out_dir.join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-way".into(),
             "--import-admin".into(),
@@ -47,10 +50,10 @@ pub fn osm2mimir_bano2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
