@@ -3,6 +3,7 @@ use crate::routes::params;
 use crate::{model, model::FromWithLang, Context};
 use actix_web::{Json, State};
 use mimir::rubber::Rubber;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

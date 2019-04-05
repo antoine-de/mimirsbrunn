@@ -5,6 +5,7 @@ use crate::{model, query, Context};
 use actix_web::{Json, State};
 use geojson::{GeoJson, Geometry};
 use mimir::objects::Coord;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]

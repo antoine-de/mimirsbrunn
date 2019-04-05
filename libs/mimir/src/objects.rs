@@ -29,8 +29,9 @@
 // www.navitia.io
 use cosmogony::ZoneType;
 use geojson::Geometry;
-use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;

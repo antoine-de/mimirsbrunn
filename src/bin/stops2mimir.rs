@@ -36,7 +36,7 @@ extern crate slog_scope;
 use failure::ResultExt;
 use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use structopt::StructOpt;

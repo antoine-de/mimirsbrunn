@@ -37,8 +37,10 @@ use lazy_static::lazy_static;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use serde_derive::{Deserialize, Serialize};
+use mimirsbrunn::utils;
+use serde::{Deserialize, Serialize};
 use std::fs;
+use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -67,9 +69,6 @@ impl OpenAddresse {
         admins_geofinder: &AdminGeoFinder,
         use_old_index_format: bool,
     ) -> mimir::Addr {
-        let street_label = format!("{} ({})", self.street, self.city);
-        let addr_name = format!("{} {}", self.number, self.street);
-        let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.id); // TODO check if thats ok
         let admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
@@ -77,12 +76,28 @@ impl OpenAddresse {
         });
 
         let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
+        // Note: for openaddress, we don't trust the admin hierarchy much (compared to bano)
+        // so we use for the label the admins that we find in the DB
+        let street_label = utils::get_label(
+            utils::FormatPlaceHolder::from_street(self.street.clone(), self.postcode.clone()),
+            admins.iter().map(|a| a.deref()),
+            None,
+        ); // rename to format_label after cleanup
+        let (addr_name, addr_label) = utils::get_name_and_label(
+            utils::FormatPlaceHolder::from_addr(
+                self.number.clone(),
+                self.street.clone(),
+                self.postcode.clone(),
+            ),
+            admins.iter().map(|a| a.deref()),
+            None,
+        ); // rename to format_label after cleanup
 
         let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
             id: street_id,
             name: self.street,
-            label: street_label.to_string(),
+            label: street_label,
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
@@ -90,6 +105,7 @@ impl OpenAddresse {
             approx_coord: None,
             distance: None,
         };
+
         mimir::Addr {
             id: format!(
                 "addr:{};{}{}",
@@ -113,13 +129,13 @@ impl OpenAddresse {
                 }
             ),
             name: addr_name,
+            label: addr_label,
             house_number: self.number,
             street: street,
-            label: addr_label,
             coord: coord.clone(),
             approx_coord: Some(coord.into()),
             weight: weight,
-            zip_codes: vec![self.postcode.clone()],
+            zip_codes: vec![self.postcode],
             distance: None,
         }
     }

@@ -2,6 +2,7 @@ use crate::extractors::BragiQuery;
 use crate::routes::params;
 use crate::{model, model::FromWithLang, query, Context};
 use actix_web::{Json, Path, State};
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
