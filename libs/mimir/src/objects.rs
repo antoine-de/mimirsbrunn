@@ -204,6 +204,8 @@ pub struct Poi {
     pub label: String,
     pub name: String,
     pub coord: Coord,
+    #[serde(skip_deserializing)]
+    pub coord_hash: Option<CoordHash>,
     pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
@@ -331,6 +333,8 @@ pub struct Stop {
     pub id: String,
     pub label: String,
     pub name: String,
+    #[serde(skip_deserializing)]
+    pub coord_hash: Option<CoordHash>,
     pub coord: Coord,
     pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
@@ -386,6 +390,8 @@ pub struct Admin {
     pub name: String,
     pub zip_codes: Vec<String>,
     pub weight: f64,
+    #[serde(skip_deserializing)]
+    pub coord_hash: Option<CoordHash>,
     pub coord: Coord,
     #[serde(
         serialize_with = "custom_multi_polygon_serialize",
@@ -560,6 +566,8 @@ pub struct Street {
     pub administrative_regions: Vec<Arc<Admin>>,
     pub label: String,
     pub weight: f64,
+    #[serde(skip_deserializing)]
+    pub coord_hash: Option<CoordHash>,
     pub coord: Coord,
     pub zip_codes: Vec<String>,
     /// Distance to the coord in query.
@@ -606,6 +614,8 @@ pub struct Addr {
     pub street: Street,
     pub label: String,
     pub coord: Coord,
+    #[serde(skip_deserializing)]
+    pub coord_hash: Option<CoordHash>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
     /// Distance to the coord in query.
@@ -652,6 +662,33 @@ pub struct AliasOperation {
 pub struct AliasParameter {
     pub index: String,
     pub alias: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct CoordHash(f64, f64);
+
+impl serde::Serialize for CoordHash {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut ser = serializer.serialize_struct("CoordHash", 2)?;
+        ser.serialize_field("type", "point")?;
+        ser.serialize_field("coordinates", &vec![&self.0, &self.1])?;
+        ser.end()
+    }
+}
+
+impl Default for CoordHash {
+    fn default() -> CoordHash {
+        CoordHash(0., 0.)
+    }
+}
+
+impl From<Coord> for CoordHash {
+    fn from(coord: Coord) -> Self {
+        CoordHash(coord.lon(), coord.lat())
+    }
 }
 
 // we want a custom serialization for coords, and so far the cleanest way

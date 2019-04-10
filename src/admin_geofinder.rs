@@ -253,6 +253,7 @@ mod tests {
         );
         let boundary = geo_types::MultiPolygon(vec![shape]);
 
+        let coord = ::mimir::Coord::new(4.0 + offset, 4.0 + offset);
         ::mimir::Admin {
             id: id.into(),
             level: 8,
@@ -260,7 +261,8 @@ mod tests {
             label: format!("city {}", offset),
             zip_codes: vec!["421337".to_string()],
             weight: 0f64,
-            coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
+            coord: coord.clone(),
+            coord_hash: Some(coord.into()),
             bbox: boundary.bounding_rect(),
             boundary: Some(boundary),
             insee: "outlook".to_string(),

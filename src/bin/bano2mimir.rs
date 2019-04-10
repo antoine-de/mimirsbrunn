@@ -99,6 +99,7 @@ impl Bano {
             .find(|a| a.level == 8)
             .map_or(0., |a| a.weight);
 
+        let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
             id: street_id,
             name: self.street,
@@ -106,7 +107,8 @@ impl Bano {
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.zip.clone()],
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            coord_hash: None,
             distance: None,
         };
         mimir::Addr {
@@ -115,7 +117,8 @@ impl Bano {
             house_number: self.nb,
             street: street,
             label: addr_label,
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            coord_hash: Some(coord.into()),
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             distance: None,

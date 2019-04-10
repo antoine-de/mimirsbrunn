@@ -74,6 +74,7 @@ impl OpenAddresse {
 
         let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
 
+        let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
             id: street_id,
             name: self.street,
@@ -81,7 +82,8 @@ impl OpenAddresse {
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            coord_hash: None,
             distance: None,
         };
         mimir::Addr {
@@ -90,7 +92,8 @@ impl OpenAddresse {
             house_number: self.number,
             street: street,
             label: addr_label,
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            coord_hash: Some(coord.into()),
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
             distance: None,

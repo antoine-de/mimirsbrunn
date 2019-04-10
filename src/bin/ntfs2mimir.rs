@@ -111,12 +111,13 @@ fn to_mimir(
                 .unwrap_or_else(|| "".into()),
         })
         .collect();
-
+    let coord = mimir::Coord::new(stop_area.coord.lon, stop_area.coord.lat);
     mimir::Stop {
         id: format!("stop_area:{}", stop_area.id),
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
-        coord: mimir::Coord::new(stop_area.coord.lon, stop_area.coord.lat),
+        coord: coord.clone(),
+        coord_hash: Some(coord.into()),
         commercial_modes: commercial_modes,
         physical_modes: physical_modes,
         administrative_regions: vec![],

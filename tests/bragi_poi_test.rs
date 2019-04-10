@@ -269,11 +269,13 @@ fn poi_from_osm_with_address_addr_test(bragi: &mut BragiHandler) {
 pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
     // we define a simple test italian poi (the 'Colosseo'
     // with 2 langs for labels and names fields ('fr' and 'es')
+    let coord = mimir::Coord(geo::Coordinate { x: 0.0, y: 0.0 });
     let colosseo = mimir::Poi {
         id: "".to_string(),
         label: "Colosseo (Roma)".to_string(),
         name: "Colosseo".to_string(),
-        coord: mimir::Coord(geo::Coordinate { x: 0.0, y: 0.0 }),
+        coord: coord.clone(),
+        coord_hash: Some(coord.into()),
         administrative_regions: vec![],
         weight: 0.0,
         zip_codes: vec![],
@@ -311,7 +313,7 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
         nb_replicas: 1,
     };
     // we index the poi above
-    let result = es
+    let _result = es
         .rubber
         .index("munin_poi", &index_settings, std::iter::once(colosseo));
 

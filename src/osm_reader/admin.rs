@@ -154,6 +154,7 @@ pub fn read_administrative_regions(
                 })
                 .unwrap_or(0.);
 
+            let coord = coord_center.unwrap_or_else(|| make_centroid(&boundary));
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -162,7 +163,8 @@ pub fn read_administrative_regions(
                 label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
                 zip_codes: zip_codes,
                 weight: weight,
-                coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
+                coord: coord.clone(),
+                coord_hash: Some(coord.into()),
                 bbox: boundary.as_ref().and_then(|b| b.bounding_rect()),
                 boundary: boundary,
                 zone_type: zone_type,
