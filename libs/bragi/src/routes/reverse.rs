@@ -21,9 +21,7 @@ pub fn reverse(
         &params.timeout.map(Duration::from_millis),
         &state.max_es_timeout,
     );
-    let mut rubber = Rubber::new(&state.es_cnx_string);
-    rubber.set_read_timeout(timeout);
-    rubber.set_write_timeout(timeout);
+    let mut rubber = Rubber::new_with_timeout(&state.es_cnx_string, timeout);
     let coord = params::make_coord(params.lon, params.lat)?;
     rubber
         .get_address(&coord, timeout)

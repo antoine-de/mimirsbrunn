@@ -29,9 +29,7 @@
 // www.navitia.io
 
 use super::get_first_index_aliases;
-use super::ToJson;
-use hyper;
-use hyper::client::Client;
+use reqwest;
 use std::path::Path;
 
 /// Simple call to a OA load into ES base
@@ -56,14 +54,10 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     assert_eq!(res.len(), 1);
 
     // after an import, we should have 1 index, and some aliases to this index
-    let client = Client::new();
-    let res = client
-        .get(&format!("{host}/_aliases", host = es_wrapper.host()))
-        .send()
-        .unwrap();
-    assert_eq!(res.status, hyper::Ok);
+    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    assert_eq!(res.status(), reqwest::StatusCode::OK);
 
-    let json = res.to_json();
+    let json: serde_json::Value = res.json().unwrap();
     let raw_indexes = json.as_object().unwrap();
     let first_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
     assert_eq!(first_indexes.len(), 1);
@@ -87,13 +81,10 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     );
 
     // we should still have only one index (but a different one)
-    let res = client
-        .get(&format!("{host}/_aliases", host = es_wrapper.host()))
-        .send()
-        .unwrap();
-    assert_eq!(res.status, hyper::Ok);
+    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    assert_eq!(res.status(), reqwest::StatusCode::OK);
 
-    let json = res.to_json();
+    let json: serde_json::Value = res.json().unwrap();
     let raw_indexes = json.as_object().unwrap();
     let final_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
 

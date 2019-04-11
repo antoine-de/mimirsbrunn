@@ -31,8 +31,8 @@
 use super::objects::{Admin, MimirObject};
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use failure::{Error, ResultExt};
-use hyper::status::StatusCode;
 use prometheus::{exponential_buckets, histogram_opts, register_histogram, Histogram};
+use reqwest::StatusCode;
 use rs_es::error::EsError;
 use rs_es::operations::search::ScanResult;
 use rs_es::operations::search::SearchResult;
@@ -73,11 +73,20 @@ lazy_static::lazy_static! {
     .unwrap();
 }
 
+fn do_req(resp: reqwest::Response) -> Result<reqwest::Response, EsError> {
+    let mut resp = resp;
+    let status = resp.status();
+    match status {
+        StatusCode::OK | StatusCode::CREATED | StatusCode::NOT_FOUND => Ok(resp),
+        _ => Err(EsError::from(&mut resp)),
+    }
+}
+
 // Rubber is an wrapper around elasticsearch API
 pub struct Rubber {
     es_client: rs_es::Client,
     // some operation are not implemented in rs_es, we need to use a raw http client
-    http_client: hyper::client::Client,
+    http_client: reqwest::Client,
 }
 
 #[derive(Clone, Debug)]
@@ -233,41 +242,38 @@ impl Rubber {
         info!("elastic search host {} ", cnx);
 
         Rubber {
-            es_client: rs_es::Client::new(&cnx).unwrap(),
-            http_client: hyper::client::Client::new(),
+            es_client: rs_es::Client::init(&cnx).unwrap(),
+            http_client: reqwest::Client::new(),
         }
     }
 
-    pub fn set_read_timeout(&mut self, timeout: Option<time::Duration>) {
-        self.es_client.set_read_timeout(timeout);
-        self.http_client.set_read_timeout(timeout);
+    pub fn new_with_timeout(cnx: &str, timeout: Option<time::Duration>) -> Rubber {
+        Rubber {
+            es_client: rs_es::Client::init_with_timeout(&cnx, timeout).unwrap(),
+            http_client: reqwest::Client::builder().timeout(timeout).build().unwrap(),
+        }
     }
 
-    pub fn set_write_timeout(&mut self, timeout: Option<time::Duration>) {
-        self.es_client.set_write_timeout(timeout);
-        self.http_client.set_write_timeout(timeout);
-    }
-
-    pub fn get(&self, path: &str) -> Result<hyper::client::response::Response, EsError> {
+    pub fn get(&self, path: &str) -> Result<reqwest::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
-        let result = self.http_client.get(&url).send()?;
-        rs_es::do_req(result)
+        let result = self.http_client.get(url).send()?;
+        do_req(result)
     }
-    fn put(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
+    fn put(&self, path: &str, body: &str) -> Result<reqwest::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = self.http_client.put(&url).body(body).send()?;
-        rs_es::do_req(result)
+        let result = self.http_client.put(url).body(body.to_owned()).send()?;
+        do_req(result)
     }
-    fn post(&self, path: &str, body: &str) -> Result<hyper::client::response::Response, EsError> {
+    fn post(&self, path: &str, body: &str) -> Result<reqwest::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a post on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = self.http_client.post(&url).body(body).send()?;
-        rs_es::do_req(result)
+        let result = self.http_client.post(url).body(body.to_owned()).send()?;
+        do_req(result)
     }
 
     pub fn make_index<T: MimirObject>(
@@ -317,7 +323,7 @@ impl Rubber {
                 )
             })
             .and_then(|res| {
-                if res.status == StatusCode::Ok {
+                if res.status() == StatusCode::OK {
                     Ok(())
                 } else {
                     Err(format_err!("cannot create index: {:?}", res))
@@ -333,7 +339,7 @@ impl Rubber {
                 format_err!("Error: {} while creating template {}", e.to_string(), name)
             })
             .and_then(|res| {
-                if res.status == StatusCode::Ok {
+                if res.status() == StatusCode::OK {
                     Ok(())
                 } else {
                     Err(format_err!("cannot create template: {:?}", res))
@@ -374,8 +380,8 @@ impl Rubber {
         let res = self
             .get(&format!("{}*/_aliases", base_index))
             .with_context(|_| format!("Error occurred when getting {}*/_aliases", base_index))?;
-        match res.status {
-            StatusCode::Ok => {
+        match res.status() {
+            StatusCode::OK => {
                 let value: serde_json::Value = res.read_response()?;
                 Ok(value
                     .as_object()
@@ -394,7 +400,7 @@ impl Rubber {
                         BTreeMap::new()
                     }))
             }
-            StatusCode::NotFound => {
+            StatusCode::NOT_FOUND => {
                 info!("impossible to find alias {}", base_index);
                 Ok(BTreeMap::new())
             }
@@ -529,8 +535,8 @@ impl Rubber {
         let res = self
             .post("_aliases", &json)
             .context("Error occurred when POSTing: _alias")?;
-        match res.status {
-            StatusCode::Ok => Ok(()),
+        match res.status() {
+            StatusCode::OK => Ok(()),
             _ => bail!("failed to post aliases for {}: {:?}", alias, res),
         }
     }
