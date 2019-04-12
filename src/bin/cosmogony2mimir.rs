@@ -46,7 +46,7 @@ use structopt::StructOpt;
 trait IntoAdmin {
     fn into_admin(
         self,
-        _: &BTreeMap<ZoneIndex, String>,
+        _: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
         retrocompat_on_french_id: bool,
         max_weight: f64,
@@ -67,34 +67,33 @@ fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f6
 impl IntoAdmin for Zone {
     fn into_admin(
         self,
-        zones_osm_id: &BTreeMap<ZoneIndex, String>,
+        zones_osm_id: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
         french_id_retrocompatibility: bool,
         max_weight: f64,
     ) -> Admin {
-        let insee = admin::read_insee(&self.tags).unwrap_or("");
+        let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
         let weight = get_weight(&self.tags, &self.center_tags);
         let center = self.center.map_or(mimir::Coord::default(), |c| {
             mimir::Coord::new(c.lng(), c.lat())
         });
-        let format_id = |id| {
-            if french_id_retrocompatibility && insee != "" {
-                // for retrocompatibity reasons, Navitia needs the
-                // french admins to have an id with the insee
-                format!("admin:fr:{}", insee)
-            } else {
-                format!("admin:osm:{}", id)
+        let format_id = |id, insee| {
+            // for retrocompatibity reasons, Navitia needs the
+            // french admins to have an id with the insee
+            match insee {
+                Some(insee) if french_id_retrocompatibility => format!("admin:fr:{}", insee),
+                _ => format!("admin:osm:{}", id),
             }
         };
         let parent_osm_id = self
             .parent
             .and_then(|id| zones_osm_id.get(&id))
-            .map(format_id);
+            .map(|(id, insee)| format_id(id, insee.as_ref()));
         Admin {
-            id: format_id(&self.osm_id),
-            insee: insee.into(),
+            id: format_id(&self.osm_id, insee.as_ref()),
+            insee: insee.unwrap_or("".to_owned()),
             level: self.admin_level.unwrap_or(0),
             label: label,
             name: self.name,
@@ -144,7 +143,8 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     for z in read_zones(&args.input)? {
         max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
-        cosmogony_id_to_osm_id.insert(z.id.clone(), z.osm_id.clone());
+        let insee = admin::read_insee(&z.tags).map(|s| s.to_owned());
+        cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
     }
     let max_weight = max_weight;
     let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
