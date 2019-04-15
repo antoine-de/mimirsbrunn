@@ -127,7 +127,9 @@ impl AdminGeoFinder {
                     if let Some(zt) = admin_parent.as_ref().and_then(|a| a.zone_type) {
                         added_zone_types.insert(zt.clone());
                     }
-                    tested_hierarchy.insert(id);
+                    if !tested_hierarchy.insert(id) {
+                        break; // stop the exploration of the hierarchy since we have already added this one
+                    }
                     admin_parent_id = admin_parent.and_then(|a| a.parent_id.clone());
                 }
 
