@@ -81,7 +81,7 @@ impl IntoAdmin for Zone {
         });
         let format_id = |id, insee| {
             // for retrocompatibity reasons, Navitia needs the
-            // french admins to have an id with the insee
+            // french admins to have an id with the insee for cities
             match insee {
                 Some(insee) if french_id_retrocompatibility => format!("admin:fr:{}", insee),
                 _ => format!("admin:osm:{}", id),
@@ -92,7 +92,10 @@ impl IntoAdmin for Zone {
             .and_then(|id| zones_osm_id.get(&id))
             .map(|(id, insee)| format_id(id, insee.as_ref()));
         Admin {
-            id: format_id(&self.osm_id, insee.as_ref()),
+            id: zones_osm_id
+                .get(&self.id)
+                .map(|(id, insee)| format_id(id, insee.as_ref()))
+                .expect("unable to find zone id in zones_osm_id"),
             insee: insee.unwrap_or("".to_owned()),
             level: self.admin_level.unwrap_or(0),
             label: label,
@@ -138,12 +141,16 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
+    use cosmogony::zone::ZoneType::City;
 
     let mut max_weight = 1.0;
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     for z in read_zones(&args.input)? {
         max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
-        let insee = admin::read_insee(&z.tags).map(|s| s.to_owned());
+        let insee = match z.zone_type {
+            Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
+            _ => None,
+        };
         cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
     }
     let max_weight = max_weight;
