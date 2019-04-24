@@ -36,10 +36,10 @@ extern crate slog_scope;
 use failure::ResultExt;
 use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
-use navitia_model::collection::Idx;
-use navitia_model::objects as navitia;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use transit_model::collection::Idx;
+use transit_model::objects as navitia;
 
 #[derive(Debug, StructOpt)]
 struct Args {
@@ -70,7 +70,7 @@ struct Args {
 fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
-    navitia: &navitia_model::Model,
+    navitia: &transit_model::Model,
 ) -> mimir::Stop {
     let commercial_modes = navitia
         .get_corresponding_from_idx(idx)
@@ -150,14 +150,14 @@ fn main() {
     mimirsbrunn::utils::launch_run(run);
 }
 
-fn run(args: Args) -> Result<(), navitia_model::Error> {
+fn run(args: Args) -> Result<(), transit_model::Error> {
     info!("Launching ntfs2mimir...");
 
     if args.city_level.is_some() {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
-    let navitia = navitia_model::ntfs::read(&args.input)?;
+    let navitia = transit_model::ntfs::read(&args.input)?;
     let nb_stop_points = navitia
         .stop_areas
         .iter()
@@ -216,7 +216,7 @@ fn test_bad_connection_string() {
         causes,
         [
             "Error occurred when importing stops into bob on http://localhost:1".to_string(),
-            "Error: Connection refused (os error 111) while creating template template_addr"
+            "Error: http://localhost:1/_template/template_addr: an error occurred trying to connect: Connection refused (os error 111) while creating template template_addr"
                 .to_string(),
         ]
     );

@@ -392,9 +392,7 @@ pub fn features(
     let filter = Query::build_bool().with_must(filters).build();
     let query = Query::build_bool().with_filter(filter).build();
 
-    let mut client = rs_es::Client::new(cnx).unwrap();
-    client.set_read_timeout(timeout);
-    client.set_write_timeout(timeout);
+    let mut client = rs_es::Client::init_with_timeout(cnx, timeout).unwrap();
 
     let indexes = get_indexes(all_data, &pt_datasets, &[]);
     let indexes = indexes
@@ -474,9 +472,7 @@ pub fn autocomplete(
         ));
     }
 
-    let mut client = rs_es::Client::new(cnx).unwrap();
-    client.set_read_timeout(timeout);
-    client.set_write_timeout(timeout);
+    let mut client = rs_es::Client::init_with_timeout(cnx, timeout).unwrap();
 
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)

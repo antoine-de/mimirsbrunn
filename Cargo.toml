@@ -28,7 +28,7 @@ geo-types = "0.4"
 gst = "0.1"
 ordered-float = "0.0.2"
 itertools = "0.8"
-navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
+transit_model = "0.4.1"
 osm_boundaries_utils = "0.4"
 failure = "0.1"
 cosmogony = "0.5"
@@ -38,7 +38,7 @@ num_cpus = "1.10"
 assert_float_eq = "1"
 
 [dev-dependencies]
-hyper = "0.10"
+reqwest = "0.9"
 approx = "0.2.0"
 actix-web = "0.7"
 
