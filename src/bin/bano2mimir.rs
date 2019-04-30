@@ -109,10 +109,7 @@ impl Bano {
             Some("fr"),
         ); // rename to format_label after cleanup
         let (addr_name, addr_label) = utils::get_name_and_label(
-            utils::FormatPlaceHolder::from_addr(
-                self.nb.clone(),
-                self.street.clone(),
-            ),
+            utils::FormatPlaceHolder::from_addr(self.nb.clone(), self.street.clone()),
             zones_for_label_formatting.clone(),
             Some("fr"),
         );
