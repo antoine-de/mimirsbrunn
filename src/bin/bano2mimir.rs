@@ -104,7 +104,7 @@ impl Bano {
             .chain(std::iter::once(&city));
 
         let street_label = utils::get_label(
-            utils::FormatPlaceHolder::from_street(self.street.clone(), self.zip.clone()),
+            utils::FormatPlaceHolder::from_street(self.street.clone()),
             zones_for_label_formatting.clone(),
             Some("fr"),
         ); // rename to format_label after cleanup
@@ -112,7 +112,6 @@ impl Bano {
             utils::FormatPlaceHolder::from_addr(
                 self.nb.clone(),
                 self.street.clone(),
-                self.zip.clone(),
             ),
             zones_for_label_formatting.clone(),
             Some("fr"),

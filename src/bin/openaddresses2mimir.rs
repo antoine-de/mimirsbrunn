@@ -79,7 +79,7 @@ impl OpenAddresse {
         // Note: for openaddress, we don't trust the admin hierarchy much (compared to bano)
         // so we use for the label the admins that we find in the DB
         let street_label = utils::get_label(
-            utils::FormatPlaceHolder::from_street(self.street.clone(), self.postcode.clone()),
+            utils::FormatPlaceHolder::from_street(self.street.clone()),
             admins.iter().map(|a| a.deref()),
             None,
         ); // rename to format_label after cleanup
@@ -87,7 +87,6 @@ impl OpenAddresse {
             utils::FormatPlaceHolder::from_addr(
                 self.number.clone(),
                 self.street.clone(),
-                self.postcode.clone(),
             ),
             admins.iter().map(|a| a.deref()),
             None,

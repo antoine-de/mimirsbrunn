@@ -151,22 +151,20 @@ fn cosmo_to_addr_formatter_type(
 
 pub struct FormatPlaceHolder {
     street: String,
-    zip_code: String,
+    // zip_code: Vec<String>, // For the moment we don't put the zip code in the label
     house_number: Option<String>,
 }
 
 impl FormatPlaceHolder {
-    pub fn from_addr(house_number: String, street: String, zip_code: String) -> Self {
+    pub fn from_addr(house_number: String, street: String) -> Self {
         Self {
             street,
-            zip_code,
             house_number: Some(house_number),
         }
     }
-    pub fn from_street(street: String, zip_code: String) -> Self {
+    pub fn from_street(street: String) -> Self {
         Self {
             street,
-            zip_code,
             house_number: None,
         }
     }
@@ -179,7 +177,6 @@ impl FormatPlaceHolder {
         let mut place = address_formatter::Place::default();
         place[Component::HouseNumber] = self.house_number;
         place[Component::Road] = Some(self.street);
-        place[Component::Postcode] = Some(self.zip_code);
         for a in admins {
             if let Some(addr_equivalent) = cosmo_to_addr_formatter_type(&a.zone_type) {
                 place[addr_equivalent] = Some(a.name.clone());
@@ -202,7 +199,7 @@ fn format<'a>(
         .format_with_config(
             place.into_place(admins),
             address_formatter::Configuration {
-                country_code: country_code.map(|s|s.to_owned()),
+                country_code: country_code.map(|s| s.to_owned()),
                 ..Default::default()
             },
         )
@@ -212,7 +209,7 @@ fn format<'a>(
 
 fn mimir_label(lbl: String) -> String {
     // first impl is very simple, we just make the multi line address_formatting label a one liner
-    lbl.trim_end().replace("\n", " ")
+    lbl.trim_end().replace("\n", ", ")
 }
 
 pub fn get_label<'a>(
