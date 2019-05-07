@@ -198,12 +198,12 @@ fn street_by_id_test(bragi: &mut BragiHandler) {
 }
 
 fn addr_by_id_test(bragi: &mut BragiHandler) {
-    let all_20 = bragi.get("/features/addr:2.68385;48.50539");
+    let all_20 = bragi.get("/features/addr:2.68385;48.50539:3");
     assert_eq!(all_20.len(), 1);
     let types = get_types(&all_20);
     let count = count_types(&types, "house");
     assert_eq!(count, 1);
-    assert_eq!(get_values(&all_20, "id"), vec!["addr:2.68385;48.50539"]);
+    assert_eq!(get_values(&all_20, "id"), vec!["addr:2.68385;48.50539:3"]);
 }
 
 fn stop_by_id_test(bragi: &mut BragiHandler) {
