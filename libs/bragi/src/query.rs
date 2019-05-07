@@ -166,9 +166,7 @@ fn build_query<'a>(
 
     let build_multi_match =
         |default_field: &str, lang_field_formatter: &dyn Fn(&'a &'a str) -> String| {
-            let boosted_i18n_fields = langs
-                .iter()
-                .map(lang_field_formatter);
+            let boosted_i18n_fields = langs.iter().map(lang_field_formatter);
             let fields: Vec<String> = iter::once(default_field.into())
                 .chain(boosted_i18n_fields)
                 .collect();
@@ -216,9 +214,7 @@ fn build_query<'a>(
     };
 
     let admin_importance_query = Query::build_function_score()
-        .with_query(
-            Query::build_term("_type", Admin::doc_type()).build()
-        )
+        .with_query(Query::build_term("_type", Admin::doc_type()).build())
         .with_functions(vec![
             Function::build_field_value_factor("weight")
                 .with_factor(1e6)
