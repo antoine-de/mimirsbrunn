@@ -254,7 +254,7 @@ fn parse_poi(
         name: name.to_string(),
         label: format_label(&adms, name),
         coord: coord.clone(),
-        coord_hash: Some(coord.into()),
+        approx_coord: Some(coord.into()),
         zip_codes: zip_codes,
         administrative_regions: adms,
         weight: 0.,

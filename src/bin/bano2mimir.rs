@@ -108,7 +108,7 @@ impl Bano {
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             coord: coord.clone(),
-            coord_hash: None,
+            approx_coord: None,
             distance: None,
         };
         mimir::Addr {
@@ -118,7 +118,7 @@ impl Bano {
             street: street,
             label: addr_label,
             coord: coord.clone(),
-            coord_hash: Some(coord.into()),
+            approx_coord: Some(coord.into()),
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             distance: None,

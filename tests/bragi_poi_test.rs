@@ -275,7 +275,7 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
         label: "Colosseo (Roma)".to_string(),
         name: "Colosseo".to_string(),
         coord: coord.clone(),
-        coord_hash: Some(coord.into()),
+        approx_coord: Some(coord.into()),
         administrative_regions: vec![],
         weight: 0.0,
         zip_codes: vec![],

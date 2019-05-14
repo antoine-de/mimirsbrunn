@@ -95,7 +95,7 @@ pub fn streets(
                     zip_codes: get_zip_codes_from_admins(&admin),
                     administrative_regions: admin,
                     coord: coord.clone(),
-                    coord_hash: Some(coord.into()),
+                    approx_coord: Some(coord.into()),
                     distance: None,
                 })
             })
@@ -145,7 +145,7 @@ pub fn streets(
             zip_codes: get_zip_codes_from_admins(&admins),
             administrative_regions: admins,
             coord: coord.clone(),
-            coord_hash: Some(coord.into()),
+            approx_coord: Some(coord.into()),
             distance: None,
         })
     });

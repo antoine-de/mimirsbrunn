@@ -77,7 +77,7 @@
                     "geohash_prefix": true,
                     "geohash_precision": "1m"
                 },
-                "coord_hash": {
+                "approx_coord": {
                     "type": "geo_shape",
                     "precision": "5m"
                 },

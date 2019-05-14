@@ -164,7 +164,7 @@ pub fn read_administrative_regions(
                 zip_codes: zip_codes,
                 weight: weight,
                 coord: coord.clone(),
-                coord_hash: Some(coord.into()),
+                approx_coord: Some(coord.into()),
                 bbox: boundary.as_ref().and_then(|b| b.bounding_rect()),
                 boundary: boundary,
                 zone_type: zone_type,

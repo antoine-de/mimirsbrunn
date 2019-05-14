@@ -83,7 +83,7 @@ impl OpenAddresse {
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
             coord: coord.clone(),
-            coord_hash: None,
+            approx_coord: None,
             distance: None,
         };
         mimir::Addr {
@@ -93,7 +93,7 @@ impl OpenAddresse {
             street: street,
             label: addr_label,
             coord: coord.clone(),
-            coord_hash: Some(coord.into()),
+            approx_coord: Some(coord.into()),
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
             distance: None,

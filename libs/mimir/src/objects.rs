@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use cosmogony::ZoneType;
+use geojson::Geometry;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use std::cmp::Ordering;
@@ -204,8 +205,10 @@ pub struct Poi {
     pub label: String,
     pub name: String,
     pub coord: Coord,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
     #[serde(skip_deserializing)]
-    pub coord_hash: Option<CoordHash>,
+    pub approx_coord: Option<Geometry>,
     pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
@@ -333,8 +336,10 @@ pub struct Stop {
     pub id: String,
     pub label: String,
     pub name: String,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
     #[serde(skip_deserializing)]
-    pub coord_hash: Option<CoordHash>,
+    pub approx_coord: Option<Geometry>,
     pub coord: Coord,
     pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
@@ -390,8 +395,10 @@ pub struct Admin {
     pub name: String,
     pub zip_codes: Vec<String>,
     pub weight: f64,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
     #[serde(skip_deserializing)]
-    pub coord_hash: Option<CoordHash>,
+    pub approx_coord: Option<Geometry>,
     pub coord: Coord,
     #[serde(
         serialize_with = "custom_multi_polygon_serialize",
@@ -566,8 +573,10 @@ pub struct Street {
     pub administrative_regions: Vec<Arc<Admin>>,
     pub label: String,
     pub weight: f64,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
     #[serde(skip_deserializing)]
-    pub coord_hash: Option<CoordHash>,
+    pub approx_coord: Option<Geometry>,
     pub coord: Coord,
     pub zip_codes: Vec<String>,
     /// Distance to the coord in query.
@@ -614,8 +623,10 @@ pub struct Addr {
     pub street: Street,
     pub label: String,
     pub coord: Coord,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
     #[serde(skip_deserializing)]
-    pub coord_hash: Option<CoordHash>,
+    pub approx_coord: Option<Geometry>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
     /// Distance to the coord in query.
@@ -662,33 +673,6 @@ pub struct AliasOperation {
 pub struct AliasParameter {
     pub index: String,
     pub alias: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct CoordHash(f64, f64);
-
-impl serde::Serialize for CoordHash {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut ser = serializer.serialize_struct("CoordHash", 2)?;
-        ser.serialize_field("type", "point")?;
-        ser.serialize_field("coordinates", &vec![&self.0, &self.1])?;
-        ser.end()
-    }
-}
-
-impl Default for CoordHash {
-    fn default() -> CoordHash {
-        CoordHash(0., 0.)
-    }
-}
-
-impl From<Coord> for CoordHash {
-    fn from(coord: Coord) -> Self {
-        CoordHash(coord.lon(), coord.lat())
-    }
 }
 
 // we want a custom serialization for coords, and so far the cleanest way
@@ -738,6 +722,12 @@ impl serde::Serialize for Coord {
         ser.serialize_field("lon", &self.0.x)?;
         ser.serialize_field("lat", &self.0.y)?;
         ser.end()
+    }
+}
+
+impl Into<Geometry> for Coord {
+    fn into(self) -> Geometry {
+        Geometry::new(geojson::Value::Point(vec![self.lon(), self.lat()]))
     }
 }
 

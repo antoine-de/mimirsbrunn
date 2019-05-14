@@ -266,7 +266,11 @@ fn build_query<'a>(
     }
 
     if let Some(s) = shape {
-        filters.push(Query::build_geo_shape("coord_hash").with_geojson(s).build());
+        filters.push(
+            Query::build_geo_shape("approx_coord")
+                .with_geojson(s)
+                .build(),
+        );
     }
 
     let mut query = Query::build_bool()

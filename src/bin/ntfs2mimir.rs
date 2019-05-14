@@ -117,7 +117,7 @@ fn to_mimir(
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
         coord: coord.clone(),
-        coord_hash: Some(coord.into()),
+        approx_coord: Some(coord.into()),
         commercial_modes: commercial_modes,
         physical_modes: physical_modes,
         administrative_regions: vec![],

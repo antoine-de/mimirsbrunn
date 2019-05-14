@@ -126,7 +126,7 @@ impl GtfsStop {
             Ok(mimir::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
                 coord: coord.clone(),
-                coord_hash: Some(coord.into()),
+                approx_coord: Some(coord.into()),
                 label: self.stop_name.clone(),
                 weight: 0.,
                 zip_codes: vec![],

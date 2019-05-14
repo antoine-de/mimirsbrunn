@@ -75,7 +75,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         weight: 0.42,
         zip_codes: vec![],
         coord: coord.clone(),
-        coord_hash: Some(coord.into()),
+        approx_coord: Some(coord.into()),
         distance: None,
     };
 
@@ -104,7 +104,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         weight: 0.24,
         zip_codes: vec![],
         coord: coord.clone(),
-        coord_hash: Some(coord.into()),
+        approx_coord: Some(coord.into()),
         distance: None,
     };
 
@@ -172,7 +172,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
         coord: coord.clone(),
-        coord_hash: Some(coord.into()),
+        approx_coord: Some(coord.into()),
         bbox: boundary.bounding_rect(),
         boundary: Some(boundary),
         zone_type: Some(ZoneType::City),
@@ -275,7 +275,7 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
         coord: coord.clone(),
-        coord_hash: Some(coord.into()),
+        approx_coord: Some(coord.into()),
         boundary: None,
         bbox: None,
         zone_type: Some(ZoneType::City),

@@ -105,7 +105,7 @@ impl IntoAdmin for Zone {
             bbox: self.bbox,
             boundary: self.boundary,
             coord: center.clone(),
-            coord_hash: Some(center.into()),
+            approx_coord: Some(center.into()),
             zone_type: self.zone_type,
             parent_id: parent_osm_id,
             codes: osm_utils::get_osm_codes_from_tags(&self.tags),
