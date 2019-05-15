@@ -91,19 +91,27 @@ impl OpenAddresse {
             distance: None,
         };
         mimir::Addr {
-            id: format!("addr:{};{}{}", self.lon, self.lat,
-                        if use_old_index_format {
-                            String::new()
-                        } else {
-                            format!(":{}", self.number.replace(" ", "")
-                                                      .replace("\t", "")
-                                                      .replace("\r", "")
-                                                      .replace("\n", "")
-                                                      .replace("/", "-")
-                                                      .replace(".", "-")
-                                                      .replace(":", "-")
-                                                      .replace(";", "-"))
-                        }),
+            id: format!(
+                "addr:{};{}{}",
+                self.lon,
+                self.lat,
+                if use_old_index_format {
+                    String::new()
+                } else {
+                    format!(
+                        ":{}",
+                        self.number
+                            .replace(" ", "")
+                            .replace("\t", "")
+                            .replace("\r", "")
+                            .replace("\n", "")
+                            .replace("/", "-")
+                            .replace(".", "-")
+                            .replace(":", "-")
+                            .replace(";", "-")
+                    )
+                }
+            ),
             name: addr_name,
             house_number: self.number,
             street: street,
