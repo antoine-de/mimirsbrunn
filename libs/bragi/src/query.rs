@@ -185,12 +185,15 @@ fn build_query<'a>(
             .with_boost(0.6)
             .build(),
         Query::build_match("zip_codes", q).with_boost(1.).build(),
+        Query::build_match("house_number", q)
+            .with_boost(0.001)
+            .build(),
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
         string_should.push(
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(1.)
+                .with_boost(1.8)
                 .build(),
         );
     }
