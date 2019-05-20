@@ -86,6 +86,7 @@ pub fn streets(
                 let way = objs_map.get(&ref_obj.member)?.way()?;
                 let way_name = way_name.or_else(|| way.tags.get("name"))?;
                 let admin = get_street_admin(admins_geofinder, &objs_map, way);
+                let coord = get_way_coord(&objs_map, way);
                 Some(mimir::Street {
                     id: format!("street:osm:relation:{}", rel.id.0.to_string()),
                     name: way_name.to_string(),
@@ -93,7 +94,8 @@ pub fn streets(
                     weight: 0.,
                     zip_codes: get_zip_codes_from_admins(&admin),
                     administrative_regions: admin,
-                    coord: get_way_coord(&objs_map, way),
+                    coord: coord.clone(),
+                    approx_coord: Some(coord.into()),
                     distance: None,
                 })
             })
@@ -134,6 +136,7 @@ pub fn streets(
         let way = objs_map.get(&min_id)?.way()?;
         let name = way.tags.get("name")?.to_string();
         let admins = get_street_admin(admins_geofinder, &objs_map, way);
+        let coord = get_way_coord(&objs_map, way);
         Some(mimir::Street {
             id: format!("street:osm:way:{}", way.id.0.to_string()),
             label: format_label(&admins, &name),
@@ -141,7 +144,8 @@ pub fn streets(
             weight: 0.,
             zip_codes: get_zip_codes_from_admins(&admins),
             administrative_regions: admins,
-            coord: get_way_coord(&objs_map, way),
+            coord: coord.clone(),
+            approx_coord: Some(coord.into()),
             distance: None,
         })
     });

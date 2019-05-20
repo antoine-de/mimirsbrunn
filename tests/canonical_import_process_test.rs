@@ -307,7 +307,7 @@ fn wrong_shape_test(bragi: &mut BragiHandler) {
     // there, the shape has no 'property' field
     let shape = r#"{"shape":{"type":"Feature","geometry":{"type":"Polygon",
         "coordinates":[[[2.376488, 48.846431],
-        [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}}"#;
+        [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603], [2.376488, 48.846431]]]}}}"#;
     let r = bragi
         .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
         .unwrap();
@@ -318,7 +318,7 @@ fn wrong_shape_test(bragi: &mut BragiHandler) {
         bragi.to_json(r),
         json!({
             "short": "validation error",
-            "long": "invalid json: Json deserialize error: expected a GeoJSON property at line 3 column 79",
+            "long": "invalid json: Json deserialize error: expected a GeoJSON property at line 3 column 102",
         })
     );
 }

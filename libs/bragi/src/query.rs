@@ -28,11 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::model::{self, BragiError};
+use geojson::Geometry;
 use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places};
-use prometheus;
-use prometheus::{exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
+use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
@@ -41,9 +41,7 @@ use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
 use serde_json;
-use std::fmt;
-use std::iter;
-use std::time;
+use std::{fmt, iter, time};
 
 lazy_static::lazy_static! {
     static ref ES_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
@@ -135,7 +133,7 @@ fn build_query<'a>(
     q: &str,
     match_type: MatchType,
     coord: &Option<Coord>,
-    shape: Option<Vec<rs_es::units::Location>>,
+    shape: Option<Geometry>,
     pt_datasets: &[&str],
     all_data: bool,
     langs: &'a [&'a str],
@@ -268,7 +266,11 @@ fn build_query<'a>(
     }
 
     if let Some(s) = shape {
-        filters.push(Query::build_geo_polygon("coord", s).build());
+        filters.push(
+            Query::build_geo_shape("approx_coord")
+                .with_geojson(s)
+                .build(),
+        );
     }
 
     let mut query = Query::build_bool()
@@ -312,7 +314,7 @@ fn query(
     offset: u64,
     limit: u64,
     coord: &Option<Coord>,
-    shape: Option<Vec<rs_es::units::Location>>,
+    shape: Option<Geometry>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
@@ -447,19 +449,13 @@ pub fn autocomplete(
     limit: u64,
     coord: Option<Coord>,
     cnx: &str,
-    shape: Option<Vec<(f64, f64)>>,
+    shape: Option<Geometry>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
-    fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
-        shape
-            .as_ref()
-            .map(|v| v.iter().map(|&l| l.into()).collect())
-    }
-
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
         return Err(BragiError::InvalidParam(
@@ -485,7 +481,7 @@ pub fn autocomplete(
         offset,
         limit,
         &coord,
-        make_shape(&shape),
+        shape.clone(),
         &types,
         &zone_types,
         &poi_types,
@@ -503,7 +499,7 @@ pub fn autocomplete(
             offset,
             limit,
             &coord,
-            make_shape(&shape),
+            shape,
             &types,
             &zone_types,
             &poi_types,

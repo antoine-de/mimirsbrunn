@@ -66,6 +66,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
     info!("running rubber_zero_downtime_test");
     let dataset = "my_dataset";
 
+    let coord = Coord::new(0., 0.);
     let bob = Street {
         id: "bob".to_string(),
         name: "bob's street".to_string(),
@@ -73,7 +74,8 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         administrative_regions: vec![],
         weight: 0.42,
         zip_codes: vec![],
-        coord: Coord::new(0., 0.),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
         distance: None,
     };
 
@@ -93,6 +95,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
 
     check_has_bob(&es);
 
+    let coord = Coord::new(2.68326290f64, 48.5110722f64);
     let bobette = Street {
         id: "bobette".to_string(),
         name: "bobette's street".to_string(),
@@ -100,7 +103,8 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         administrative_regions: vec![],
         weight: 0.24,
         zip_codes: vec![],
-        coord: Coord::new(2.68326290f64, 48.5110722f64),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
         distance: None,
     };
 
@@ -158,7 +162,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         ]),
         vec![],
     )]);
-
+    let coord = Coord::new(2.68326290f64, 48.5110722f64);
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -167,7 +171,8 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
-        coord: Coord::new(2.68326290f64, 48.5110722f64),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
         bbox: boundary.bounding_rect(),
         boundary: Some(boundary),
         zone_type: Some(ZoneType::City),
@@ -260,7 +265,7 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
 
     es.refresh();
     assert_eq!(get_munin_indexes(&es), [old_idx_name.to_string()]);
-
+    let coord = Coord::new(2.68326290f64, 48.5110722f64);
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -269,7 +274,8 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
-        coord: Coord::new(2.68326290f64, 48.5110722f64),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
         boundary: None,
         bbox: None,
         zone_type: Some(ZoneType::City),
