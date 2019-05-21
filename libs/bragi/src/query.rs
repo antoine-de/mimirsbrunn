@@ -216,18 +216,24 @@ fn build_query<'a>(
             .build(),
     };
 
-    let admin_importance_query = Query::build_function_score()
-        .with_query(Query::build_term("_type", Admin::doc_type()).build())
-        .with_functions(vec![
-            Function::build_field_value_factor("weight")
-                .with_factor(1e6)
-                .with_modifier(Modifier::Log1p)
-                .with_missing(0.)
-                .build(),
-            Function::build_weight(0.03).build(),
-        ])
-        .with_boost_mode(BoostMode::Replace)
-        .build();
+    let importance_queries = match match_type {
+        MatchType::Prefix => {
+            let admin_importance_query = Query::build_function_score()
+                .with_query(Query::build_term("_type", Admin::doc_type()).build())
+                .with_functions(vec![
+                    Function::build_field_value_factor("weight")
+                        .with_factor(1e6)
+                        .with_modifier(Modifier::Log1p)
+                        .with_missing(0.)
+                        .build(),
+                    Function::build_weight(0.03).build(),
+                ])
+                .with_boost_mode(BoostMode::Replace)
+                .build();
+            vec![importance_query, admin_importance_query]
+        }
+        MatchType::Fuzzy => vec![importance_query],
+    };
 
     // filter to handle house number
     // we either want:
@@ -288,7 +294,7 @@ fn build_query<'a>(
 
     let mut query = Query::build_bool()
         .with_must(vec![type_query, string_query])
-        .with_should(vec![importance_query, admin_importance_query])
+        .with_should(importance_queries)
         .with_filter(Query::build_bool().with_must(filters).build());
 
     if !zone_types.is_empty() {
