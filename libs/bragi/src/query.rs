@@ -151,7 +151,7 @@ fn build_query<'a>(
     }
     let type_query = Query::build_bool()
         .with_should(vec![
-            match_type_with_boost::<Addr>(20.),
+            match_type_with_boost::<Addr>(30.),
             match_type_with_boost::<Admin>(19.),
             match_type_with_boost::<Stop>(18.),
             match_type_with_boost::<Poi>(1.5),
