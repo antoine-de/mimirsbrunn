@@ -217,7 +217,7 @@ fn test_bad_connection_string() {
         causes,
         [
             "Error occurred when importing stops into bob on http://localhost:1".to_string(),
-            "Error: http://localhost:1/_template/template_addr: an error occurred trying to connect: Connection refused (os error 111) while creating template template_addr"
+            "Error: http://localhost:1/_template/template_addr: error trying to connect: Connection refused (os error 111) while creating template template_addr"
                 .to_string(),
         ]
     );
