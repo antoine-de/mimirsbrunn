@@ -37,6 +37,7 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::rc::Rc;
 use std::sync::Arc;
+use transit_model::objects::Rgb;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -267,9 +268,40 @@ pub struct PhysicalMode {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Network {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Code {
     pub name: String,
     pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]
+pub struct Line {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<Rgb>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_color: Option<Rgb>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commercial_mode: Option<CommercialMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network: Option<Network>,
+    pub physical_mode: Vec<PhysicalMode>,
+}
+
+// we want the lines to be sorted in a way where
+// line-3 is before line-11, so be use a humane_sort
+impl humanesort::HumaneOrder for Line {
+    fn humane_cmp(&self, other: &Self) -> Ordering {
+        self.name.humane_cmp(&other.name)
+    }
 }
 
 #[derive(Default, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -331,7 +363,7 @@ pub struct Comment {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Stop {
     pub id: String,
     pub label: String,
@@ -364,6 +396,8 @@ pub struct Stop {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+    #[serde(default)]
+    pub lines: Vec<Line>,
 }
 
 impl MimirObject for Stop {

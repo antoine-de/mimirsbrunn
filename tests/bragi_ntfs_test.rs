@@ -117,6 +117,48 @@ fn gare_de_lyon(bragi: &mut BragiHandler) {
              "name": "The Great Contributor", "url": "http://the-great-contributor.com"},
         ])
     );
+    assert_eq!(
+        stop.get("lines").unwrap(),
+        &json!([
+            {
+                "commercial_mode": { "id": "Bus", "name": "Bus" },
+                "id": "B5",
+                "name": "Bus 5",
+                "network": { "id": "TGN", "name": "The Great Network" },
+                "physical_mode": [
+                    {"id": "Bus", "name": "Bus" }
+                ]
+            },
+            {
+                "commercial_mode": { "id": "Bus", "name": "Bus" },
+                "id": "B42",
+                "name": "Bus 42",
+                "network": { "id": "TGN", "name": "The Great Network" },
+                "physical_mode": [
+                    {"id": "Bus", "name": "Bus" }
+                ]
+            },
+            {
+                "commercial_mode": { "id": "Metro", "name": "Metro" },
+                "id": "M1",
+                "name": "Metro 1",
+                "network": { "id": "TGN", "name": "The Great Network" },
+                "physical_mode": [
+                    { "id": "Metro", "name": "Metro" }
+                ]
+            },
+            {
+                "commercial_mode": { "id": "RER", "name": "Réseau Express Régional (RER)" },
+                "id": "RERA",
+                "name": "RER A",
+                "network": { "id": "TGN", "name": "The Great Network" },
+                "physical_mode": [
+                    { "id": "Bus", "name": "Bus" },
+                    { "id": "RapidTransit", "name": "Rapid Transit" }
+                ]
+            }
+        ])
+    );
 }
 
 fn gare_de_lyon_with_two_datasets(bragi: &mut BragiHandler) {

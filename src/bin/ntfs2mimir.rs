@@ -67,6 +67,54 @@ struct Args {
     nb_replicas: usize,
 }
 
+fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec<mimir::Line> {
+    use humanesort::HumaneSortable;
+    let mut lines: Vec<_> = navitia
+        .get_corresponding_from_idx(idx)
+        .into_iter()
+        .map(|l_idx| {
+            let line = &navitia.lines[l_idx];
+            mimir::Line {
+                id: line.id.clone(),
+                name: line.name.clone(),
+                code: line.code.clone(),
+                color: line.color.clone(),
+                text_color: line.text_color.clone(),
+                commercial_mode: navitia
+                    .commercial_modes
+                    .get(&line.commercial_mode_id)
+                    .map(|c| mimir::CommercialMode {
+                        id: c.id.clone(),
+                        name: c.name.clone(),
+                    }),
+                network: navitia
+                    .networks
+                    .get(&line.network_id)
+                    .map(|n| mimir::Network {
+                        id: n.id.clone(),
+                        name: n.name.clone(),
+                    }),
+                physical_mode: navitia
+                    .get_corresponding_from_idx(l_idx)
+                    .into_iter()
+                    .map(|p_idx| {
+                        let physical_mode = &navitia.physical_modes[p_idx];
+                        mimir::PhysicalMode {
+                            id: physical_mode.id.clone(),
+                            name: physical_mode.name.clone(),
+                        }
+                    })
+                    .collect(),
+            }
+        })
+        .collect();
+
+    // we want the lines to be sorted in a way where
+    // line-3 is before line-11, so be use a humane_sort
+    lines.humane_sort();
+    lines
+}
+
 fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
@@ -112,6 +160,9 @@ fn to_mimir(
         })
         .collect();
     let coord = mimir::Coord::new(stop_area.coord.lon, stop_area.coord.lat);
+
+    let lines = get_lines(idx, navitia);
+
     mimir::Stop {
         id: format!("stop_area:{}", stop_area.id),
         label: stop_area.name.clone(),
@@ -124,6 +175,7 @@ fn to_mimir(
         weight: 0.,
         zip_codes: vec![],
         coverages: vec![],
+        lines: lines,
         comments: comments,
         timezone: stop_area.timezone.clone().unwrap_or(format!("")),
         codes: stop_area

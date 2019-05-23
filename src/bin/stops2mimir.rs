@@ -128,19 +128,8 @@ impl GtfsStop {
                 coord: coord.clone(),
                 approx_coord: Some(coord.into()),
                 label: self.stop_name.clone(),
-                weight: 0.,
-                zip_codes: vec![],
-                administrative_regions: vec![],
                 name: self.stop_name,
-                coverages: vec![],
-                commercial_modes: vec![],
-                physical_modes: vec![],
-                timezone: format!(""),
-                codes: vec![],
-                properties: vec![],
-                feed_publishers: vec![],
-                comments: vec![],
-                distance: None,
+                ..Default::default()
             })
         }
     }
