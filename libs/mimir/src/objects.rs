@@ -294,13 +294,67 @@ pub struct Line {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<Network>,
     pub physical_mode: Vec<PhysicalMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_order: Option<u32>,
+}
+
+pub trait FromTransitModel<T> {
+    fn from_transit_model(
+        idx: transit_model::collection::Idx<T>,
+        navitia: &transit_model::Model,
+    ) -> Self;
+}
+
+impl FromTransitModel<transit_model::objects::Line> for Line {
+    fn from_transit_model(
+        l_idx: transit_model::collection::Idx<transit_model::objects::Line>,
+        navitia: &transit_model::Model,
+    ) -> Self {
+        let line = &navitia.lines[l_idx];
+        Self {
+            id: line.id.clone(),
+            name: line.name.clone(),
+            code: line.code.clone(),
+            color: line.color.clone(),
+            sort_order: line.sort_order.clone(),
+            text_color: line.text_color.clone(),
+            commercial_mode: navitia
+                .commercial_modes
+                .get(&line.commercial_mode_id)
+                .map(|c| CommercialMode {
+                    id: c.id.clone(),
+                    name: c.name.clone(),
+                }),
+            network: navitia.networks.get(&line.network_id).map(|n| Network {
+                id: n.id.clone(),
+                name: n.name.clone(),
+            }),
+            physical_mode: navitia
+                .get_corresponding_from_idx(l_idx)
+                .into_iter()
+                .map(|p_idx| {
+                    let physical_mode = &navitia.physical_modes[p_idx];
+                    PhysicalMode {
+                        id: physical_mode.id.clone(),
+                        name: physical_mode.name.clone(),
+                    }
+                })
+                .collect(),
+        }
+    }
 }
 
 // we want the lines to be sorted in a way where
 // line-3 is before line-11, so be use a humane_sort
 impl humanesort::HumaneOrder for Line {
     fn humane_cmp(&self, other: &Self) -> Ordering {
-        self.name.humane_cmp(&other.name)
+        self.sort_order
+            .cmp(&other.sort_order)
+            .then_with(|| match (&self.code, &other.code) {
+                (Some(c), Some(o)) => c.humane_cmp(o),
+                _ => Ordering::Equal,
+            })
+            .then_with(|| self.name.humane_cmp(&other.name))
     }
 }
 

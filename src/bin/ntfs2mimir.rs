@@ -69,44 +69,11 @@ struct Args {
 
 fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec<mimir::Line> {
     use humanesort::HumaneSortable;
+    use mimir::FromTransitModel;
     let mut lines: Vec<_> = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|l_idx| {
-            let line = &navitia.lines[l_idx];
-            mimir::Line {
-                id: line.id.clone(),
-                name: line.name.clone(),
-                code: line.code.clone(),
-                color: line.color.clone(),
-                text_color: line.text_color.clone(),
-                commercial_mode: navitia
-                    .commercial_modes
-                    .get(&line.commercial_mode_id)
-                    .map(|c| mimir::CommercialMode {
-                        id: c.id.clone(),
-                        name: c.name.clone(),
-                    }),
-                network: navitia
-                    .networks
-                    .get(&line.network_id)
-                    .map(|n| mimir::Network {
-                        id: n.id.clone(),
-                        name: n.name.clone(),
-                    }),
-                physical_mode: navitia
-                    .get_corresponding_from_idx(l_idx)
-                    .into_iter()
-                    .map(|p_idx| {
-                        let physical_mode = &navitia.physical_modes[p_idx];
-                        mimir::PhysicalMode {
-                            id: physical_mode.id.clone(),
-                            name: physical_mode.name.clone(),
-                        }
-                    })
-                    .collect(),
-            }
-        })
+        .map(|l_idx| mimir::Line::from_transit_model(l_idx, navitia))
         .collect();
 
     // we want the lines to be sorted in a way where
