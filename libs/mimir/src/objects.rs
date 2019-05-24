@@ -293,9 +293,9 @@ pub struct Line {
     pub commercial_mode: Option<CommercialMode>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub network: Option<Network>,
-    pub physical_mode: Vec<PhysicalMode>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort_order: Option<u32>,
+    pub physical_modes: Vec<PhysicalMode>,
+    #[serde(skip_serializing)]
+    pub sort_order: Option<u32>, // we do not serialise this field, it is only used to sort the Lines
 }
 
 pub trait FromTransitModel<T> {
@@ -329,7 +329,7 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
                 id: n.id.clone(),
                 name: n.name.clone(),
             }),
-            physical_mode: navitia
+            physical_modes: navitia
                 .get_corresponding_from_idx(l_idx)
                 .into_iter()
                 .map(|p_idx| {
@@ -348,13 +348,19 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
 // line-3 is before line-11, so be use a humane_sort
 impl humanesort::HumaneOrder for Line {
     fn humane_cmp(&self, other: &Self) -> Ordering {
-        self.sort_order
-            .cmp(&other.sort_order)
-            .then_with(|| match (&self.code, &other.code) {
-                (Some(c), Some(o)) => c.humane_cmp(o),
-                _ => Ordering::Equal,
-            })
-            .then_with(|| self.name.humane_cmp(&other.name))
+        // if only one object has a sort_order, it has the priority
+        // so it's smaller than the other object
+        match (&self.sort_order, &other.sort_order) {
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(s), Some(o)) => s.cmp(o),
+            (None, None) => Ordering::Equal,
+        }
+        .then_with(|| match (&self.code, &other.code) {
+            (Some(c), Some(o)) => c.humane_cmp(o),
+            _ => Ordering::Equal,
+        })
+        .then_with(|| self.name.humane_cmp(&other.name))
     }
 }
 
