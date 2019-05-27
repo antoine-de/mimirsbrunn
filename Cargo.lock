@@ -1372,7 +1372,11 @@ dependencies = [
  "par-map 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "rs-es 0.11.4 (git+https://github.com/antoine-de/rs-es.git?branch=clonable_client)",
+=======
+ "rs-es 0.11.4 (git+https://github.com/guillaumegomez/rs-es?branch=decay-options-useful)",
+>>>>>>> update dependencies
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2233,6 +2237,10 @@ dependencies = [
 name = "rs-es"
 version = "0.11.4"
 source = "git+https://github.com/antoine-de/rs-es.git?branch=clonable_client#ca978a4f2d5c0d40ec488325a07d24bc1310fb6a"
+<<<<<<< HEAD
+=======
+=======
+source = "git+https://github.com/guillaumegomez/rs-es?branch=decay-options-useful#698a7d8719dfc774c56f99a138464fbc94e6e70b"
 dependencies = [
  "geojson 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2242,6 +2250,23 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
+name = "rs-es"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+>>>>>>> Make focused requests a bit better
+>>>>>>> update dependencies
+dependencies = [
+ "geojson 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+=======
+>>>>>>> update dependencies
 name = "rstar"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3604,8 +3629,11 @@ dependencies = [
 "checksum rs-es 0.11.4 (git+https://github.com/antoine-de/rs-es.git?branch=clonable_client)" = "<none>"
 =======
 "checksum rs-es 0.11.4 (git+https://github.com/guillaumegomez/rs-es?branch=decay-options-useful)" = "<none>"
+<<<<<<< HEAD
 "checksum rs-es 0.11.4 (registry+https://github.com/rust-lang/crates.io-index)" = "eb3392a829939d7a79983937cf50fc8769bdc9336672a09788e5b297244b6b49"
 >>>>>>> Make focused requests a bit better
+=======
+>>>>>>> update dependencies
 "checksum rstar 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "120bfe4837befb82c5a637a5a8c490a27d25524ac19fffec5b4e555ca6e36ee8"
 "checksum rustc-demangle 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "ccc78bfd5acd7bf3e89cffcf899e5cb1a52d6fafa8dec2739ad70c9577a57288"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
