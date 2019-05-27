@@ -127,45 +127,45 @@ fn gare_de_lyon(bragi: &mut BragiHandler) {
         stop.get("lines").unwrap(),
         &json!([
             {
-                "commercial_mode": { "id": "Metro", "name": "Metro" },
-                "id": "M1",
+                "commercial_mode": { "id": "commercial_mode:Metro", "name": "Metro" },
+                "id": "line:M1",
                 "name": "Metro 1",
-                "network": { "id": "TGN", "name": "The Great Network" },
+                "network": { "id": "network:TGN", "name": "The Great Network" },
                 "physical_modes": [
-                    { "id": "Metro", "name": "Metro" }
+                    { "id": "physical_mode:Metro", "name": "Metro" }
                 ],
                 "text_color": "FFFFFF" ,
                 "color": "7D36F5"
             },
             {
-                "commercial_mode": { "id": "Bus", "name": "Bus" },
-                "id": "B5",
+                "commercial_mode": { "id": "commercial_mode:Bus", "name": "Bus" },
+                "id": "line:B5",
                 "name": "Bus 5",
-                "network": { "id": "TGN", "name": "The Great Network" },
+                "network": { "id": "network:TGN", "name": "The Great Network" },
                 "physical_modes": [
-                    {"id": "Bus", "name": "Bus" }
+                    {"id": "physical_mode:Bus", "name": "Bus" }
 
                 ],
                 "color": "7D36F5",
                 "text_color": "FFFFFF"
             },
             {
-                "commercial_mode": { "id": "Bus", "name": "Bus" },
-                "id": "B42",
+                "commercial_mode": { "id": "commercial_mode:Bus", "name": "Bus" },
+                "id": "line:B42",
                 "name": "Bus 42",
-                "network": { "id": "TGN", "name": "The Great Network" },
+                "network": { "id": "network:TGN", "name": "The Great Network" },
                 "physical_modes": [
-                    {"id": "Bus", "name": "Bus" }
+                    {"id": "physical_mode:Bus", "name": "Bus" }
                 ]
             },
             {
-                "commercial_mode": { "id": "RER", "name": "Réseau Express Régional (RER)" },
-                "id": "RERA",
+                "commercial_mode": { "id": "commercial_mode:RER", "name": "Réseau Express Régional (RER)" },
+                "id": "line:RERA",
                 "name": "RER A",
-                "network": { "id": "TGN", "name": "The Great Network" },
+                "network": { "id": "network:TGN", "name": "The Great Network" },
                 "physical_modes": [
-                    { "id": "Bus", "name": "Bus" },
-                    { "id": "RapidTransit", "name": "Rapid Transit" }
+                    { "id": "physical_mode:Bus", "name": "Bus" },
+                    { "id": "physical_mode:RapidTransit", "name": "Rapid Transit" }
                 ]
             }
         ])

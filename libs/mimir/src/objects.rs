@@ -312,7 +312,7 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
     ) -> Self {
         let line = &navitia.lines[l_idx];
         Self {
-            id: line.id.clone(),
+            id: format!("line:{}", line.id),
             name: line.name.clone(),
             code: line.code.clone(),
             color: line.color.clone(),
@@ -322,11 +322,11 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
                 .commercial_modes
                 .get(&line.commercial_mode_id)
                 .map(|c| CommercialMode {
-                    id: c.id.clone(),
+                    id: format!("commercial_mode:{}", c.id),
                     name: c.name.clone(),
                 }),
             network: navitia.networks.get(&line.network_id).map(|n| Network {
-                id: n.id.clone(),
+                id: format!("network:{}", n.id),
                 name: n.name.clone(),
             }),
             physical_modes: navitia
@@ -335,7 +335,7 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
                 .map(|p_idx| {
                     let physical_mode = &navitia.physical_modes[p_idx];
                     PhysicalMode {
-                        id: physical_mode.id.clone(),
+                        id: format!("physical_mode:{}", physical_mode.id),
                         name: physical_mode.name.clone(),
                     }
                 })
