@@ -574,6 +574,7 @@ where
     S: Serializer,
 {
     use geojson::{GeoJson, Value};
+    use serde::Serialize;
 
     match *multi_polygon_option {
         Some(ref multi_polygon) => {
@@ -796,8 +797,9 @@ pub struct AliasParameter {
 
 // we want a custom serialization for coords, and so far the cleanest way
 // to do this that has been found is to wrap the coord in another struct
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Coord(pub geo::Coordinate<f64>);
+
 impl Coord {
     pub fn new(lon: f64, lat: f64) -> Coord {
         Coord(geo::Coordinate { x: lon, y: lat })
