@@ -37,7 +37,7 @@ use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
-use rs_es::query::functions::Modifier;
+use rs_es::query::functions::{DecayOptions, Function, Modifier};
 use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
@@ -130,19 +130,50 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
         .build()
 }
 
+fn build_focus_with_boost(coord: &Coord, weight: f64) -> Query {
+    Query::build_function_score()
+        .with_functions(
+            vec![
+                DecayOptions::new(
+                    rs_u::Location::LatLon(coord.lat(), coord.lon()),
+                    rs_u::Distance::new(1000f64, rs_u::DistanceUnit::Kilometer),
+                )
+                .with_offset(rs_u::Distance::new(350f64, rs_u::DistanceUnit::Kilometer))
+                .with_decay(0.5f64)
+                .build("coord")
+                .build_exp(),
+                Function::build_weight(weight).build(),
+            ]
+        )
+        .with_boost_mode(BoostMode::Replace)
+        .build()
+}
+
+fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
+    let factor = factor.into();
+    Query::build_function_score()
+        .with_function(
+            Function::build_field_value_factor("weight")
+                .with_factor(factor.unwrap_or_else(|| 0.15))
+                .with_missing(0.)
+                .build(),
+        )
+        .with_boost_mode(BoostMode::Replace)
+        .build()
+}
+
 fn build_query<'a>(
     q: &str,
     match_type: MatchType,
-    coord: &Option<Coord>,
+    coord: Option<Coord>,
     shape: Option<Geometry>,
     pt_datasets: &[&str],
     all_data: bool,
     langs: &'a [&'a str],
     zone_types: &[&str],
     poi_types: &[&str],
+    focus: Option<Coord>,
 ) -> Query {
-    use rs_es::query::functions::Function;
-
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
         Query::build_term("_type", T::doc_type())
@@ -203,20 +234,14 @@ fn build_query<'a>(
         .build();
 
     // Priorization by importance
-    let importance_query = match coord {
-        Some(ref c) => build_proximity_with_boost(c, 100.),
-        None => Query::build_function_score()
-            .with_function(
-                Function::build_field_value_factor("weight")
-                    .with_factor(0.15)
-                    .with_missing(0.)
-                    .build(),
-            )
-            .with_boost_mode(BoostMode::Replace)
-            .build(),
+    let mut importance_queries = match (coord, focus) {
+        (Some(ref c), None) => vec![build_proximity_with_boost(c, 100.)],
+        (None, Some(ref c)) => vec![build_with_weight(0.5), build_focus_with_boost(c, 0.4)],
+        (None, None) => vec![build_with_weight(None)],
+        (Some(_), Some(_)) => panic!("you cannot pass both coord and focus positions at the same time"),
     };
 
-    let importance_queries = match match_type {
+    match match_type {
         MatchType::Prefix => {
             let admin_importance_query = Query::build_function_score()
                 .with_query(Query::build_term("_type", Admin::doc_type()).build())
@@ -230,9 +255,9 @@ fn build_query<'a>(
                 ])
                 .with_boost_mode(BoostMode::Replace)
                 .build();
-            vec![importance_query, admin_importance_query]
+            importance_queries.push(admin_importance_query);
         }
-        MatchType::Fuzzy => vec![importance_query],
+        MatchType::Fuzzy => {},
     };
 
     // filter to handle house number
@@ -334,12 +359,14 @@ fn query(
     match_type: MatchType,
     offset: u64,
     limit: u64,
-    coord: &Option<Coord>,
+    coord: Option<Coord>,
     shape: Option<Geometry>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
+    timeout: Option<time::Duration>,
+    focus: Option<Coord>,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
@@ -352,6 +379,7 @@ fn query(
         langs,
         zone_types,
         poi_types,
+        focus,
     );
 
     let indexes = get_indexes(all_data, &pt_datasets, &poi_datasets, types);
@@ -473,6 +501,8 @@ pub fn autocomplete(
     poi_types: &[&str],
     langs: &[&str],
     mut rubber: Rubber,
+    timeout: Option<time::Duration>,
+    focus: Option<Coord>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -497,12 +527,14 @@ pub fn autocomplete(
         MatchType::Prefix,
         offset,
         limit,
-        &coord,
+        coord,
         shape.clone(),
         &types,
         &zone_types,
         &poi_types,
         &langs,
+        timeout,
+        focus,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -515,12 +547,14 @@ pub fn autocomplete(
             MatchType::Fuzzy,
             offset,
             limit,
-            &coord,
+            coord,
             shape,
             &types,
             &zone_types,
             &poi_types,
             &langs,
+            timeout,
+            focus,
         )
         .map_err(model::BragiError::from)
     } else {

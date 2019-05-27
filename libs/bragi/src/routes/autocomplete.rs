@@ -80,6 +80,8 @@ pub struct Params {
     #[serde(default, rename = "poi_type")]
     poi_types: Vec<PoiType>,
     lang: Option<String>,
+    focus_lat: Option<f64>,
+    focus_lon: Option<f64>,
 }
 
 impl Params {
@@ -93,19 +95,25 @@ impl Params {
         self.poi_types.iter().map(PoiType::as_str).collect()
     }
     fn coord(&self) -> Result<Option<Coord>, BragiError> {
-        match (self.lon, self.lat) {
-            (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
-            (None, None) => Ok(None),
-            _ => Err(BragiError::InvalidParam(
-                "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
-            )),
-        }
+        Self::build_coord(self.lon, self.lat)
+    }
+    fn focus(&self) -> Result<Option<Coord>, BragiError> {
+        Self::build_coord(self.focus_lon, self.focus_lat)
     }
     fn langs(&self) -> Vec<&str> {
         self.lang.iter().map(|l| l.as_str()).collect()
     }
     fn timeout(&self) -> Option<Duration> {
         self.timeout.map(Duration::from_millis)
+    }
+    fn build_coord(lon: Option<f64>, lat: Option<f64>) -> Result<Option<Coord>, BragiError> {
+        match (lon, lat) {
+            (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
+            (None, None) => Ok(None),
+            _ => Err(BragiError::InvalidParam(
+                "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
+            )),
+        }
     }
 }
 
@@ -154,6 +162,8 @@ pub fn call_autocomplete(
         &params.poi_types_as_str(),
         &langs,
         rubber,
+        timeout,
+        params.focus()?,
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(Json)
