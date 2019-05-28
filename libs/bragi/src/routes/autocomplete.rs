@@ -78,6 +78,8 @@ pub struct Params {
     #[serde(default, rename = "poi_type")]
     poi_types: Vec<PoiType>,
     lang: Option<String>,
+    // Those two parameters are used to boost closer locations (on the opposite of `coord` which
+    // excludes too far ones).
     focus_lat: Option<f64>,
     focus_lon: Option<f64>,
 }

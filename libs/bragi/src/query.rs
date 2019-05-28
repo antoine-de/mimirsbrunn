@@ -34,7 +34,6 @@ use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
-use rs_es::error::EsError;
 use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
 use rs_es::query::functions::{DecayOptions, Function, Modifier};
@@ -173,7 +172,7 @@ fn build_query<'a>(
     zone_types: &[&str],
     poi_types: &[&str],
     focus: Option<Coord>,
-) -> Query {
+) -> Result<Query, String> {
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
         Query::build_term("_type", T::doc_type())
@@ -238,7 +237,9 @@ fn build_query<'a>(
         (Some(ref c), None) => vec![build_proximity_with_boost(c, 100.)],
         (None, Some(ref c)) => vec![build_with_weight(0.5), build_focus_with_boost(c, 0.4)],
         (None, None) => vec![build_with_weight(None)],
-        (Some(_), Some(_)) => panic!("you cannot pass both coord and focus positions at the same time"),
+        (Some(_), Some(_)) => {
+            return Err("You cannot pass both coord and focus positions at the same time".to_owned());
+        }
     };
 
     match match_type {
@@ -347,7 +348,7 @@ fn build_query<'a>(
         );
     }
 
-    query.build()
+    Ok(query.build())
 }
 
 fn query(
@@ -366,9 +367,9 @@ fn query(
     langs: &[&str],
     timeout: Option<time::Duration>,
     focus: Option<Coord>,
-) -> Result<Vec<mimir::Place>, EsError> {
+) -> Result<Vec<mimir::Place>, String> {
     let query_type = match_type.to_string();
-    let query = build_query(
+    let query = match build_query(
         q,
         match_type,
         coord,
@@ -379,7 +380,10 @@ fn query(
         zone_types,
         poi_types,
         focus,
-    );
+    ) {
+        Ok(q) => q,
+        Err(e) => return Err(e),
+    };
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
     let indexes = indexes
@@ -417,11 +421,11 @@ fn query(
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
     }
-    let result = search_query.send()?;
+    let result = search_query.send().map_err(|e| e.to_string())?;
 
     timer.map(|t| t.observe_duration());
 
-    read_places(result, coord.as_ref())
+    read_places(result, coord.as_ref()).map_err(|e| e.to_string())
 }
 
 pub fn features(
