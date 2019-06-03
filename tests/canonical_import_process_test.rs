@@ -172,6 +172,7 @@ fn melun_test(bragi: &mut BragiHandler) {
             {"name": "ISO3166-1:alpha2", "value": "FR"},
             {"name": "ISO3166-1:alpha3", "value": "FRA"},
             {"name": "ISO3166-1:numeric", "value": "250"},
+            {"name": "wikidata", "value": "Q142"},
         ])
     );
 
