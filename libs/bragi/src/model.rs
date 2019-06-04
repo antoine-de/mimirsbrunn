@@ -205,6 +205,8 @@ pub struct GeocodingResponse {
     pub comments: Vec<mimir::Comment>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub physical_modes: Vec<mimir::PhysicalMode>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub lines: Vec<mimir::Line>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub timezone: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -478,6 +480,7 @@ impl FromWithLang<mimir::Stop> for GeocodingResponse {
             administrative_regions: associated_admins,
             commercial_modes: other.commercial_modes,
             physical_modes: other.physical_modes,
+            lines: other.lines,
             comments: other.comments,
             timezone: Some(other.timezone),
             codes: other.codes,

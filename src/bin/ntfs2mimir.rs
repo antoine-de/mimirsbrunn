@@ -67,6 +67,21 @@ struct Args {
     nb_replicas: usize,
 }
 
+fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec<mimir::Line> {
+    use humanesort::HumaneSortable;
+    use mimir::FromTransitModel;
+    let mut lines: Vec<_> = navitia
+        .get_corresponding_from_idx(idx)
+        .into_iter()
+        .map(|l_idx| mimir::Line::from_transit_model(l_idx, navitia))
+        .collect();
+
+    // we want the lines to be sorted in a way where
+    // line-3 is before line-11, so be use a humane_sort
+    lines.humane_sort();
+    lines
+}
+
 fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
@@ -112,6 +127,9 @@ fn to_mimir(
         })
         .collect();
     let coord = mimir::Coord::new(stop_area.coord.lon, stop_area.coord.lat);
+
+    let lines = get_lines(idx, navitia);
+
     mimir::Stop {
         id: format!("stop_area:{}", stop_area.id),
         label: stop_area.name.clone(),
@@ -124,6 +142,7 @@ fn to_mimir(
         weight: 0.,
         zip_codes: vec![],
         coverages: vec![],
+        lines: lines,
         comments: comments,
         timezone: stop_area.timezone.clone().unwrap_or(format!("")),
         codes: stop_area

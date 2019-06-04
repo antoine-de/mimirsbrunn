@@ -26,3 +26,5 @@ cosmogony = "0.5"
 par-map = "0.1.4"
 lazy_static = "1"
 prometheus = {version= "0.3"}
+transit_model = "0.4"
+humanesort = "0.1.0-alpha"
