@@ -78,10 +78,6 @@ pub struct Params {
     #[serde(default, rename = "poi_type")]
     poi_types: Vec<PoiType>,
     lang: Option<String>,
-    // Those two parameters are used to boost closer locations (on the opposite of `coord` which
-    // excludes too far ones).
-    focus_lat: Option<f64>,
-    focus_lon: Option<f64>,
 }
 
 impl Params {
@@ -96,9 +92,6 @@ impl Params {
     }
     fn coord(&self) -> Result<Option<Coord>, BragiError> {
         Self::build_coord(self.lon, self.lat)
-    }
-    fn focus(&self) -> Result<Option<Coord>, BragiError> {
-        Self::build_coord(self.focus_lon, self.focus_lat)
     }
     fn langs(&self) -> Vec<&str> {
         self.lang.iter().map(|l| l.as_str()).collect()
@@ -158,7 +151,6 @@ pub fn call_autocomplete(
         &langs,
         rubber,
         timeout,
-        params.focus()?,
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(Json)

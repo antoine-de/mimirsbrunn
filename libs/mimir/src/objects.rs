@@ -574,7 +574,6 @@ where
     S: Serializer,
 {
     use geojson::{GeoJson, Value};
-    use serde::Serialize;
 
     match *multi_polygon_option {
         Some(ref multi_polygon) => {
