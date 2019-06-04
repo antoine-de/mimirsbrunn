@@ -96,22 +96,6 @@ impl fmt::Display for MatchType {
     }
 }
 
-/// Create a `rs_es::Query` that boosts results according to the
-/// distance to `coord`.
-fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
-    Query::build_function_score()
-        .with_boost(boost)
-        .with_function(
-            rs_es::query::functions::Function::build_decay(
-                "coord",
-                rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
-            )
-            .build_gauss(),
-        )
-        .build()
-}
-
 // filter to handle PT coverages
 // we either want:
 // * to get objects with no coverage at all (non-PT objects)
@@ -129,21 +113,21 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
         .build()
 }
 
-fn build_focus_with_boost(coord: &Coord, weight: f64) -> Query {
+/// Create a `rs_es::Query` that boosts results according to the
+/// distance to `coord`.
+fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
     Query::build_function_score()
-        .with_functions(
-            vec![
-                DecayOptions::new(
-                    rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                    rs_u::Distance::new(1000f64, rs_u::DistanceUnit::Kilometer),
-                )
-                .with_offset(rs_u::Distance::new(350f64, rs_u::DistanceUnit::Kilometer))
-                .with_decay(0.5f64)
-                .build("coord")
-                .build_exp(),
-                Function::build_weight(weight).build(),
-            ]
-        )
+        .with_functions(vec![
+            DecayOptions::new(
+                rs_u::Location::LatLon(coord.lat(), coord.lon()),
+                rs_u::Distance::new(1000f64, rs_u::DistanceUnit::Kilometer),
+            )
+            .with_offset(rs_u::Distance::new(350f64, rs_u::DistanceUnit::Kilometer))
+            .with_decay(0.5f64)
+            .build("coord")
+            .build_exp(),
+            Function::build_weight(weight).build(),
+        ])
         .with_boost_mode(BoostMode::Replace)
         .build()
 }
@@ -171,7 +155,6 @@ fn build_query<'a>(
     langs: &'a [&'a str],
     zone_types: &[&str],
     poi_types: &[&str],
-    focus: Option<Coord>,
 ) -> Result<Query, String> {
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
@@ -233,13 +216,13 @@ fn build_query<'a>(
         .build();
 
     // Priorization by importance
-    let mut importance_queries = match (coord, focus) {
-        (Some(ref c), None) => vec![build_proximity_with_boost(c, 100.)],
-        (None, Some(ref c)) => vec![build_with_weight(0.5), build_focus_with_boost(c, 0.4)],
-        (None, None) => vec![build_with_weight(None)],
-        (Some(_), Some(_)) => {
-            return Err("You cannot pass both coord and focus positions at the same time".to_owned());
-        }
+    let mut importance_queries = if let Some(ref coord) = coord {
+        vec![
+            build_with_weight(0.5),
+            build_proximity_with_boost(coord, 0.4),
+        ]
+    } else {
+        vec![build_with_weight(None)]
     };
 
     match match_type {
@@ -258,7 +241,7 @@ fn build_query<'a>(
                 .build();
             importance_queries.push(admin_importance_query);
         }
-        MatchType::Fuzzy => {},
+        MatchType::Fuzzy => {}
     };
 
     // filter to handle house number
@@ -367,7 +350,6 @@ fn query(
     poi_types: &[&str],
     langs: &[&str],
     timeout: Option<time::Duration>,
-    focus: Option<Coord>,
 ) -> Result<Vec<mimir::Place>, String> {
     let query_type = match_type.to_string();
     let query = match build_query(
@@ -380,7 +362,6 @@ fn query(
         langs,
         zone_types,
         poi_types,
-        focus,
     ) {
         Ok(q) => q,
         Err(e) => return Err(e),
@@ -506,7 +487,6 @@ pub fn autocomplete(
     langs: &[&str],
     mut rubber: Rubber,
     timeout: Option<time::Duration>,
-    focus: Option<Coord>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -538,7 +518,6 @@ pub fn autocomplete(
         &poi_types,
         &langs,
         timeout,
-        focus,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -558,7 +537,6 @@ pub fn autocomplete(
             &poi_types,
             &langs,
             timeout,
-            focus,
         )
         .map_err(model::BragiError::from)
     } else {
