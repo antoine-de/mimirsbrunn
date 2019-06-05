@@ -62,7 +62,11 @@ pub struct OpenAddresse {
 }
 
 impl OpenAddresse {
-    pub fn into_addr(self, admins_geofinder: &AdminGeoFinder) -> mimir::Addr {
+    pub fn into_addr(
+        self,
+        admins_geofinder: &AdminGeoFinder,
+        use_old_index_format: bool,
+    ) -> mimir::Addr {
         let street_label = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.number, self.street);
         let addr_label = format!("{} ({})", addr_name, self.city);
@@ -87,7 +91,27 @@ impl OpenAddresse {
             distance: None,
         };
         mimir::Addr {
-            id: format!("addr:{};{}", self.lon, self.lat),
+            id: format!(
+                "addr:{};{}{}",
+                self.lon,
+                self.lat,
+                if use_old_index_format {
+                    String::new()
+                } else {
+                    format!(
+                        ":{}",
+                        self.number
+                            .replace(" ", "")
+                            .replace("\t", "")
+                            .replace("\r", "")
+                            .replace("\n", "")
+                            .replace("/", "-")
+                            .replace(".", "-")
+                            .replace(":", "-")
+                            .replace(";", "-")
+                    )
+                }
+            ),
             name: addr_name,
             house_number: self.number,
             street: street,
@@ -107,6 +131,7 @@ fn index_oa<I>(
     index_settings: IndexSettings,
     files: I,
     nb_threads: usize,
+    use_old_index_format: bool,
 ) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
@@ -131,7 +156,7 @@ where
         index_settings,
         dataset,
         files,
-        move |a: OpenAddresse| a.into_addr(&admins_geofinder),
+        move |a: OpenAddresse| a.into_addr(&admins_geofinder, use_old_index_format),
     )
 }
 
@@ -166,6 +191,10 @@ struct Args {
     /// Number of replicas for the es index
     #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
     nb_replicas: usize,
+    /// If set to true, the number inside the address won't be used for the index generation,
+    /// therefore, different addresses with the same position will disappear.
+    #[structopt(long = "use-old-index-format")]
+    use_old_index_format: bool,
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
@@ -187,6 +216,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
             index_settings,
             paths.map(|p| p.unwrap().path()),
             args.nb_threads,
+            args.use_old_index_format,
         )
     } else {
         index_oa(
@@ -195,6 +225,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
             index_settings,
             std::iter::once(args.input),
             args.nb_threads,
+            args.use_old_index_format,
         )
     }
 }

@@ -76,6 +76,7 @@ impl Bano {
         self,
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
+        use_old_index_format: bool,
     ) -> mimir::Addr {
         let street_label = format!("{} ({})", self.street, self.city);
         let addr_name = format!("{} {}", self.nb, self.street);
@@ -112,7 +113,27 @@ impl Bano {
             distance: None,
         };
         mimir::Addr {
-            id: format!("addr:{};{}", self.lon, self.lat),
+            id: format!(
+                "addr:{};{}{}",
+                self.lon,
+                self.lat,
+                if use_old_index_format {
+                    String::new()
+                } else {
+                    format!(
+                        ":{}",
+                        self.nb
+                            .replace(" ", "")
+                            .replace("\t", "")
+                            .replace("\r", "")
+                            .replace("\n", "")
+                            .replace("/", "-")
+                            .replace(".", "-")
+                            .replace(":", "-")
+                            .replace(";", "-")
+                    )
+                }
+            ),
             name: addr_name,
             house_number: self.nb,
             street: street,
@@ -133,6 +154,7 @@ fn index_bano<I>(
     nb_threads: usize,
     nb_shards: usize,
     nb_replicas: usize,
+    use_old_index_format: bool,
 ) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
@@ -171,7 +193,7 @@ where
         index_settings,
         dataset,
         files,
-        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder),
+        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, use_old_index_format),
     )
 }
 
@@ -203,6 +225,10 @@ struct Args {
     /// Number of replicas for the es index
     #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
     nb_replicas: usize,
+    /// If set to true, the number inside the address won't be used for the index generation,
+    /// therefore, different addresses with the same position will disappear.
+    #[structopt(long = "use-old-index-format")]
+    use_old_index_format: bool,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -216,6 +242,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             args.nb_threads,
             args.nb_shards,
             args.nb_replicas,
+            args.use_old_index_format,
         )
     } else {
         index_bano(
@@ -225,6 +252,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             args.nb_threads,
             args.nb_shards,
             args.nb_replicas,
+            args.use_old_index_format,
         )
     }
 }

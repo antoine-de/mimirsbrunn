@@ -87,7 +87,7 @@ fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
                             "city": null,
                             "citycode": null,
                             "housenumber": "15",
-                            "id": "addr:2.376379;48.846495",
+                            "id": "addr:2.376379;48.846495:15",
                             "label": "15 Rue Hector Malot (Paris)",
                             "name": "15 Rue Hector Malot",
                             "postcode": "75012",
@@ -155,7 +155,7 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
               },
               "properties": {
                 "geocoding": {
-                  "id": "addr:2.376379;48.846495",
+                  "id": "addr:2.376379;48.846495:15",
                   "type": "house",
                   "label": "15 Rue Hector Malot (Paris)",
                   "name": "15 Rue Hector Malot",

@@ -257,7 +257,7 @@ fn poi_from_osm_with_address_addr_test(bragi: &mut BragiHandler) {
     );
     assert_eq!(
         poi.get("address").and_then(|a| a.pointer("/id")),
-        Some(&json!("addr:2.65801;48.53685"))
+        Some(&json!("addr:2.65801;48.53685:2"))
     );
     assert_eq!(
         poi.get("address").and_then(|a| a.pointer("/label")),
