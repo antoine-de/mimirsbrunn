@@ -138,6 +138,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
                     ("ISO3166-1:alpha2", "FR"),
                     ("ISO3166-1:alpha3", "FRA"),
                     ("ISO3166-1:numeric", "250"),
+                    ("wikidata", "Q142"),
                 ]
                 .into_iter()
                 .collect()

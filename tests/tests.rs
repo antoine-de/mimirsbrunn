@@ -152,6 +152,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
         use serde_json::map::Entry;
+
         fn into_object(json: Value) -> Option<Map<String, Value>> {
             match json {
                 Value::Object(o) => Some(o),
