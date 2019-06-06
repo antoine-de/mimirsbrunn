@@ -38,7 +38,7 @@ use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::utils;
+use mimirsbrunn::labels;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -94,6 +94,8 @@ impl Bano {
             admins.push(admin.clone());
         }
 
+        let country_codes = vec!["fr".to_owned()];
+
         // to format the label of the addr/street, we use bano's city
         // even if we already have found a city in the admin_geo_finder
         let city = build_admin_from_bano_city(&self.city);
@@ -103,15 +105,16 @@ impl Bano {
             .map(|a| a.deref())
             .chain(std::iter::once(&city));
 
-        let street_label = utils::get_label(
-            utils::FormatPlaceHolder::from_street(self.street.clone()),
+        let street_label = labels::format_street_label(
+            &self.street,
             zones_for_label_formatting.clone(),
-            Some("fr"),
-        ); // rename to format_label after cleanup
-        let (addr_name, addr_label) = utils::get_name_and_label(
-            utils::FormatPlaceHolder::from_addr(self.nb.clone(), self.street.clone()),
+            &country_codes,
+        );
+        let (addr_name, addr_label) = labels::format_addr_name_and_label(
+            &self.nb,
+            &self.street,
             zones_for_label_formatting,
-            Some("fr"),
+            &country_codes,
         );
 
         let weight = admins
@@ -130,6 +133,7 @@ impl Bano {
             coord: coord.clone(),
             approx_coord: None,
             distance: None,
+            country_codes: country_codes.clone(),
         };
         mimir::Addr {
             id: format!(
@@ -162,6 +166,7 @@ impl Bano {
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             distance: None,
+            country_codes,
         }
     }
 }

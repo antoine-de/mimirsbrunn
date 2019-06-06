@@ -35,6 +35,7 @@ extern crate slog_scope;
 
 pub mod addr_reader;
 pub mod admin_geofinder;
+pub mod labels;
 pub mod osm_reader;
 pub mod stops;
 pub mod utils;

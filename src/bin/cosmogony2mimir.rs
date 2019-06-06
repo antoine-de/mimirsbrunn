@@ -39,7 +39,7 @@ use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
-use mimirsbrunn::utils::normalize_weight;
+use mimirsbrunn::utils;
 use std::collections::BTreeMap;
 use structopt::StructOpt;
 
@@ -91,6 +91,7 @@ impl IntoAdmin for Zone {
             .parent
             .and_then(|id| zones_osm_id.get(&id))
             .map(|(id, insee)| format_id(id, insee.as_ref()));
+        let codes = osm_utils::get_osm_codes_from_tags(&self.tags);
         Admin {
             id: zones_osm_id
                 .get(&self.id)
@@ -101,14 +102,18 @@ impl IntoAdmin for Zone {
             label: label,
             name: self.name,
             zip_codes: zip_codes,
-            weight: normalize_weight(weight, max_weight),
+            weight: utils::normalize_weight(weight, max_weight),
             bbox: self.bbox,
             boundary: self.boundary,
             coord: center.clone(),
             approx_coord: Some(center.into()),
             zone_type: self.zone_type,
             parent_id: parent_osm_id,
-            codes: osm_utils::get_osm_codes_from_tags(&self.tags),
+            // Note: Since we do not really attach an admin to its hierarchy, for the moment an admin only have it's own coutry code,
+            // not the country code of it's country from the hierarchy
+            // (so it has a country code mainly if it is a country)
+            country_codes: utils::get_country_code(&codes).into_iter().collect(),
+            codes: codes,
             names: osm_utils::get_names_from_tags(&self.tags, &langs),
             labels: self
                 .international_labels

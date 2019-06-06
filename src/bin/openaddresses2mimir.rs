@@ -37,7 +37,7 @@ use lazy_static::lazy_static;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::utils;
+use mimirsbrunn::{labels, utils};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::ops::Deref;
@@ -74,20 +74,22 @@ impl OpenAddresse {
             x: self.lon,
             y: self.lat,
         });
+        let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
 
         let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
         // Note: for openaddress, we don't trust the admin hierarchy much (compared to bano)
         // so we use for the label the admins that we find in the DB
-        let street_label = utils::get_label(
-            utils::FormatPlaceHolder::from_street(self.street.clone()),
+        let street_label = labels::format_street_label(
+            &self.street,
             admins.iter().map(|a| a.deref()),
-            None,
-        ); // rename to format_label after cleanup
-        let (addr_name, addr_label) = utils::get_name_and_label(
-            utils::FormatPlaceHolder::from_addr(self.number.clone(), self.street.clone()),
+            &country_codes,
+        );
+        let (addr_name, addr_label) = labels::format_addr_name_and_label(
+            &self.number,
+            &self.street,
             admins.iter().map(|a| a.deref()),
-            None,
-        ); // rename to format_label after cleanup
+            &country_codes,
+        );
 
         let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
@@ -100,6 +102,7 @@ impl OpenAddresse {
             coord: coord.clone(),
             approx_coord: None,
             distance: None,
+            country_codes: country_codes.clone(),
         };
 
         mimir::Addr {
@@ -133,6 +136,7 @@ impl OpenAddresse {
             weight: weight,
             zip_codes: vec![self.postcode],
             distance: None,
+            country_codes,
         }
     }
 }

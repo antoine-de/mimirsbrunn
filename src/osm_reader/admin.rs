@@ -29,7 +29,7 @@
 // www.navitia.io
 use super::OsmPbfReader;
 use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
-use crate::utils::normalize_admin_weight;
+use crate::utils;
 use cosmogony::ZoneType;
 use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
@@ -155,6 +155,7 @@ pub fn read_administrative_regions(
                 .unwrap_or(0.);
 
             let coord = coord_center.unwrap_or_else(|| make_centroid(&boundary));
+            let codes = get_osm_codes_from_tags(&relation.tags);
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -169,7 +170,8 @@ pub fn read_administrative_regions(
                 boundary: boundary,
                 zone_type: zone_type,
                 parent_id: None,
-                codes: get_osm_codes_from_tags(&relation.tags),
+                country_codes: utils::get_country_code(&codes).into_iter().collect(),
+                codes: codes,
                 names: mimir::I18nProperties::default(),
                 labels: mimir::I18nProperties::default(),
                 distance: None,
@@ -178,7 +180,7 @@ pub fn read_administrative_regions(
         }
     }
 
-    normalize_admin_weight(&mut administrative_regions);
+    utils::normalize_admin_weight(&mut administrative_regions);
 
     administrative_regions
 }
