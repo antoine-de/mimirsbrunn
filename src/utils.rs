@@ -177,6 +177,7 @@ impl FormatPlaceHolder {
         let mut place = address_formatter::Place::default();
         place[Component::HouseNumber] = self.house_number;
         place[Component::Road] = Some(self.street);
+
         for a in admins {
             if let Some(addr_equivalent) = cosmo_to_addr_formatter_type(&a.zone_type) {
                 place[addr_equivalent] = Some(a.name.clone());
@@ -190,13 +191,13 @@ impl FormatPlaceHolder {
     }
 }
 
-fn format<'a>(
+pub fn get_short_addr_label<'a>(
     place: FormatPlaceHolder,
-    admins: impl Iterator<Item = &'a mimir::Admin>,
+    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
     country_code: Option<&str>,
 ) -> String {
     address_formatter::FORMATTER
-        .format_with_config(
+        .short_addr_format_with_config(
             place.into_place(admins),
             address_formatter::Configuration {
                 country_code: country_code.map(|s| s.to_owned()),
@@ -207,32 +208,35 @@ fn format<'a>(
         .unwrap_or_else(|_| "".to_owned())
 }
 
-fn mimir_label(lbl: String) -> String {
-    // first impl is very simple, we just make the multi line address_formatting label a one liner
-    lbl.trim_end().replace("\n", ", ")
-}
-
+/// for the moment we keep the old way of formating the labels, but this could change
+/// the current format is '{nice name} ({city})'
+/// the {nice name} being for addresses the housenumber and the street (correctly ordered)
+/// and for the rest of the objects, only their names
 pub fn get_label<'a>(
     place: FormatPlaceHolder,
-    admins: impl Iterator<Item = &'a mimir::Admin>,
+    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
     country_code: Option<&str>,
 ) -> String {
-    mimir_label(format(place, admins, country_code))
+    let (_, lbl) = get_name_and_label(place, admins, country_code);
+    lbl
 }
 
 pub fn get_name_and_label<'a>(
     place: FormatPlaceHolder,
-    admins: impl Iterator<Item = &'a mimir::Admin>,
+    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
     country_code: Option<&str>,
 ) -> (String, String) {
-    // first implem is very simple, the name is the first line of the label
-    let lbl = format(place, admins, country_code);
+    let city = admins.clone().find(|adm| adm.is_city());
 
-    let name = lbl
-        .split('\n')
-        .next()
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| lbl.clone());
+    let city_name = city.map(|a| format!("({city})", city = a.name));
 
-    (name, mimir_label(lbl))
+    let nice_name = get_short_addr_label(place, admins, country_code);
+
+    let label = if let Some(city_name) = city_name {
+        format!("{} {}", &nice_name, city_name)
+    } else {
+        nice_name.clone()
+    };
+
+    (nice_name, label)
 }

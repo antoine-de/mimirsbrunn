@@ -481,7 +481,7 @@ impl Members for Stop {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Admin {
     pub id: String,
     pub insee: String,
