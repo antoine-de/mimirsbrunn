@@ -9,18 +9,21 @@ It can handle addresses, streets, points-of-interest (POI), administrative regio
 
 ## what's a geocoder ?
 
-For [Wikipedia](https://en.wikipedia.org/wiki/Geocoding), a geocoder is «the computational process of transforming a physical address description to a location on the Earth's surface».
-
+Usually [geocoding](https://en.wikipedia.org/wiki/Geocoding) refers to "the process of transforming a physical address description to a location on the Earth's surface". 
+However Mimir is more a [geoparser](https://en.wikipedia.org/wiki/Toponym_resolution#Geoparsing) than a geocoder since it can resolve any ambiguous toponym to its correct location.
 
 In other words, a geocoder reads a description (possibly incomplete) of a location, and returns a list of candidate locations (latitude / longitude) matching the input. 
 
-It is used for example in most map services as the search field:
+Geocoding is traditionally used for autocompleting search fields used in geographic applications. For example, here is a screenshot of Qwant Maps, where the user enters a search string 20 rue hec mal, and mimir returns possible candidates in a dropdown box.
 
-![qwnat maps](https://user-images.githubusercontent.com/3987698/56976025-53ed1180-6b72-11e9-9c81-9718e92061ce.png)
+![qwant maps](https://user-images.githubusercontent.com/3987698/56976025-53ed1180-6b72-11e9-9c81-9718e92061ce.png)
 
 ## who uses it ?
-[Navitia](https://github.com/CanalTP/navitia) and [Qwant Maps](https://www.qwant.com/maps) use it as their global geocoding service.
-If you uses it too, feel free to open a pull request, we'll be happy to add your project here!
+
+* [Navitia](https://github.com/CanalTP/navitia)
+* [Qwant Maps](https://www.qwant.com/maps)
+
+If you use it too, feel free to open a pull request, we'll be happy to add your project here!
 
 ## ressources
 
@@ -36,47 +39,19 @@ This API provices several services:
 
 ### Autocomplete
 
-Route: `/autocomplete`
-
-Parameters: TODO (in the meantime, can be seen [here](https://github.com/CanalTP/mimirsbrunn/blob/master/libs/bragi/src/routes/autocomplete.rs#L58-L80))
-
-Response: The response is formated using [geocodejson](https://github.com/geocoders/geocodejson-spec), the same format as [pelias](https://github.com/pelias/pelias), [photon](https://github.com/komoot/photon) and [addok](https://github.com/addok/addok)
-
-TODO: give more details and some examples
-
-### Reverse
-
-Route: `/reverse`
-
-Parameters: TODO (in the meantime, can be seen [here](https://github.com/CanalTP/mimirsbrunn/blob/master/libs/bragi/src/routes/autocomplete.rs#L58-L80))
-
-Response: TODO: give more details and some examples
-
-### Feature detail
-
-Route: `/features/{id}`
-
-Parameters: TODO (in the meantime, can be seen [here](https://github.com/CanalTP/mimirsbrunn/blob/master/libs/bragi/src/routes/autocomplete.rs#L58-L80))
-
-Response: TODO: give more details and some examples
+| feature              | route            | Parameters                                                                                                                                   | response                                                                                                                                                                                                                                                                                      |
+| -------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| geocoding            | `/autocomplete`  | TODO (in the meantime, can be seen [here](https://github.com/CanalTP/mimirsbrunn/blob/master/libs/bragi/src/routes/autocomplete.rs#L58-L80)) | The response is formated using [geocodejson](https://github.com/geocoders/geocodejson-spec), the same format as [pelias](https://github.com/pelias/pelias), [photon](https://github.com/komoot/photon) and [addok](https://github.com/addok/addok). TODO: give more details and some examples |
+| reverse geocoding    | `/reverse`       | TODO (in the meantime, can be seen [here](https://github.com/CanalTP/mimirsbrunn/blob/master/libs/bragi/src/routes/reverse.rs#L9-L14))       | TODO: give more details and some examples                                                                                                                                                                                                                                                     |
+| Detail on one object | `/features/{id}` | TODO (in the meantime, can be seen [here](https://github.com/CanalTP/mimirsbrunn/blob/master/libs/bragi/src/routes/features.rs#L8))          | TODO: give more details and some examples                                                                                                                                                                                                                                                     |
 
 ### Monitoring API
 
-#### Status
+| feature            | route      | Parameters |
+| ------------------ | ---------- | ---------- |
+| staus              | `/status`  | None       |
+| Prometheus metrics | `/metrics` | None       |
 
-Route: `/status`
-
-Parameters: None
-
-Response: 
-
-#### Prometheus metrics
-
-Route: `/metrics`
-
-Parameters: None
-
-Response: 
 
 ## handled datasets
 
@@ -105,7 +80,7 @@ For more detail about the different ways to import those data sources, check the
 
 ## debian packages
 
-[CanalTP] has some available debian 8 [packages](https://ci.navitia.io/view/mimir/job/mimirsbrunn_release_package/lastSuccessfulBuild/artifact/mimirsbrunn_1.8.0_amd64.deb).
+[Kisio Digital](http://www.kisiodigital.com/), the company behind [navitia](https://www.navitia.io/) has some available debian 8 [packages](https://ci.navitia.io/view/mimir/job/mimirsbrunn_release_package/lastSuccessfulBuild/artifact/mimirsbrunn_1.8.0_amd64.deb).
 
 If you need some packages for a different target, you can use CanalTP's [script](https://github.com/CanalTP/mimirsbrunn/blob/master/build_packages.sh) or [cargo-deb](https://github.com/mmstick/cargo-deb)
 
@@ -128,7 +103,7 @@ For a disposable ES, you can run:
 
 `cargo test`
 
-Integration tests are spawning one ElasticSearch docker, so you'll need a recent docker version. Only one docker is spawn, so the ES db has to be cleaned before each test.
+Integration tests are spawning one ElasticSearch docker, so you'll need a recent docker version. Only one docker is spawn, so the ES db is cleaned before each test.
 
 # More documentation
 
