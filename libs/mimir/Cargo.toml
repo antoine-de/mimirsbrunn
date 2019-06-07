@@ -27,4 +27,4 @@ lazy_static = "1"
 prometheus = {version= "0.3"}
 transit_model = "0.4"
 humanesort = "0.1.0-alpha"
-address-formatter = "0.2"
+address-formatter = "^0.2.1"

@@ -36,8 +36,7 @@ lazy_static = "1.2"
 num_cpus = "1.10"
 assert_float_eq = "1"
 humanesort = "0.1.0-alpha"
-#address-formatter = "0.2.1"
-address-formatter = {git = "https://github.com/antoine-de/address-formatter-rs.git", branch = "short_addr_fmt"}
+address-formatter = "^0.2.1"
 
 [dependencies.bragi]
 path = "libs/bragi"
