@@ -49,7 +49,7 @@ pub fn format_addr_name_and_label<'a>(
     (nice_name.clone(), format_label(nice_name, admins))
 }
 
-pub fn get_short_addr_label<'a>(
+fn get_short_addr_label<'a>(
     place: FormatPlaceHolder,
     admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
     country_codes: &[String],
@@ -67,7 +67,7 @@ pub fn get_short_addr_label<'a>(
         .unwrap_or_else(|_| "".to_owned())
 }
 
-pub struct FormatPlaceHolder {
+struct FormatPlaceHolder {
     street: String,
     // zip_code: Vec<String>, // For the moment we don't put the zip code in the label
     house_number: Option<String>,
@@ -78,12 +78,6 @@ impl FormatPlaceHolder {
         Self {
             street,
             house_number: Some(house_number),
-        }
-    }
-    pub fn from_street(street: String) -> Self {
-        Self {
-            street,
-            house_number: None,
         }
     }
 
@@ -117,5 +111,125 @@ fn cosmo_to_addr_formatter_type(
         // not sure, but it seems a cosmogony::StateDistrict is a County in address_formatter
         Some(cosmogony::ZoneType::StateDistrict) => Some(Component::County),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use cosmogony::ZoneType;
+
+    fn get_nl_admins() -> Vec<mimir::Admin> {
+        vec![
+            mimir::Admin {
+                id: "admin:amsterdam".to_string(),
+                level: 10,
+                name: "Amsterdam".to_string(),
+                label: "Amsterdam, Noord-Hollad, Nederland".to_string(),
+                zone_type: Some(ZoneType::City),
+                ..Default::default()
+            },
+            mimir::Admin {
+                id: "admin:noord-holland".to_string(),
+                level: 4,
+                name: "Noordh-Holland".to_string(),
+                label: "Noord-Hollad, Nederland".to_string(),
+                zone_type: Some(ZoneType::State),
+                ..Default::default()
+            },
+            mimir::Admin {
+                id: "admin:Nederland".to_string(),
+                level: 2,
+                name: "Nederland".to_string(),
+                label: "Nederland".to_string(),
+                zone_type: Some(ZoneType::Country),
+                ..Default::default()
+            },
+        ]
+    }
+
+    fn get_fr_admins() -> Vec<mimir::Admin> {
+        vec![
+            mimir::Admin {
+                id: "admin:paris".to_string(),
+                level: 8,
+                name: "Paris".to_string(),
+                label: "Paris (75000-75116), Île-de-France, France".to_string(),
+                zone_type: Some(ZoneType::City),
+                ..Default::default()
+            },
+            mimir::Admin {
+                id: "admin:idf".to_string(),
+                level: 4,
+                name: "Île-de-France".to_string(),
+                label: "Île-de-France, France".to_string(),
+                zone_type: Some(ZoneType::State),
+                ..Default::default()
+            },
+            mimir::Admin {
+                id: "admin:france".to_string(),
+                level: 2,
+                name: "France".to_string(),
+                label: "France".to_string(),
+                zone_type: Some(ZoneType::Country),
+                ..Default::default()
+            },
+        ]
+    }
+
+    #[test]
+    fn nl_addr() {
+        let (name, label) = format_addr_name_and_label(
+            "573",
+            "Herengracht",
+            get_nl_admins().iter(),
+            &vec!["nl".to_owned()],
+        );
+        assert_eq!(name, "Herengracht 573");
+        assert_eq!(label, "Herengracht 573 (Amsterdam)");
+    }
+    #[test]
+    fn nl_street() {
+        let label = format_street_label(
+            "Herengracht",
+            get_nl_admins().iter(),
+            &vec!["nl".to_owned()],
+        );
+        assert_eq!(label, "Herengracht (Amsterdam)");
+    }
+    #[test]
+    fn nl_poi() {
+        let label = format_poi_label(
+            "Delirium Cafe",
+            get_nl_admins().iter(),
+            &vec!["nl".to_owned()],
+        );
+        assert_eq!(label, "Delirium Cafe (Amsterdam)");
+    }
+
+    #[test]
+    fn fr_addr() {
+        let (name, label) = format_addr_name_and_label(
+            "20",
+            "rue hector malot",
+            get_fr_admins().iter(),
+            &vec!["fr".to_owned()],
+        );
+        assert_eq!(name, "20 rue hector malot");
+        assert_eq!(label, "20 rue hector malot (Paris)");
+    }
+    #[test]
+    fn fr_street() {
+        let label = format_street_label(
+            "rue hector malot",
+            get_fr_admins().iter(),
+            &vec!["fr".to_owned()],
+        );
+        assert_eq!(label, "rue hector malot (Paris)");
+    }
+    #[test]
+    fn fr_poi() {
+        let label = format_poi_label("Le Rossli", get_fr_admins().iter(), &vec!["fr".to_owned()]);
+        assert_eq!(label, "Le Rossli (Paris)");
     }
 }
