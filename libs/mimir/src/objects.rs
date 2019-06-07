@@ -461,6 +461,8 @@ pub struct Stop {
     pub distance: Option<u32>,
     #[serde(default)]
     pub lines: Vec<Line>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
 }
 
 impl MimirObject for Stop {

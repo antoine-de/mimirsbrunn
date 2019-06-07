@@ -5,6 +5,7 @@
 fn format_label<'a>(
     nice_name: String,
     admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
 ) -> String {
     let city = admins.clone().find(|adm| adm.is_city());
     let city_name = city.map(|a| a.name.to_string());
@@ -15,6 +16,28 @@ fn format_label<'a>(
     }
 }
 
+// format a label for a given lang
+// Note: 2 distinct localisation information are needed for the label formatting
+// and it might be worth it to clarify this a bit:
+// * `country codes` [Where the place is]: (which is not yet used in this function, but could be)
+//      Used on how to format the label in order to find it when you're in the place's country
+// * `lang` [Who searches for the place]: lang of the user
+//      Used to use the names in the user's language
+fn format_i18n_label<'a>(
+    nice_name: &str,
+    mut admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
+    lang: &str,
+) -> String {
+    admins.find(|adm| adm.is_city()).map_or_else(
+        || nice_name.to_string(),
+        |adm| {
+            let local_admin_name = &adm.names.get(lang).unwrap_or(&adm.name);
+            format!("{} ({})", nice_name, local_admin_name)
+        },
+    )
+}
+
 // Note: even if most of the format methods are the same for the moment,
 // I feel it's better to split them to make them easier to update
 
@@ -22,18 +45,27 @@ fn format_label<'a>(
 pub fn format_street_label<'a>(
     name: &str,
     admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
-    _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
+    country_codes: &[String],
 ) -> String {
-    format_label(name.to_owned(), admins)
+    format_label(name.to_owned(), admins, country_codes)
 }
 
 /// format a label for a Poi
 pub fn format_poi_label<'a>(
     name: &str,
     admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
-    _country_codes: &[String],
+    country_codes: &[String],
 ) -> String {
-    format_label(name.to_owned(), admins)
+    format_label(name.to_owned(), admins, country_codes)
+}
+
+/// format a label for a Stop
+pub fn format_stop_label<'a>(
+    name: &str,
+    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    country_codes: &[String],
+) -> String {
+    format_label(name.to_owned(), admins, country_codes)
 }
 
 /// format a name and a label for an Address
@@ -46,7 +78,40 @@ pub fn format_addr_name_and_label<'a>(
     let place = FormatPlaceHolder::from_addr(house_number.to_owned(), street_name.to_owned());
     let nice_name = get_short_addr_label(place, admins.clone(), country_codes);
 
-    (nice_name.clone(), format_label(nice_name, admins))
+    (
+        nice_name.clone(),
+        format_label(nice_name, admins, country_codes),
+    )
+}
+
+/// create some international label for a poi
+/// One label is created for each lang in the `langs` parameter
+pub fn format_international_poi_label<'a>(
+    poi_names: &mimir::I18nProperties,
+    default_poi_name: &str,
+    default_poi_label: &str,
+    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    country_codes: &[String],
+    langs: &[String],
+) -> mimir::I18nProperties {
+    let labels = langs
+        .iter()
+        .filter_map(|ref lang| {
+            let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
+            let i18n_poi_label =
+                format_i18n_label(local_poi_name, admins.clone(), country_codes, lang);
+
+            if i18n_poi_label == default_poi_label {
+                None
+            } else {
+                Some(mimir::Property {
+                    key: lang.to_string(),
+                    value: i18n_poi_label,
+                })
+            }
+        })
+        .collect();
+    mimir::I18nProperties(labels)
 }
 
 fn get_short_addr_label<'a>(
@@ -119,13 +184,32 @@ mod test {
     use super::*;
     use cosmogony::ZoneType;
 
+    fn make_i18_prop(val: &[(&str, &str)]) -> mimir::I18nProperties {
+        val.iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+    }
+
     fn get_nl_admins() -> Vec<mimir::Admin> {
         vec![
             mimir::Admin {
                 id: "admin:amsterdam".to_string(),
                 level: 10,
                 name: "Amsterdam".to_string(),
+                names: make_i18_prop(&[
+                    ("ja", "アムステルダム"),
+                    ("ru", "Амстердам"),
+                ]),
                 label: "Amsterdam, Noord-Hollad, Nederland".to_string(),
+                labels: make_i18_prop(&[
+                    ("ja", "アムステルダム, Noord-Holland, オランダ"),
+                    ("it", "Amsterdam, Noord-Holland, Paesi Bassi"),
+                    ("fr", "Amsterdam, Hollande-Septentrionale, Pays-Bas"),
+                    (
+                        "ru",
+                        "Амстердам, Северная Голландия, Нидерланды",
+                    ),
+                ]),
                 zone_type: Some(ZoneType::City),
                 ..Default::default()
             },
@@ -231,5 +315,61 @@ mod test {
     fn fr_poi() {
         let label = format_poi_label("Le Rossli", get_fr_admins().iter(), &vec!["fr".to_owned()]);
         assert_eq!(label, "Le Rossli (Paris)");
+    }
+
+    #[test]
+    fn nl_poi_in_russian() {
+        // searching for the rembrandt museum (https://www.openstreetmap.org/node/250624673) in russian
+        let poi_names = make_i18_prop(&[("ru", "Дом-музей Рембрандта")]);
+        let label = format_international_poi_label(
+            &poi_names,
+            "Rembrandthuis",
+            "Rembrandthuis (Amsterdam)",
+            get_nl_admins().iter(),
+            &vec!["nl".to_owned()],
+            &["ru".to_owned()],
+        );
+        assert_eq!(
+            label,
+            make_i18_prop(&[(
+                "ru",
+                "Дом-музей Рембрандта (Амстердам)"
+            ),])
+        );
+    }
+
+    #[test]
+    fn nl_poi_in_french() {
+        // searching for the rembrandt museum (https://www.openstreetmap.org/node/250624673) in french
+        // since the poi has no french name, the default one is used (and thus is not returned)
+        let poi_names = make_i18_prop(&[("ru", "Дом-музей Рембрандта")]);
+        let label = format_international_poi_label(
+            &poi_names,
+            "Rembrandthuis",
+            "Rembrandthuis (Amsterdam)",
+            get_nl_admins().iter(),
+            &vec!["nl".to_owned()],
+            &["fr".to_owned()],
+        );
+        assert_eq!(label, make_i18_prop(&[]));
+    }
+
+    #[test]
+    fn nl_poi_in_japanese() {
+        // searching for the rembrandt museum (https://www.openstreetmap.org/node/250624673) in japanane
+        // since the poi has no japanese name, the default one is used, but we use the translated japanse name of Amsterdam
+        let poi_names = make_i18_prop(&[("ru", "Дом-музей Рембрандта")]);
+        let label = format_international_poi_label(
+            &poi_names,
+            "Rembrandthuis",
+            "Rembrandthuis (Amsterdam)",
+            get_nl_admins().iter(),
+            &vec!["nl".to_owned()],
+            &["ja".to_owned()],
+        );
+        assert_eq!(
+            label,
+            make_i18_prop(&[("ja", "Rembrandthuis (アムステルダム)"),])
+        );
     }
 }
