@@ -76,7 +76,8 @@ pub fn format_addr_name_and_label<'a>(
     country_codes: &[String],
 ) -> (String, String) {
     let place = FormatPlaceHolder::from_addr(house_number.to_owned(), street_name.to_owned());
-    let nice_name = get_short_addr_label(place, admins.clone(), country_codes);
+    let nice_name = get_short_addr_label(place, admins.clone(), country_codes)
+        .unwrap_or_else(|| default_name(house_number, street_name));
 
     (
         nice_name.clone(),
@@ -114,11 +115,16 @@ pub fn format_international_poi_label<'a>(
     mimir::I18nProperties(labels)
 }
 
+fn default_name(house_number: &str, street: &str) -> String {
+    //default formating is "{street} {hn}" as it's the most common format (but not correct for france)
+    format!("{street} {hn}", street = street, hn = house_number)
+}
+
 fn get_short_addr_label<'a>(
     place: FormatPlaceHolder,
     admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
     country_codes: &[String],
-) -> String {
+) -> Option<String> {
     let country_code = country_codes.iter().next().map(|c| c.to_string()); // we arbitrarily take the first country code
     address_formatter::FORMATTER
         .short_addr_format_with_config(
@@ -129,12 +135,11 @@ fn get_short_addr_label<'a>(
             },
         )
         .map_err(|e| warn!("impossible to format label: {}", e))
-        .unwrap_or_else(|_| "".to_owned())
+        .ok()
 }
 
 struct FormatPlaceHolder {
     street: String,
-    // zip_code: Vec<String>, // For the moment we don't put the zip code in the label
     house_number: Option<String>,
 }
 
