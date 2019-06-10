@@ -220,6 +220,8 @@ pub struct GeocodingResponse {
         default
     )]
     pub bbox: Option<geo_types::Rect<f64>>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub country_codes: Vec<String>,
 }
 
 trait ToGeom {
@@ -309,6 +311,7 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             label,
             bbox: other.bbox,
             codes: other.codes,
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -357,6 +360,7 @@ impl FromWithLang<mimir::Street> for GeocodingResponse {
             street: name,
             city: city,
             administrative_regions: associated_admins,
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -394,6 +398,7 @@ impl FromWithLang<mimir::Addr> for GeocodingResponse {
             street: street_name,
             city: city,
             administrative_regions: associated_admins,
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -446,6 +451,7 @@ impl FromWithLang<mimir::Poi> for GeocodingResponse {
                 }
                 _ => None,
             },
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -487,6 +493,7 @@ impl FromWithLang<mimir::Stop> for GeocodingResponse {
             codes: other.codes,
             properties: other.properties,
             feed_publishers: other.feed_publishers,
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
