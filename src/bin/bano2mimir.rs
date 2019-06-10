@@ -38,9 +38,11 @@ use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use serde_derive::{Deserialize, Serialize};
+use mimirsbrunn::labels;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -78,9 +80,6 @@ impl Bano {
         admins_geofinder: &AdminGeoFinder,
         use_old_index_format: bool,
     ) -> mimir::Addr {
-        let street_label = format!("{} ({})", self.street, self.city);
-        let addr_name = format!("{} {}", self.nb, self.street);
-        let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let mut admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
@@ -95,6 +94,29 @@ impl Bano {
             admins.push(admin.clone());
         }
 
+        let country_codes = vec!["fr".to_owned()];
+
+        // to format the label of the addr/street, we use bano's city
+        // even if we already have found a city in the admin_geo_finder
+        let city = build_admin_from_bano_city(&self.city);
+        let zones_for_label_formatting = admins
+            .iter()
+            .filter(|a| a.is_city())
+            .map(|a| a.deref())
+            .chain(std::iter::once(&city));
+
+        let street_label = labels::format_street_label(
+            &self.street,
+            zones_for_label_formatting.clone(),
+            &country_codes,
+        );
+        let (addr_name, addr_label) = labels::format_addr_name_and_label(
+            &self.nb,
+            &self.street,
+            zones_for_label_formatting,
+            &country_codes,
+        );
+
         let weight = admins
             .iter()
             .find(|a| a.level == 8)
@@ -104,13 +126,14 @@ impl Bano {
         let street = mimir::Street {
             id: street_id,
             name: self.street,
-            label: street_label.to_string(),
+            label: street_label,
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             coord: coord.clone(),
             approx_coord: None,
             distance: None,
+            country_codes: country_codes.clone(),
         };
         mimir::Addr {
             id: format!(
@@ -135,15 +158,24 @@ impl Bano {
                 }
             ),
             name: addr_name,
+            label: addr_label,
             house_number: self.nb,
             street: street,
-            label: addr_label,
             coord: coord.clone(),
             approx_coord: Some(coord.into()),
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             distance: None,
+            country_codes,
         }
+    }
+}
+
+fn build_admin_from_bano_city(city: &str) -> Admin {
+    mimir::Admin {
+        name: city.to_string(),
+        zone_type: Some(cosmogony::ZoneType::City),
+        ..Default::default()
     }
 }
 

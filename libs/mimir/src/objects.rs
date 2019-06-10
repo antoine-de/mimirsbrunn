@@ -29,8 +29,9 @@
 // www.navitia.io
 use cosmogony::ZoneType;
 use geojson::Geometry;
-use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -195,12 +196,12 @@ impl<T: MimirObject> MimirObject for Rc<T> {
         T::es_id(self)
     }
 }
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Default)]
 pub struct Property {
     pub key: String,
     pub value: String,
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Poi {
     pub id: String,
     pub label: String,
@@ -216,6 +217,8 @@ pub struct Poi {
     pub poi_type: PoiType,
     pub properties: Vec<Property>,
     pub address: Option<Address>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
 
     #[serde(default)]
     pub names: I18nProperties,
@@ -228,7 +231,7 @@ pub struct Poi {
     pub distance: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct PoiType {
     pub id: String,
     pub name: String,
@@ -458,6 +461,8 @@ pub struct Stop {
     pub distance: Option<u32>,
     #[serde(default)]
     pub lines: Vec<Line>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
 }
 
 impl MimirObject for Stop {
@@ -480,7 +485,7 @@ impl Members for Stop {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Admin {
     pub id: String,
     pub insee: String,
@@ -514,6 +519,8 @@ pub struct Admin {
     pub zone_type: Option<ZoneType>,
     #[serde(default)]
     pub parent_id: Option<String>, // id of the Admin's parent (from the cosmogony's hierarchy)
+    #[serde(default)]
+    pub country_codes: Vec<String>,
 
     #[serde(default)]
     pub codes: Vec<Code>,
@@ -659,7 +666,7 @@ impl MimirObject for Admin {
         Some(self.id.clone())
     }
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Street {
     pub id: String,
     #[serde(default)]
@@ -673,6 +680,8 @@ pub struct Street {
     pub approx_coord: Option<Geometry>,
     pub coord: Coord,
     pub zip_codes: Vec<String>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
     /// Distance to the coord in query.
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
@@ -723,6 +732,8 @@ pub struct Addr {
     pub approx_coord: Option<Geometry>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
     /// Distance to the coord in query.
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]

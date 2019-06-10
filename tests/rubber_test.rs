@@ -71,12 +71,10 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         id: "bob".to_string(),
         name: "bob's street".to_string(),
         label: "bob's name".to_string(),
-        administrative_regions: vec![],
         weight: 0.42,
-        zip_codes: vec![],
         coord: coord.clone(),
         approx_coord: Some(coord.into()),
-        distance: None,
+        ..Default::default()
     };
 
     // we index our bob
@@ -100,12 +98,10 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         id: "bobette".to_string(),
         name: "bobette's street".to_string(),
         label: "bobette's name".to_string(),
-        administrative_regions: vec![],
         weight: 0.24,
-        zip_codes: vec![],
         coord: coord.clone(),
         approx_coord: Some(coord.into()),
-        distance: None,
+        ..Default::default()
     };
 
     info!("inserting bobette");
@@ -176,11 +172,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         bbox: boundary.bounding_rect(),
         boundary: Some(boundary),
         zone_type: Some(ZoneType::City),
-        parent_id: None,
-        codes: vec![],
-        names: mimir::I18nProperties::default(),
-        labels: mimir::I18nProperties::default(),
-        distance: None,
+        ..Default::default()
     };
 
     // we index our admin
@@ -276,14 +268,8 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         weight: 1f64,
         coord: coord.clone(),
         approx_coord: Some(coord.into()),
-        boundary: None,
-        bbox: None,
         zone_type: Some(ZoneType::City),
-        parent_id: None,
-        codes: vec![],
-        names: mimir::I18nProperties::default(),
-        labels: mimir::I18nProperties::default(),
-        distance: None,
+        ..Default::default()
     };
 
     // we index our admin

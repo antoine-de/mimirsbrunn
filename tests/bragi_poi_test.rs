@@ -305,7 +305,7 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
                 value: "Coliseo (Roma)".to_string(),
             },
         ]),
-        distance: None,
+        ..Default::default()
     };
 
     let index_settings = mimir::rubber::IndexSettings {

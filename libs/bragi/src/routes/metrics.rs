@@ -2,6 +2,7 @@ use crate::Context;
 use actix_web::{HttpRequest, HttpResponse, Responder};
 use prometheus;
 use prometheus::Encoder;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EndPoint {

@@ -30,6 +30,7 @@
 
 use heck::SnakeCase;
 use rs_es::error::EsError;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Fail, Debug)]

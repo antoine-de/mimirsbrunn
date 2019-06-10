@@ -138,10 +138,6 @@ fn to_mimir(
         approx_coord: Some(coord.into()),
         commercial_modes: commercial_modes,
         physical_modes: physical_modes,
-        administrative_regions: vec![],
-        weight: 0.,
-        zip_codes: vec![],
-        coverages: vec![],
         lines: lines,
         comments: comments,
         timezone: stop_area.timezone.clone().unwrap_or(format!("")),
@@ -162,7 +158,7 @@ fn to_mimir(
             })
             .collect(),
         feed_publishers: feed_publishers,
-        distance: None,
+        ..Default::default()
     }
 }
 

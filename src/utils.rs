@@ -34,47 +34,6 @@ use std::process::exit;
 use std::sync::Arc;
 use structopt::StructOpt;
 
-pub fn format_label(admins: &[Arc<mimir::Admin>], name: &str) -> String {
-    match admins.iter().position(|adm| adm.is_city()) {
-        Some(idx) => format!("{} ({})", name, admins[idx].name),
-        None => name.to_string(),
-    }
-}
-
-pub fn format_international_poi_label(
-    admins: &[Arc<mimir::Admin>],
-    poi_names: &mimir::I18nProperties,
-    default_poi_name: &str,
-    default_poi_label: &str,
-    langs: &[String],
-) -> mimir::I18nProperties {
-    let labels = langs
-        .iter()
-        .filter_map(|ref lang| {
-            let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
-            let i18n_poi_label =
-                admins
-                    .iter()
-                    .find(|adm| adm.is_city())
-                    .map_or(local_poi_name.to_string(), |adm| {
-                        let default_admin_name = &adm.name;
-                        let local_admin_name = &adm.names.get(lang).unwrap_or(&default_admin_name);
-                        format!("{} ({})", local_poi_name, local_admin_name)
-                    });
-
-            if i18n_poi_label == default_poi_label {
-                None
-            } else {
-                Some(mimir::Property {
-                    key: lang.to_string(),
-                    value: i18n_poi_label,
-                })
-            }
-        })
-        .collect();
-    mimir::I18nProperties(labels)
-}
-
 pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
         if adm.level > level && !adm.zip_codes.is_empty() {
@@ -132,4 +91,15 @@ where
         // the destruction of the logger (so we won't loose any messages)
         exit(1);
     }
+}
+
+pub fn get_country_code(codes: &[mimir::Code]) -> Option<String> {
+    codes
+        .iter()
+        .find(|c| c.name == "ISO3166-1:alpha2")
+        .map(|c| c.value.clone())
+}
+
+pub fn find_country_codes<'a>(admins: impl Iterator<Item = &'a mimir::Admin>) -> Vec<String> {
+    admins.filter_map(|a| get_country_code(&a.codes)).collect()
 }
