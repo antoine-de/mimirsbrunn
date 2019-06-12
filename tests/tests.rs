@@ -215,8 +215,7 @@ impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
         let make_server = move || {
             bragi::server::create_server(bragi::Context {
-                es_cnx_string: url.clone(),
-                max_es_timeout: None,
+                rubber: mimir::rubber::Rubber::new(&url),
             })
         };
 

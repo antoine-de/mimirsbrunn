@@ -129,7 +129,7 @@ pub fn call_autocomplete(
     shape: Option<Geometry>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
     let langs = params.langs();
-    let timeout = params::get_timeout(&params.timeout(), &state.max_es_timeout);
+    let rubber = state.get_rubber(params.timeout());
     let res = query::autocomplete(
         &params.q,
         &params
@@ -141,13 +141,12 @@ pub fn call_autocomplete(
         params.offset,
         params.limit,
         params.coord()?,
-        &state.es_cnx_string,
         shape,
         &params.types_as_str(),
         &params.zone_types_as_str(),
         &params.poi_types_as_str(),
         &langs,
-        timeout,
+        rubber,
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(Json)
