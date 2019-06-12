@@ -34,7 +34,7 @@ use serde_json::json;
 use std::path::Path;
 
 pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
     let out_dir = Path::new(env!("OUT_DIR"));
 
     // ******************************************

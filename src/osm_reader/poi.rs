@@ -297,7 +297,7 @@ pub fn compute_poi_weight(pois_vec: &mut [Poi]) {
 pub fn add_address(pois_vec: &mut [Poi], rubber: &mut rubber::Rubber) {
     for poi in pois_vec {
         poi.address = rubber
-            .get_address(&poi.coord, None)
+            .get_address(&poi.coord)
             .ok()
             .and_then(|addrs| addrs.into_iter().next())
             .map(|addr| addr.address().unwrap());

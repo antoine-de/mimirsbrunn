@@ -59,8 +59,9 @@ pub fn create_server(ctx: Context) -> App<Context> {
 
 pub fn runserver() -> Result<(), Error> {
     let args = Args::from_args();
-    let ctx: Context = (&args).into();
-    Ok(server::new(move || create_server(ctx.clone()))
+    // let ctx: Context = (&args).into();
+    let bob = args.clone();
+    Ok(server::new(move || create_server((&bob.clone()).into()))
         .bind(&args.bind)?
         .workers(args.nb_threads)
         .run())

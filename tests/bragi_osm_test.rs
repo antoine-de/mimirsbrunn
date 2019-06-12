@@ -36,7 +36,7 @@ use super::BragiHandler;
 use std::path::Path;
 
 pub fn bragi_osm_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
 
     // *********************************
     // We load the OSM dataset (including ways)
