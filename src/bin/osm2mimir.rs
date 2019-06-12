@@ -109,7 +109,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let admins = if args.import_admin {
         read_administrative_regions(&mut osm_reader, levels, city_level)
     } else {
-        rubber.get_admins_from_dataset(&args.dataset)?
+        rubber.get_all_admins()?
     };
     let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
     {

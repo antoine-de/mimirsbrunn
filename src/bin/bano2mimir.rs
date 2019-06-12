@@ -194,15 +194,13 @@ where
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
 
-    let admins = rubber
-        .get_admins_from_dataset(dataset)
-        .unwrap_or_else(|err| {
-            info!(
-                "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset, err
-            );
-            vec![]
-        });
+    let admins = rubber.get_all_admins().unwrap_or_else(|err| {
+        info!(
+            "Administratives regions not found in es db for dataset {}. (error: {})",
+            dataset, err
+        );
+        vec![]
+    });
     let admins_geofinder = admins.iter().cloned().collect();
     let admins_by_insee = admins
         .into_iter()
