@@ -552,8 +552,7 @@ fn custom_multi_polygon_serialize<S>(
 where
     S: Serializer,
 {
-    use geojson::{GeoJson, Geometry, Value};
-    use serde::Serialize;
+    use geojson::{GeoJson, Value};
 
     match *multi_polygon_option {
         Some(ref multi_polygon) => {
@@ -569,9 +568,7 @@ fn custom_multi_polygon_deserialize<'de, D>(
 where
     D: serde::de::Deserializer<'de>,
 {
-    use geojson;
     use geojson::conversion::TryInto;
-    use serde::Deserialize;
 
     Option::<geojson::GeoJson>::deserialize(d).map(|option| {
         option.and_then(|geojson| match geojson {
@@ -598,8 +595,6 @@ pub fn serialize_rect<'a, S>(
 where
     S: serde::Serializer,
 {
-    use serde::Serialize;
-
     match bbox {
         Some(b) => {
             // bbox serialized as an array
@@ -616,8 +611,6 @@ fn deserialize_rect<'de, D>(d: D) -> Result<Option<geo_types::Rect<f64>>, D::Err
 where
     D: serde::Deserializer<'de>,
 {
-    use serde::Deserialize;
-
     Option::<Vec<f64>>::deserialize(d).map(|option| {
         option.map(|b| geo_types::Rect {
             min: geo_types::Coordinate { x: b[0], y: b[1] },
