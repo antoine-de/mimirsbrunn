@@ -155,7 +155,7 @@ where
     let mut rubber = Rubber::new(cnx_string);
 
     let admins = rubber.get_all_admins().unwrap_or_else(|err| {
-        info!(
+        warn!(
             "Administratives regions not found in es db for dataset {}. (error: {})",
             dataset, err
         );
