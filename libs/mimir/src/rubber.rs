@@ -613,13 +613,6 @@ impl Rubber {
         Ok(nb_elements)
     }
 
-    pub fn get_admins_from_dataset(
-        &mut self,
-        dataset: &str,
-    ) -> Result<Vec<Admin>, rs_es::error::EsError> {
-        self.get_all_objects_from_index(&get_main_type_and_dataset_index::<Admin>(dataset))
-    }
-
     pub fn get_all_admins(&mut self) -> Result<Vec<Admin>, rs_es::error::EsError> {
         self.get_all_objects_from_index(&get_main_type_index::<Admin>())
     }

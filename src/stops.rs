@@ -104,7 +104,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     rubber: &mut Rubber,
 ) {
     let admins = rubber.get_all_admins().unwrap_or_else(|_| {
-        info!("Administratives regions not found in elasticsearch db");
+        warn!("Administratives regions not found in elasticsearch db");
         vec![]
     });
 
