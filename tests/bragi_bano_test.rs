@@ -86,6 +86,7 @@ fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
                             "administrative_regions": [],
                             "city": null,
                             "citycode": null,
+                            "country_codes": ["fr"],
                             "housenumber": "15",
                             "id": "addr:2.376379;48.846495:15",
                             "label": "15 Rue Hector Malot (Paris)",
@@ -164,6 +165,7 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
                   "postcode": "75012",
                   "city": null,
                   "citycode": null,
+                  "country_codes": ["fr"],
                   "administrative_regions": []
                 }
               }
