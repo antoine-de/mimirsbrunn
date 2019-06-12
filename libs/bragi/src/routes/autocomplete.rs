@@ -128,30 +128,28 @@ pub fn call_autocomplete(
     state: &Context,
     shape: Option<Geometry>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
-    unimplemented!()
-    // let langs = params.langs();
-    // // let rubber = state.get_rubber(params.timeout());
-    // let rubber = mimir::rubber::Rubber::new_with_timeout("http://localhost:9200", params.timeout());
-    // let res = query::autocomplete(
-    //     &params.q,
-    //     &params
-    //         .pt_dataset
-    //         .iter()
-    //         .map(String::as_str)
-    //         .collect::<Vec<_>>(),
-    //     params.all_data,
-    //     params.offset,
-    //     params.limit,
-    //     params.coord()?,
-    //     shape,
-    //     &params.types_as_str(),
-    //     &params.zone_types_as_str(),
-    //     &params.poi_types_as_str(),
-    //     &langs,
-    //     rubber,
-    // );
-    // res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
-    //     .map(Json)
+    let langs = params.langs();
+    let rubber = state.get_rubber(params.timeout());
+    let res = query::autocomplete(
+        &params.q,
+        &params
+            .pt_dataset
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        params.all_data,
+        params.offset,
+        params.limit,
+        params.coord()?,
+        shape,
+        &params.types_as_str(),
+        &params.zone_types_as_str(),
+        &params.poi_types_as_str(),
+        &langs,
+        rubber,
+    );
+    res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
+        .map(Json)
 }
 
 pub fn autocomplete(

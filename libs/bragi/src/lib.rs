@@ -78,14 +78,14 @@ pub struct Args {
 
 #[derive(Clone, Debug)]
 pub struct Context {
-    // pub rubber: Rubber,
+    pub rubber: Rubber,
 }
 
 impl From<&Args> for Context {
     fn from(args: &Args) -> Self {
         let max_es_timeout = args.max_es_timeout.map(Duration::from_millis);
         Self {
-            // rubber: Rubber::new_with_timeout(&args.connection_string, max_es_timeout.clone()),
+            rubber: Rubber::new_with_timeout(&args.connection_string, max_es_timeout.clone()),
         }
     }
 }
@@ -93,7 +93,6 @@ impl From<&Args> for Context {
 impl Context {
     pub fn get_rubber(&self, timeout: Option<Duration>) -> Rubber {
         // we clone the rs_es_client, reusing the reqwest connection pool
-        // self.rubber.clone_with_timeout(timeout)
-        Rubber::new_with_timeout("http://localhost:9200", timeout.clone())
+        self.rubber.clone_with_timeout(timeout)
     }
 }

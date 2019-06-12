@@ -19,7 +19,7 @@ pub fn features(
     state: State<Context>,
     id: Path<String>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
-    // let rubber = state.get_rubber(params.timeout.map(Duration::from_millis));
+    let rubber = state.get_rubber(params.timeout.map(Duration::from_millis));
     let features = query::features(
         &params
             .pt_dataset
@@ -28,7 +28,7 @@ pub fn features(
             .collect::<Vec<_>>(),
         params.all_data,
         &*id,
-        // rubber,
+        rubber,
     );
     features
         .map(|r| model::Autocomplete::from_with_lang(r, None))

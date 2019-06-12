@@ -400,7 +400,7 @@ pub fn features(
     pt_datasets: &[&str],
     all_data: bool,
     id: &str,
-    // mut rubber: Rubber,
+    mut rubber: Rubber,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     let val = rs_es::units::JsonVal::String(id.into());
     let mut filters = vec![Query::build_ids(vec![val]).build()];
@@ -412,8 +412,6 @@ pub fn features(
     let filter = Query::build_bool().with_must(filters).build();
     let query = Query::build_bool().with_filter(filter).build();
 
-
-    let mut client = rs_es::Client::init_with_timeout("http://localhost:9200", None).unwrap();
     let indexes = get_indexes(all_data, &pt_datasets, &[]);
     let indexes = indexes
         .iter()
@@ -436,17 +434,17 @@ pub fn features(
         )
         .ok();
 
-    // let timeout = rubber.timeout.map(|t| format!("{:?}", t));
-    let mut search_query = client.search_query();
+    let timeout = rubber.timeout.map(|t| format!("{:?}", t));
+    let mut search_query = rubber.es_client.search_query();
 
     let search_query = search_query
         .with_ignore_unavailable(true)
         .with_indexes(&indexes)
         .with_query(&query);
 
-    // if let Some(timeout) = &timeout {
-    //     search_query.with_timeout(timeout.as_str());
-    // }
+    if let Some(timeout) = &timeout {
+        search_query.with_timeout(timeout.as_str());
+    }
 
     let result = search_query.send()?;
 
