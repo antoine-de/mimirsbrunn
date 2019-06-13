@@ -38,9 +38,11 @@ use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use serde_derive::{Deserialize, Serialize};
+use mimirsbrunn::labels;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -76,10 +78,8 @@ impl Bano {
         self,
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
+        use_old_index_format: bool,
     ) -> mimir::Addr {
-        let street_label = format!("{} ({})", self.street, self.city);
-        let addr_name = format!("{} {}", self.nb, self.street);
-        let addr_label = format!("{} ({})", addr_name, self.city);
         let street_id = format!("street:{}", self.fantoir().to_string());
         let mut admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
@@ -94,32 +94,88 @@ impl Bano {
             admins.push(admin.clone());
         }
 
+        let country_codes = vec!["fr".to_owned()];
+
+        // to format the label of the addr/street, we use bano's city
+        // even if we already have found a city in the admin_geo_finder
+        let city = build_admin_from_bano_city(&self.city);
+        let zones_for_label_formatting = admins
+            .iter()
+            .filter(|a| a.is_city())
+            .map(|a| a.deref())
+            .chain(std::iter::once(&city));
+
+        let street_label = labels::format_street_label(
+            &self.street,
+            zones_for_label_formatting.clone(),
+            &country_codes,
+        );
+        let (addr_name, addr_label) = labels::format_addr_name_and_label(
+            &self.nb,
+            &self.street,
+            zones_for_label_formatting,
+            &country_codes,
+        );
+
         let weight = admins
             .iter()
             .find(|a| a.level == 8)
             .map_or(0., |a| a.weight);
 
+        let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
             id: street_id,
             name: self.street,
-            label: street_label.to_string(),
+            label: street_label,
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.zip.clone()],
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            approx_coord: None,
             distance: None,
+            country_codes: country_codes.clone(),
         };
         mimir::Addr {
-            id: format!("addr:{};{}", self.lon, self.lat),
+            id: format!(
+                "addr:{};{}{}",
+                self.lon,
+                self.lat,
+                if use_old_index_format {
+                    String::new()
+                } else {
+                    format!(
+                        ":{}",
+                        self.nb
+                            .replace(" ", "")
+                            .replace("\t", "")
+                            .replace("\r", "")
+                            .replace("\n", "")
+                            .replace("/", "-")
+                            .replace(".", "-")
+                            .replace(":", "-")
+                            .replace(";", "-")
+                    )
+                }
+            ),
             name: addr_name,
+            label: addr_label,
             house_number: self.nb,
             street: street,
-            label: addr_label,
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            approx_coord: Some(coord.into()),
             weight: weight,
             zip_codes: vec![self.zip.clone()],
             distance: None,
+            country_codes,
         }
+    }
+}
+
+fn build_admin_from_bano_city(city: &str) -> Admin {
+    mimir::Admin {
+        name: city.to_string(),
+        zone_type: Some(cosmogony::ZoneType::City),
+        ..Default::default()
     }
 }
 
@@ -130,6 +186,7 @@ fn index_bano<I>(
     nb_threads: usize,
     nb_shards: usize,
     nb_replicas: usize,
+    use_old_index_format: bool,
 ) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
@@ -137,15 +194,13 @@ where
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
 
-    let admins = rubber
-        .get_admins_from_dataset(dataset)
-        .unwrap_or_else(|err| {
-            info!(
-                "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset, err
-            );
-            vec![]
-        });
+    let admins = rubber.get_all_admins().unwrap_or_else(|err| {
+        warn!(
+            "Administratives regions not found in es db for dataset {}. (error: {})",
+            dataset, err
+        );
+        vec![]
+    });
     let admins_geofinder = admins.iter().cloned().collect();
     let admins_by_insee = admins
         .into_iter()
@@ -168,7 +223,7 @@ where
         index_settings,
         dataset,
         files,
-        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder),
+        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, use_old_index_format),
     )
 }
 
@@ -200,6 +255,10 @@ struct Args {
     /// Number of replicas for the es index
     #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
     nb_replicas: usize,
+    /// If set to true, the number inside the address won't be used for the index generation,
+    /// therefore, different addresses with the same position will disappear.
+    #[structopt(long = "use-old-index-format")]
+    use_old_index_format: bool,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -213,6 +272,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             args.nb_threads,
             args.nb_shards,
             args.nb_replicas,
+            args.use_old_index_format,
         )
     } else {
         index_bano(
@@ -222,6 +282,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             args.nb_threads,
             args.nb_shards,
             args.nb_replicas,
+            args.use_old_index_format,
         )
     }
 }

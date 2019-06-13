@@ -1,5 +1,6 @@
 use crate::Context;
 use actix_web::{Json, State};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Status {

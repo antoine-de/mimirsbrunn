@@ -39,14 +39,14 @@ use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
-use mimirsbrunn::utils::normalize_weight;
+use mimirsbrunn::utils;
 use std::collections::BTreeMap;
 use structopt::StructOpt;
 
 trait IntoAdmin {
     fn into_admin(
         self,
-        _: &BTreeMap<ZoneIndex, String>,
+        _: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
         retrocompat_on_french_id: bool,
         max_weight: f64,
@@ -67,45 +67,53 @@ fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f6
 impl IntoAdmin for Zone {
     fn into_admin(
         self,
-        zones_osm_id: &BTreeMap<ZoneIndex, String>,
+        zones_osm_id: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
         french_id_retrocompatibility: bool,
         max_weight: f64,
     ) -> Admin {
-        let insee = admin::read_insee(&self.tags).unwrap_or("");
+        let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
         let weight = get_weight(&self.tags, &self.center_tags);
         let center = self.center.map_or(mimir::Coord::default(), |c| {
             mimir::Coord::new(c.lng(), c.lat())
         });
-        let format_id = |id| {
-            if french_id_retrocompatibility && insee != "" {
-                // for retrocompatibity reasons, Navitia needs the
-                // french admins to have an id with the insee
-                format!("admin:fr:{}", insee)
-            } else {
-                format!("admin:osm:{}", id)
+        let format_id = |id, insee| {
+            // for retrocompatibity reasons, Navitia needs the
+            // french admins to have an id with the insee for cities
+            match insee {
+                Some(insee) if french_id_retrocompatibility => format!("admin:fr:{}", insee),
+                _ => format!("admin:osm:{}", id),
             }
         };
         let parent_osm_id = self
             .parent
             .and_then(|id| zones_osm_id.get(&id))
-            .map(format_id);
+            .map(|(id, insee)| format_id(id, insee.as_ref()));
+        let codes = osm_utils::get_osm_codes_from_tags(&self.tags);
         Admin {
-            id: format_id(&self.osm_id),
-            insee: insee.into(),
+            id: zones_osm_id
+                .get(&self.id)
+                .map(|(id, insee)| format_id(id, insee.as_ref()))
+                .expect("unable to find zone id in zones_osm_id"),
+            insee: insee.unwrap_or("".to_owned()),
             level: self.admin_level.unwrap_or(0),
             label: label,
             name: self.name,
             zip_codes: zip_codes,
-            weight: normalize_weight(weight, max_weight),
+            weight: utils::normalize_weight(weight, max_weight),
             bbox: self.bbox,
             boundary: self.boundary,
-            coord: center,
+            coord: center.clone(),
+            approx_coord: Some(center.into()),
             zone_type: self.zone_type,
             parent_id: parent_osm_id,
-            codes: osm_utils::get_osm_codes_from_tags(&self.tags),
+            // Note: Since we do not really attach an admin to its hierarchy, for the moment an admin only have it's own coutry code,
+            // not the country code of it's country from the hierarchy
+            // (so it has a country code mainly if it is a country)
+            country_codes: utils::get_country_code(&codes).into_iter().collect(),
+            codes: codes,
             names: osm_utils::get_names_from_tags(&self.tags, &langs),
             labels: self
                 .international_labels
@@ -139,12 +147,17 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
+    use cosmogony::zone::ZoneType::City;
 
     let mut max_weight = 1.0;
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     for z in read_zones(&args.input)? {
         max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
-        cosmogony_id_to_osm_id.insert(z.id.clone(), z.osm_id.clone());
+        let insee = match z.zone_type {
+            Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
+            _ => None,
+        };
+        cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
     }
     let max_weight = max_weight;
     let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;

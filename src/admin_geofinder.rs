@@ -127,7 +127,9 @@ impl AdminGeoFinder {
                     if let Some(zt) = admin_parent.as_ref().and_then(|a| a.zone_type) {
                         added_zone_types.insert(zt.clone());
                     }
-                    tested_hierarchy.insert(id);
+                    if !tested_hierarchy.insert(id) {
+                        break; // stop the exploration of the hierarchy since we have already added this one
+                    }
                     admin_parent_id = admin_parent.and_then(|a| a.parent_id.clone());
                 }
 
@@ -251,6 +253,7 @@ mod tests {
         );
         let boundary = geo_types::MultiPolygon(vec![shape]);
 
+        let coord = ::mimir::Coord::new(4.0 + offset, 4.0 + offset);
         ::mimir::Admin {
             id: id.into(),
             level: 8,
@@ -258,16 +261,14 @@ mod tests {
             label: format!("city {}", offset),
             zip_codes: vec!["421337".to_string()],
             weight: 0f64,
-            coord: ::mimir::Coord::new(4.0 + offset, 4.0 + offset),
+            coord: coord.clone(),
+            approx_coord: Some(coord.into()),
             bbox: boundary.bounding_rect(),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
             zone_type: zt,
             parent_id: parent_offset.map(|id| id.into()),
-            codes: vec![],
-            names: ::mimir::I18nProperties::default(),
-            labels: ::mimir::I18nProperties::default(),
-            distance: None,
+            ..Default::default()
         }
     }
 

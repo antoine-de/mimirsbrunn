@@ -28,22 +28,19 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use mimir;
-use osm_boundaries_utils;
-use osmpbfreader;
-
-use self::osm_boundaries_utils::build_boundary;
 use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::utils::{format_label, get_zip_codes_from_admins};
+use crate::{labels, utils};
 use mimir::{rubber, Poi, PoiType};
-use serde_derive::{Deserialize, Serialize};
+use osm_boundaries_utils::build_boundary;
+use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;
+use std::ops::Deref;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OsmTagsFilter {
@@ -247,13 +244,15 @@ fn parse_poi(
     let adms = admins_geofinder.get(&coord);
     let zip_codes = match osmobj.tags().get("addr:postcode") {
         Some(val) if !val.is_empty() => vec![val.clone()],
-        _ => get_zip_codes_from_admins(&adms),
+        _ => utils::get_zip_codes_from_admins(&adms),
     };
+    let country_codes = utils::find_country_codes(adms.iter().map(|a| a.deref()));
     Some(mimir::Poi {
         id: id,
         name: name.to_string(),
-        label: format_label(&adms, name),
-        coord: coord,
+        label: labels::format_poi_label(name, adms.iter().map(|a| a.deref()), &country_codes),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
         zip_codes: zip_codes,
         administrative_regions: adms,
         weight: 0.,
@@ -263,6 +262,7 @@ fn parse_poi(
         names: mimir::I18nProperties::default(),
         labels: mimir::I18nProperties::default(),
         distance: None,
+        country_codes,
     })
 }
 

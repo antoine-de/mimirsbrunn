@@ -93,7 +93,7 @@ pub fn osm2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     assert!(res.len() != 0);
     assert!(res[0].is_street());
     // The first hit should be "Rue des Près"
-    assert!(res[0].label() == "Rue des Près (Livry-sur-Seine)");
+    assert_eq!(res[0].label(), "Rue des Près (Livry-sur-Seine)");
 
     // And there should be only ONE "Rue des Près"
     assert_eq!(

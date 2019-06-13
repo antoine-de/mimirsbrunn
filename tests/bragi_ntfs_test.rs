@@ -117,6 +117,59 @@ fn gare_de_lyon(bragi: &mut BragiHandler) {
              "name": "The Great Contributor", "url": "http://the-great-contributor.com"},
         ])
     );
+
+    // Note: the lines are sorted as
+    // Metro 1 -> Bus 5 -> Bug 42, RER
+    // because:
+    // Metro 1 has a sort order, to it's the first one
+    // the rest are sorted by humane sort
+    assert_eq!(
+        stop.get("lines").unwrap(),
+        &json!([
+            {
+                "commercial_mode": { "id": "commercial_mode:Metro", "name": "Metro" },
+                "id": "line:M1",
+                "name": "Metro 1",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    { "id": "physical_mode:Metro", "name": "Metro" }
+                ],
+                "text_color": "FFFFFF" ,
+                "color": "7D36F5"
+            },
+            {
+                "commercial_mode": { "id": "commercial_mode:Bus", "name": "Bus" },
+                "id": "line:B5",
+                "name": "Bus 5",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    {"id": "physical_mode:Bus", "name": "Bus" }
+
+                ],
+                "color": "7D36F5",
+                "text_color": "FFFFFF"
+            },
+            {
+                "commercial_mode": { "id": "commercial_mode:Bus", "name": "Bus" },
+                "id": "line:B42",
+                "name": "Bus 42",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    {"id": "physical_mode:Bus", "name": "Bus" }
+                ]
+            },
+            {
+                "commercial_mode": { "id": "commercial_mode:RER", "name": "Réseau Express Régional (RER)" },
+                "id": "line:RERA",
+                "name": "RER A",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    { "id": "physical_mode:Bus", "name": "Bus" },
+                    { "id": "physical_mode:RapidTransit", "name": "Rapid Transit" }
+                ]
+            }
+        ])
+    );
 }
 
 fn gare_de_lyon_with_two_datasets(bragi: &mut BragiHandler) {

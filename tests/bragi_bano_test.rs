@@ -86,8 +86,9 @@ fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
                             "administrative_regions": [],
                             "city": null,
                             "citycode": null,
+                            "country_codes": ["fr"],
                             "housenumber": "15",
-                            "id": "addr:2.376379;48.846495",
+                            "id": "addr:2.376379;48.846495:15",
                             "label": "15 Rue Hector Malot (Paris)",
                             "name": "15 Rue Hector Malot",
                             "postcode": "75012",
@@ -127,7 +128,7 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
     // Search with shape where house number in shape
     let shape = r#"{"shape":{"type":"Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates":[[[2.376488, 48.846431],
-        [2.376306, 48.846430],[2.376309, 48.846606],[2.376486, 48.846603]]]}}}"#;
+        [2.376306, 48.846430],[2.376309, 48.846606],[2.376486, 48.846603], [2.376488, 48.846431]]]}}}"#;
     let r = bragi
         .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
         .unwrap();
@@ -155,7 +156,7 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
               },
               "properties": {
                 "geocoding": {
-                  "id": "addr:2.376379;48.846495",
+                  "id": "addr:2.376379;48.846495:15",
                   "type": "house",
                   "label": "15 Rue Hector Malot (Paris)",
                   "name": "15 Rue Hector Malot",
@@ -164,6 +165,7 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
                   "postcode": "75012",
                   "city": null,
                   "citycode": null,
+                  "country_codes": ["fr"],
                   "administrative_regions": []
                 }
               }

@@ -3,8 +3,9 @@ use crate::model::{Autocomplete, BragiError, FromWithLang};
 use crate::routes::params;
 use crate::{model, query, Context};
 use actix_web::{Json, State};
-use geojson::GeoJson;
+use geojson::{GeoJson, Geometry};
 use mimir::objects::Coord;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
@@ -112,31 +113,11 @@ pub struct JsonParams {
 }
 
 impl JsonParams {
-    fn get_es_shape(&self) -> Result<Vec<(f64, f64)>, model::BragiError> {
-        match &self.shape {
-            GeoJson::Feature(f) => {
-                match &f.geometry {
-                    Some(geom) => {
-                        match &geom.value {
-                            geojson::Value::Polygon(p) => {
-                                match p.as_slice() {
-                                    [p] => {
-                                        Ok(p.iter()
-                                            .filter_map(|c: &Vec<f64>| c.get(0..=1))
-                                            .map(|c| (c[1], c[0])) // Note: the coord are inverted for ES
-                                            .collect())
-                                    }
-                                    _ => Err(BragiError::InvalidShape(
-                                        "only polygon without holes are supported",
-                                    )), //only polygon without holes are supported by elasticsearch
-                                }
-                            }
-                            _ => Err(BragiError::InvalidShape("only polygon are supported")),
-                        }
-                    }
-                    None => Err(BragiError::InvalidShape("no geometry")),
-                }
-            }
+    fn get_geometry(self) -> Result<Geometry, model::BragiError> {
+        match self.shape {
+            GeoJson::Feature(f) => f
+                .geometry
+                .ok_or_else(|| BragiError::InvalidShape("no geometry")),
             _ => Err(BragiError::InvalidShape("only 'feature' is supported")),
         }
     }
@@ -145,7 +126,7 @@ impl JsonParams {
 pub fn call_autocomplete(
     params: &Params,
     state: &Context,
-    shape: Option<Vec<(f64, f64)>>,
+    shape: Option<Geometry>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
     let langs = params.langs();
     let timeout = params::get_timeout(&params.timeout(), &state.max_es_timeout);
@@ -184,5 +165,9 @@ pub fn post_autocomplete(
     state: State<Context>,
     json_params: Json<JsonParams>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
-    call_autocomplete(&*params, &*state, Some(json_params.get_es_shape()?))
+    call_autocomplete(
+        &*params,
+        &*state,
+        Some(json_params.into_inner().get_geometry()?),
+    )
 }

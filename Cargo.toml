@@ -16,19 +16,18 @@ slog-envlogger = "2.1"
 slog-async = "2.3"
 structopt = "0.2"
 csv = "1"
-rs-es = {version = "0.11", default-features = false}
+rs-es = {version = "^0.11.4", features = ["geo"]}
 regex = "1"
 osmpbfreader = "0.13"
 chrono = "0.4"
 serde = {version = "1", features = ["rc"]}
-serde_derive = "1"
 serde_json = "1"
 geo = "0.12"
 geo-types = "0.4"
 gst = "0.1"
 ordered-float = "0.0.2"
 itertools = "0.8"
-navitia_model = { git = "https://github.com/CanalTP/navitia_model" }
+transit_model = "^0.4.1"
 osm_boundaries_utils = "0.4"
 failure = "0.1"
 cosmogony = "0.5"
@@ -36,14 +35,8 @@ par-map = "0.1.4"
 lazy_static = "1.2"
 num_cpus = "1.10"
 assert_float_eq = "1"
-
-[dev-dependencies]
-hyper = "0.10"
-approx = "0.2.0"
-actix-web = "0.7"
-
-[build-dependencies]
-git-version = "0.2"
+humanesort = "0.1.0-alpha"
+address-formatter = "^0.2.1"
 
 [dependencies.bragi]
 path = "libs/bragi"
@@ -51,8 +44,16 @@ path = "libs/bragi"
 [dependencies.mimir]
 path = "libs/mimir"
 
+[dev-dependencies]
+reqwest = "0.9"
+approx = "0.2.0"
+actix-web = "0.7"
+
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"
+
+[build-dependencies]
+git-version = "0.2"
 
 # we just call one test method: cf. tests::all_tests()
 [[test]]

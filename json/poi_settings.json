@@ -139,6 +139,10 @@
                     "geohash_prefix": true,
                     "geohash_precision": "1m"
                 },
+                "approx_coord": {
+                    "type": "geo_shape",
+                    "precision": "5m"
+                },
                 "full_label": {
                     "type": "string",
                     "index": "no",

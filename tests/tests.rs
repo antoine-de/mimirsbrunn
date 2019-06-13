@@ -56,25 +56,9 @@ mod stops2mimir_test;
 use actix_web::client::ClientResponse;
 use docker_wrapper::*;
 use failure::{format_err, Error};
-use hyper::client::response::Response;
 use serde_json::value::Value;
 use serde_json::Map;
 use std::process::Command;
-
-trait ToJson {
-    fn to_json(self) -> Value;
-}
-
-impl ToJson for Response {
-    fn to_json(self) -> Value {
-        match serde_json::from_reader(self) {
-            Ok(v) => v,
-            Err(e) => {
-                panic!("could not get json value from response: {:?}", e);
-            }
-        }
-    }
-}
 
 pub struct ElasticSearchWrapper<'a> {
     docker_wrapper: &'a DockerWrapper,
@@ -96,11 +80,15 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn refresh(&self) {
         info!("Refreshing ES indexes");
 
-        let res = hyper::client::Client::new()
+        let res = reqwest::Client::new()
             .get(&format!("{}/_refresh", self.host()))
             .send()
             .unwrap();
-        assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
+        assert!(
+            res.status() == reqwest::StatusCode::OK,
+            "Error ES refresh: {:?}",
+            res
+        );
     }
 
     pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper<'_> {
@@ -115,21 +103,21 @@ impl<'a> ElasticSearchWrapper<'a> {
     /// simple search on an index
     /// assert that the result is OK and transform it to a json Value
     pub fn search(&self, word: &str) -> serde_json::Value {
-        let res = self
+        let mut res = self
             .rubber
             .get(&format!("munin/_search?q={}", word))
             .unwrap();
-        assert!(res.status == hyper::Ok);
-        res.to_json()
+        assert!(res.status() == reqwest::StatusCode::OK);
+        res.json().unwrap()
     }
 
     pub fn search_on_global_stop_index(&self, word: &str) -> serde_json::Value {
-        let res = self
+        let mut res = self
             .rubber
             .get(&format!("munin_global_stops/_search?q={}", word))
             .unwrap();
-        assert!(res.status == hyper::Ok);
-        res.to_json()
+        assert!(res.status() == reqwest::StatusCode::OK);
+        res.json().unwrap()
     }
 
     pub fn search_and_filter<'b, F>(
@@ -163,8 +151,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
-        use serde_json::map::{Entry, Map};
-        use serde_json::value::Value;
+        use serde_json::map::Entry;
+
         fn into_object(json: Value) -> Option<Map<String, Value>> {
             match json {
                 Value::Object(o) => Some(o),

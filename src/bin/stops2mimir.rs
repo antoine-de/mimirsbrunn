@@ -36,7 +36,7 @@ extern crate slog_scope;
 use failure::ResultExt;
 use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -122,23 +122,14 @@ impl GtfsStop {
                 self.stop_lon, self.stop_lat, self.stop_name
             )))
         } else {
+            let coord = mimir::Coord::new(self.stop_lon, self.stop_lat);
             Ok(mimir::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
-                coord: mimir::Coord::new(self.stop_lon, self.stop_lat),
+                coord: coord.clone(),
+                approx_coord: Some(coord.into()),
                 label: self.stop_name.clone(),
-                weight: 0.,
-                zip_codes: vec![],
-                administrative_regions: vec![],
                 name: self.stop_name,
-                coverages: vec![],
-                commercial_modes: vec![],
-                physical_modes: vec![],
-                timezone: format!(""),
-                codes: vec![],
-                properties: vec![],
-                feed_publishers: vec![],
-                comments: vec![],
-                distance: None,
+                ..Default::default()
             })
         }
     }

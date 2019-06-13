@@ -28,22 +28,21 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::model::{self, BragiError};
+use geojson::Geometry;
 use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places};
-use prometheus;
-use prometheus::{exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
+use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
+use rs_es::query::functions::Modifier;
 use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
 use serde_json;
-use std::fmt;
-use std::iter;
-use std::time;
+use std::{fmt, iter, time};
 
 lazy_static::lazy_static! {
     static ref ES_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
@@ -135,7 +134,7 @@ fn build_query<'a>(
     q: &str,
     match_type: MatchType,
     coord: &Option<Coord>,
-    shape: Option<Vec<rs_es::units::Location>>,
+    shape: Option<Geometry>,
     pt_datasets: &[&str],
     all_data: bool,
     langs: &'a [&'a str],
@@ -152,7 +151,7 @@ fn build_query<'a>(
     }
     let type_query = Query::build_bool()
         .with_should(vec![
-            match_type_with_boost::<Addr>(20.),
+            match_type_with_boost::<Addr>(30.),
             match_type_with_boost::<Admin>(19.),
             match_type_with_boost::<Stop>(18.),
             match_type_with_boost::<Poi>(1.5),
@@ -165,13 +164,9 @@ fn build_query<'a>(
     let format_labels_field = |lang| format!("labels.{}", lang);
     let format_labels_prefix_field = |lang| format!("labels.{}.prefix", lang);
 
-    const I18N_FIELD_BOOST: f64 = 1.2;
     let build_multi_match =
         |default_field: &str, lang_field_formatter: &dyn Fn(&'a &'a str) -> String| {
-            let boosted_i18n_fields = langs
-                .iter()
-                .map(lang_field_formatter)
-                .map(|f| format!("{}^{:.2}", f, I18N_FIELD_BOOST));
+            let boosted_i18n_fields = langs.iter().map(lang_field_formatter);
             let fields: Vec<String> = iter::once(default_field.into())
                 .chain(boosted_i18n_fields)
                 .collect();
@@ -190,12 +185,15 @@ fn build_query<'a>(
             .with_boost(0.6)
             .build(),
         Query::build_match("zip_codes", q).with_boost(1.).build(),
+        Query::build_match("house_number", q)
+            .with_boost(0.001)
+            .build(),
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
         string_should.push(
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(1.)
+                .with_boost(1.8)
                 .build(),
         );
     }
@@ -210,12 +208,31 @@ fn build_query<'a>(
         None => Query::build_function_score()
             .with_function(
                 Function::build_field_value_factor("weight")
-                    .with_factor(0.1)
+                    .with_factor(0.15)
                     .with_missing(0.)
                     .build(),
             )
             .with_boost_mode(BoostMode::Replace)
             .build(),
+    };
+
+    let importance_queries = match match_type {
+        MatchType::Prefix => {
+            let admin_importance_query = Query::build_function_score()
+                .with_query(Query::build_term("_type", Admin::doc_type()).build())
+                .with_functions(vec![
+                    Function::build_field_value_factor("weight")
+                        .with_factor(1e6)
+                        .with_modifier(Modifier::Log1p)
+                        .with_missing(0.)
+                        .build(),
+                    Function::build_weight(0.03).build(),
+                ])
+                .with_boost_mode(BoostMode::Replace)
+                .build();
+            vec![importance_query, admin_importance_query]
+        }
+        MatchType::Fuzzy => vec![importance_query],
     };
 
     // filter to handle house number
@@ -268,11 +285,16 @@ fn build_query<'a>(
     }
 
     if let Some(s) = shape {
-        filters.push(Query::build_geo_polygon("coord", s).build());
+        filters.push(
+            Query::build_geo_shape("approx_coord")
+                .with_geojson(s)
+                .build(),
+        );
     }
 
     let mut query = Query::build_bool()
-        .with_must(vec![type_query, string_query, importance_query])
+        .with_must(vec![type_query, string_query])
+        .with_should(importance_queries)
         .with_filter(Query::build_bool().with_must(filters).build());
 
     if !zone_types.is_empty() {
@@ -312,7 +334,7 @@ fn query(
     offset: u64,
     limit: u64,
     coord: &Option<Coord>,
-    shape: Option<Vec<rs_es::units::Location>>,
+    shape: Option<Geometry>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
@@ -392,9 +414,7 @@ pub fn features(
     let filter = Query::build_bool().with_must(filters).build();
     let query = Query::build_bool().with_filter(filter).build();
 
-    let mut client = rs_es::Client::new(cnx).unwrap();
-    client.set_read_timeout(timeout);
-    client.set_write_timeout(timeout);
+    let mut client = rs_es::Client::init_with_timeout(cnx, timeout).unwrap();
 
     let indexes = get_indexes(all_data, &pt_datasets, &[]);
     let indexes = indexes
@@ -449,19 +469,13 @@ pub fn autocomplete(
     limit: u64,
     coord: Option<Coord>,
     cnx: &str,
-    shape: Option<Vec<(f64, f64)>>,
+    shape: Option<Geometry>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
-    fn make_shape(shape: &Option<Vec<(f64, f64)>>) -> Option<Vec<rs_es::units::Location>> {
-        shape
-            .as_ref()
-            .map(|v| v.iter().map(|&l| l.into()).collect())
-    }
-
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
         return Err(BragiError::InvalidParam(
@@ -474,9 +488,7 @@ pub fn autocomplete(
         ));
     }
 
-    let mut client = rs_es::Client::new(cnx).unwrap();
-    client.set_read_timeout(timeout);
-    client.set_write_timeout(timeout);
+    let mut client = rs_es::Client::init_with_timeout(cnx, timeout).unwrap();
 
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
@@ -489,7 +501,7 @@ pub fn autocomplete(
         offset,
         limit,
         &coord,
-        make_shape(&shape),
+        shape.clone(),
         &types,
         &zone_types,
         &poi_types,
@@ -507,7 +519,7 @@ pub fn autocomplete(
             offset,
             limit,
             &coord,
-            make_shape(&shape),
+            shape,
             &types,
             &zone_types,
             &poi_types,

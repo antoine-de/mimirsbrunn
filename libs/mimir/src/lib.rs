@@ -29,8 +29,6 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;
@@ -41,10 +39,9 @@ pub mod objects;
 pub mod rubber;
 
 pub use crate::objects::*;
-use std::env;
-
 use slog::Drain;
 use slog::Never;
+use std::env;
 
 pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {
     if let Ok(s) = env::var("RUST_LOG_JSON") {
