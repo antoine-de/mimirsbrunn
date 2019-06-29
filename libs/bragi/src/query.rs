@@ -120,10 +120,10 @@ fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
         .with_functions(vec![
             DecayOptions::new(
                 rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                rs_u::Distance::new(1000f64, rs_u::DistanceUnit::Kilometer),
+                rs_u::Distance::new(130f64, rs_u::DistanceUnit::Kilometer),
             )
-            .with_offset(rs_u::Distance::new(350f64, rs_u::DistanceUnit::Kilometer))
-            .with_decay(0.5f64)
+            .with_offset(rs_u::Distance::new(20f64, rs_u::DistanceUnit::Kilometer))
+            .with_decay(0.4f64)
             .build("coord")
             .build_exp(),
             Function::build_weight(weight).build(),
@@ -215,12 +215,21 @@ fn build_query<'a>(
         .with_boost(1.)
         .build();
 
+    let mut admin_weight = 0.03;
+
     // Priorization by importance
     let mut importance_queries = if let Some(ref coord) = coord {
-        vec![
-            build_with_weight(0.5),
-            build_proximity_with_boost(coord, 0.4),
-        ]
+        if let MatchType::Fuzzy = match_type {
+            vec![
+                build_with_weight(0.15),
+                build_proximity_with_boost(coord, 0.4),
+            ]
+        } else {
+            vec![
+                build_with_weight(0.5),
+                build_proximity_with_boost(coord, 0.4),
+            ]
+        }
     } else {
         vec![build_with_weight(None)]
     };
@@ -235,7 +244,7 @@ fn build_query<'a>(
                         .with_modifier(Modifier::Log1p)
                         .with_missing(0.)
                         .build(),
-                    Function::build_weight(0.03).build(),
+                    Function::build_weight(admin_weight).build(),
                 ])
                 .with_boost_mode(BoostMode::Replace)
                 .build();
@@ -279,9 +288,9 @@ fn build_query<'a>(
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
         MatchType::Fuzzy => Query::build_match("full_label.ngram".to_string(), q.to_string())
             .with_minimum_should_match(MinimumShouldMatch::from(vec![
-                CombinationMinimumShouldMatch::new(1i64, 75f64),
-                CombinationMinimumShouldMatch::new(6i64, 60f64),
-                CombinationMinimumShouldMatch::new(9i64, 40f64),
+                CombinationMinimumShouldMatch::new(1i64, -1i64),
+                CombinationMinimumShouldMatch::new(4i64, -3i64),
+                CombinationMinimumShouldMatch::new(20i64, 15f64),
             ]))
             .build(),
     };
