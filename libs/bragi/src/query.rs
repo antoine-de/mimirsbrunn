@@ -120,9 +120,9 @@ fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
         .with_functions(vec![
             DecayOptions::new(
                 rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                rs_u::Distance::new(1000f64, rs_u::DistanceUnit::Kilometer),
+                rs_u::Distance::new(100f64, rs_u::DistanceUnit::Kilometer),
             )
-            .with_offset(rs_u::Distance::new(350f64, rs_u::DistanceUnit::Kilometer))
+            .with_offset(rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer))
             .with_decay(0.5f64)
             .build("coord")
             .build_exp(),
