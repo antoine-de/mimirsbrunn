@@ -48,6 +48,20 @@ impl<'a> ElasticSearchWrapper<'a> {
         es_wrapper
     }
 
+    /// count the number of documents in the index
+    /// If you want to count eg the number of POI, you would call
+    /// es_wrapper.count("_type:POI")
+    pub fn count(&self, word: &str) -> u64 {
+        info!("counting documents with munin/_count?q={}", word);
+        let mut res = self
+            .rubber
+            .get(&format!("munin/_count?q={}", word))
+            .unwrap();
+        assert!(res.status() == reqwest::StatusCode::OK);
+        let json: serde_json::Value = res.json().unwrap();
+        json["count"].as_u64().unwrap()
+    }
+
     /// simple search on an index
     /// assert that the result is OK and transform it to a json Value
     pub fn search(&self, word: &str) -> serde_json::Value {

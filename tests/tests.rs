@@ -50,12 +50,13 @@ mod cosmogony2mimir_test;
 mod openaddresses2mimir_test;
 mod osm2mimir_bano2mimir_test;
 mod osm2mimir_test;
+mod poi2mimir_test;
 mod rubber_test;
 mod stops2mimir_test;
 
-use actix_web::client::ClientResponse;
+//use actix_web::client::ClientResponse;
 use docker_wrapper::*;
-use failure::{format_err, Error};
+//use failure::{format_err, Error};
 use serde_json::value::Value;
 use serde_json::Map;
 use std::process::Command;
@@ -136,6 +137,7 @@ fn all_tests() {
     osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(ElasticSearchWrapper::new(
         &docker_wrapper,
     ));
+    poi2mimir_test::poi2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_zero_downtime_test(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_custom_id(ElasticSearchWrapper::new(&docker_wrapper));
     rubber_test::rubber_ghost_index_cleanup(ElasticSearchWrapper::new(&docker_wrapper));
