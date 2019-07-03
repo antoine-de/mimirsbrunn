@@ -123,7 +123,7 @@ fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
                 rs_u::Distance::new(100f64, rs_u::DistanceUnit::Kilometer),
             )
             .with_offset(rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer))
-            .with_decay(0.5f64)
+            .with_decay(0.4f64)
             .build("coord")
             .build_exp(),
             Function::build_weight(weight).build(),
