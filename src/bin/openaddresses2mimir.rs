@@ -39,7 +39,6 @@ use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -223,12 +222,26 @@ fn run(args: Args) -> Result<(), failure::Error> {
         nb_replicas: args.nb_replicas,
     };
     if args.input.is_dir() {
-        let paths: std::fs::ReadDir = fs::read_dir(&args.input)?;
+        let paths = walkdir::WalkDir::new(&args.input);
+        let path_iter = paths
+            .into_iter()
+            .map(|p| p.unwrap().into_path())
+            .filter(|p| {
+                let f = p
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e == "csv")
+                    .unwrap_or(false);
+                if !f {
+                    info!("skipping file {} as it is not a csv", p.display());
+                }
+                f
+            });
         index_oa(
             &args.connection_string,
             &args.dataset,
             index_settings,
-            paths.map(|p| p.unwrap().path()),
+            path_iter,
             args.nb_threads,
             args.use_old_index_format,
         )
