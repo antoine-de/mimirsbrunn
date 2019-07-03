@@ -111,6 +111,9 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         .filter(|adm| adm.is_city())
         .any(|adm| adm.name == "Livry-sur-Seine"));
 
+    // If the POI has a city admin, then its weight is that of the city (or at least != 0.0)
+    assert_ne!(res[0].poi().unwrap().weight, 0.0);
+
     // We test the opposite of the previous case: a POI that is far from any address
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Station Bellecour", |_| true)

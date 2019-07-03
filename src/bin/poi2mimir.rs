@@ -50,7 +50,7 @@ lazy_static! {
 
 // This function takes a Poi from the navitia model, ie from the CSV deserialization, and returns
 // a Poi from the mimir model, with all the contextual information added.
-fn enrich_poi(
+fn into_mimir_poi(
     poi: NavitiaPoi,
     poi_types: &HashMap<String, NavitiaPoiType>,
     rubber: &mut Rubber,
@@ -71,6 +71,14 @@ fn enrich_poi(
 
     let admins = place.map_or_else(|| Vec::new(), |addr| addr.admins());
 
+    // The weight is that of the city, or 0.0 if there is no such admin.
+    let weight: f64 = admins
+        .iter()
+        .filter(|adm| adm.is_city())
+        .map(|adm| adm.weight)
+        .next()
+        .unwrap_or_else(|| 0.0);
+
     let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
 
     let label =
@@ -83,7 +91,7 @@ fn enrich_poi(
         coord: coord.clone(),
         approx_coord: Some(coord.into()),
         administrative_regions: admins,
-        weight: 0.0,
+        weight: weight,
         zip_codes: vec![],
         poi_type: poi_type,
         properties: poi
@@ -112,15 +120,18 @@ where
     info!("Add data in elasticsearch db.");
 
     let model = NavitiaModel::try_from_path(file)?;
-    let poi_types = model.poi_types.clone();
+    let poi_types = model.poi_types;
 
     // Note: We're ignoring those POIs that fail to be enriched.
     let pois: Vec<_> = model
         .pois
         .into_iter()
-        .map(|(_, poi)| enrich_poi(poi, &poi_types, rubber))
-        .filter_map(|rp| rp.map_err(|err| warn!("Could not add POI: {}", err)).ok())
-        .collect(); // TODO Can we get rid of collect?
+        .filter_map(|(id, poi)| {
+            into_mimir_poi(poi, &poi_types, rubber)
+                .map_err(|err| warn!("Could not extract information for POI '{}': {}", id, err))
+                .ok()
+        })
+        .collect(); // TODO Can we get rid of collect, and chain with the following rubber...?
 
     let count = rubber
         .bulk_index(&index, pois.into_iter())
