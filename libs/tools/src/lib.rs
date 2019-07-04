@@ -9,7 +9,7 @@ extern crate slog;
 extern crate slog_scope;
 
 pub struct ElasticSearchWrapper<'a> {
-    docker_wrapper: &'a DockerWrapper,
+    pub docker_wrapper: &'a DockerWrapper,
     pub rubber: mimir::rubber::Rubber,
 }
 
@@ -146,7 +146,7 @@ impl<'a> ElasticSearchWrapper<'a> {
 }
 
 pub struct BragiHandler {
-    app: actix_web::test::TestServer,
+    pub app: actix_web::test::TestServer,
 }
 
 impl BragiHandler {
