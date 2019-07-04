@@ -17,7 +17,7 @@ pub fn reverse(
     params: BragiQuery<Params>,
     state: State<Context>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
-    let mut rubber = state.get_rubber(params.timeout.map(Duration::from_millis));
+    let mut rubber = state.get_rubber_for_reverse(params.timeout.map(Duration::from_millis));
     let coord = params::make_coord(params.lon, params.lat)?;
     rubber
         .get_address(&coord)

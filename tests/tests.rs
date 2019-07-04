@@ -214,9 +214,10 @@ pub struct BragiHandler {
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
         let make_server = move || {
-            bragi::server::create_server(bragi::Context {
-                rubber: mimir::rubber::Rubber::new(&url),
-            })
+            bragi::server::create_server(bragi::Context::from(&bragi::Args {
+                connection_string: url.clone(),
+                ..Default::default()
+            }))
         };
 
         BragiHandler {

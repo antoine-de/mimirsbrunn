@@ -262,26 +262,6 @@ impl Rubber {
         }
     }
 
-    /// Clone rubber and change the timeout
-    /// Note: the timeout cannot be increased, it can only be reduced
-    /// (to protect bragi agains malicius use)
-    /// The first given timeout is thus an upper bound
-    pub fn clone_with_timeout(&self, timeout: Option<time::Duration>) -> Rubber {
-        // the timeout is the min between the timeout set at startup time and at query time
-        let timeout = timeout
-            .clone()
-            .map(|t| match self.timeout {
-                Some(dt) => t.min(dt),
-                None => t,
-            })
-            .or_else(|| self.timeout.clone());
-
-        let mut new_rubber = self.clone();
-        new_rubber.es_client.set_timeout(timeout);
-        new_rubber.http_client.timeout(timeout);
-        new_rubber
-    }
-
     pub fn get(&self, path: &str) -> Result<reqwest::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a get on {}", path);

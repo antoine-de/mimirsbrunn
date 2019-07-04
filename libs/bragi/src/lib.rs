@@ -49,11 +49,11 @@ lazy_static::lazy_static! {
     static ref BRAGI_NB_THREADS: String = (8 * ::num_cpus::get()).to_string();
 }
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(StructOpt, Debug, Clone, Default)]
 pub struct Args {
     /// Address to bind.
     #[structopt(short = "b", long = "bind", default_value = "127.0.0.1:4000")]
-    bind: String,
+    pub bind: String,
     /// Elasticsearch parameters, override BRAGI_ES environment variable.
     #[structopt(
         short = "c",
@@ -61,7 +61,7 @@ pub struct Args {
         default_value = "http://localhost:9200/munin",
         env = "BRAGI_ES"
     )]
-    connection_string: String,
+    pub connection_string: String,
     /// Number of threads used to serve http requests, override BRAGI_NB_THREADS environment variable.
     #[structopt(
         short = "t",
@@ -69,30 +69,94 @@ pub struct Args {
         raw(default_value = "&BRAGI_NB_THREADS"),
         env = "BRAGI_NB_THREADS"
     )]
-    nb_threads: usize,
+    pub nb_threads: usize,
     /// Default Max timeout in ms on ES connection.
     /// This timeout is both a network timeout and a timeout given to ES.
     #[structopt(short = "e", long = "max-es-timeout", env = "BRAGI_MAX_ES_TIMEOUT")]
-    max_es_timeout: Option<u64>,
+    pub max_es_timeout: Option<u64>,
+
+    /// Custom timeout for the /reverse
+    /// this is bounded by `max_es_timeout` and is used because for the moment we cannot easily change the timeout of a given rubber
+    #[structopt(long = "max-es-reverse-timeout", env = "BRAGI_MAX_ES_REVERSE_TIMEOUT")]
+    pub max_es_reverse_timeout: Option<u64>,
+    /// Custom timeout for the /autocomplete
+    /// this is bounded by `max_es_timeout` and is used because for the moment we cannot easily change the timeout of a given rubber
+    #[structopt(
+        long = "max-es-autocomplete-timeout",
+        env = "BRAGI_MAX_ES_AUTOCOMPLETE_TIMEOUT"
+    )]
+    pub max_es_autocomplete_timeout: Option<u64>,
+    /// Custom timeout for the /features
+    /// this is bounded by `max_es_timeout` and is used because for the moment we cannot easily change the timeout of a given rubber
+    #[structopt(
+        long = "max-es-features-timeout",
+        env = "BRAGI_MAX_ES_FEATURES_TIMEOUT"
+    )]
+    pub max_es_features_timeout: Option<u64>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Context {
-    pub rubber: Rubber,
+    reverse_rubber: Rubber,
+    features_rubber: Rubber,
+    autocomplete_rubber: Rubber,
+    pub cnx_string: String,
+    // pub rubber: Rubber,
 }
 
 impl From<&Args> for Context {
     fn from(args: &Args) -> Self {
         let max_es_timeout = args.max_es_timeout.map(Duration::from_millis);
+
+        // the timeout is the min between the timeout set at startup time and at query time
+        let bounded_timeout = |specific_timeout: Option<u64>| {
+            specific_timeout
+                .map(Duration::from_millis)
+                .map(|t| match max_es_timeout {
+                    Some(dt) => t.min(dt),
+                    None => t,
+                })
+                .or_else(|| max_es_timeout.clone())
+        };
+
         Self {
-            rubber: Rubber::new_with_timeout(&args.connection_string, max_es_timeout.clone()),
+            reverse_rubber: Rubber::new_with_timeout(
+                &args.connection_string,
+                bounded_timeout(args.max_es_reverse_timeout),
+            ),
+            features_rubber: Rubber::new_with_timeout(
+                &args.connection_string,
+                bounded_timeout(args.max_es_features_timeout),
+            ),
+            autocomplete_rubber: Rubber::new_with_timeout(
+                &args.connection_string,
+                bounded_timeout(args.max_es_autocomplete_timeout),
+            ),
+            cnx_string: args.connection_string.clone(),
         }
     }
 }
 
 impl Context {
-    pub fn get_rubber(&self, timeout: Option<Duration>) -> Rubber {
+    pub fn get_rubber_for_reverse(&self, timeout: Option<Duration>) -> Rubber {
+        clone_or_create(&self.reverse_rubber, timeout)
+    }
+    pub fn get_rubber_for_features(&self, timeout: Option<Duration>) -> Rubber {
+        clone_or_create(&self.features_rubber, timeout)
+    }
+    pub fn get_rubber_for_autocomplete(&self, timeout: Option<Duration>) -> Rubber {
+        clone_or_create(&self.autocomplete_rubber, timeout)
+    }
+}
+
+fn clone_or_create(rubber: &Rubber, timeout: Option<Duration>) -> Rubber {
+    if rubber.timeout == timeout {
         // we clone the rs_es_client, reusing the reqwest connection pool
-        self.rubber.clone_with_timeout(timeout)
+        rubber.clone()
+    } else {
+        // if the timeout is different, since there as no easy way to change the timeout for the moment
+        // we build a new Rubber (and thus a new connection)
+        debug!("creating a new rubber for timeout {:?}", &timeout);
+        Rubber::new_with_timeout(&rubber.cnx_string, timeout)
     }
 }

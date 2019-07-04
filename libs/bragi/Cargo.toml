@@ -8,8 +8,7 @@ edition = "2018"
 structopt = "0.2"
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4.0"
-rs-es = {path = "/home/antoine/dev/bin/rs-es", features = ["geo"]}
-#rs-es = {version = "^0.11.4", features = ["geo"]}
+rs-es = { git = "https://github.com/antoine-de/rs-es.git", branch = "clonable_client", version = "^0.11.4", features = ["geo"]}
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
 geojson = "0.15"

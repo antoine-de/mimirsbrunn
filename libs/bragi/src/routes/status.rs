@@ -12,7 +12,7 @@ pub struct Status {
 pub fn status(state: State<Context>) -> Json<Status> {
     Json(Status {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        es: state.rubber.cnx_string.clone(),
+        es: state.cnx_string.clone(),
         status: "good".to_string(),
     })
 }

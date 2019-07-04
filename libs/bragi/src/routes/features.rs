@@ -19,7 +19,7 @@ pub fn features(
     state: State<Context>,
     id: Path<String>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
-    let rubber = state.get_rubber(params.timeout.map(Duration::from_millis));
+    let rubber = state.get_rubber_for_features(params.timeout.map(Duration::from_millis));
     let features = query::features(
         &params
             .pt_dataset
