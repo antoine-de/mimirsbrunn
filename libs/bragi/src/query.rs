@@ -31,7 +31,7 @@ use super::model::{self, BragiError};
 use geojson::Geometry;
 use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
-use mimir::rubber::{get_indexes, read_places};
+use mimir::rubber::{get_indexes, read_places, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
 use rs_es::error::EsError;
@@ -42,7 +42,7 @@ use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
 use serde_json;
-use std::{fmt, iter, time};
+use std::{fmt, iter};
 
 lazy_static::lazy_static! {
     static ref ES_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
@@ -329,7 +329,7 @@ fn query(
     q: &str,
     pt_datasets: &[&str],
     all_data: bool,
-    client: &mut rs_es::Client,
+    rubber: &mut Rubber,
     match_type: MatchType,
     offset: u64,
     limit: u64,
@@ -339,7 +339,6 @@ fn query(
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
-    timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
@@ -374,8 +373,8 @@ fn query(
         )
         .ok();
 
-    let timeout = timeout.map(|t| format!("{:?}", t));
-    let mut search_query = client.search_query();
+    let timeout = rubber.timeout.map(|t| format!("{:?}", t));
+    let mut search_query = rubber.es_client.search_query();
 
     let search_query = search_query
         .with_ignore_unavailable(true)
@@ -400,9 +399,8 @@ fn query(
 pub fn features(
     pt_datasets: &[&str],
     all_data: bool,
-    cnx: &str,
     id: &str,
-    timeout: Option<time::Duration>,
+    mut rubber: Rubber,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     let val = rs_es::units::JsonVal::String(id.into());
     let mut filters = vec![Query::build_ids(vec![val]).build()];
@@ -413,8 +411,6 @@ pub fn features(
     }
     let filter = Query::build_bool().with_must(filters).build();
     let query = Query::build_bool().with_filter(filter).build();
-
-    let mut client = rs_es::Client::init_with_timeout(cnx, timeout).unwrap();
 
     let indexes = get_indexes(all_data, &pt_datasets, &[]);
     let indexes = indexes
@@ -438,8 +434,8 @@ pub fn features(
         )
         .ok();
 
-    let timeout = timeout.map(|t| format!("{:?}", t));
-    let mut search_query = client.search_query();
+    let timeout = rubber.timeout.map(|t| format!("{:?}", t));
+    let mut search_query = rubber.es_client.search_query();
 
     let search_query = search_query
         .with_ignore_unavailable(true)
@@ -468,13 +464,12 @@ pub fn autocomplete(
     offset: u64,
     limit: u64,
     coord: Option<Coord>,
-    cnx: &str,
     shape: Option<Geometry>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
-    timeout: Option<time::Duration>,
+    mut rubber: Rubber,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -488,15 +483,13 @@ pub fn autocomplete(
         ));
     }
 
-    let mut client = rs_es::Client::init_with_timeout(cnx, timeout).unwrap();
-
     // First we try a pretty exact match on the prefix.
     // If there are no results then we do a new fuzzy search (matching ngrams)
     let results = query(
         &q,
         &pt_datasets,
         all_data,
-        &mut client,
+        &mut rubber,
         MatchType::Prefix,
         offset,
         limit,
@@ -506,7 +499,6 @@ pub fn autocomplete(
         &zone_types,
         &poi_types,
         &langs,
-        timeout,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -514,7 +506,7 @@ pub fn autocomplete(
             &q,
             &pt_datasets,
             all_data,
-            &mut client,
+            &mut rubber,
             MatchType::Fuzzy,
             offset,
             limit,
@@ -524,7 +516,6 @@ pub fn autocomplete(
             &zone_types,
             &poi_types,
             &langs,
-            timeout,
         )
         .map_err(model::BragiError::from)
     } else {

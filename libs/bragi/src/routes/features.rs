@@ -1,5 +1,4 @@
 use crate::extractors::BragiQuery;
-use crate::routes::params;
 use crate::{model, model::FromWithLang, query, Context};
 use actix_web::{Json, Path, State};
 use serde::{Deserialize, Serialize};
@@ -20,10 +19,7 @@ pub fn features(
     state: State<Context>,
     id: Path<String>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
-    let timeout = params::get_timeout(
-        &params.timeout.map(Duration::from_millis),
-        &state.max_es_timeout,
-    );
+    let rubber = state.get_rubber_for_features(params.timeout.map(Duration::from_millis));
     let features = query::features(
         &params
             .pt_dataset
@@ -31,9 +27,8 @@ pub fn features(
             .map(String::as_str)
             .collect::<Vec<_>>(),
         params.all_data,
-        &state.es_cnx_string,
         &*id,
-        timeout,
+        rubber,
     );
     features
         .map(|r| model::Autocomplete::from_with_lang(r, None))

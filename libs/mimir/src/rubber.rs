@@ -83,10 +83,14 @@ fn check_response(resp: reqwest::Response) -> Result<reqwest::Response, EsError>
 }
 
 // Rubber is an wrapper around elasticsearch API
+#[derive(Clone, Debug)]
 pub struct Rubber {
-    es_client: rs_es::Client,
+    pub es_client: rs_es::Client,
     // some operation are not implemented in rs_es, we need to use a raw http client
     http_client: reqwest::Client,
+    // Note: The timeout is used for the http client AND for the ES internal query
+    pub timeout: Option<time::Duration>,
+    pub cnx_string: String,
 }
 
 #[derive(Clone, Debug)]
@@ -244,6 +248,8 @@ impl Rubber {
         Rubber {
             es_client: rs_es::Client::init(&cnx).unwrap(),
             http_client: reqwest::Client::new(),
+            timeout: None,
+            cnx_string: cnx.to_owned(),
         }
     }
 
@@ -251,6 +257,8 @@ impl Rubber {
         Rubber {
             es_client: rs_es::Client::init_with_timeout(&cnx, timeout).unwrap(),
             http_client: reqwest::Client::builder().timeout(timeout).build().unwrap(),
+            cnx_string: cnx.to_owned(),
+            timeout,
         }
     }
 
@@ -426,11 +434,7 @@ impl Rubber {
             .collect())
     }
 
-    pub fn get_address(
-        &mut self,
-        coord: &Coord,
-        timeout: Option<time::Duration>,
-    ) -> Result<Vec<Place>, EsError> {
+    pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
         let types = vec!["house".into(), "street".into()];
         let indexes = get_indexes(false, &[], &types);
         let indexes = indexes
@@ -448,7 +452,7 @@ impl Rubber {
 
         let timer = ES_REQ_HISTOGRAM.start_timer();
 
-        let timeout = timeout.map(|t| format!("{:?}", t));
+        let timeout = self.timeout.map(|t| format!("{:?}", t));
         let mut search_query = self.es_client.search_query();
 
         let search_query = search_query

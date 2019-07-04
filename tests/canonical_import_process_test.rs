@@ -43,7 +43,7 @@ use std::path::Path;
 /// then openaddress (or bano),
 /// then osm (without any admins)
 pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let mut bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
     let out_dir = Path::new(env!("OUT_DIR"));
 
     let cosmogony2mimir = out_dir
