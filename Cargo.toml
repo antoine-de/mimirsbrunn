@@ -46,8 +46,8 @@ path = "libs/bragi"
 path = "libs/mimir"
 
 [dev-dependencies]
-#reqwest = "0.9"
-reqwest = { path = "/home/antoine/dev/bin/reqwest" }
+reqwest = "0.9"
+#reqwest = { path = "/home/antoine/dev/bin/reqwest" }
 approx = "0.2.0"
 actix-web = "0.7"
 
@@ -60,3 +60,9 @@ git-version = "0.2"
 # we just call one test method: cf. tests::all_tests()
 [[test]]
 name = "tests"
+
+#[patch.crates-io]
+#reqwest = { path = "/home/antoine/dev/bin/reqwest" }
+
+[replace]
+"reqwest:0.9.16" = { path = "/home/antoine/dev/bin/reqwest" }

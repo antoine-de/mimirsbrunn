@@ -17,8 +17,8 @@ rs-es = {path = "/home/antoine/dev/bin/rs-es", features = ["geo"]}
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
 chrono = "0.4"
-#reqwest = "0.9"
-reqwest = { path = "/home/antoine/dev/bin/reqwest" }
+reqwest = "0.9"
+#reqwest = { path = "/home/antoine/dev/bin/reqwest" }
 geo = "0.12"
 geo-types = "0.4"
 geojson = "0.15"
