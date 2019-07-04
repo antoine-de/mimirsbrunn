@@ -45,6 +45,9 @@ path = "libs/bragi"
 [dependencies.mimir]
 path = "libs/mimir"
 
+[dev-dependencies.tools]
+path = "libs/tools"
+
 [dev-dependencies]
 reqwest = "0.9"
 approx = "0.2.0"
