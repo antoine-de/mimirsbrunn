@@ -1,5 +1,5 @@
 use crate::Context;
-use actix_web::{Json, State};
+use actix_web::web::{Data, Json};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -9,7 +9,7 @@ pub struct Status {
     pub status: String,
 }
 
-pub fn status(state: State<Context>) -> Json<Status> {
+pub fn status(state: Data<Context>) -> Json<Status> {
     Json(Status {
         version: env!("CARGO_PKG_VERSION").to_string(),
         es: state.cnx_string.clone(),

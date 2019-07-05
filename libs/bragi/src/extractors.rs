@@ -6,8 +6,7 @@
 /// Note: we use serde_qs instead of the actix's default serde_urlencoded because serde_qs is more flexible
 /// (cf https://github.com/nox/serde_urlencoded/issues/6)
 use crate::model::ApiError;
-use actix_web::FromRequest;
-use actix_web::HttpRequest;
+use actix_web::{dev::Payload, FromRequest, HttpRequest};
 use std::ops::{Deref, DerefMut};
 
 #[derive(Fail, Debug)]
@@ -57,15 +56,16 @@ impl<T> DerefMut for BragiQuery<T> {
     }
 }
 
-impl<T, S> FromRequest<S> for BragiQuery<T>
+impl<T> FromRequest for BragiQuery<T>
 where
     T: serde::de::DeserializeOwned,
 {
-    type Config = actix_web::dev::QueryConfig<S>;
-    type Result = Result<Self, ActixError>;
+    type Error = ActixError;
+    type Future = Result<Self, ActixError>;
+    type Config = ();
 
     #[inline]
-    fn from_request(req: &HttpRequest<S>, _cfg: &Self::Config) -> Self::Result {
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
         // Note: we need a non strict serde_qs to be able to parse the %5B / %5D as '[' / ']'
         serde_qs::Config::new(5, false)
             .deserialize_str(req.query_string())

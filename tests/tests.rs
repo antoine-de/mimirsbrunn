@@ -208,32 +208,38 @@ fn launch_and_assert(
 }
 
 pub struct BragiHandler {
-    app: actix_web::test::TestServer,
+    app: actix_http_test::TestServerRuntime
 }
 
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
-        let make_server = move || {
-            bragi::server::create_server(bragi::Context::from(&bragi::Args {
-                connection_string: url.clone(),
-                ..Default::default()
-            }))
-        };
+        let ctx = bragi::Context::from(&bragi::Args {
+            connection_string: url.clone(),
+            ..Default::default()
+        });
 
+        let prometheus = actix_web_prom::PrometheusMetrics::new("api", "/metrics"); //TODO don't forget to add in_flight queries
+        let app = actix_web::App::new()
+            .data(ctx.clone())
+            .wrap(actix_cors::Cors::new().allowed_methods(vec!["GET"]))
+            .wrap(prometheus.clone())
+            // .wrap(prometheus_middleware::PrometheusMiddleware::default())
+            .wrap(actix_web::middleware::Logger::default())
+            .configure(bragi::server::configure_server)
+            .default_service(
+                actix_web::web::resource("")
+                    .route(actix_web::web::get().to(bragi::server::default_404)),
+            );
+
+        let bob: actix_http_test::TestServerRuntime = actix_web::test::init_service(app);
         BragiHandler {
-            app: actix_web::test::TestServer::with_factory(make_server),
+            app: bob,
         }
     }
 
     pub fn raw_get(&mut self, q: &str) -> Result<ClientResponse, Error> {
-        self.app
-            .execute(
-                self.app
-                    .client(actix_web::http::Method::GET, q)
-                    .finish()
-                    .map_err(|e| format_err!("invalid query: {}", e))?
-                    .send(),
-            )
+        let req = actix_web::test::TestRequest::get().uri(q).to_request();
+        actix_web::test::block_on(self.app.call(req))
             .map_err(|e| format_err!("impossible to query bragi: {}", e))
     }
 
@@ -262,7 +268,7 @@ impl BragiHandler {
         self.app
             .execute(
                 self.app
-                    .client(actix_web::http::Method::POST, q)
+                    .post(q)
                     .header(actix_web::http::header::CONTENT_TYPE, "application/json")
                     .body(shape)
                     .map_err(|e| format_err!("invalid query: {}", e))?
@@ -278,7 +284,7 @@ impl BragiHandler {
 
     pub fn to_json(&mut self, r: ClientResponse) -> Value {
         use actix_web::HttpMessage;
-        let bytes = self.app.execute(r.body()).unwrap();
+        let bytes = self.app.execute(r.send_body()).unwrap();
         let body = std::str::from_utf8(&bytes).unwrap();
         serde_json::from_str(body).unwrap()
     }
