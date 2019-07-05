@@ -55,11 +55,11 @@ mod stops2mimir_test;
 
 use actix_web::client::ClientResponse;
 use docker_wrapper::*;
-use tools::*;
 use failure::{format_err, Error};
 use serde_json::value::Value;
 use serde_json::Map;
 use std::process::Command;
+use tools::*;
 
 fn launch_and_assert(
     cmd: &str,

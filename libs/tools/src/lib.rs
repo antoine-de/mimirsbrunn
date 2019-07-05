@@ -1,8 +1,8 @@
 use actix_web::client::ClientResponse;
+use docker_wrapper::*;
 use failure::{format_err, Error};
 use serde_json::value::Value;
 use serde_json::Map;
-use docker_wrapper::*;
 #[macro_use]
 extern crate slog;
 #[macro_use]
