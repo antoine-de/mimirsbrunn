@@ -69,7 +69,7 @@ fn status_test(bragi: &mut BragiHandler) {
 
 fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
     assert_eq!(
-        bragi.get_json("/autocomplete?q=15 Rue Hector Malot, (Paris)"),
+        bragi.get_json("/autocomplete?q=15 Rue Hector Malot (Paris)"),
         json!(
         {
             "features": [
@@ -129,15 +129,9 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
     let shape = r#"{"shape":{"type":"Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates":[[[2.376488, 48.846431],
         [2.376306, 48.846430],[2.376309, 48.846606],[2.376486, 48.846603], [2.376488, 48.846431]]]}}}"#;
-    let r = bragi
-        .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
-        .unwrap();
-
-    assert!(r.status().is_success(), "invalid status: {}", r.status());
-    let json_resp = bragi.to_json(r);
-
+    let r = bragi.post_as_json("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape);
     assert_eq!(
-        json_resp,
+        r,
         json!({
           "type": "FeatureCollection",
           "geocoding": {
@@ -176,14 +170,9 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
     );
 
     // Search with shape where house number out of shape
-    let r = bragi
-        .raw_post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape)
-        .unwrap();
-    assert!(r.status().is_success(), "invalid status: {}", r.status());
-    let json_resp = bragi.to_json(r);
-
+    let r = bragi.post_as_json("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape);
     assert_eq!(
-        json_resp,
+        r,
         json!({
           "type": "FeatureCollection",
           "geocoding": {

@@ -1,5 +1,4 @@
-use crate::Context;
-use actix_web::{HttpRequest, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder};
 use prometheus;
 use prometheus::Encoder;
 use serde::{Deserialize, Serialize};
@@ -9,7 +8,7 @@ pub struct EndPoint {
     pub description: String,
 }
 
-pub fn metrics(_r: &HttpRequest<Context>) -> impl Responder {
+pub fn metrics() -> impl Responder {
     let encoder = prometheus::TextEncoder::new();
     let metric_familys = prometheus::gather();
     let mut buffer = vec![];

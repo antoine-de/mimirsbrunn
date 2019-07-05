@@ -7,11 +7,18 @@ edition = "2018"
 [dependencies]
 reqwest = "=0.9.16"
 failure = "0.1"
-actix = "0.7"
 serde_json = "1"
-actix-web = "0.7"
 slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4.0"
+actix-http-test = "0.2"
+actix-http = "0.2"
+actix-web = "1"
+actix-cors = "0.1"
+actix-web-prom = "0.1.2"
+actix-service = "0.4"
+futures = "0.1"
+bytes = "0.4"
+url = "1"
 
 [dependencies.bragi]
 path = "../bragi"

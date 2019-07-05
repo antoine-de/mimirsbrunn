@@ -30,6 +30,7 @@
 
 use super::get_value;
 use super::BragiHandler;
+use serde_json::json;
 use std::path::Path;
 
 pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
@@ -245,24 +246,24 @@ fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &mut BragiHan
 
 fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &mut BragiHandler) {
     //no pt_dataset: no chocolate
-    let response = bragi
-        .raw_get("/features/stop_area:SA:known_by_all_dataset")
-        .unwrap();
-    assert_eq!(response.status(), actix_web::http::StatusCode::NOT_FOUND);
+    assert_eq!(
+        bragi.get_status("/features/stop_area:SA:known_by_all_dataset"),
+        actix_web::http::StatusCode::NOT_FOUND
+    );
 
     //wrong pt_dataset
-    let response = bragi
-        .raw_get("/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette")
-        .unwrap();
-    assert_eq!(response.status(), actix_web::http::StatusCode::NOT_FOUND);
+    assert_eq!(
+        bragi.get_status("/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette"),
+        actix_web::http::StatusCode::NOT_FOUND
+    );
 
     //wrong pt_datasets
-    let response = bragi
-        .raw_get(
+    assert_eq!(
+        bragi.get_status(
             "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette&pt_dataset[]=bobito",
-        )
-        .unwrap();
-    assert_eq!(response.status(), actix_web::http::StatusCode::NOT_FOUND);
+        ),
+        actix_web::http::StatusCode::NOT_FOUND
+    );
 
     //one matching dataset, we hit the global one
     let response = bragi.get(
@@ -355,33 +356,22 @@ fn distance_test(bragi: &mut BragiHandler) {
 
     // with input coord
     {
-        let response = bragi
-            .raw_get("/autocomplete?q=14 juillet&_all_data=true&lat=48.526578&lon=2.679347")
-            .unwrap();
-        let features = bragi.get_results(response, None);
+        let r =
+            bragi.get_json("/autocomplete?q=14 juillet&_all_data=true&lat=48.526578&lon=2.679347");
+        let features = r.pointer("/features").unwrap().as_array().unwrap();
         assert_eq!(features.len(), 2);
 
-        let feature_first = features.first().unwrap();
-        assert!(feature_first.contains_key("distance"));
-        assert_eq!(feature_first["distance"], 100);
-
-        let feature_second = features.last().unwrap();
-        assert!(feature_second.contains_key("distance"));
-        assert_eq!(feature_second["distance"], 100);
+        assert_eq!(r.pointer("/features/0/distance"), Some(&json!(100)));
+        assert_eq!(r.pointer("/features/1/distance"), Some(&json!(100)));
     }
 
     // without input coord
     {
-        let response = bragi
-            .raw_get("/autocomplete?q=14 juillet&_all_data=true")
-            .unwrap();
-        let features = bragi.get_results(response, None);
+        let r = bragi.get_json("/autocomplete?q=14 juillet&_all_data=true");
+        let features = r.pointer("/features").unwrap().as_array().unwrap();
         assert_eq!(features.len(), 2);
 
-        let feature_first = features.first().unwrap();
-        assert!(!feature_first.contains_key("distance"));
-
-        let feature_second = features.last().unwrap();
-        assert!(!feature_second.contains_key("distance"));
+        assert_eq!(r.pointer("/features/0/distance"), None);
+        assert_eq!(r.pointer("/features/1/distance"), None);
     }
 }

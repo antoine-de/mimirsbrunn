@@ -40,7 +40,7 @@ use structopt::StructOpt;
 
 mod extractors;
 mod model;
-mod prometheus_middleware;
+// mod prometheus_middleware; //TODO add IN_FLIGHT
 pub mod query;
 mod routes;
 pub mod server;
