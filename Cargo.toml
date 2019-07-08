@@ -49,10 +49,13 @@ path = "libs/mimir"
 reqwest = "0.9"
 approx = "0.2.0"
 actix-http-test = "0.2"
+actix-http = "0.2"
 actix-web = "1"
 actix-cors = "0.1"
 actix-web-prom = "0.1.2"
 actix-service = "0.4"
+futures = "0.1"
+bytes = "0.4"
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"

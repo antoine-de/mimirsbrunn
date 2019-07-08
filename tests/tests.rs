@@ -208,7 +208,7 @@ fn launch_and_assert(
 }
 
 pub struct BragiHandler {
-    app: actix_http_test::TestServerRuntime
+    app: actix_http_test::TestServerRuntime,
 }
 
 impl BragiHandler {
@@ -219,28 +219,48 @@ impl BragiHandler {
         });
 
         let prometheus = actix_web_prom::PrometheusMetrics::new("api", "/metrics"); //TODO don't forget to add in_flight queries
-        let app = actix_web::App::new()
-            .data(ctx.clone())
-            .wrap(actix_cors::Cors::new().allowed_methods(vec!["GET"]))
-            .wrap(prometheus.clone())
-            // .wrap(prometheus_middleware::PrometheusMiddleware::default())
-            .wrap(actix_web::middleware::Logger::default())
-            .configure(bragi::server::configure_server)
-            .default_service(
-                actix_web::web::resource("")
-                    .route(actix_web::web::get().to(bragi::server::default_404)),
-            );
+                                                                                   
+                                                                                   
+                                                                                   
+                                                                                    // let app = actix_web::App::new()
+                                                                                    //     .data(ctx.clone())
+                                                                                    //     .wrap(actix_cors::Cors::new().allowed_methods(vec!["GET"]))
+                                                                                    //     .wrap(prometheus.clone())
+                                                                                    //     // .wrap(prometheus_middleware::PrometheusMiddleware::default())
+                                                                                    //     .wrap(actix_web::middleware::Logger::default())
+                                                                                    //     .configure(bragi::server::configure_server)
+                                                                                    //     .default_service(
+                                                                                    //         actix_web::web::resource("")
+                                                                                    //             .route(actix_web::web::get().to(bragi::server::default_404)),
+                                                                                    //     );
 
-        let bob: actix_http_test::TestServerRuntime = actix_web::test::init_service(app);
-        BragiHandler {
-            app: bob,
-        }
+        let srv = actix_http_test::TestServer::new(|| {
+            actix_http::HttpService::new(
+                actix_web::App::new()
+                    .data(ctx.clone())
+                    .wrap(actix_cors::Cors::new().allowed_methods(vec!["GET"]))
+                    .wrap(prometheus.clone())
+                    // .wrap(prometheus_middleware::PrometheusMiddleware::default())
+                    .wrap(actix_web::middleware::Logger::default())
+                    .configure(bragi::server::configure_server)
+                    .default_service(
+                        actix_web::web::resource("")
+                            .route(actix_web::web::get().to(bragi::server::default_404)),
+                    ),
+            )
+        });
+
+        // let bob: actix_http_test::TestServerRuntime = actix_web::test::init_service(app);
+        BragiHandler { app: srv }
     }
 
-    pub fn raw_get(&mut self, q: &str) -> Result<ClientResponse, Error> {
-        let req = actix_web::test::TestRequest::get().uri(q).to_request();
-        actix_web::test::block_on(self.app.call(req))
+    pub fn raw_get(&mut self, q: &str) -> Result<ClientResponse<Box<dyn futures::stream::Stream<Item = bytes::Bytes, Error= actix_http::error::PayloadError>>>, Error>
+     {
+        let req = self.app.get(q);
+        
+        self.app.block_on(req.send())
             .map_err(|e| format_err!("impossible to query bragi: {}", e))
+
     }
 
     pub fn get(&mut self, q: &str) -> Vec<Map<String, Value>> {
