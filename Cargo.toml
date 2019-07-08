@@ -37,8 +37,8 @@ num_cpus = "1.10"
 assert_float_eq = "1"
 humanesort = "0.1.0-alpha"
 address-formatter = "^0.2.1"
+navitia-poi-model = "0.2.0"
 walkdir = "2"
-navitia-poi-model = { git = "https://github.com/CanalTP/tartare-tools" }
 
 [dependencies.bragi]
 path = "libs/bragi"

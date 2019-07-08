@@ -95,32 +95,35 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     );
 
     // Making sure that there are as many POI in ES as there are the input file.
-    assert_eq!(es_wrapper.count("_type:poi"), 4);
+    assert_eq!(es_wrapper.count("_type:poi"), 2);
 
     // We test that the POI that was close to an address has been 'attached' to that address,
     // and inherited its admin and address: (Note that the data have been manipulated to fit)
-    let res: Vec<_> = es_wrapper
-        .search_and_filter("label:Agence Four", |_| true)
-        .collect();
-    assert!(res.len() != 0);
-    assert!(res[0].is_poi());
+    let agence_du_four = es_wrapper
+        .search_and_filter("label:Agence TCL Du Four", |_| true)
+        .filter(|place| place.label().starts_with("Agence TCL Du Four à Chaux"))
+        .next()
+        .unwrap();
+    assert!(agence_du_four.is_poi());
 
-    assert!(res[0]
-        .admins()
-        .iter()
-        .filter(|adm| adm.is_city())
-        .any(|adm| adm.name == "Livry-sur-Seine"));
+    assert_eq!(
+        agence_du_four
+            .admins()
+            .iter()
+            .filter(|adm| adm.is_city())
+            .map(|adm| &adm.name)
+            .collect::<Vec<_>>(),
+        vec!["Livry-sur-Seine"]
+    );
 
     // If the POI has a city admin, then its weight is that of the city (or at least != 0.0)
-    assert_ne!(res[0].poi().unwrap().weight, 0.0);
+    assert_ne!(agence_du_four.poi().unwrap().weight, 0.0);
 
     // We test the opposite of the previous case: a POI that is far from any address
-    let res: Vec<_> = es_wrapper
+    // Currently, this POI should not even be in the index...
+    assert!(es_wrapper
         .search_and_filter("label:Station Bellecour", |_| true)
-        .collect();
-    assert!(res.len() != 0);
-    assert!(res[0].is_poi());
-
-    assert!(res[0].admins().is_empty());
-    assert!(res[0].address().is_none());
+        .filter(|place| place.label().contains("Station Bellecour"))
+        .next()
+        .is_none());
 }

@@ -71,6 +71,10 @@ fn into_mimir_poi(
 
     let admins = place.map_or_else(|| Vec::new(), |addr| addr.admins());
 
+    if admins.is_empty() {
+        return Err(format_err!("Could not find admins for POI {}", &poi.id));
+    }
+
     // The weight is that of the city, or 0.0 if there is no such admin.
     let weight: f64 = admins
         .iter()
@@ -111,8 +115,7 @@ fn into_mimir_poi(
 
 fn import_pois(
     rubber: &mut Rubber,
-    index: TypedIndex<Poi>,
-    dataset: &str,
+    index: &TypedIndex<Poi>,
     file: &PathBuf,
 ) -> Result<(), mimirsbrunn::Error>
 where
@@ -128,7 +131,7 @@ where
         .into_iter()
         .filter_map(|(id, poi)| {
             into_mimir_poi(poi, &poi_types, rubber)
-                .map_err(|err| warn!("Could not extract information for POI '{}': {}", id, err))
+                .map_err(|err| info!("Could not extract information for POI '{}': {}", id, err))
                 .ok()
         })
         .collect(); // TODO Can we get rid of collect, and chain with the following rubber...?
@@ -138,10 +141,6 @@ where
         .map_err(|err| format_err!("Failed bulk insertion {}", err))?;
 
     info!("importing POIs: {} POIs added.", count);
-
-    rubber
-        .publish_index(dataset, index)
-        .map_err(|err| format_err!("Failed to publish index {}.", err))?;
 
     Ok(())
 }
@@ -167,7 +166,11 @@ where
 
     let index = rubber.make_index(dataset, &settings)?;
 
-    import_pois(&mut rubber, index, dataset, file)
+    import_pois(&mut rubber, &index, file)?;
+
+    rubber
+        .publish_index(dataset, index)
+        .map_err(|err| format_err!("Failed to publish index {}.", err))
 }
 
 #[derive(StructOpt, Debug)]
@@ -198,7 +201,7 @@ struct Args {
     nb_threads: usize,
 
     /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "5")]
+    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
     nb_shards: usize,
 
     /// Number of replicas for the es index
