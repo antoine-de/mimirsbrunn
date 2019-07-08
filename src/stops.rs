@@ -29,13 +29,14 @@
 // www.navitia.io
 
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::utils::{format_label, get_zip_codes_from_admins};
+use crate::{labels, utils};
 use failure::format_err;
 use failure::{Error, ResultExt};
 use mimir;
 use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
 use std::collections::HashMap;
 use std::mem::replace;
+use std::ops::Deref;
 use std::sync::Arc;
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
@@ -83,9 +84,14 @@ pub fn import_stops(
 }
 
 fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Arc<mimir::Admin>>) {
+    let admins_iter = admins.iter().map(|a| a.deref());
+    let country_codes = utils::find_country_codes(admins_iter.clone());
+
+    stop.label = labels::format_stop_label(&stop.name, admins_iter, &country_codes);
+    stop.zip_codes = utils::get_zip_codes_from_admins(&admins);
+
+    stop.country_codes = country_codes;
     stop.administrative_regions = admins;
-    stop.label = format_label(&stop.administrative_regions, &stop.name);
-    stop.zip_codes = get_zip_codes_from_admins(&stop.administrative_regions);
 }
 
 /// Attach the stops to administrative regions
@@ -98,7 +104,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     rubber: &mut Rubber,
 ) {
     let admins = rubber.get_all_admins().unwrap_or_else(|_| {
-        info!("Administratives regions not found in elasticsearch db");
+        warn!("Administratives regions not found in elasticsearch db");
         vec![]
     });
 

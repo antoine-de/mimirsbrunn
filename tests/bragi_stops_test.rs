@@ -28,14 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use iron;
-
-use super::get_results;
 use super::get_value;
 use super::BragiHandler;
+use std::path::Path;
 
 pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
+    let out_dir = Path::new(env!("OUT_DIR"));
 
     // ******************************************
     // we import the OSM dataset, three-cities bano dataset and 2 stop files
@@ -45,10 +44,10 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // - stops.txt
     // - stops_dataset2.txt
     // ******************************************
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = out_dir.join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-admin".into(),
             "--level=8".into(),
@@ -57,20 +56,20 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    let stops2mimir = out_dir.join("../../../stops2mimir").display().to_string();
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops.txt".into(),
             "--dataset=dataset1".into(),
             format!("--connection-string={}", es_wrapper.host()),
@@ -78,13 +77,13 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    stop_attached_to_admin_test(&bragi);
-    stop_no_admin_test(&bragi);
+    stop_attached_to_admin_test(&mut bragi);
+    stop_no_admin_test(&mut bragi);
 
-    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    let stops2mimir = out_dir.join("../../../stops2mimir").display().to_string();
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops_dataset2.txt".into(),
             "--dataset=dataset2".into(),
             format!("--connection-string={}", es_wrapper.host()),
@@ -92,15 +91,15 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    stop_filtered_by_dataset_test(&bragi);
-    autocomplete_stop_filtered_by_dataset_transcoverage_test(&bragi);
-    features_stop_filtered_by_dataset_transcoverage_test(&bragi);
-    stop_all_data_test(&bragi);
-    stop_order_by_weight_test(&bragi);
-    distance_test(&bragi);
+    stop_filtered_by_dataset_test(&mut bragi);
+    autocomplete_stop_filtered_by_dataset_transcoverage_test(&mut bragi);
+    features_stop_filtered_by_dataset_transcoverage_test(&mut bragi);
+    stop_all_data_test(&mut bragi);
+    stop_order_by_weight_test(&mut bragi);
+    distance_test(&mut bragi);
 }
 
-fn stop_attached_to_admin_test(bragi: &BragiHandler) {
+fn stop_attached_to_admin_test(bragi: &mut BragiHandler) {
     // with this query we should find only one response, a stop
     let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
     assert_eq!(response.len(), 1);
@@ -122,7 +121,7 @@ fn stop_attached_to_admin_test(bragi: &BragiHandler) {
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 1);
 }
 
-fn stop_no_admin_test(bragi: &BragiHandler) {
+fn stop_no_admin_test(bragi: &mut BragiHandler) {
     // we query another stop, but this one is outside the range of an admin,
     // we should get the stop, but with no admin attached to it
     let response = bragi.get("/autocomplete?q=Far west station&_all_data=true");
@@ -140,7 +139,7 @@ fn stop_no_admin_test(bragi: &BragiHandler) {
     assert_eq!(admins.map(|a| a.len()).unwrap_or(0), 0);
 }
 
-fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
+fn stop_filtered_by_dataset_test(bragi: &mut BragiHandler) {
     // Search stops on all aliases
     let response = bragi.get("/autocomplete?q=14 juillet&_all_data=true");
     assert_eq!(response.len(), 2);
@@ -155,14 +154,14 @@ fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
     );
 
     // filter by dataset1
-    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset1");
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset[]=dataset1");
 
     assert_eq!(response.len(), 1);
 
     let stop = response.first().unwrap();
     assert_eq!(get_value(stop, "id"), "stop_area:SA:second_station");
     // filter by dataset2
-    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset=dataset2");
+    let response = bragi.get("/autocomplete?q=14 juillet&pt_dataset[]=dataset2");
 
     assert_eq!(response.len(), 1);
 
@@ -173,7 +172,7 @@ fn stop_filtered_by_dataset_test(bragi: &BragiHandler) {
     );
 }
 
-fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
+fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &mut BragiHandler) {
     //autocomplete endpoint tests
     //Search without dataset
     let response = bragi.get("/autocomplete?q=All known stop");
@@ -244,18 +243,18 @@ fn autocomplete_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler
     assert_eq!(response.len(), 0);
 }
 
-fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
+fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &mut BragiHandler) {
     //no pt_dataset: no chocolate
     let response = bragi
         .raw_get("/features/stop_area:SA:known_by_all_dataset")
         .unwrap();
-    assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
+    assert_eq!(response.status(), actix_web::http::StatusCode::NOT_FOUND);
 
     //wrong pt_dataset
     let response = bragi
         .raw_get("/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette")
         .unwrap();
-    assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
+    assert_eq!(response.status(), actix_web::http::StatusCode::NOT_FOUND);
 
     //wrong pt_datasets
     let response = bragi
@@ -263,7 +262,7 @@ fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
             "/features/stop_area:SA:known_by_all_dataset?pt_dataset[]=bobette&pt_dataset[]=bobito",
         )
         .unwrap();
-    assert_eq!(response.status.unwrap(), iron::status::Status::NotFound);
+    assert_eq!(response.status(), actix_web::http::StatusCode::NOT_FOUND);
 
     //one matching dataset, we hit the global one
     let response = bragi.get(
@@ -312,7 +311,7 @@ fn features_stop_filtered_by_dataset_transcoverage_test(bragi: &BragiHandler) {
     assert!(names.contains(&"All known stop, but different name"));
 }
 
-fn stop_all_data_test(bragi: &BragiHandler) {
+fn stop_all_data_test(bragi: &mut BragiHandler) {
     // search without _all_data, default value : _all_data = false
     let response = bragi.get("/autocomplete?q=14 juillet");
     assert_eq!(response.len(), 0);
@@ -326,7 +325,7 @@ fn stop_all_data_test(bragi: &BragiHandler) {
     assert_eq!(response.len(), 2);
 }
 
-fn stop_order_by_weight_test(bragi: &BragiHandler) {
+fn stop_order_by_weight_test(bragi: &mut BragiHandler) {
     // The StopAreas are sorted by weight. stop_area:SA:weight_3_station having weight 3
     // will be the first element in the result where as stop_area:SA:weight_1_station will
     //always be second.
@@ -348,7 +347,7 @@ fn stop_order_by_weight_test(bragi: &BragiHandler) {
     assert_eq!(get_value(stop, "id"), "stop_area:SA:weight_1_station");
 }
 
-fn distance_test(bragi: &BragiHandler) {
+fn distance_test(bragi: &mut BragiHandler) {
     // This test highlight distance computing.
     // if {lat,lon} params are added in the request, we compute the distance
     // between input coord and autocomplete objects coords.
@@ -359,7 +358,7 @@ fn distance_test(bragi: &BragiHandler) {
         let response = bragi
             .raw_get("/autocomplete?q=14 juillet&_all_data=true&lat=48.526578&lon=2.679347")
             .unwrap();
-        let features = get_results(response, None);
+        let features = bragi.get_results(response, None);
         assert_eq!(features.len(), 2);
 
         let feature_first = features.first().unwrap();
@@ -376,7 +375,7 @@ fn distance_test(bragi: &BragiHandler) {
         let response = bragi
             .raw_get("/autocomplete?q=14 juillet&_all_data=true")
             .unwrap();
-        let features = get_results(response, None);
+        let features = bragi.get_results(response, None);
         assert_eq!(features.len(), 2);
 
         let feature_first = features.first().unwrap();

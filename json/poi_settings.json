@@ -1,6 +1,7 @@
 {
     "template": "munin_poi_*",
     "settings": {
+        "refresh_interval" : "60s",
         "analysis": {
             "filter": {
                 "prefix_filter": {
@@ -48,22 +49,76 @@
     },
     "mappings": {
         "poi": {
-            "dynamic": "false",
-            "properties": {
-                "id": { "type": "string", "index": "not_analyzed" },
-                "name": {
-                    "type": "string",
-                    "index_options": "docs",
-                    "analyzer": "word",
-                    "fields": {
-                        "prefix": {
+            "_all": {
+                "enabled": false
+            },
+            "dynamic_templates": [
+                {
+                    "i18n_names": {
+                        "match_pattern": "regex",
+                        "path_match": "^name($|s\\.\\w+)",
+                        "mapping": {
                             "type": "string",
                             "index_options": "docs",
-                            "analyzer": "prefix",
-                            "search_analyzer": "word"
+                            "analyzer": "word",
+                            "fields": {
+                                "prefix": {
+                                    "type": "string",
+                                    "index_options": "docs",
+                                    "analyzer": "prefix",
+                                    "search_analyzer": "word"
+                                }
+                            }
                         }
                     }
                 },
+                {
+                    "i18n_labels": {
+                        "match_pattern": "regex",
+                        "path_match": "^label($|s\\.\\w+)",
+                        "mapping": {
+                            "type": "string",
+                            "index_options": "docs",
+                            "analyzer": "word",
+                            "copy_to": "full_label",
+                            "fields": {
+                                "prefix": {
+                                    "type": "string",
+                                    "index_options": "docs",
+                                    "analyzer": "prefix",
+                                    "search_analyzer": "word",
+                                    "norms": {
+                                        "enabled": false
+                                    }
+                                },
+                                "ngram": {
+                                    "type": "string",
+                                    "index_options": "docs",
+                                    "analyzer": "ngram_with_synonyms",
+                                    "search_analyzer": "ngram",
+                                    "norms": {
+                                        "enabled": false
+                                    }
+                                }
+                            },
+                            "norms": {
+                                "enabled": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "disable_other_dynamic_fields": {
+                        "match_pattern": "regex",
+                        "path_match": "^(?!name|label|full_label).*",
+                        "mapping": {
+                            "index": "no"
+                        }
+                    }
+                }
+			],
+            "properties": {
+                "id": { "type": "string", "index": "not_analyzed" },
                 "zip_codes": {
                     "type": "string",
                     "index_options": "docs",
@@ -84,39 +139,14 @@
                     "geohash_prefix": true,
                     "geohash_precision": "1m"
                 },
+                "approx_coord": {
+                    "type": "geo_shape",
+                    "precision": "5m"
+                },
                 "full_label": {
                     "type": "string",
-                    "index_options": "docs",
+                    "index": "no",
                     "analyzer": "word",
-                    "fields": {
-                        "prefix": {
-                            "type": "string",
-                            "index_options": "docs",
-                            "analyzer": "prefix",
-                            "search_analyzer": "word",
-                            "norms": {
-                                "enabled": false
-                            }
-                        },
-                        "ngram": {
-                            "type": "string",
-                            "index_options": "docs",
-                            "analyzer": "ngram_with_synonyms",
-                            "search_analyzer": "ngram",
-                            "norms": {
-                                "enabled": false
-                            }
-                        }
-                    },
-                    "norms": {
-                        "enabled": false
-                    }
-                },
-                "label": {
-                    "type": "string",
-                    "index_options": "docs",
-                    "analyzer": "word",
-                    "copy_to": "full_label",
                     "fields": {
                         "prefix": {
                             "type": "string",
@@ -150,7 +180,7 @@
                 "weight": { "type": "double" },
                 "poi_type": {
                     "properties": {
-                        "id": { "type": "string", "index": "no" },
+                        "id": { "type": "string", "index": "not_analyzed" },
                         "name": {
                             "type": "string",
                             "index_options": "docs",

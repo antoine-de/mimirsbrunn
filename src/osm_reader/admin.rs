@@ -27,19 +27,13 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
-use geo;
-use mimir;
-use osm_boundaries_utils;
-use osmpbfreader;
-
-use self::osm_boundaries_utils::build_boundary;
 use super::OsmPbfReader;
 use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
-use crate::utils::normalize_admin_weight;
+use crate::utils;
 use cosmogony::ZoneType;
-use geo::prelude::BoundingBox;
+use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
+use osm_boundaries_utils::build_boundary;
 use std::collections::BTreeSet;
 
 pub type StreetsVec = Vec<mimir::Street>;
@@ -130,14 +124,14 @@ pub fn read_administrative_regions(
                     (format!("admin:fr:{}", val), val)
                 }
                 Some(val) => {
-                    let id = format!("admin:osm:{}", relation.id.0);
+                    let id = format!("admin:osm:relation:{}", relation.id.0);
                     warn!(
                         "relation/{}: have the INSEE {} that is already used, using {} as id",
                         relation.id.0, val, id
                     );
                     (id, val)
                 }
-                None => (format!("admin:osm:{}", relation.id.0), ""),
+                None => (format!("admin:osm:relation:{}", relation.id.0), ""),
             };
 
             let zip_codes = read_zip_codes(&relation.tags);
@@ -160,6 +154,8 @@ pub fn read_administrative_regions(
                 })
                 .unwrap_or(0.);
 
+            let coord = coord_center.unwrap_or_else(|| make_centroid(&boundary));
+            let codes = get_osm_codes_from_tags(&relation.tags);
             let admin = mimir::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
@@ -168,20 +164,23 @@ pub fn read_administrative_regions(
                 label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
                 zip_codes: zip_codes,
                 weight: weight,
-                coord: coord_center.unwrap_or_else(|| make_centroid(&boundary)),
-                bbox: boundary.as_ref().and_then(|b| b.bbox()),
+                coord: coord.clone(),
+                approx_coord: Some(coord.into()),
+                bbox: boundary.as_ref().and_then(|b| b.bounding_rect()),
                 boundary: boundary,
                 zone_type: zone_type,
                 parent_id: None,
-                codes: get_osm_codes_from_tags(&relation.tags),
+                country_codes: utils::get_country_code(&codes).into_iter().collect(),
+                codes: codes,
                 names: mimir::I18nProperties::default(),
                 labels: mimir::I18nProperties::default(),
+                distance: None,
             };
             administrative_regions.push(admin);
         }
     }
 
-    normalize_admin_weight(&mut administrative_regions);
+    utils::normalize_admin_weight(&mut administrative_regions);
 
     administrative_regions
 }
@@ -216,10 +215,11 @@ pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .sorted()
+        .collect()
 }
 
 pub fn read_insee(tags: &osmpbfreader::Tags) -> Option<&str> {
-    tags.get("ref:INSEE").map(|v| v.trim_left_matches('0'))
+    tags.get("ref:INSEE").map(|v| v.trim_start_matches('0'))
 }
 
 #[cfg(test)]

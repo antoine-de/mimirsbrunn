@@ -28,22 +28,69 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use cosmogony;
-use geo;
-use geojson;
 use heck::SnakeCase;
-use mimir;
 use rs_es::error::EsError;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Fail, Debug)]
 pub enum BragiError {
     #[fail(display = "Unable to find object")]
     ObjectNotFound,
+    #[fail(display = "Invalid parameter: {}", _0)]
+    InvalidParam(&'static str),
     #[fail(display = "Impossible to find object")]
     IndexNotFound,
     #[fail(display = "invalid query {}", _0)]
     Es(EsError),
+    #[fail(display = "invalid shape: {}", _0)]
+    InvalidShape(&'static str),
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ApiError {
+    pub short: String,
+    pub long: String,
+}
+
+// Q: It would be better to move it to ::v1 as it depends on the api interface
+// how can we do this ?
+impl actix_web::error::ResponseError for BragiError {
+    fn error_response(&self) -> actix_web::HttpResponse {
+        match *self {
+            BragiError::ObjectNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
+                short: "query error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::InvalidShape(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
+                short: "validation error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::InvalidParam(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
+                short: "validation error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::IndexNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
+                short: "query error".to_owned(),
+                long: format!("{}", self),
+            }),
+            BragiError::Es(ref es_error) => {
+                error!("es error on query: {}", &es_error);
+                match es_error {
+                    EsError::HttpError(_) => {
+                        actix_web::HttpResponse::ServiceUnavailable().json(ApiError {
+                            short: "query error".to_owned(),
+                            long: "service unavailable".to_owned(),
+                        })
+                    }
+                    _ => actix_web::HttpResponse::InternalServerError().json(ApiError {
+                        short: "query error".to_owned(),
+                        long: "internal server error".to_owned(),
+                    }),
+                }
+            }
+        }
+    }
 }
 
 impl From<EsError> for BragiError {
@@ -83,11 +130,11 @@ pub struct AssociatedAdmin {
     pub zip_codes: Vec<String>,
     pub coord: mimir::Coord,
     #[serde(
-        serialize_with = "mimir::objects::serialize_bbox",
+        serialize_with = "mimir::objects::serialize_rect",
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo::Bbox<f64>>,
+    pub bbox: Option<geo_types::Rect<f64>>,
     #[serde(default)]
     pub zone_type: Option<cosmogony::ZoneType>,
     #[serde(default)]
@@ -127,6 +174,8 @@ pub struct GeocodingResponse {
     pub id: String,
     #[serde(rename = "type")]
     pub place_type: String, // FIXME: use an enum?
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub zone_type: Option<String>,
     pub label: Option<String>,
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,6 +206,8 @@ pub struct GeocodingResponse {
     pub comments: Vec<mimir::Comment>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub physical_modes: Vec<mimir::PhysicalMode>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub lines: Vec<mimir::Line>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub timezone: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -164,11 +215,13 @@ pub struct GeocodingResponse {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub feed_publishers: Vec<mimir::FeedPublisher>,
     #[serde(
-        serialize_with = "mimir::objects::serialize_bbox",
+        serialize_with = "mimir::objects::serialize_rect",
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo::Bbox<f64>>,
+    pub bbox: Option<geo_types::Rect<f64>>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub country_codes: Vec<String>,
 }
 
 trait ToGeom {
@@ -187,7 +240,7 @@ impl ToGeom for mimir::Place {
     }
 }
 
-impl ToGeom for geo::Coordinate<f64> {
+impl ToGeom for geo_types::Coordinate<f64> {
     fn to_geom(&self) -> geojson::Geometry {
         geojson::Geometry::new(geojson::Value::Point(vec![self.x, self.y]))
     }
@@ -196,6 +249,7 @@ impl ToGeom for geo::Coordinate<f64> {
 impl FromWithLang<mimir::Place> for Feature {
     fn from_with_lang(other: mimir::Place, lang: Option<&str>) -> Feature {
         let geom = other.to_geom();
+        let distance = other.distance();
         let geocoding = match other {
             mimir::Place::Admin(admin) => GeocodingResponse::from_with_lang(admin, lang),
             mimir::Place::Street(street) => GeocodingResponse::from_with_lang(street, lang),
@@ -209,12 +263,12 @@ impl FromWithLang<mimir::Place> for Feature {
             properties: Properties {
                 geocoding: geocoding,
             },
-            distance: None,
+            distance: distance,
         }
     }
 }
 
-trait FromWithLang<T> {
+pub trait FromWithLang<T> {
     fn from_with_lang(_: T, lang: Option<&str>) -> Self;
 }
 
@@ -229,7 +283,10 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             (other.name.as_ref(), other.label.as_ref())
         };
 
-        let type_ = get_admin_type(&other);
+        let zone_type = other
+            .zone_type
+            .map(|x| x.as_str().to_snake_case())
+            .unwrap_or_else(|| "administrative_region".to_owned());
         let name = Some(name.to_owned());
         let insee = Some(other.insee);
         let level = Some(other.level); //might be used for type_ and become useless
@@ -242,22 +299,21 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
         GeocodingResponse {
             id: other.id,
             citycode: insee,
-            level: level,
-            place_type: type_,
-            name: name,
-            postcode: postcode,
-            label: label,
+            place_type: "zone".to_owned(),
+            level,
+            zone_type: if zone_type.is_empty() {
+                None
+            } else {
+                Some(zone_type)
+            },
+            name,
+            postcode,
+            label,
             bbox: other.bbox,
             codes: other.codes,
+            country_codes: other.country_codes,
             ..Default::default()
         }
-    }
-}
-
-fn get_admin_type(adm: &mimir::Admin) -> String {
-    match adm.zone_type {
-        Some(t) => format!("{:?}", t).to_snake_case(),
-        None => "administrative_region".to_string(),
     }
 }
 
@@ -304,6 +360,7 @@ impl FromWithLang<mimir::Street> for GeocodingResponse {
             street: name,
             city: city,
             administrative_regions: associated_admins,
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -341,6 +398,7 @@ impl FromWithLang<mimir::Addr> for GeocodingResponse {
             street: street_name,
             city: city,
             administrative_regions: associated_admins,
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -348,9 +406,17 @@ impl FromWithLang<mimir::Addr> for GeocodingResponse {
 
 impl FromWithLang<mimir::Poi> for GeocodingResponse {
     fn from_with_lang(other: mimir::Poi, lang: Option<&str>) -> GeocodingResponse {
+        let (name, label) = if let Some(code) = lang {
+            (
+                other.names.get(code).unwrap_or(&other.name),
+                other.labels.get(code).unwrap_or(&other.label),
+            )
+        } else {
+            (other.name.as_ref(), other.label.as_ref())
+        };
+        let name = Some(name.to_owned());
+        let label = Some(label.to_owned());
         let type_ = "poi".to_string();
-        let label = Some(other.label);
-        let name = Some(other.name);
         let admins = other.administrative_regions;
         let city = get_city_name(&admins);
         let postcode = if other.zip_codes.is_empty() {
@@ -385,6 +451,7 @@ impl FromWithLang<mimir::Poi> for GeocodingResponse {
                 }
                 _ => None,
             },
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -420,11 +487,13 @@ impl FromWithLang<mimir::Stop> for GeocodingResponse {
             administrative_regions: associated_admins,
             commercial_modes: other.commercial_modes,
             physical_modes: other.physical_modes,
+            lines: other.lines,
             comments: other.comments,
             timezone: Some(other.timezone),
             codes: other.codes,
             properties: other.properties,
             feed_publishers: other.feed_publishers,
+            country_codes: other.country_codes,
             ..Default::default()
         }
     }
@@ -461,123 +530,5 @@ impl FromWithLang<Vec<mimir::Place>> for Autocomplete {
                 .map(|p| Feature::from_with_lang(p, lang))
                 .collect(),
         )
-    }
-}
-
-pub mod v1 {
-    use super::BragiError;
-    use crate::model::FromWithLang;
-    use iron;
-    use mimir;
-    use rs_es::error::EsError;
-
-    pub trait HasStatus {
-        fn status(&self) -> iron::status::Status;
-    }
-
-    // Note: I think this should be in api.rs but with the serde stuff it's easier for all
-    // serde struct to be in the same file
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub struct EndPoint {
-        pub description: String,
-    }
-
-    impl HasStatus for EndPoint {
-        fn status(&self) -> iron::status::Status {
-            default_status()
-        }
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub struct CustomError {
-        pub short: String,
-        pub long: String,
-        #[serde(skip, default = "default_status")]
-        pub status: iron::status::Status,
-    }
-
-    fn default_status() -> iron::status::Status {
-        iron::status::Status::Ok
-    }
-
-    #[derive(Debug)]
-    pub enum AutocompleteResponse {
-        Error(CustomError),
-        Autocomplete(super::Autocomplete),
-    }
-
-    impl HasStatus for AutocompleteResponse {
-        fn status(&self) -> iron::status::Status {
-            match self {
-                AutocompleteResponse::Error(e) => e.status,
-                AutocompleteResponse::Autocomplete(_) => iron::status::Status::Ok,
-            }
-        }
-    }
-
-    use serde;
-    impl serde::Serialize for AutocompleteResponse {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            match self {
-                AutocompleteResponse::Autocomplete(ref a) => serializer.serialize_some(a),
-                AutocompleteResponse::Error(ref e) => serializer.serialize_some(e),
-            }
-        }
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub struct Status {
-        pub version: String,
-        pub es: String,
-        pub status: String,
-    }
-
-    impl HasStatus for Status {
-        fn status(&self) -> iron::status::Status {
-            iron::status::Status::Ok
-        }
-    }
-
-    impl AutocompleteResponse {
-        pub fn from_with_lang(
-            r: Result<Vec<mimir::Place>, BragiError>,
-            lang: Option<&str>,
-        ) -> AutocompleteResponse {
-            match r {
-                Ok(places) => AutocompleteResponse::Autocomplete(
-                    super::Autocomplete::from_with_lang(places, lang),
-                ),
-                Err(e) => {
-                    let (long_error, status) = match &e {
-                        BragiError::ObjectNotFound | BragiError::IndexNotFound => {
-                            (format!("{}", e), iron::status::Status::NotFound)
-                        }
-                        BragiError::Es(es_error) => {
-                            error!("es error on query: {}", &es_error);
-                            match es_error {
-                                EsError::HttpError(_) => (
-                                    "service unavailable".into(),
-                                    iron::status::Status::ServiceUnavailable,
-                                ),
-                                _ => (
-                                    "internal server error".into(),
-                                    iron::status::Status::InternalServerError,
-                                ),
-                            }
-                        }
-                    };
-
-                    AutocompleteResponse::Error(CustomError {
-                        short: "query error".to_string(),
-                        long: long_error,
-                        status: status,
-                    })
-                }
-            }
-        }
     }
 }

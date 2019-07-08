@@ -25,6 +25,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+#![recursion_limit = "128"]
 
 #[macro_use]
 extern crate slog;
@@ -52,26 +53,12 @@ mod osm2mimir_test;
 mod rubber_test;
 mod stops2mimir_test;
 
+use actix_web::client::ClientResponse;
 use docker_wrapper::*;
-use hyper::client::response::Response;
+use failure::{format_err, Error};
 use serde_json::value::Value;
 use serde_json::Map;
 use std::process::Command;
-
-trait ToJson {
-    fn to_json(self) -> Value;
-}
-
-impl ToJson for Response {
-    fn to_json(self) -> Value {
-        match serde_json::from_reader(self) {
-            Ok(v) => v,
-            Err(e) => {
-                panic!("could not get json value from response: {:?}", e);
-            }
-        }
-    }
-}
 
 pub struct ElasticSearchWrapper<'a> {
     docker_wrapper: &'a DockerWrapper,
@@ -93,11 +80,15 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn refresh(&self) {
         info!("Refreshing ES indexes");
 
-        let res = hyper::client::Client::new()
+        let res = reqwest::Client::new()
             .get(&format!("{}/_refresh", self.host()))
             .send()
             .unwrap();
-        assert!(res.status == hyper::Ok, "Error ES refresh: {:?}", res);
+        assert!(
+            res.status() == reqwest::StatusCode::OK,
+            "Error ES refresh: {:?}",
+            res
+        );
     }
 
     pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper<'_> {
@@ -112,21 +103,21 @@ impl<'a> ElasticSearchWrapper<'a> {
     /// simple search on an index
     /// assert that the result is OK and transform it to a json Value
     pub fn search(&self, word: &str) -> serde_json::Value {
-        let res = self
+        let mut res = self
             .rubber
             .get(&format!("munin/_search?q={}", word))
             .unwrap();
-        assert!(res.status == hyper::Ok);
-        res.to_json()
+        assert!(res.status() == reqwest::StatusCode::OK);
+        res.json().unwrap()
     }
 
     pub fn search_on_global_stop_index(&self, word: &str) -> serde_json::Value {
-        let res = self
+        let mut res = self
             .rubber
             .get(&format!("munin_global_stops/_search?q={}", word))
             .unwrap();
-        assert!(res.status == hyper::Ok);
-        res.to_json()
+        assert!(res.status() == reqwest::StatusCode::OK);
+        res.json().unwrap()
     }
 
     pub fn search_and_filter<'b, F>(
@@ -160,8 +151,8 @@ impl<'a> ElasticSearchWrapper<'a> {
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
-        use serde_json::map::{Entry, Map};
-        use serde_json::value::Value;
+        use serde_json::map::Entry;
+
         fn into_object(json: Value) -> Option<Map<String, Value>> {
             match json {
                 Value::Object(o) => Some(o),
@@ -207,112 +198,138 @@ impl<'a> ElasticSearchWrapper<'a> {
 }
 
 fn launch_and_assert(
-    cmd: &'static str,
-    args: Vec<std::string::String>,
+    cmd: &str,
+    args: &[std::string::String],
     es_wrapper: &ElasticSearchWrapper<'_>,
 ) {
-    let status = Command::new(cmd).args(&args).status().unwrap();
+    let status = Command::new(cmd).args(args).status().unwrap();
     assert!(status.success(), "`{}` failed {}", cmd, &status);
     es_wrapper.refresh();
 }
 
 pub struct BragiHandler {
-    app: rustless::Application,
+    app: actix_web::test::TestServer,
 }
 
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
-        let api = bragi::api::ApiEndPoint {
-            es_cnx_string: url,
-            max_es_timeout: None,
-        }
-        .root();
+        let make_server = move || {
+            bragi::server::create_server(bragi::Context::from(&bragi::Args {
+                connection_string: url.clone(),
+                ..Default::default()
+            }))
+        };
+
         BragiHandler {
-            app: rustless::Application::new(api),
+            app: actix_web::test::TestServer::with_factory(make_server),
         }
     }
 
-    pub fn raw_get(&self, q: &str) -> iron::IronResult<iron::Response> {
-        iron_test::request::get(
-            &format!("http://localhost:3000{}", q),
-            iron::Headers::new(),
-            &self.app,
-        )
+    pub fn raw_get(&mut self, q: &str) -> Result<ClientResponse, Error> {
+        self.app
+            .execute(
+                self.app
+                    .client(actix_web::http::Method::GET, q)
+                    .finish()
+                    .map_err(|e| format_err!("invalid query: {}", e))?
+                    .send(),
+            )
+            .map_err(|e| format_err!("impossible to query bragi: {}", e))
     }
 
-    pub fn get(&self, q: &str) -> Vec<Map<String, Value>> {
-        get_results(
-            self.raw_get(q).unwrap(),
-            Some("/properties/geocoding".to_string()),
-        )
+    pub fn get(&mut self, q: &str) -> Vec<Map<String, Value>> {
+        let r = self.raw_get(q).unwrap();
+        assert!(r.status().is_success(), "invalid status: {}", r.status());
+        self.get_results(r, Some("/properties/geocoding".to_string()))
     }
 
-    pub fn raw_post_shape(&self, q: &str, shape: &str) -> iron::IronResult<iron::Response> {
-        let mut header = iron::Headers::new();
-        let mime: mime::Mime = "application/json".parse().unwrap();
-        header.set(iron::headers::ContentType(mime));
-
-        iron_test::request::post(
-            &format!("http://localhost:3000{}", q),
-            header,
-            shape,
-            &self.app,
-        )
+    pub fn get_json(&mut self, q: &str) -> Value {
+        let r = self.raw_get(q).unwrap();
+        assert!(r.status().is_success(), "invalid status: {}", r.status());
+        self.to_json(r)
     }
 
-    pub fn post_shape(&self, q: &str, shape: &str) -> Vec<Map<String, Value>> {
-        get_results(
-            self.raw_post_shape(q, shape).unwrap(),
-            Some("/properties/geocoding".to_string()),
-        )
+    pub fn get_unchecked_json(&mut self, q: &str) -> (actix_web::http::StatusCode, Value) {
+        let r = self.raw_get(q).unwrap();
+        (r.status(), self.to_json(r))
     }
-}
 
-pub fn to_json(r: iron::Response) -> Value {
-    let s = iron_test::response::extract_body_to_string(r);
-    serde_json::from_str(&s).unwrap()
-}
+    pub fn raw_post_shape(
+        &mut self,
+        q: &str,
+        shape: &'static str,
+    ) -> Result<ClientResponse, Error> {
+        self.app
+            .execute(
+                self.app
+                    .client(actix_web::http::Method::POST, q)
+                    .header(actix_web::http::header::CONTENT_TYPE, "application/json")
+                    .body(shape)
+                    .map_err(|e| format_err!("invalid query: {}", e))?
+                    .send(),
+            )
+            .map_err(|e| format_err!("impossible to query bragi: {}", e))
+    }
 
-pub fn get_results(r: iron::Response, pointer: Option<String>) -> Vec<Map<String, Value>> {
-    to_json(r)
-        .pointer("/features")
-        .expect("wrongly formated bragi response")
-        .as_array()
-        .expect("features must be array")
-        .iter()
-        .map(|f| {
-            if let Some(p) = &pointer {
-                f.pointer(&p)
-                    .expect("no field in bragi response")
-                    .as_object()
-                    .unwrap()
-                    .clone()
-            } else {
-                f.as_object().unwrap().clone()
-            }
-        })
-        .collect()
+    pub fn post_shape(&mut self, q: &str, shape: &'static str) -> Vec<Map<String, Value>> {
+        let r = self.raw_post_shape(q, shape).unwrap();
+        self.get_results(r, Some("/properties/geocoding".to_string()))
+    }
+
+    pub fn to_json(&mut self, r: ClientResponse) -> Value {
+        use actix_web::HttpMessage;
+        let bytes = self.app.execute(r.body()).unwrap();
+        let body = std::str::from_utf8(&bytes).unwrap();
+        serde_json::from_str(body).unwrap()
+    }
+
+    pub fn get_results(
+        &mut self,
+        r: ClientResponse,
+        pointer: Option<String>,
+    ) -> Vec<Map<String, Value>> {
+        self.to_json(r)
+            .pointer("/features")
+            .expect("wrongly formated bragi response")
+            .as_array()
+            .expect("features must be array")
+            .iter()
+            .map(|f| {
+                if let Some(p) = &pointer {
+                    f.pointer(&p)
+                        .expect("no field in bragi response")
+                        .as_object()
+                        .unwrap()
+                        .clone()
+                } else {
+                    f.as_object().unwrap().clone()
+                }
+            })
+            .collect()
+    }
 }
 
 pub fn get_values<'a>(r: &'a [Map<String, Value>], val: &'a str) -> Vec<&'a str> {
     r.iter().map(|e| get_value(e, val)).collect()
 }
 
-pub fn get_value<'a>(e: &'a Map<String, Value>, val: &'a str) -> &'a str {
-    e.get(val).and_then(|l| l.as_str()).unwrap_or("")
+pub fn get_value<'a>(e: &'a Map<String, Value>, val: &str) -> &'a str {
+    e.get(val).and_then(|l| l.as_str()).unwrap_or_else(|| "")
 }
 
 pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
+    get_values(r, "type")
+}
+
+pub fn filter_by(r: &[Map<String, Value>], key: &str, t: &str) -> Vec<Map<String, Value>> {
     r.iter()
-        .map(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or(""))
+        .filter(|e| e.get(key).and_then(|l| l.as_str()).unwrap_or_else(|| "") == t)
+        .cloned()
         .collect()
 }
 
-pub fn filter_by_type<'a>(r: &'a [Map<String, Value>], t: &'a str) -> Vec<Map<String, Value>> {
-    r.iter()
-        .filter(|e| e.get("type").and_then(|l| l.as_str()).unwrap_or("") == t)
-        .cloned()
-        .collect()
+pub fn filter_by_type(r: &[Map<String, Value>], t: &str) -> Vec<Map<String, Value>> {
+    filter_by(r, "type", t)
 }
 
 pub fn count_types(types: &[&str], value: &str) -> usize {
@@ -363,6 +380,7 @@ fn all_tests() {
     rubber_test::rubber_empty_bulk(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_bano_test::bragi_bano_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_osm_test::bragi_osm_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_poi_test::test_i18n_poi(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_three_cities_test::bragi_three_cities_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_poi_test::bragi_poi_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_stops_test::bragi_stops_test(ElasticSearchWrapper::new(&docker_wrapper));

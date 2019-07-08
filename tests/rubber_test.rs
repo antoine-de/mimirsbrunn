@@ -30,10 +30,10 @@
 
 use cosmogony::ZoneType;
 use geo;
-use geo::prelude::BoundingBox;
-use hyper;
+use geo::prelude::BoundingRect;
 use mimir::rubber::{self, IndexSettings, Rubber};
 use mimir::{Admin, Coord, MimirObject, Street};
+use reqwest;
 use serde_json::{json, Value};
 use std;
 
@@ -66,14 +66,15 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
     info!("running rubber_zero_downtime_test");
     let dataset = "my_dataset";
 
+    let coord = Coord::new(0., 0.);
     let bob = Street {
         id: "bob".to_string(),
         name: "bob's street".to_string(),
         label: "bob's name".to_string(),
-        administrative_regions: vec![],
         weight: 0.42,
-        zip_codes: vec![],
-        coord: Coord::new(0., 0.),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
+        ..Default::default()
     };
 
     // we index our bob
@@ -92,14 +93,15 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
 
     check_has_bob(&es);
 
+    let coord = Coord::new(2.68326290f64, 48.5110722f64);
     let bobette = Street {
         id: "bobette".to_string(),
         name: "bobette's street".to_string(),
         label: "bobette's name".to_string(),
-        administrative_regions: vec![],
         weight: 0.24,
-        zip_codes: vec![],
-        coord: Coord::new(2.68326290f64, 48.5110722f64),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
+        ..Default::default()
     };
 
     info!("inserting bobette");
@@ -145,19 +147,18 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
 pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
     info!("running rubber_custom_id");
     let dataset = "my_dataset";
-    let p = |x, y| geo::Point(geo::Coordinate { x: x, y: y });
 
     let boundary = geo::MultiPolygon(vec![geo::Polygon::new(
         geo::LineString(vec![
-            p(2., 48.),
-            p(2., 49.),
-            p(3., 49.),
-            p(3., 48.),
-            p(2., 48.),
+            (2., 48.).into(),
+            (2., 49.).into(),
+            (3., 49.).into(),
+            (3., 48.).into(),
+            (2., 48.).into(),
         ]),
         vec![],
     )]);
-
+    let coord = Coord::new(2.68326290f64, 48.5110722f64);
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -166,14 +167,12 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
-        coord: Coord::new(2.68326290f64, 48.5110722f64),
-        bbox: boundary.bbox(),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
+        bbox: boundary.bounding_rect(),
         boundary: Some(boundary),
         zone_type: Some(ZoneType::City),
-        parent_id: None,
-        codes: vec![],
-        names: mimir::I18nProperties::default(),
-        labels: mimir::I18nProperties::default(),
+        ..Default::default()
     };
 
     // we index our admin
@@ -242,7 +241,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
 /// if an import has been stopped in the middle)
 pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
     // we create a ghost ES index
-    let client = hyper::client::Client::new();
+    let client = reqwest::Client::new();
     let old_idx_name = "munin_admin_fr_20170313_113227_006297916";
     let res = client
         .put(&format!(
@@ -253,12 +252,12 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         .send()
         .unwrap();
 
-    assert_eq!(res.status, hyper::Ok);
+    assert_eq!(res.status(), reqwest::StatusCode::OK);
     info!("result: {:?}", res);
 
     es.refresh();
     assert_eq!(get_munin_indexes(&es), [old_idx_name.to_string()]);
-
+    let coord = Coord::new(2.68326290f64, 48.5110722f64);
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -267,14 +266,10 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
-        coord: Coord::new(2.68326290f64, 48.5110722f64),
-        boundary: None,
-        bbox: None,
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
         zone_type: Some(ZoneType::City),
-        parent_id: None,
-        codes: vec![],
-        names: mimir::I18nProperties::default(),
-        labels: mimir::I18nProperties::default(),
+        ..Default::default()
     };
 
     // we index our admin
@@ -298,30 +293,28 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
 
 // return the list of the munin indexes
 fn get_munin_indexes(es: &crate::ElasticSearchWrapper<'_>) -> Vec<String> {
-    use super::ToJson;
-    let client = hyper::client::Client::new();
-    let res = client
+    let client = reqwest::Client::new();
+    let mut res = client
         .get(&format!("{host}/_aliases", host = es.host()))
         .send()
         .unwrap();
-    assert_eq!(res.status, hyper::Ok);
+    assert_eq!(res.status(), reqwest::StatusCode::OK);
 
-    let json = res.to_json();
+    let json: serde_json::Value = res.json().unwrap();
     let raw_indexes = json.as_object().unwrap();
     raw_indexes.keys().cloned().collect()
 }
 
 // return the list of the munin indexes
 fn get_index_info(es: &crate::ElasticSearchWrapper<'_>, index: &str) -> Value {
-    use super::ToJson;
-    let client = hyper::client::Client::new();
-    let res = client
+    let client = reqwest::Client::new();
+    let mut res = client
         .get(&format!("{host}/{index}", host = es.host(), index = index))
         .send()
         .unwrap();
-    assert_eq!(res.status, hyper::Ok);
+    assert_eq!(res.status(), reqwest::StatusCode::OK);
 
-    res.to_json()
+    res.json().unwrap()
 }
 
 pub fn rubber_empty_bulk(mut es: crate::ElasticSearchWrapper<'_>) {

@@ -28,15 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use iron;
-
 use super::count_types;
 use super::get_poi_type_ids;
-use super::get_types;
 use super::get_value;
-use super::to_json;
+use super::get_values;
 use super::BragiHandler;
 use serde_json::{self, json};
+use std::path::Path;
 
 /// Test the whole mimirsbrunn pipeline with all the import binary
 /// and test thourgh bragi in the end
@@ -45,10 +43,16 @@ use serde_json::{self, json};
 /// then openaddress (or bano),
 /// then osm (without any admins)
 pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
+    let out_dir = Path::new(env!("OUT_DIR"));
+
+    let cosmogony2mimir = out_dir
+        .join("../../../cosmogony2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
-        vec![
+        &cosmogony2mimir,
+        &[
             "--input=./tests/fixtures/cosmogony.json".into(),
             "--lang=fr".into(),
             "--lang=es".into(),
@@ -57,18 +61,20 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
         &es_wrapper,
     );
 
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
     crate::launch_and_assert(
-        concat!(env!("OUT_DIR"), "/../../../bano2mimir"),
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
+    let osm2mimir = out_dir.join("../../../osm2mimir").display().to_string();
     crate::launch_and_assert(
-        concat!(env!("OUT_DIR"), "/../../../osm2mimir"),
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-way".into(),
             "--import-poi".into(),
@@ -77,13 +83,21 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
         &es_wrapper,
     );
 
-    melun_test(&bragi);
-    lang_test(&bragi);
+    melun_test(&mut bragi);
+    lang_test(&mut bragi);
+    invalid_parameter_autocomplete_test(&mut bragi);
+    wrong_shape_test(&mut bragi);
+    invalid_type_test(&mut bragi);
+    invalid_route_test(&mut bragi);
+    invalid_coord_test(&mut bragi);
+    valid_timeout_test(&mut bragi);
+    filter_zone_type_test(&mut bragi);
+    zone_filter_error_message_test(&mut bragi);
 }
 
-fn melun_test(bragi: &BragiHandler) {
+fn melun_test(bragi: &mut BragiHandler) {
     let all_melun = bragi.get("/autocomplete?q=Melun");
-    let types = get_types(&all_melun);
+    let types = get_values(&all_melun, "zone_type");
     let count = count_types(&types, "city");
     assert_eq!(count, 1);
 
@@ -98,7 +112,7 @@ fn melun_test(bragi: &BragiHandler) {
     );
     assert_eq!(melun["postcode"], "77000;77003;77008;CP77001");
     assert_eq!(melun["id"], "admin:osm:relation:80071");
-    assert_eq!(melun["type"], "city");
+    assert_eq!(melun["zone_type"], "city");
     assert_eq!(melun["city"], serde_json::Value::Null);
     assert_eq!(
         melun["bbox"],
@@ -154,10 +168,11 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(
         cityhall_admins[2]["codes"],
         json!([
-                        {"name": "ISO3166-1", "value": "FR"},
-                        {"name": "ISO3166-1:alpha2", "value": "FR"},
-                        {"name": "ISO3166-1:alpha3", "value": "FRA"},
-                        {"name": "ISO3166-1:numeric", "value": "250"},
+            {"name": "ISO3166-1", "value": "FR"},
+            {"name": "ISO3166-1:alpha2", "value": "FR"},
+            {"name": "ISO3166-1:alpha3", "value": "FRA"},
+            {"name": "ISO3166-1:numeric", "value": "250"},
+            {"name": "wikidata", "value": "Q142"},
         ])
     );
 
@@ -171,17 +186,17 @@ fn melun_test(bragi: &BragiHandler) {
     assert_eq!(poi_addr["city"], "Melun");
 }
 
-fn lang_test(bragi: &BragiHandler) {
+fn lang_test(bragi: &mut BragiHandler) {
     let all_francia = bragi.get("/autocomplete?q=Francia&lang=es");
     let result = all_francia.first().unwrap();
     assert_eq!(result["name"], "Francia");
-    assert_eq!(result["type"], "country");
+    assert_eq!(result["zone_type"], "country");
     assert_eq!(result["label"], "Francia");
 
     let all_melun = bragi.get("/autocomplete?q=Melun&lang=es");
     let result = all_melun.first().unwrap();
     assert_eq!(result["name"], "Melun");
-    assert_eq!(result["type"], "city");
+    assert_eq!(result["zone_type"], "city");
     assert_eq!(
         result["label"],
         "Melun (77000-CP77001), Sena y Marne, Francia"
@@ -211,22 +226,182 @@ fn lang_test(bragi: &BragiHandler) {
     );
 
     // Multiple 'lang' causes 400
-    let raw = bragi.raw_get("/autocomplete?q=Melun&lang=es&lang=fr");
-    let resp = raw.unwrap_err().response;
-    assert_eq!(resp.status, Some(iron::status::Status::BadRequest));
+    let r = bragi.get_unchecked_json("/autocomplete?q=Melun&lang=es&lang=fr");
+
+    assert_eq!(
+        r,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: Multiple values for one key",
+            })
+        )
+    );
 }
 
 pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
+    let mut bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
 
     // the status does not check the ES connexion, so for the status all is good
     let resp = bragi.raw_get("/status").unwrap();
-    assert_eq!(resp.status, Some(iron::status::Status::Ok));
+    assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
 
     // the autocomplete gives a 503
-    let resp = bragi.raw_get("/autocomplete?q=toto").unwrap();
-    assert_eq!(resp.status, Some(iron::status::Status::ServiceUnavailable));
-    let json = to_json(resp);
-    assert_eq!(json.get("short"), Some(&json!("query error")));
-    assert_eq!(json.get("long"), Some(&json!("service unavailable")));
+    let r = bragi.get_unchecked_json("/autocomplete?q=toto");
+
+    assert_eq!(
+        r,
+        (
+            actix_web::http::StatusCode::SERVICE_UNAVAILABLE,
+            json!({
+                "short": "query error",
+                "long": "service unavailable",
+            })
+        )
+    );
+}
+
+fn invalid_parameter_autocomplete_test(bragi: &mut BragiHandler) {
+    // if a param is not correct, we should have a nice error
+    // this error could be better, but that will do for the moment
+    assert_eq!(
+        bragi.get_unchecked_json("/autocomplete?limit=limit_should_be_an_int"),
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
+            })
+        )
+    );
+}
+
+fn invalid_type_test(bragi: &mut BragiHandler) {
+    assert_eq!(
+        bragi.get_unchecked_json("/autocomplete?q=a&type[]=invalid_type"),
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "long": "invalid argument: failed with reason: unknown variant `invalid_type`, expected one of `city`, `house`, `poi`, `public_transport:stop_area`, `street`, `zone`",
+                "short": "validation error"
+            })
+        )
+    );
+}
+
+fn invalid_route_test(bragi: &mut BragiHandler) {
+    assert_eq!(
+        bragi.get_unchecked_json("/invalid_route"),
+        (
+            actix_web::http::StatusCode::NOT_FOUND,
+            json!({
+                "long": "route '/invalid_route' does not exists",
+                "short": "no route"
+            })
+        )
+    );
+}
+
+fn wrong_shape_test(bragi: &mut BragiHandler) {
+    // The shape should be a valid geojson object
+    // there, the shape has no 'property' field
+    let shape = r#"{"shape":{"type":"Feature","geometry":{"type":"Polygon",
+        "coordinates":[[[2.376488, 48.846431],
+        [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603], [2.376488, 48.846431]]]}}}"#;
+    let r = bragi
+        .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
+        .unwrap();
+
+    assert_eq!(r.status(), actix_web::http::StatusCode::BAD_REQUEST);
+
+    assert_eq!(
+        bragi.to_json(r),
+        json!({
+            "short": "validation error",
+            "long": "invalid json: Json deserialize error: expected a GeoJSON property at line 3 column 102",
+        })
+    );
+}
+
+fn invalid_coord_test(bragi: &mut BragiHandler) {
+    assert_eq!(
+        bragi.get_unchecked_json("/autocomplete?q=a&lat=12"),
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "long": "Invalid parameter: you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
+                "short": "validation error"
+            })
+        )
+    );
+    // if we give an invalid type we get an error
+    // this error could be more explicit (name of the field at least), but that will be for later
+    assert_eq!(
+        bragi.get_unchecked_json("/autocomplete?q=a&lat=a&lon=12"),
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "long": "invalid argument: failed with reason: invalid float literal",
+                "short": "validation error"
+            })
+        )
+    );
+    // we check that the lat/lon are valid latitude
+    assert_eq!(
+        bragi.get_unchecked_json("/autocomplete?q=a&lat=12&lon=9999"),
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "long": "Invalid parameter: lon is not a valid longitude",
+                "short": "validation error"
+            })
+        )
+    );
+    assert_eq!(
+        bragi.get_unchecked_json("/autocomplete?q=a&lat=-1000&lon=-12"),
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "long": "Invalid parameter: lat is not a valid latitude",
+                "short": "validation error"
+            })
+        )
+    );
+}
+
+// we just check that the timeout is correctly parser
+fn valid_timeout_test(bragi: &mut BragiHandler) {
+    let _ = bragi.get("/autocomplete?q=france&timeout=12340");
+}
+
+fn filter_zone_type_test(bragi: &mut BragiHandler) {
+    let geocodings = bragi.get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district");
+    let types = get_values(&geocodings, "zone_type");
+    assert_eq!(count_types(&types, "state_district"), 1);
+
+    let geocodings = bragi.get("/autocomplete?q=France&type[]=zone&zone_type[]=country");
+    let types = get_values(&geocodings, "zone_type");
+    assert_eq!(count_types(&types, "country"), 1);
+
+    let geocodings = bragi
+        .get("/autocomplete?q=France&type[]=zone&zone_type[]=state_district&zone_type[]=country");
+    let types = get_values(&geocodings, "zone_type");
+    assert_eq!(count_types(&types, "state_district"), 1);
+    assert_eq!(count_types(&types, "country"), 1);
+}
+
+fn zone_filter_error_message_test(bragi: &mut BragiHandler) {
+    let geocodings =
+        bragi.get_unchecked_json("/autocomplete?q=France&type[]=poi&zone_type[]=country");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "Invalid parameter: zone_type[] parameter requires to have 'type[]=zone'",
+            })
+        )
+    );
 }

@@ -31,14 +31,16 @@
 use super::get_value;
 use super::BragiHandler;
 use serde_json::json;
+use std::path::Path;
 
 pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
+    let out_dir = Path::new(env!("OUT_DIR"));
 
-    let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");
+    let ntfs2mimir = out_dir.join("../../../ntfs2mimir").display().to_string();
     crate::launch_and_assert(
-        ntfs2mimir,
-        vec![
+        &ntfs2mimir,
+        &[
             "--input=./tests/fixtures/ntfs/".into(),
             "--dataset=dataset1".into(),
             format!("--connection-string={}", es_wrapper.host()),
@@ -46,12 +48,12 @@ pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    gare_de_lyon(&bragi);
+    gare_de_lyon(&mut bragi);
 
-    let ntfs2mimir = concat!(env!("OUT_DIR"), "/../../../ntfs2mimir");
+    let ntfs2mimir = out_dir.join("../../../ntfs2mimir").display().to_string();
     crate::launch_and_assert(
-        ntfs2mimir,
-        vec![
+        &ntfs2mimir,
+        &[
             "--input=./tests/fixtures/ntfs2/".into(),
             "--dataset=dataset2".into(),
             format!("--connection-string={}", es_wrapper.host()),
@@ -59,10 +61,10 @@ pub fn bragi_ntfs_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    gare_de_lyon_with_two_datasets(&bragi);
+    gare_de_lyon_with_two_datasets(&mut bragi);
 }
 
-fn gare_de_lyon(bragi: &BragiHandler) {
+fn gare_de_lyon(bragi: &mut BragiHandler) {
     // with this query we should find only one response, a stop
     let response = bragi.get("/autocomplete?q=gare de lyon&_all_data=true");
     assert_eq!(response.len(), 1);
@@ -115,12 +117,65 @@ fn gare_de_lyon(bragi: &BragiHandler) {
              "name": "The Great Contributor", "url": "http://the-great-contributor.com"},
         ])
     );
+
+    // Note: the lines are sorted as
+    // Metro 1 -> Bus 5 -> Bug 42, RER
+    // because:
+    // Metro 1 has a sort order, to it's the first one
+    // the rest are sorted by humane sort
+    assert_eq!(
+        stop.get("lines").unwrap(),
+        &json!([
+            {
+                "commercial_mode": { "id": "commercial_mode:Metro", "name": "Metro" },
+                "id": "line:M1",
+                "name": "Metro 1",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    { "id": "physical_mode:Metro", "name": "Metro" }
+                ],
+                "text_color": "FFFFFF" ,
+                "color": "7D36F5"
+            },
+            {
+                "commercial_mode": { "id": "commercial_mode:Bus", "name": "Bus" },
+                "id": "line:B5",
+                "name": "Bus 5",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    {"id": "physical_mode:Bus", "name": "Bus" }
+
+                ],
+                "color": "7D36F5",
+                "text_color": "FFFFFF"
+            },
+            {
+                "commercial_mode": { "id": "commercial_mode:Bus", "name": "Bus" },
+                "id": "line:B42",
+                "name": "Bus 42",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    {"id": "physical_mode:Bus", "name": "Bus" }
+                ]
+            },
+            {
+                "commercial_mode": { "id": "commercial_mode:RER", "name": "Réseau Express Régional (RER)" },
+                "id": "line:RERA",
+                "name": "RER A",
+                "network": { "id": "network:TGN", "name": "The Great Network" },
+                "physical_modes": [
+                    { "id": "physical_mode:Bus", "name": "Bus" },
+                    { "id": "physical_mode:RapidTransit", "name": "Rapid Transit" }
+                ]
+            }
+        ])
+    );
 }
 
-fn gare_de_lyon_with_two_datasets(bragi: &BragiHandler) {
+fn gare_de_lyon_with_two_datasets(bragi: &mut BragiHandler) {
     // with this query we should find only one response, a stop
     let response =
-        bragi.get("/autocomplete?q=gare de lyon&pt_dataset=dataset1&pt_dataset=dataset2");
+        bragi.get("/autocomplete?q=gare de lyon&pt_dataset[]=dataset1&pt_dataset[]=dataset2");
     assert_eq!(response.len(), 1);
     let stop = response.first().unwrap();
 

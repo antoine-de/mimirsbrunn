@@ -28,17 +28,17 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use cosmogony::ZoneType;
-use geo;
-use geojson;
-use serde;
-use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
+use geojson::Geometry;
+use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::iter::FromIterator;
 use std::rc::Rc;
 use std::sync::Arc;
+use transit_model::objects::Rgb;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -130,6 +130,36 @@ impl Place {
             Place::Stop(_) => None,
         }
     }
+
+    pub fn distance(&self) -> Option<u32> {
+        match *self {
+            Place::Admin(ref o) => o.distance,
+            Place::Street(ref o) => o.distance,
+            Place::Addr(ref o) => o.distance,
+            Place::Poi(ref o) => o.distance,
+            Place::Stop(ref o) => o.distance,
+        }
+    }
+
+    pub fn set_distance(&mut self, d: u32) {
+        match self {
+            Place::Admin(ref mut o) => o.distance = Some(d),
+            Place::Street(ref mut o) => o.distance = Some(d),
+            Place::Addr(ref mut o) => o.distance = Some(d),
+            Place::Poi(ref mut o) => o.distance = Some(d),
+            Place::Stop(ref mut o) => o.distance = Some(d),
+        }
+    }
+
+    pub fn coord(&self) -> &Coord {
+        match self {
+            Place::Admin(ref o) => &o.coord,
+            Place::Street(ref o) => &o.coord,
+            Place::Addr(ref o) => &o.coord,
+            Place::Poi(ref o) => &o.coord,
+            Place::Stop(ref o) => &o.coord,
+        }
+    }
 }
 
 pub trait MimirObject: serde::Serialize {
@@ -166,26 +196,42 @@ impl<T: MimirObject> MimirObject for Rc<T> {
         T::es_id(self)
     }
 }
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Default)]
 pub struct Property {
     pub key: String,
     pub value: String,
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Poi {
     pub id: String,
     pub label: String,
     pub name: String,
     pub coord: Coord,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
+    #[serde(skip_deserializing)]
+    pub approx_coord: Option<Geometry>,
     pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
     pub properties: Vec<Property>,
     pub address: Option<Address>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
+
+    #[serde(default)]
+    pub names: I18nProperties,
+    #[serde(default)]
+    pub labels: I18nProperties,
+
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct PoiType {
     pub id: String,
     pub name: String,
@@ -225,9 +271,100 @@ pub struct PhysicalMode {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Network {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Code {
     pub name: String,
     pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]
+pub struct Line {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<Rgb>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text_color: Option<Rgb>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commercial_mode: Option<CommercialMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network: Option<Network>,
+    pub physical_modes: Vec<PhysicalMode>,
+    #[serde(skip_serializing)]
+    pub sort_order: Option<u32>, // we do not serialise this field, it is only used to sort the Lines
+}
+
+pub trait FromTransitModel<T> {
+    fn from_transit_model(
+        idx: transit_model::collection::Idx<T>,
+        navitia: &transit_model::Model,
+    ) -> Self;
+}
+
+impl FromTransitModel<transit_model::objects::Line> for Line {
+    fn from_transit_model(
+        l_idx: transit_model::collection::Idx<transit_model::objects::Line>,
+        navitia: &transit_model::Model,
+    ) -> Self {
+        let line = &navitia.lines[l_idx];
+        Self {
+            id: format!("line:{}", line.id),
+            name: line.name.clone(),
+            code: line.code.clone(),
+            color: line.color.clone(),
+            sort_order: line.sort_order.clone(),
+            text_color: line.text_color.clone(),
+            commercial_mode: navitia
+                .commercial_modes
+                .get(&line.commercial_mode_id)
+                .map(|c| CommercialMode {
+                    id: format!("commercial_mode:{}", c.id),
+                    name: c.name.clone(),
+                }),
+            network: navitia.networks.get(&line.network_id).map(|n| Network {
+                id: format!("network:{}", n.id),
+                name: n.name.clone(),
+            }),
+            physical_modes: navitia
+                .get_corresponding_from_idx(l_idx)
+                .into_iter()
+                .map(|p_idx| {
+                    let physical_mode = &navitia.physical_modes[p_idx];
+                    PhysicalMode {
+                        id: format!("physical_mode:{}", physical_mode.id),
+                        name: physical_mode.name.clone(),
+                    }
+                })
+                .collect(),
+        }
+    }
+}
+
+// we want the lines to be sorted in a way where
+// line-3 is before line-11, so be use a humane_sort
+impl humanesort::HumaneOrder for Line {
+    fn humane_cmp(&self, other: &Self) -> Ordering {
+        // if only one object has a sort_order, it has the priority
+        // so it's smaller than the other object
+        match (&self.sort_order, &other.sort_order) {
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(s), Some(o)) => s.cmp(o),
+            (None, None) => Ordering::Equal,
+        }
+        .then_with(|| match (&self.code, &other.code) {
+            (Some(c), Some(o)) => c.humane_cmp(o),
+            _ => Ordering::Equal,
+        })
+        .then_with(|| self.name.humane_cmp(&other.name))
+    }
 }
 
 #[derive(Default, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -289,11 +426,15 @@ pub struct Comment {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Stop {
     pub id: String,
     pub label: String,
     pub name: String,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
+    #[serde(skip_deserializing)]
+    pub approx_coord: Option<Geometry>,
     pub coord: Coord,
     pub administrative_regions: Vec<Arc<Admin>>,
     pub weight: f64,
@@ -314,6 +455,14 @@ pub struct Stop {
     pub properties: Vec<Property>,
     #[serde(default)]
     pub feed_publishers: Vec<FeedPublisher>,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
+    #[serde(default)]
+    pub lines: Vec<Line>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
 }
 
 impl MimirObject for Stop {
@@ -336,7 +485,7 @@ impl Members for Stop {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Admin {
     pub id: String,
     pub insee: String,
@@ -345,6 +494,10 @@ pub struct Admin {
     pub name: String,
     pub zip_codes: Vec<String>,
     pub weight: f64,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
+    #[serde(skip_deserializing)]
+    pub approx_coord: Option<Geometry>,
     pub coord: Coord,
     #[serde(
         serialize_with = "custom_multi_polygon_serialize",
@@ -355,17 +508,19 @@ pub struct Admin {
     pub boundary: Option<geo::MultiPolygon<f64>>,
 
     #[serde(
-        serialize_with = "serialize_bbox",
-        deserialize_with = "deserialize_bbox",
+        serialize_with = "serialize_rect",
+        deserialize_with = "deserialize_rect",
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo::Bbox<f64>>,
+    pub bbox: Option<geo_types::Rect<f64>>,
 
     #[serde(default)]
     pub zone_type: Option<ZoneType>,
     #[serde(default)]
     pub parent_id: Option<String>, // id of the Admin's parent (from the cosmogony's hierarchy)
+    #[serde(default)]
+    pub country_codes: Vec<String>,
 
     #[serde(default)]
     pub codes: Vec<Code>,
@@ -375,6 +530,10 @@ pub struct Admin {
 
     #[serde(default)]
     pub labels: I18nProperties,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 
 impl Admin {
@@ -393,8 +552,7 @@ fn custom_multi_polygon_serialize<S>(
 where
     S: Serializer,
 {
-    use geojson::{GeoJson, Geometry, Value};
-    use serde::Serialize;
+    use geojson::{GeoJson, Value};
 
     match *multi_polygon_option {
         Some(ref multi_polygon) => {
@@ -410,9 +568,7 @@ fn custom_multi_polygon_deserialize<'de, D>(
 where
     D: serde::de::Deserializer<'de>,
 {
-    use geojson;
     use geojson::conversion::TryInto;
-    use serde::Deserialize;
 
     Option::<geojson::GeoJson>::deserialize(d).map(|option| {
         option.and_then(|geojson| match geojson {
@@ -432,39 +588,33 @@ where
     })
 }
 
-pub fn serialize_bbox<'a, S>(
-    bbox: &'a Option<geo::Bbox<f64>>,
+pub fn serialize_rect<'a, S>(
+    bbox: &'a Option<geo_types::Rect<f64>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
-    use serde::Serialize;
-
     match bbox {
         Some(b) => {
             // bbox serialized as an array
             // using GeoJSON bounding box format
             // See RFC 7946: https://tools.ietf.org/html/rfc7946#section-5
-            let geojson_bbox: geojson::Bbox = vec![b.xmin, b.ymin, b.xmax, b.ymax];
+            let geojson_bbox: geojson::Bbox = vec![b.min.x, b.min.y, b.max.x, b.max.y];
             geojson_bbox.serialize(serializer)
         }
         None => serializer.serialize_none(),
     }
 }
 
-fn deserialize_bbox<'de, D>(d: D) -> Result<Option<geo::Bbox<f64>>, D::Error>
+fn deserialize_rect<'de, D>(d: D) -> Result<Option<geo_types::Rect<f64>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    use serde::Deserialize;
-
     Option::<Vec<f64>>::deserialize(d).map(|option| {
-        option.map(|b| geo::Bbox {
-            xmin: b[0],
-            ymin: b[1],
-            xmax: b[2],
-            ymax: b[3],
+        option.map(|b| geo_types::Rect {
+            min: geo_types::Coordinate { x: b[0], y: b[1] },
+            max: geo_types::Coordinate { x: b[2], y: b[3] },
         })
     })
 }
@@ -509,7 +659,7 @@ impl MimirObject for Admin {
         Some(self.id.clone())
     }
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Street {
     pub id: String,
     #[serde(default)]
@@ -517,8 +667,18 @@ pub struct Street {
     pub administrative_regions: Vec<Arc<Admin>>,
     pub label: String,
     pub weight: f64,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
+    #[serde(skip_deserializing)]
+    pub approx_coord: Option<Geometry>,
     pub coord: Coord,
     pub zip_codes: Vec<String>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 impl Incr for Street {
     fn id(&self) -> &str {
@@ -559,8 +719,18 @@ pub struct Addr {
     pub street: Street,
     pub label: String,
     pub coord: Coord,
+    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
+    #[serde(skip_deserializing)]
+    pub approx_coord: Option<Geometry>,
     pub weight: f64,
     pub zip_codes: Vec<String>,
+    #[serde(default)]
+    pub country_codes: Vec<String>,
+    /// Distance to the coord in query.
+    /// Not serialized as is because it is returned in the `Feature` object
+    #[serde(default, skip)]
+    pub distance: Option<u32>,
 }
 
 impl MimirObject for Addr {
@@ -653,6 +823,12 @@ impl serde::Serialize for Coord {
     }
 }
 
+impl Into<Geometry> for Coord {
+    fn into(self) -> Geometry {
+        Geometry::new(geojson::Value::Point(vec![self.lon(), self.lat()]))
+    }
+}
+
 impl<'de> Deserialize<'de> for Coord {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -670,7 +846,7 @@ impl<'de> Deserialize<'de> for Coord {
         impl<'de> Visitor<'de> for CoordVisitor {
             type Value = Coord;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
                 formatter.write_str("struct Coord")
             }
 

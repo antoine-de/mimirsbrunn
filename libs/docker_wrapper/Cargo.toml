@@ -5,10 +5,10 @@ authors = ["dt.ro <dt.ro@canaltp.fr>"]
 edition = "2018"
 
 [dependencies]
-hyper = "0.10"
-slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
-slog-scope = "4.0"
-retry = "*"
+reqwest = "0.9"
+slog = { version = "2", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4"
+retry = "0.4"
 
 [dependencies.mimir]
 path = "../mimir"

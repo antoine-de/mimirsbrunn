@@ -29,58 +29,84 @@
 // www.navitia.io
 
 use super::get_values;
-use super::to_json;
 use super::BragiHandler;
-use iron_test;
 use serde_json::json;
+use std::path::Path;
 
 pub fn bragi_bano_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
 
     // *********************************
     // We load bano files
     // *********************************
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../bano2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/sample-bano.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    status_test(&bragi);
-    simple_bano_autocomplete_test(&bragi);
-    simple_bano_shape_filter_test(&bragi);
-    simple_bano_lon_lat_test(&bragi);
-    long_bano_address_test(&bragi);
-    reverse_bano_test(&bragi);
+    status_test(&mut bragi);
+    simple_bano_autocomplete_test(&mut bragi);
+    simple_bano_shape_filter_test(&mut bragi);
+    simple_bano_lon_lat_test(&mut bragi);
+    long_bano_address_test(&mut bragi);
+    reverse_bano_test(&mut bragi);
 }
 
-fn status_test(bragi: &BragiHandler) {
-    let resp = bragi.raw_get("/status").unwrap();
-    assert_eq!(to_json(resp).pointer("/status"), Some(&json!("good")));
-}
-
-fn simple_bano_autocomplete_test(bragi: &BragiHandler) {
-    let resp = bragi
-        .raw_get("/autocomplete?q=15 Rue Hector Malot, (Paris)")
-        .unwrap();
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    let result = concat!(
-        r#"{"type":"FeatureCollection","#,
-        r#""geocoding":{"version":"0.1.0","query":""},"#,
-        r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-        r#"[2.376379,48.846495],"type":"Point"},"#,
-        r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
-        r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
-        r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-        r#""street":"Rue Hector Malot","postcode":"75012","#,
-        r#""city":null,"citycode":null,"#,
-        r#""administrative_regions":[]}}}]}"#
+fn status_test(bragi: &mut BragiHandler) {
+    assert_eq!(
+        bragi.get_json("/status").pointer("/status"),
+        Some(&json!("good"))
     );
-    assert_eq!(result_body, result);
+}
+
+fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
+    assert_eq!(
+        bragi.get_json("/autocomplete?q=15 Rue Hector Malot, (Paris)"),
+        json!(
+        {
+            "features": [
+                {
+                    "geometry": {
+                        "coordinates": [
+                            2.376379,
+                            48.846495
+                        ],
+                        "type": "Point"
+                    },
+                    "properties": {
+                        "geocoding": {
+                            "administrative_regions": [],
+                            "city": null,
+                            "citycode": null,
+                            "country_codes": ["fr"],
+                            "housenumber": "15",
+                            "id": "addr:2.376379;48.846495:15",
+                            "label": "15 Rue Hector Malot (Paris)",
+                            "name": "15 Rue Hector Malot",
+                            "postcode": "75012",
+                            "street": "Rue Hector Malot",
+                            "type": "house"
+                        }
+                    },
+                    "type": "Feature"
+                }
+            ],
+            "geocoding": {
+                "query": "",
+                "version": "0.1.0"
+            },
+            "type": "FeatureCollection"
+        }
+        )
+    );
 }
 
 // A(48.846431 2.376488)
@@ -98,43 +124,79 @@ fn simple_bano_autocomplete_test(bragi: &BragiHandler) {
 //      |                      |
 //      |                      |
 //      B ---------------------C
-fn simple_bano_shape_filter_test(bragi: &BragiHandler) {
+fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
     // Search with shape where house number in shape
-    let shape = r#"{"shape":{"type":"Feature","geometry":{"type":"Polygon",
+    let shape = r#"{"shape":{"type":"Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates":[[[2.376488, 48.846431],
-        [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603]]]}}}"#;
-    let resp = bragi
+        [2.376306, 48.846430],[2.376309, 48.846606],[2.376486, 48.846603], [2.376488, 48.846431]]]}}}"#;
+    let r = bragi
         .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
         .unwrap();
 
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    let result = concat!(
-        r#"{"type":"FeatureCollection","#,
-        r#""geocoding":{"version":"0.1.0","query":""},"#,
-        r#""features":[{"type":"Feature","geometry":{"coordinates":"#,
-        r#"[2.376379,48.846495],"type":"Point"},"#,
-        r#""properties":{"geocoding":{"id":"addr:2.376379;48.846495","#,
-        r#""type":"house","label":"15 Rue Hector Malot (Paris)","#,
-        r#""name":"15 Rue Hector Malot","housenumber":"15","#,
-        r#""street":"Rue Hector Malot","postcode":"75012","#,
-        r#""city":null,"citycode":null,"#,
-        r#""administrative_regions":[]}}}]}"#
+    assert!(r.status().is_success(), "invalid status: {}", r.status());
+    let json_resp = bragi.to_json(r);
+
+    assert_eq!(
+        json_resp,
+        json!({
+          "type": "FeatureCollection",
+          "geocoding": {
+            "version": "0.1.0",
+            "query": ""
+          },
+          "features": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "coordinates": [
+                  2.376379,
+                  48.846495
+                ],
+                "type": "Point"
+              },
+              "properties": {
+                "geocoding": {
+                  "id": "addr:2.376379;48.846495:15",
+                  "type": "house",
+                  "label": "15 Rue Hector Malot (Paris)",
+                  "name": "15 Rue Hector Malot",
+                  "housenumber": "15",
+                  "street": "Rue Hector Malot",
+                  "postcode": "75012",
+                  "city": null,
+                  "citycode": null,
+                  "country_codes": ["fr"],
+                  "administrative_regions": []
+                }
+              }
+            }
+          ]
+        }
+        )
     );
-    assert_eq!(result_body, result);
 
     // Search with shape where house number out of shape
-    let resp = bragi
+    let r = bragi
         .raw_post_shape("/autocomplete?q=18 Rue Hector Malot, (Paris)", shape)
         .unwrap();
-    let result_body = iron_test::response::extract_body_to_string(resp);
-    let result = concat!(
-        r#"{"type":"FeatureCollection","#,
-        r#""geocoding":{"version":"0.1.0","query":""},"features":[]}"#
-    );
-    assert_eq!(result_body, result);
+    assert!(r.status().is_success(), "invalid status: {}", r.status());
+    let json_resp = bragi.to_json(r);
+
+    assert_eq!(
+        json_resp,
+        json!({
+          "type": "FeatureCollection",
+          "geocoding": {
+            "version": "0.1.0",
+            "query": ""
+          },
+          "features": []
+        }
+        )
+    )
 }
 
-fn simple_bano_lon_lat_test(bragi: &BragiHandler) {
+fn simple_bano_lon_lat_test(bragi: &mut BragiHandler) {
     // test with a lon/lat priorisation
     // in the dataset there are two '20 rue hector malot',
     // one in paris and one in trifouilli-les-Oies
@@ -166,7 +228,7 @@ fn simple_bano_lon_lat_test(bragi: &BragiHandler) {
     );
 }
 
-fn long_bano_address_test(bragi: &BragiHandler) {
+fn long_bano_address_test(bragi: &mut BragiHandler) {
     // test with a very long request which consists of an exact address and something else
     // and the "something else" should not disturb the research
     let all_20 = bragi.get(
@@ -180,7 +242,7 @@ fn long_bano_address_test(bragi: &BragiHandler) {
     );
 }
 
-fn reverse_bano_test(bragi: &BragiHandler) {
+fn reverse_bano_test(bragi: &mut BragiHandler) {
     let res = bragi.get("/reverse?lon=2.37716&lat=48.8468");
     assert_eq!(res.len(), 1);
     assert_eq!(

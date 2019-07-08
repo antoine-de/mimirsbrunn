@@ -27,19 +27,13 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
-use failure;
-use geo;
-use mimir;
-use osmpbfreader;
-
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::utils::{format_label, get_zip_codes_from_admins};
-use crate::Error;
+use crate::{labels, utils, Error};
 use failure::ResultExt;
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Deref;
 use std::sync::Arc;
 
 pub type AdminSet = BTreeSet<Arc<mimir::Admin>>;
@@ -91,15 +85,25 @@ pub fn streets(
             .filter_map(|ref_obj| {
                 let way = objs_map.get(&ref_obj.member)?.way()?;
                 let way_name = way_name.or_else(|| way.tags.get("name"))?;
-                let admin = get_street_admin(admins_geofinder, &objs_map, way);
+                let admins = get_street_admin(admins_geofinder, &objs_map, way);
+                let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
+                let street_label = labels::format_street_label(
+                    &way_name,
+                    admins.iter().map(|a| a.deref()),
+                    &country_codes,
+                );
+                let coord = get_way_coord(&objs_map, way);
                 Some(mimir::Street {
                     id: format!("street:osm:relation:{}", rel.id.0.to_string()),
                     name: way_name.to_string(),
-                    label: format_label(&admin, way_name),
+                    label: street_label,
                     weight: 0.,
-                    zip_codes: get_zip_codes_from_admins(&admin),
-                    administrative_regions: admin,
+                    zip_codes: utils::get_zip_codes_from_admins(&admins),
+                    administrative_regions: admins,
                     coord: get_way_coord(&objs_map, way),
+                    approx_coord: Some(coord.into()),
+                    distance: None,
+                    country_codes,
                 })
             })
             .next()
@@ -139,14 +143,22 @@ pub fn streets(
         let way = objs_map.get(&min_id)?.way()?;
         let name = way.tags.get("name")?.to_string();
         let admins = get_street_admin(admins_geofinder, &objs_map, way);
+
+        let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
+        let street_label =
+            labels::format_street_label(&name, admins.iter().map(|a| a.deref()), &country_codes);
+        let coord = get_way_coord(&objs_map, way);
         Some(mimir::Street {
             id: format!("street:osm:way:{}", way.id.0.to_string()),
-            label: format_label(&admins, &name),
+            label: street_label,
             name,
             weight: 0.,
-            zip_codes: get_zip_codes_from_admins(&admins),
+            zip_codes: utils::get_zip_codes_from_admins(&admins),
             administrative_regions: admins,
             coord: get_way_coord(&objs_map, way),
+            approx_coord: Some(coord.into()),
+            distance: None,
+            country_codes,
         })
     });
     street_list.extend(streets);
@@ -170,7 +182,7 @@ fn get_street_admin(
         .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|node_obj| node_obj.node())
-        .map(|node| geo::Coordinate {
+        .map(|node| geo_types::Coordinate {
             x: node.lon(),
             y: node.lat(),
         })

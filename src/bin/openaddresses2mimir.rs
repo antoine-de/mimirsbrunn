@@ -37,8 +37,9 @@ use lazy_static::lazy_static;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use serde_derive::{Deserialize, Serialize};
-use std::fs;
+use mimirsbrunn::{labels, utils};
+use serde::{Deserialize, Serialize};
+use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -62,36 +63,79 @@ pub struct OpenAddresse {
 }
 
 impl OpenAddresse {
-    pub fn into_addr(self, admins_geofinder: &AdminGeoFinder) -> mimir::Addr {
-        let street_label = format!("{} ({})", self.street, self.city);
-        let addr_name = format!("{} {}", self.number, self.street);
-        let addr_label = format!("{} ({})", addr_name, self.city);
+    pub fn into_addr(
+        self,
+        admins_geofinder: &AdminGeoFinder,
+        use_old_index_format: bool,
+    ) -> mimir::Addr {
         let street_id = format!("street:{}", self.id); // TODO check if thats ok
         let admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
             y: self.lat,
         });
+        let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
 
         let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
+        // Note: for openaddress, we don't trust the admin hierarchy much (compared to bano)
+        // so we use for the label the admins that we find in the DB
+        let street_label = labels::format_street_label(
+            &self.street,
+            admins.iter().map(|a| a.deref()),
+            &country_codes,
+        );
+        let (addr_name, addr_label) = labels::format_addr_name_and_label(
+            &self.number,
+            &self.street,
+            admins.iter().map(|a| a.deref()),
+            &country_codes,
+        );
 
+        let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
             id: street_id,
             name: self.street,
-            label: street_label.to_string(),
+            label: street_label,
             administrative_regions: admins,
             weight: weight,
             zip_codes: vec![self.postcode.clone()],
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            approx_coord: None,
+            distance: None,
+            country_codes: country_codes.clone(),
         };
+
         mimir::Addr {
-            id: format!("addr:{};{}", self.lon, self.lat),
+            id: format!(
+                "addr:{};{}{}",
+                self.lon,
+                self.lat,
+                if use_old_index_format {
+                    String::new()
+                } else {
+                    format!(
+                        ":{}",
+                        self.number
+                            .replace(" ", "")
+                            .replace("\t", "")
+                            .replace("\r", "")
+                            .replace("\n", "")
+                            .replace("/", "-")
+                            .replace(".", "-")
+                            .replace(":", "-")
+                            .replace(";", "-")
+                    )
+                }
+            ),
             name: addr_name,
+            label: addr_label,
             house_number: self.number,
             street: street,
-            label: addr_label,
-            coord: mimir::Coord::new(self.lon, self.lat),
+            coord: coord.clone(),
+            approx_coord: Some(coord.into()),
             weight: weight,
-            zip_codes: vec![self.postcode.clone()],
+            zip_codes: vec![self.postcode],
+            distance: None,
+            country_codes,
         }
     }
 }
@@ -102,21 +146,20 @@ fn index_oa<I>(
     index_settings: IndexSettings,
     files: I,
     nb_threads: usize,
+    use_old_index_format: bool,
 ) -> Result<(), mimirsbrunn::Error>
 where
     I: Iterator<Item = std::path::PathBuf>,
 {
     let mut rubber = Rubber::new(cnx_string);
 
-    let admins = rubber
-        .get_admins_from_dataset(dataset)
-        .unwrap_or_else(|err| {
-            info!(
-                "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset, err
-            );
-            vec![]
-        });
+    let admins = rubber.get_all_admins().unwrap_or_else(|err| {
+        warn!(
+            "Administratives regions not found in es db for dataset {}. (error: {})",
+            dataset, err
+        );
+        vec![]
+    });
     let admins_geofinder = admins.into_iter().collect();
 
     import_addresses(
@@ -126,7 +169,7 @@ where
         index_settings,
         dataset,
         files,
-        move |a: OpenAddresse| a.into_addr(&admins_geofinder),
+        move |a: OpenAddresse| a.into_addr(&admins_geofinder, use_old_index_format),
     )
 }
 
@@ -161,6 +204,10 @@ struct Args {
     /// Number of replicas for the es index
     #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
     nb_replicas: usize,
+    /// If set to true, the number inside the address won't be used for the index generation,
+    /// therefore, different addresses with the same position will disappear.
+    #[structopt(long = "use-old-index-format")]
+    use_old_index_format: bool,
 }
 
 fn run(args: Args) -> Result<(), failure::Error> {
@@ -175,13 +222,28 @@ fn run(args: Args) -> Result<(), failure::Error> {
         nb_replicas: args.nb_replicas,
     };
     if args.input.is_dir() {
-        let paths: std::fs::ReadDir = fs::read_dir(&args.input)?;
+        let paths = walkdir::WalkDir::new(&args.input);
+        let path_iter = paths
+            .into_iter()
+            .map(|p| p.unwrap().into_path())
+            .filter(|p| {
+                let f = p
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e == "csv")
+                    .unwrap_or(false);
+                if !f {
+                    info!("skipping file {} as it is not a csv", p.display());
+                }
+                f
+            });
         index_oa(
             &args.connection_string,
             &args.dataset,
             index_settings,
-            paths.map(|p| p.unwrap().path()),
+            path_iter,
             args.nb_threads,
+            args.use_old_index_format,
         )
     } else {
         index_oa(
@@ -190,6 +252,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
             index_settings,
             std::iter::once(args.input),
             args.nb_threads,
+            args.use_old_index_format,
         )
     }
 }

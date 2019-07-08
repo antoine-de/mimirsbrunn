@@ -32,13 +32,18 @@ use cosmogony::ZoneType;
 use mimir;
 use std::collections::BTreeMap;
 use std::f64;
+use std::path::Path;
 
 /// load a cosmogony file in mimir.
 /// The cosmogony file has been generated using the osm_fixture.osm.pbf file
 pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
+    let cosmogony2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../cosmogony2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        concat!(env!("OUT_DIR"), "/../../../cosmogony2mimir"),
-        vec![
+        &cosmogony2mimir,
+        &[
             "--lang=fr".into(),
             "--lang=ru".into(),
             "--input=./tests/fixtures/cosmogony.json".into(),
@@ -133,6 +138,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
                     ("ISO3166-1:alpha2", "FR"),
                     ("ISO3166-1:alpha3", "FRA"),
                     ("ISO3166-1:numeric", "250"),
+                    ("wikidata", "Q142"),
                 ]
                 .into_iter()
                 .collect()

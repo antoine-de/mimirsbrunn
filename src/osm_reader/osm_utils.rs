@@ -73,7 +73,7 @@ pub fn get_osm_codes_from_tags(tags: &osmpbfreader::Tags) -> Vec<mimir::Code> {
     // * ISO3166 codes (mainly to get country codes)
     // * ref:* tags (to get NUTS codes, INSEE code (even if we have a custom field for them), ...)
     tags.iter()
-        .filter(|(k, _)| k.starts_with("ISO3166") || k.starts_with("ref:"))
+        .filter(|(k, _)| k.starts_with("ISO3166") || k.starts_with("ref:") || *k == "wikidata")
         .map(|property| mimir::Code {
             name: property.0.to_string(),
             value: property.1.to_string(),

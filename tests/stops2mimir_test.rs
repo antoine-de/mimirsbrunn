@@ -29,14 +29,18 @@
 // www.navitia.io
 
 use mimir;
+use std::path::Path;
 
 /// Simple call to a stops2mimir load into ES base
 /// Checks that we are able to find one object (a specific address)
 pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let stops2mimir = concat!(env!("OUT_DIR"), "/../../../stops2mimir");
+    let stops2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../stops2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops.txt".into(),
             format!("--connection-string={}", es_wrapper.host()),
             "--dataset=dataset1".into(),
@@ -71,8 +75,8 @@ pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     // we then import another stop fixture
     crate::launch_and_assert(
-        stops2mimir,
-        vec![
+        &stops2mimir,
+        &[
             "--input=./tests/fixtures/stops_dataset2.txt".into(),
             format!("--connection-string={}", es_wrapper.host()),
             "--dataset=dataset2".into(),

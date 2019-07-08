@@ -29,51 +29,26 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate serde_derive;
-
-extern crate serde;
-extern crate serde_json;
-
-#[macro_use]
 extern crate slog;
-extern crate slog_async;
-extern crate slog_envlogger;
-extern crate slog_json;
 #[macro_use]
 extern crate slog_scope;
-extern crate slog_stdlog;
-extern crate slog_term;
-
-extern crate chrono;
 #[macro_use]
 extern crate failure;
-extern crate cosmogony;
-extern crate geo;
-extern crate geojson;
-extern crate hyper;
-extern crate par_map;
-extern crate rs_es;
-
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate prometheus;
 
 pub mod objects;
 pub mod rubber;
 
 pub use crate::objects::*;
-use std::env;
-
 use slog::Drain;
 use slog::Never;
+use std::env;
 
 pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {
     if let Ok(s) = env::var("RUST_LOG_JSON") {
         let mut drain = slog_json::Json::new(std::io::stderr())
             .add_default_keys()
             .add_key_value(o!(
-                        "module" => slog::FnValue(|rinfo : &slog::Record| {
+                        "module" => slog::FnValue(|rinfo : &slog::Record<'_>| {
                             rinfo.module()
                         })
             ));

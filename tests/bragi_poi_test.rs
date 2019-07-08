@@ -29,7 +29,7 @@
 // www.navitia.io
 
 use super::count_types;
-use super::filter_by_type;
+use super::filter_by;
 use super::get_poi_type_ids;
 use super::get_types;
 use super::get_value;
@@ -37,9 +37,10 @@ use super::get_values;
 use super::BragiHandler;
 use mimir::{MimirObject, Poi};
 use serde_json::json;
+use std::path::Path;
 
 pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let bragi = BragiHandler::new(format!("{}/munin", es_wrapper.host()));
+    let mut bragi = BragiHandler::new(es_wrapper.host());
 
     // ******************************************
     // We load three-cities bano dataset and then the OSM dataset (with the POIs)
@@ -47,20 +48,26 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // - bano-three_cities
     // - osm_fixture.osm.pbf (including ways and pois)
     // ******************************************
-    let bano2mimir = concat!(env!("OUT_DIR"), "/../../../bano2mimir");
+    let bano2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../bano2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        bano2mimir,
-        vec![
+        &bano2mimir,
+        &[
             "--input=./tests/fixtures/bano-three_cities.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
     );
 
-    let osm2mimir = concat!(env!("OUT_DIR"), "/../../../osm2mimir");
+    let osm2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../osm2mimir")
+        .display()
+        .to_string();
     crate::launch_and_assert(
-        osm2mimir,
-        vec![
+        &osm2mimir,
+        &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--import-admin".into(),
             "--import-way".into(),
@@ -71,15 +78,17 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    poi_admin_address_test(&bragi);
-    poi_admin_test(&bragi);
-    poi_zip_code_test(&bragi);
-    poi_from_osm_test(&bragi);
-    poi_misspelt_one_word_admin_test(&bragi);
-    poi_from_osm_with_address_addr_test(&bragi);
+    poi_admin_address_test(&mut bragi);
+    poi_admin_test(&mut bragi);
+    poi_zip_code_test(&mut bragi);
+    poi_from_osm_test(&mut bragi);
+    poi_misspelt_one_word_admin_test(&mut bragi);
+    poi_from_osm_with_address_addr_test(&mut bragi);
+    poi_filter_poi_type_test(&mut bragi);
+    poi_filter_error_message_test(&mut bragi);
 }
 
-fn poi_admin_address_test(bragi: &BragiHandler) {
+fn poi_admin_address_test(bragi: &mut BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies");
     let types = get_types(&geocodings);
     assert_eq!(count_types(&types, Poi::doc_type()), 1);
@@ -111,7 +120,7 @@ fn poi_admin_address_test(bragi: &BragiHandler) {
     assert_eq!(get_value(poi, "postcode"), "77350");
 }
 
-fn poi_admin_test(bragi: &BragiHandler) {
+fn poi_admin_test(bragi: &mut BragiHandler) {
     // with this search we should be able to find a poi called Melun Rp
     let geocodings = bragi.get("/autocomplete?q=Melun Rp");
     let types = get_types(&geocodings);
@@ -126,7 +135,7 @@ fn poi_admin_test(bragi: &BragiHandler) {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
     // we should also be able to find the city of melun which will carry more postcodes
-    let cities = filter_by_type(&geocodings, "city");
+    let cities = filter_by(&geocodings, "zone_type", "city");
     assert_eq!(cities.len(), 1);
     let melun = &cities.first().unwrap();
     assert_eq!(get_value(melun, "name"), "Melun");
@@ -134,21 +143,40 @@ fn poi_admin_test(bragi: &BragiHandler) {
     assert_eq!(get_value(melun, "label"), "Melun (77000-CP77001)");
 }
 
-fn poi_zip_code_test(bragi: &BragiHandler) {
+fn poi_zip_code_test(bragi: &mut BragiHandler) {
     // search by zip code
     let geocodings = bragi.get("/autocomplete?q=77000&limit=15");
     let types = get_types(&geocodings);
+    let zone_types = get_values(&geocodings, "zone_type");
     assert_eq!(count_types(&types, Poi::doc_type()), 2);
-    assert_eq!(count_types(&types, "city"), 3);
+    assert_eq!(count_types(&zone_types, "city"), 3);
     assert_eq!(count_types(&types, "street"), 8);
 
     // search by zip code and limit is string type
-    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=ABCD");
-    assert!(geocodings.is_err(), true);
+    let geocodings = bragi.get_unchecked_json("/autocomplete?q=77000&limit=ABCD");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
+            })
+        )
+    );
 
     // search by zip code and limit < 0
-    let geocodings = bragi.raw_get("/autocomplete?q=77000&limit=-1");
-    assert!(geocodings.is_err(), true);
+    let geocodings = bragi.get_unchecked_json("/autocomplete?q=77000&limit=-1");
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "invalid argument: failed with reason: invalid digit found in string",
+            })
+        )
+    );
 
     // search by zip code and limit and offset
     let all_20 = bragi.get("/autocomplete?q=77000&limit=10&offset=0");
@@ -158,7 +186,7 @@ fn poi_zip_code_test(bragi: &BragiHandler) {
     assert_eq!(all_20.len(), 3);
 }
 
-fn poi_from_osm_test(bragi: &BragiHandler) {
+fn poi_from_osm_test(bragi: &mut BragiHandler) {
     // search poi: Poi as a relation in osm data
     let geocodings = bragi.get("/autocomplete?q=Parking (Le Coudray-Montceaux)");
     let types = get_types(&geocodings);
@@ -194,7 +222,7 @@ fn poi_from_osm_test(bragi: &BragiHandler) {
     assert!(!get_values(&geocodings, "label").contains(&"ENSE3 site Ampère",));
 }
 
-fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
+fn poi_misspelt_one_word_admin_test(bragi: &mut BragiHandler) {
     // with this search we should be able to find a poi called "Melun"
     let geocodings = bragi.get("/autocomplete?q=Melun");
     let types = get_types(&geocodings);
@@ -208,13 +236,13 @@ fn poi_misspelt_one_word_admin_test(bragi: &BragiHandler) {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
     // we should also be able to find the city of melun which will carry more postcodes
-    let cities = filter_by_type(&geocodings, "city");
+    let cities = filter_by(&geocodings, "zone_type", "city");
     assert_eq!(cities.len(), 1);
     let melun = &cities.first().unwrap();
     assert_eq!(get_value(melun, "name"), "Melun");
 }
 
-fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
+fn poi_from_osm_with_address_addr_test(bragi: &mut BragiHandler) {
     // search poi: Poi as a way in osm data
     let geocodings = bragi.get("/autocomplete?q=77000 Hôtel de Ville (Melun)");
     let types = get_types(&geocodings);
@@ -229,10 +257,115 @@ fn poi_from_osm_with_address_addr_test(bragi: &BragiHandler) {
     );
     assert_eq!(
         poi.get("address").and_then(|a| a.pointer("/id")),
-        Some(&json!("addr:2.65801;48.53685"))
+        Some(&json!("addr:2.65801;48.53685:2"))
     );
     assert_eq!(
         poi.get("address").and_then(|a| a.pointer("/label")),
         Some(&json!("2 Rue de la Reine Blanche (Melun)"))
+    );
+}
+
+// test 'labels' and 'names' fields work with i18n queries
+pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
+    // we define a simple test italian poi (the 'Colosseo'
+    // with 2 langs for labels and names fields ('fr' and 'es')
+    let coord = mimir::Coord(geo::Coordinate { x: 0.0, y: 0.0 });
+    let colosseo = mimir::Poi {
+        id: "".to_string(),
+        label: "Colosseo (Roma)".to_string(),
+        name: "Colosseo".to_string(),
+        coord: coord.clone(),
+        approx_coord: Some(coord.into()),
+        administrative_regions: vec![],
+        weight: 0.0,
+        zip_codes: vec![],
+        poi_type: mimir::PoiType {
+            id: "".to_string(),
+            name: "".to_string(),
+        },
+        properties: vec![],
+        address: None,
+        names: mimir::I18nProperties(vec![
+            mimir::Property {
+                key: "fr".to_string(),
+                value: "Colisée".to_string(),
+            },
+            mimir::Property {
+                key: "es".to_string(),
+                value: "Coliseo".to_string(),
+            },
+        ]),
+        labels: mimir::I18nProperties(vec![
+            mimir::Property {
+                key: "fr".to_string(),
+                value: "Colisée (Rome)".to_string(),
+            },
+            mimir::Property {
+                key: "es".to_string(),
+                value: "Coliseo (Roma)".to_string(),
+            },
+        ]),
+        ..Default::default()
+    };
+
+    let index_settings = mimir::rubber::IndexSettings {
+        nb_shards: 2,
+        nb_replicas: 1,
+    };
+    // we index the poi above
+    let _result = es
+        .rubber
+        .index("munin_poi", &index_settings, std::iter::once(colosseo));
+
+    es.refresh();
+
+    let mut bragi = BragiHandler::new(format!("{}/munin", es.host()));
+
+    // We look for the Colisée in spanish
+    let poi = bragi.get("/autocomplete?q=Coliseo&lang=es");
+    let result = poi.first().unwrap();
+    assert_eq!(result["name"], "Coliseo");
+    assert_eq!(result["label"], "Coliseo (Roma)");
+
+    // We look for the Colisée in french
+    let poi = bragi.get("/autocomplete?q=Colisée&lang=fr");
+    let result = poi.first().unwrap();
+    assert_eq!(result["name"], "Colisée");
+    assert_eq!(result["label"], "Colisée (Rome)");
+
+    // We look for the Colisée in italian: since it has not been
+    // indexed in russian we expect the default name and label (ie the
+    // local ones: italian).
+    let poi = bragi.get("/autocomplete?q=Colosseo&lang=it");
+    let result = poi.first().unwrap();
+    assert_eq!(result["name"], "Colosseo");
+    assert_eq!(result["label"], "Colosseo (Roma)");
+}
+
+fn poi_filter_poi_type_test(bragi: &mut BragiHandler) {
+    let geocodings =
+        bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:post_office");
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, Poi::doc_type()), 1);
+
+    let geocodings =
+        bragi.get("/autocomplete?q=77000&type[]=poi&poi_type[]=poi_type:amenity:townhall");
+    let types = get_types(&geocodings);
+    assert_eq!(count_types(&types, Poi::doc_type()), 1);
+}
+
+fn poi_filter_error_message_test(bragi: &mut BragiHandler) {
+    let geocodings = bragi.get_unchecked_json(
+        "/autocomplete?q=77000&type[]=zone&poi_type[]=poi_type:amenity:post_office",
+    );
+    assert_eq!(
+        geocodings,
+        (
+            actix_web::http::StatusCode::BAD_REQUEST,
+            json!({
+                "short": "validation error",
+                "long": "Invalid parameter: poi_type[] parameter requires to have 'type[]=poi'",
+            })
+        )
     );
 }
