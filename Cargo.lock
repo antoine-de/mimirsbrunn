@@ -308,6 +308,7 @@ dependencies = [
  "actix 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 0.7.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "cosmogony 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "docker_wrapper 1.2.0",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo-types 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -318,6 +319,7 @@ dependencies = [
  "mimir 1.2.0",
  "num_cpus 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prometheus 0.3.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "rs-es 0.11.4 (git+https://github.com/antoine-de/rs-es.git?branch=clonable_client)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -325,6 +327,7 @@ dependencies = [
  "slog 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-scope 4.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tools 0.0.1",
 ]
 
 [[package]]
@@ -1449,6 +1452,7 @@ dependencies = [
  "slog-envlogger 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-scope 4.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tools 0.0.1",
  "transit_model 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -3097,6 +3101,22 @@ dependencies = [
  "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-reactor 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tools"
+version = "0.0.1"
+dependencies = [
+ "actix 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "actix-web 0.7.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bragi 1.2.0",
+ "docker_wrapper 1.2.0",
+ "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mimir 1.2.0",
+ "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
+ "slog 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "slog-scope 4.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

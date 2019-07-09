@@ -34,7 +34,7 @@ path = "../docker_wrapper"
 path = "../tools"
 
 [dev-dependencies]
-reqwest = "0.9"
+reqwest = "=0.9.16"
 
 [build-dependencies]
 git-version = "0.2"

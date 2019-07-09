@@ -49,7 +49,7 @@ path = "libs/mimir"
 path = "libs/tools"
 
 [dev-dependencies]
-reqwest = "0.9"
+reqwest = "=0.9.16"
 approx = "0.2.0"
 actix-web = "0.7"
 
