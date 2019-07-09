@@ -219,22 +219,7 @@ impl BragiHandler {
         });
 
         let prometheus = actix_web_prom::PrometheusMetrics::new("api", "/metrics"); //TODO don't forget to add in_flight queries
-                                                                                   
-                                                                                   
-                                                                                   
-                                                                                    // let app = actix_web::App::new()
-                                                                                    //     .data(ctx.clone())
-                                                                                    //     .wrap(actix_cors::Cors::new().allowed_methods(vec!["GET"]))
-                                                                                    //     .wrap(prometheus.clone())
-                                                                                    //     // .wrap(prometheus_middleware::PrometheusMiddleware::default())
-                                                                                    //     .wrap(actix_web::middleware::Logger::default())
-                                                                                    //     .configure(bragi::server::configure_server)
-                                                                                    //     .default_service(
-                                                                                    //         actix_web::web::resource("")
-                                                                                    //             .route(actix_web::web::get().to(bragi::server::default_404)),
-                                                                                    //     );
-
-        let srv = actix_http_test::TestServer::new(|| {
+        let srv = actix_http_test::TestServer::new(move || {
             actix_http::HttpService::new(
                 actix_web::App::new()
                     .data(ctx.clone())
@@ -250,86 +235,105 @@ impl BragiHandler {
             )
         });
 
-        // let bob: actix_http_test::TestServerRuntime = actix_web::test::init_service(app);
         BragiHandler { app: srv }
     }
 
-    pub fn raw_get(&mut self, q: &str) -> Result<ClientResponse<Box<dyn futures::stream::Stream<Item = bytes::Bytes, Error= actix_http::error::PayloadError>>>, Error>
-     {
-        let req = self.app.get(q);
-        
-        self.app.block_on(req.send())
-            .map_err(|e| format_err!("impossible to query bragi: {}", e))
+    pub fn raw_get(&mut self, q: &str) -> (actix_http::http::StatusCode, bytes::Bytes) {
 
+        println!("calling {}", q);
+        let req = self.app.get(q);
+
+        let mut r = self
+            .app
+            .block_on(req.send())
+            .map_err(|e| format_err!("impossible to query bragi: {}", e))
+            .unwrap();
+
+        let status = r.status();
+
+        // TODO: at one point it would be nice to read the body only if we need it,
+        // but for the moment I'm not able to return a future here
+        let body = self.app.block_on(r.body()).unwrap();
+        (status, body)
+    }
+
+    pub fn get_status(&mut self, q: &str) -> actix_http::http::StatusCode {
+        let req = self.app.get(q);
+
+        let r = self
+            .app
+            .block_on(req.send())
+            .map_err(|e| format_err!("impossible to query bragi: {}", e))
+            .unwrap();
+        r.status()
     }
 
     pub fn get(&mut self, q: &str) -> Vec<Map<String, Value>> {
-        let r = self.raw_get(q).unwrap();
-        assert!(r.status().is_success(), "invalid status: {}", r.status());
-        self.get_results(r, Some("/properties/geocoding".to_string()))
+        let j = self.get_json(q);
+        self.get_results(j)
     }
 
     pub fn get_json(&mut self, q: &str) -> Value {
-        let r = self.raw_get(q).unwrap();
-        assert!(r.status().is_success(), "invalid status: {}", r.status());
-        self.to_json(r)
+        let (status, s) = self.raw_get(q);
+        assert!(status.is_success(), "invalid status: {}", status);
+
+        self.to_json(s)
     }
 
     pub fn get_unchecked_json(&mut self, q: &str) -> (actix_web::http::StatusCode, Value) {
-        let r = self.raw_get(q).unwrap();
-        (r.status(), self.to_json(r))
+        let (status, s) = self.raw_get(q);
+
+        (status, self.to_json(s))
     }
 
-    pub fn raw_post_shape(
+    pub fn raw_post(
         &mut self,
         q: &str,
         shape: &'static str,
-    ) -> Result<ClientResponse, Error> {
-        self.app
-            .execute(
-                self.app
-                    .post(q)
-                    .header(actix_web::http::header::CONTENT_TYPE, "application/json")
-                    .body(shape)
-                    .map_err(|e| format_err!("invalid query: {}", e))?
-                    .send(),
-            )
-            .map_err(|e| format_err!("impossible to query bragi: {}", e))
+    ) -> (actix_http::http::StatusCode, bytes::Bytes) {
+        let mut r = self
+            .app
+            .block_on(self.app.post(q).send_body(shape))
+            .unwrap_or_else(|e| panic!("impossible to query bragi: {}", e));
+
+        let status = r.status();
+
+        // TODO: at one point it would be nice to read the body only if we need it,
+        // but for the moment I'm not able to return a future here
+        let body = self.app.block_on(r.body()).unwrap();
+        (status, body)
     }
 
-    pub fn post_shape(&mut self, q: &str, shape: &'static str) -> Vec<Map<String, Value>> {
-        let r = self.raw_post_shape(q, shape).unwrap();
-        self.get_results(r, Some("/properties/geocoding".to_string()))
+    pub fn post(&mut self, q: &str, shape: &'static str) -> Vec<Map<String, Value>> {
+        let j = self.post_as_json(q, shape);
+        self.get_results(j)
     }
 
-    pub fn to_json(&mut self, r: ClientResponse) -> Value {
-        use actix_web::HttpMessage;
-        let bytes = self.app.execute(r.send_body()).unwrap();
-        let body = std::str::from_utf8(&bytes).unwrap();
+    pub fn post_as_json(&mut self, q: &str, shape: &'static str) -> Value {
+        let (status, s) = self.raw_post(q, shape);
+        assert!(status.is_success(), "invalid status: {}", status);
+
+        self.to_json(s)
+    }
+
+    pub fn to_json(&mut self, b: bytes::Bytes) -> Value {
+        let body = std::str::from_utf8(&b).unwrap();
         serde_json::from_str(body).unwrap()
     }
 
-    pub fn get_results(
-        &mut self,
-        r: ClientResponse,
-        pointer: Option<String>,
-    ) -> Vec<Map<String, Value>> {
-        self.to_json(r)
+    fn get_results(&mut self, response: Value) -> Vec<Map<String, Value>> {
+        response
             .pointer("/features")
             .expect("wrongly formated bragi response")
             .as_array()
             .expect("features must be array")
             .iter()
             .map(|f| {
-                if let Some(p) = &pointer {
-                    f.pointer(&p)
-                        .expect("no field in bragi response")
-                        .as_object()
-                        .unwrap()
-                        .clone()
-                } else {
-                    f.as_object().unwrap().clone()
-                }
+                f.pointer("/properties/geocoding")
+                    .expect("no field in bragi response")
+                    .as_object()
+                    .unwrap()
+                    .clone()
             })
             .collect()
     }
