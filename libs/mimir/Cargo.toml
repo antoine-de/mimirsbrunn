@@ -16,7 +16,7 @@ rs-es = { git = "https://github.com/antoine-de/rs-es.git", branch = "clonable_cl
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
 chrono = "0.4"
-reqwest = "0.9"
+reqwest = "=0.9.16"
 #reqwest = { path = "/home/antoine/dev/bin/reqwest" }
 geo = "0.12"
 geo-types = "0.4"
