@@ -1,0 +1,23 @@
+[package]
+name = "tools"
+version = "0.0.1"
+authors = ["Guillaume Gomez <guillaume1.gomez@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+reqwest = "0.9"
+failure = "0.1"
+actix = "0.7"
+serde_json = "1"
+actix-web = "0.7"
+slog = { version = "2.1", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4.0"
+
+[dependencies.bragi]
+path = "../bragi"
+
+[dependencies.docker_wrapper]
+path = "../docker_wrapper"
+
+[dependencies.mimir]
+path = "../mimir"
