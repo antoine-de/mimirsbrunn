@@ -351,7 +351,7 @@ fn query(
     timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, String> {
     let query_type = match_type.to_string();
-    let query = match build_query(
+    let query = build_query(
         q,
         match_type,
         coord,
@@ -361,10 +361,7 @@ fn query(
         langs,
         zone_types,
         poi_types,
-    ) {
-        Ok(q) => q,
-        Err(e) => return Err(e),
-    };
+    )?;
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
     let indexes = indexes
