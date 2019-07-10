@@ -348,7 +348,6 @@ fn query(
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
-    timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, String> {
     let query_type = match_type.to_string();
     let query = build_query(
@@ -480,7 +479,6 @@ pub fn autocomplete(
     poi_types: &[&str],
     langs: &[&str],
     mut rubber: Rubber,
-    timeout: Option<time::Duration>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -510,7 +508,6 @@ pub fn autocomplete(
         &zone_types,
         &poi_types,
         &langs,
-        timeout,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -528,7 +525,6 @@ pub fn autocomplete(
             &zone_types,
             &poi_types,
             &langs,
-            timeout,
         )
         .map_err(model::BragiError::from)
     } else {

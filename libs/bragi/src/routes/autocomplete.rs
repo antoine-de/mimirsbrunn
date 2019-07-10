@@ -150,7 +150,6 @@ pub fn call_autocomplete(
         &params.poi_types_as_str(),
         &langs,
         rubber,
-        timeout,
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(Json)
