@@ -475,7 +475,7 @@ dependencies = [
  "num_cpus 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prometheus 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "rs-es 0.11.4 (git+https://github.com/antoine-de/rs-es.git?branch=clonable_client)",
+ "rs-es 0.11.4 (git+https://github.com/CanalTP/rs-es.git?rev=f172ab956172)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_qs 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1540,7 +1540,7 @@ dependencies = [
  "par-map 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "prometheus 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "rs-es 0.11.4 (git+https://github.com/antoine-de/rs-es.git?branch=clonable_client)",
+ "rs-es 0.11.4 (git+https://github.com/CanalTP/rs-es.git?rev=f172ab956172)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1584,7 +1584,7 @@ dependencies = [
  "par-map 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "rs-es 0.11.4 (git+https://github.com/antoine-de/rs-es.git?branch=clonable_client)",
+ "rs-es 0.11.4 (git+https://github.com/CanalTP/rs-es.git?rev=f172ab956172)",
  "serde 1.0.91 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2470,7 +2470,7 @@ dependencies = [
 [[package]]
 name = "rs-es"
 version = "0.11.4"
-source = "git+https://github.com/antoine-de/rs-es.git?branch=clonable_client#ca978a4f2d5c0d40ec488325a07d24bc1310fb6a"
+source = "git+https://github.com/CanalTP/rs-es.git?rev=f172ab956172#f172ab956172632fd7a033e95526d1f980e72943"
 dependencies = [
  "geojson 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3774,7 +3774,7 @@ dependencies = [
 "checksum reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)" = "ddcfd2c13c6af0f9c45a1086be3b9c68af79e4430b42790759e2d34cce2a6c60"
 "checksum resolv-conf 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b263b4aa1b5de9ffc0054a2386f96992058bb6870aab516f8cdeb8a667d56dcb"
 "checksum retry 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "29460f6011a25fc70b22010e796bd98330baccaa0005cba6f90b858a510dec0d"
-"checksum rs-es 0.11.4 (git+https://github.com/antoine-de/rs-es.git?branch=clonable_client)" = "<none>"
+"checksum rs-es 0.11.4 (git+https://github.com/CanalTP/rs-es.git?rev=f172ab956172)" = "<none>"
 "checksum rstar 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "120bfe4837befb82c5a637a5a8c490a27d25524ac19fffec5b4e555ca6e36ee8"
 "checksum rustc-demangle 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "ccc78bfd5acd7bf3e89cffcf899e5cb1a52d6fafa8dec2739ad70c9577a57288"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
