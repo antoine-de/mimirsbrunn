@@ -18,7 +18,7 @@ prometheus = {version= "0.3", features = ["process"]}
 heck = "0.3"
 failure = "0.1"
 num_cpus = "1.8"
-cosmogony = "0.5"
+cosmogony = "0.6"
 actix-web = "0.7"
 actix = "0.7"
 serde_qs = "0.4"

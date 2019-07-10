@@ -147,7 +147,7 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
-    use cosmogony::zone::ZoneType::City;
+    use cosmogony::ZoneType::City;
 
     let mut max_weight = 1.0;
     let mut cosmogony_id_to_osm_id = BTreeMap::new();

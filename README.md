@@ -88,7 +88,6 @@ If you need some packages for a different target, you can use CanalTP's [script]
 
 ### prerequiste
 * [install rust](https://rustup.rs/)
-* install the dependencies: make and [libgeos-dev](https://github.com/libgeos/geos)
 * install ES: the supported ES version is 2.x (yes it's old...).
 You can install it either directly on you system, or use docker.
 For a disposable ES, you can run:
