@@ -155,7 +155,7 @@ fn build_query<'a>(
     langs: &'a [&'a str],
     zone_types: &[&str],
     poi_types: &[&str],
-) -> Result<Query, String> {
+) -> Query {
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
         Query::build_term("_type", T::doc_type())
@@ -331,7 +331,7 @@ fn build_query<'a>(
         );
     }
 
-    Ok(query.build())
+    query.build()
 }
 
 fn query(
@@ -348,7 +348,7 @@ fn query(
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
-) -> Result<Vec<mimir::Place>, String> {
+) -> Result<Vec<mimir::Place>, rs_es::error::EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
         q,
@@ -360,7 +360,7 @@ fn query(
         langs,
         zone_types,
         poi_types,
-    )?;
+    );
 
     let indexes = get_indexes(all_data, &pt_datasets, types);
     let indexes = indexes
@@ -398,11 +398,11 @@ fn query(
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
     }
-    let result = search_query.send().map_err(|e| e.to_string())?;
+    let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
 
-    read_places(result, coord.as_ref()).map_err(|e| e.to_string())
+    read_places(result, coord.as_ref())
 }
 
 pub fn features(
@@ -508,8 +508,7 @@ pub fn autocomplete(
         &zone_types,
         &poi_types,
         &langs,
-    )
-    .map_err(model::BragiError::from)?;
+    )?;
     if results.is_empty() {
         query(
             &q,
