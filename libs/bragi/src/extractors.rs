@@ -26,14 +26,12 @@ impl actix_web::error::ResponseError for ActixError {
                 short: "validation error".to_owned(),
                 long: format!("{}", self),
             }),
-            ActixError::InvalidQueryParam(_) => {
-                actix_web::HttpResponse::BadRequest()
-                    .header(actix_web::http::header::CONTENT_TYPE, "application/json")
-                    .json(ApiError {
-                        short: "validation error".to_owned(),
-                        long: format!("{}", self),
-                    })
-            }
+            ActixError::InvalidQueryParam(_) => actix_web::HttpResponse::BadRequest()
+                .header(actix_web::http::header::CONTENT_TYPE, "application/json")
+                .json(ApiError {
+                    short: "validation error".to_owned(),
+                    long: format!("{}", self),
+                }),
             ActixError::RouteNotFound(_) => actix_web::HttpResponse::NotFound().json(ApiError {
                 short: "no route".to_owned(),
                 long: format!("{}", self),
@@ -71,9 +69,7 @@ where
         // Note: we need a non strict serde_qs to be able to parse the %5B / %5D as '[' / ']'
         serde_qs::Config::new(5, false)
             .deserialize_str(req.query_string())
-            .map_err(|e| {
-                ActixError::InvalidQueryParam(format!("{}", e))
-            })
+            .map_err(|e| ActixError::InvalidQueryParam(format!("{}", e)))
             .map(BragiQuery)
     }
 }

@@ -34,13 +34,15 @@ extern crate slog;
 extern crate slog_scope;
 #[macro_use]
 extern crate failure;
+#[macro_use]
+extern crate prometheus;
 use mimir::rubber::Rubber;
 use std::time::Duration;
 use structopt::StructOpt;
 
 mod extractors;
 mod model;
-// mod prometheus_middleware; //TODO add IN_FLIGHT
+pub mod prometheus_middleware;
 pub mod query;
 mod routes;
 pub mod server;

@@ -25,7 +25,7 @@ failure = "0.1"
 cosmogony = "0.6"
 par-map = "0.1.4"
 lazy_static = "1"
-prometheus = {version= "0.3"}
+prometheus = {version= "0.7"}
 transit_model = "0.4"
 humanesort = "0.1.0-alpha"
 address-formatter = "^0.2.1"

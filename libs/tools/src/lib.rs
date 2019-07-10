@@ -168,14 +168,13 @@ impl BragiHandler {
             ..Default::default()
         });
 
-        let prometheus = actix_web_prom::PrometheusMetrics::new("api", "/metrics"); //TODO don't forget to add in_flight queries
+        let prometheus = bragi::prometheus_middleware::PrometheusMetrics::new("bragi", "/metrics");
         let srv = actix_http_test::TestServer::new(move || {
             actix_http::HttpService::new(
                 actix_web::App::new()
                     .data(ctx.clone())
                     .wrap(actix_cors::Cors::new().allowed_methods(vec!["GET"]))
                     .wrap(prometheus.clone())
-                    // .wrap(prometheus_middleware::PrometheusMiddleware::default())
                     .wrap(actix_web::middleware::Logger::default())
                     .configure(bragi::server::configure_server)
                     .default_service(

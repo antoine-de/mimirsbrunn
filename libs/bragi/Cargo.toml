@@ -14,7 +14,7 @@ serde_json = "1"
 geojson = "0.15"
 geo-types = "0.4"
 lazy_static = "1"
-prometheus = {version= "0.3", features = ["process"]}
+prometheus = {version= "0.7", features = ["process"]}
 heck = "0.3"
 failure = "0.1"
 num_cpus = "1.8"
@@ -22,11 +22,10 @@ cosmogony = "0.6"
 actix-web = "1"
 actix-rt = "0.2"
 actix-cors = "0.1"
-actix-web-prom = "0.1.2"
 actix-service = "0.4"
 actix-http = "0.2"
 actix-server-config = "0.1"
-serde_qs = { version = "0.5"}
+serde_qs = "0.5"
 futures = "0.1"
 
 [dependencies.mimir]

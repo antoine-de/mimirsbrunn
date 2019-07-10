@@ -1,7 +1,6 @@
 use crate::extractors::ActixError;
-// use crate::prometheus_middleware;
 use crate::routes::{
-    autocomplete, entry_point, features, metrics, post_autocomplete, reverse, status, JsonParams,
+    autocomplete, entry_point, features, post_autocomplete, reverse, status, JsonParams,
 };
 use crate::{Args, Context};
 use actix_web::FromRequest;
@@ -41,25 +40,19 @@ pub fn configure_server(cfg: &mut web::ServiceConfig) {
         web::resource("/reverse")
             .name("reverse")
             .route(web::get().to(reverse)),
-    )
-    .service(
-        web::resource("/metrics")
-            .name("metrics")
-            .route(web::get().to(metrics)),
     );
 }
 
 pub fn runserver() -> std::io::Result<()> {
     let args = Args::from_args();
     let ctx: Context = (&args).into();
-    let prometheus = actix_web_prom::PrometheusMetrics::new("api", "/metrics"); //TODO don't forget to add in_flight queries
+    let prometheus = crate::prometheus_middleware::PrometheusMetrics::new("bragi", "/metrics");
     HttpServer::new(move || {
         App::new()
             .data(ctx.clone())
             // NOTE: if some middlewares are added, don't forget to add them in the tests too (in BragiHandler::new)
             .wrap(actix_cors::Cors::new().allowed_methods(vec!["GET"]))
             .wrap(prometheus.clone())
-            // .wrap(prometheus_middleware::PrometheusMiddleware::default())
             .wrap(middleware::Logger::default())
             .configure(configure_server)
             .default_service(web::resource("").route(web::get().to(default_404)))
