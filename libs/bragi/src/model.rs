@@ -45,8 +45,6 @@ pub enum BragiError {
     Es(EsError),
     #[fail(display = "invalid shape: {}", _0)]
     InvalidShape(&'static str),
-    #[fail(display = "error: {}", _0)]
-    Error(String),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -91,13 +89,6 @@ impl actix_web::error::ResponseError for BragiError {
                     }),
                 }
             }
-            BragiError::Error(ref err) => {
-                error!("error: {}", &err);
-                actix_web::HttpResponse::InternalServerError().json(ApiError {
-                    short: "error".to_owned(),
-                    long: format!("internal server error: {}", err),
-                })
-            }
         }
     }
 }
@@ -105,12 +96,6 @@ impl actix_web::error::ResponseError for BragiError {
 impl From<EsError> for BragiError {
     fn from(e: EsError) -> Self {
         BragiError::Es(e)
-    }
-}
-
-impl From<String> for BragiError {
-    fn from(e: String) -> Self {
-        BragiError::Error(e)
     }
 }
 

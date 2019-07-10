@@ -34,6 +34,7 @@ use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
+use rs_es::error::EsError;
 use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
 use rs_es::query::functions::{DecayOptions, Function, Modifier};
@@ -155,7 +156,7 @@ fn build_query<'a>(
     langs: &'a [&'a str],
     zone_types: &[&str],
     poi_types: &[&str],
-) -> Result<Query, String> {
+) -> Query {
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
         Query::build_term("_type", T::doc_type())
@@ -205,9 +206,15 @@ fn build_query<'a>(
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
         string_should.push(
-            build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(1.8)
-                .build(),
+            if coord.is_some() {
+                build_multi_match("label.ngram", &format_labels_ngram_field)
+                    .with_boost(3.8)
+                    .build()
+            } else {
+                build_multi_match("label.ngram", &format_labels_ngram_field)
+                    .with_boost(1.8)
+                    .build()
+            }
         );
     }
     let string_query = Query::build_bool()
@@ -225,8 +232,9 @@ fn build_query<'a>(
                 build_proximity_with_boost(coord, 0.4),
             ]
         } else {
+            admin_weight = 0.1;
             vec![
-                build_with_weight(0.5),
+                build_with_weight(0.4),
                 build_proximity_with_boost(coord, 0.4),
             ]
         }
@@ -289,7 +297,8 @@ fn build_query<'a>(
         MatchType::Fuzzy => Query::build_match("full_label.ngram".to_string(), q.to_string())
             .with_minimum_should_match(MinimumShouldMatch::from(vec![
                 CombinationMinimumShouldMatch::new(1i64, -1i64),
-                CombinationMinimumShouldMatch::new(4i64, -3i64),
+                CombinationMinimumShouldMatch::new(4i64, -2i64),
+                CombinationMinimumShouldMatch::new(9i64, -4i64),
                 CombinationMinimumShouldMatch::new(20i64, 15f64),
             ]))
             .build(),
@@ -340,7 +349,7 @@ fn build_query<'a>(
         );
     }
 
-    Ok(query.build())
+    query.build()
 }
 
 fn query(
@@ -358,7 +367,7 @@ fn query(
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
-) -> Result<Vec<mimir::Place>, String> {
+) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
         q,
@@ -370,7 +379,7 @@ fn query(
         langs,
         zone_types,
         poi_types,
-    )?;
+    );
 
     let indexes = get_indexes(all_data, &pt_datasets, &poi_datasets, types);
     let indexes = indexes
@@ -408,11 +417,11 @@ fn query(
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
     }
-    let result = search_query.send().map_err(|e| e.to_string())?;
+    let result = search_query.send()?;
 
     timer.map(|t| t.observe_duration());
 
-    read_places(result, coord.as_ref()).map_err(|e| e.to_string())
+    read_places(result, coord.as_ref())
 }
 
 pub fn features(
