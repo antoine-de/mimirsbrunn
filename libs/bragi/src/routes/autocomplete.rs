@@ -60,6 +60,8 @@ pub struct Params {
     q: String,
     #[serde(default)]
     pt_dataset: Vec<String>,
+    #[serde(default)]
+    poi_dataset: Vec<String>,
     #[serde(rename = "_all_data", default)]
     all_data: bool,
     //Note: for the moment we can't use an external struct and flatten it (https://github.com/nox/serde_urlencoded/issues/33)
@@ -134,6 +136,11 @@ pub fn call_autocomplete(
         &params.q,
         &params
             .pt_dataset
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        &params
+            .poi_dataset
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>(),

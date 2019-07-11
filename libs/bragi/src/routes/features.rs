@@ -8,6 +8,8 @@ use std::time::Duration;
 pub struct Params {
     #[serde(default)]
     pt_dataset: Vec<String>,
+    #[serde(default)]
+    poi_dataset: Vec<String>,
     #[serde(rename = "_all_data", default)]
     all_data: bool,
     /// timeout in milliseconds
@@ -23,6 +25,11 @@ pub fn features(
     let features = query::features(
         &params
             .pt_dataset
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        &params
+            .poi_dataset
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>(),

@@ -88,6 +88,72 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     poi_filter_error_message_test(&mut bragi);
 }
 
+pub fn bragi_private_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
+    let mut bragi = BragiHandler::new(es_wrapper.host());
+
+    // ******************************************
+    // We want to load 3 POI datasets: One public dataset (OSM), and two private datasets (A & B)
+    // - We want to make sure that when we don't specify a dataset, only public POIS are visible.
+    // - We want to make sure that when we specify a private dataset A, public POIs are not
+    // visible, and private POIs from B are not visible either.
+    // ******************************************
+
+    let out_dir = Path::new(env!("OUT_DIR"));
+
+    let cosmogony2mimir = out_dir
+        .join("../../../cosmogony2mimir")
+        .display()
+        .to_string();
+    crate::launch_and_assert(
+        &cosmogony2mimir,
+        &[
+            "--input=./tests/fixtures/cosmogony.json".into(),
+            "--lang=fr".into(),
+            "--lang=es".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
+
+    let bano2mimir = out_dir.join("../../../bano2mimir").display().to_string();
+    crate::launch_and_assert(
+        &bano2mimir,
+        &[
+            "--input=./tests/fixtures/bano-three_cities.csv".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
+
+    // Now import POIs from two datasets.
+    // For each import, we specify a dataset name, and the fact that it's private
+    let poi2mimir = out_dir.join("../../../poi2mimir").display().to_string();
+
+    crate::launch_and_assert(
+        &poi2mimir,
+        &[
+            "--input=./tests/fixtures/poi/effia.poi".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+            "--dataset=effia".into(),
+            "--private".into(),
+        ],
+        &es_wrapper,
+    );
+
+    crate::launch_and_assert(
+        &poi2mimir,
+        &[
+            "--input=./tests/fixtures/poi/keolis.poi".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+            "--dataset=keolis".into(),
+            "--private".into(),
+        ],
+        &es_wrapper,
+    );
+
+    poi_filter_dataset_visibility_test(&mut bragi);
+}
+
 fn poi_admin_address_test(bragi: &mut BragiHandler) {
     let geocodings = bragi.get("/autocomplete?q=Le-Mée-sur-Seine Courtilleraies");
     let types = get_types(&geocodings);
@@ -368,4 +434,21 @@ fn poi_filter_error_message_test(bragi: &mut BragiHandler) {
             })
         )
     );
+}
+
+fn poi_filter_dataset_visibility_test(bragi: &mut BragiHandler) {
+    // If we request a private POI without specifying the dataset, it should not be available.
+    let res = bragi.get("/autocomplete?q=Agence Keolis&type[]=poi");
+    assert!(res.first().is_none());
+
+    // Now we make sure that if we ask for a poi that belongs to the dataset specified in the
+    // parameters, it is visible.
+    let res = bragi.get("/autocomplete?q=Agence Keolis&type[]=poi&poi_dataset[]=keolis");
+    let poi = res.first().expect("Expected a POI for Keolis dataset");
+    assert_eq!(poi["label"], "Agence Keolis (Livry-sur-Seine)");
+
+    let res = bragi.get("/autocomplete?q=Agence Keolis&type[]=poi&poi_dataset[]=effia");
+    let poi = res.first().unwrap();
+    println!("{:?}", poi);
+    //assert!(res.first().is_none());
 }
