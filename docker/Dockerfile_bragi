@@ -27,6 +27,6 @@ COPY --from=builder /srv/mimirsbrunn/target/release/bragi /srv/bragi
 
 EXPOSE 4000
 ENV BRAGI_ES http://localhost:9200/munin
-ENV RUST_LOG=debug,hyper=info
+ENV RUST_LOG=info,hyper=info
 
 CMD ["/srv/bragi", "-b", "0.0.0.0:4000"]
