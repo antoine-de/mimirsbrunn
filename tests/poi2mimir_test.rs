@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::get_first_index_aliases;
 use reqwest;
 use serde_json::value::Value;
 use std::path::Path;
@@ -108,8 +107,6 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     assert_eq!(poi_index_alias, "munin_poi_mti");
 
-    //let aliases = get_first_index_aliases(raw_indexes);
-
     // Now we're sure we're hitting the munin_poi_mti index, count how many documents
     // we have in there.
     assert_eq!(es_wrapper.count("munin_poi_mti", "_type:poi"), 2);
@@ -149,8 +146,9 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // We test the opposite of the previous case: a POI that is far from any address
     // Currently, this POI should not even be in the index...
     assert!(es_wrapper
-        .search_and_filter_on_index("munin_poi_mti", "label:Station Bellecour", |_| true)
-        .filter(|place| place.label().contains("Station Bellecour"))
+        .search_and_filter_on_index("munin_poi_mti", "label:Station Bellecour", |place| place
+            .label()
+            .contains("Station Bellecour"))
         .next()
         .is_none());
 }

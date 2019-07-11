@@ -36,7 +36,7 @@ extern crate slog_scope;
 use failure::format_err;
 use lazy_static::lazy_static;
 use mimir::objects::{Coord, I18nProperties, Poi, PoiType, Property};
-use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
+use mimir::rubber::{IndexSettings, IndexVisibility, Rubber, TypedIndex};
 use mimirsbrunn::{labels, utils};
 use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as NavitiaPoiType};
 use std::collections::HashMap;
@@ -151,7 +151,7 @@ fn index_poi(
     cnx_string: &str,
     dataset: &str,
     file: &PathBuf,
-    private: bool,
+    visibility: IndexVisibility,
     nb_shards: usize,
     nb_replicas: usize,
 ) -> Result<(), mimirsbrunn::Error>
@@ -170,7 +170,7 @@ where
     import_pois(&mut rubber, &index, file)?;
 
     rubber
-        .publish_index(dataset, index, private)
+        .publish_index(dataset, index, visibility)
         .map_err(|err| format_err!("Failed to publish index {}.", err))
 }
 
@@ -215,11 +215,17 @@ struct Args {
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
+    let visibility = if args.private {
+        IndexVisibility::Private
+    } else {
+        IndexVisibility::Public
+    };
+
     index_poi(
         &args.connection_string,
         &args.dataset,
         &args.input,
-        args.private,
+        visibility,
         args.nb_shards,
         args.nb_replicas,
     )

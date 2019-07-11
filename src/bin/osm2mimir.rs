@@ -126,12 +126,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             };
             info!("importing streets into Mimir");
             let nb_streets = rubber
-                .index(
-                    &args.dataset,
-                    false,
-                    &street_index_settings,
-                    streets.into_iter(),
-                )
+                .public_index(&args.dataset, &street_index_settings, streets.into_iter())
                 .with_context(|_| {
                     format!(
                         "Error occurred when requesting street number in {}",
@@ -147,9 +142,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             nb_replicas: args.nb_admin_replicas,
         };
         let nb_admins = rubber
-            .index(
+            .public_index(
                 &args.dataset,
-                false,
                 &admin_index_settings,
                 admins_geofinder.admins(),
             )
@@ -187,7 +181,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         };
         info!("Importing pois into Mimir");
         let nb_pois = rubber
-            .index(&args.dataset, false, &poi_index_settings, pois.into_iter())
+            .public_index(&args.dataset, &poi_index_settings, pois.into_iter())
             .context("Importing pois into Mimir")?;
 
         info!("Nb of indexed pois: {}", nb_pois);
