@@ -133,7 +133,7 @@ fn send_to_es(
 ) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, &index_settings, admins)?;
+    let nb_admins = rubber.index(dataset, false, &index_settings, admins)?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }

@@ -51,35 +51,43 @@ impl<'a> ElasticSearchWrapper<'a> {
     /// count the number of documents in the index
     /// If you want to count eg the number of POI, you would call
     /// es_wrapper.count("_type:POI")
-    pub fn count(&self, word: &str) -> u64 {
-        info!("counting documents with munin/_count?q={}", word);
+    pub fn count<'b, T: Into<Option<&'b str>>>(&self, index: T, word: &str) -> u64 {
+        let index = index.into().unwrap_or("munin");
+        info!("counting documents with {}/_count?q={}", index, word);
         let mut res = self
             .rubber
-            .get(&format!("munin/_count?q={}", word))
+            .get(&format!("{}/_count?q={}", index, word))
             .unwrap();
         assert!(res.status() == reqwest::StatusCode::OK);
         let json: serde_json::Value = res.json().unwrap();
         json["count"].as_u64().unwrap()
     }
 
-    /// simple search on an index
+    /// simple search on a given index
+    /// if no index is given, it assumes 'munin'
     /// assert that the result is OK and transform it to a json Value
-    pub fn search(&self, word: &str) -> serde_json::Value {
+    pub fn search_on_index<'b, T: Into<Option<&'b str>>>(
+        &self,
+        index: T,
+        word: &str,
+    ) -> serde_json::Value {
+        let index = index.into().unwrap_or("munin");
         let mut res = self
             .rubber
-            .get(&format!("munin/_search?q={}", word))
+            .get(&format!("{}/_search?q={}", index, word))
             .unwrap();
         assert!(res.status() == reqwest::StatusCode::OK);
         res.json().unwrap()
     }
 
+    /// simple search on munin
+    /// assert that the result is OK and transform it to a json Value
+    pub fn search(&self, word: &str) -> serde_json::Value {
+        self.search_on_index(None, word)
+    }
+
     pub fn search_on_global_stop_index(&self, word: &str) -> serde_json::Value {
-        let mut res = self
-            .rubber
-            .get(&format!("munin_global_stops/_search?q={}", word))
-            .unwrap();
-        assert!(res.status() == reqwest::StatusCode::OK);
-        res.json().unwrap()
+        self.search_on_index("munin_global_stops", word)
     }
 
     pub fn search_and_filter<'b, F>(
@@ -90,7 +98,7 @@ impl<'a> ElasticSearchWrapper<'a> {
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
-        self.search_and_filter_on_index(word, predicate, false)
+        self.search_and_filter_on_index("munin", word, predicate)
     }
 
     pub fn search_and_filter_on_global_stop_index<'b, F>(
@@ -101,17 +109,18 @@ impl<'a> ElasticSearchWrapper<'a> {
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
     {
-        self.search_and_filter_on_index(word, predicate, true)
+        self.search_and_filter_on_index("munin_global_stops", word, predicate)
     }
 
-    fn search_and_filter_on_index<'b, F>(
+    pub fn search_and_filter_on_index<'b, 'c, T, F>(
         &self,
+        index: T,
         word: &str,
         predicate: F,
-        search_on_global_stops: bool,
     ) -> impl Iterator<Item = mimir::Place> + 'b
     where
         F: 'b + FnMut(&mimir::Place) -> bool,
+        T: Into<Option<&'c str>>,
     {
         use serde_json::map::Entry;
 
@@ -127,11 +136,8 @@ impl<'a> ElasticSearchWrapper<'a> {
                 _ => None,
             })
         }
-        let json = if search_on_global_stops {
-            self.search_on_global_stop_index(word)
-        } else {
-            self.search(word)
-        };
+        let index = index.into().unwrap_or("munin");
+        let json = self.search_on_index(index, word);
         get(json, "hits")
             .and_then(|json| get(json, "hits"))
             .and_then(|hits| match hits {

@@ -313,9 +313,12 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
         nb_replicas: 1,
     };
     // we index the poi above
-    let _result = es
-        .rubber
-        .index("munin_poi", &index_settings, std::iter::once(colosseo));
+    let _result = es.rubber.index(
+        "munin_poi",
+        false,
+        &index_settings,
+        std::iter::once(colosseo),
+    );
 
     es.refresh();
 

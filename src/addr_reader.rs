@@ -57,7 +57,7 @@ where
     info!("importing addresses: {} addresses added.", nb);
 
     rubber
-        .publish_index(dataset, addr_index)
+        .publish_index(dataset, addr_index, false) // false, by default addresses are not private
         .context("Error while publishing the index")?;
     Ok(())
 }

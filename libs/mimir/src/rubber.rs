@@ -473,10 +473,12 @@ impl Rubber {
     /// publish the index as the new index for this doc_type and this dataset
     /// move the index alias of the doc_type and the dataset to point to this indexes
     /// and remove the old index
+    /// private: Indicate if the dataset is private and should not be aliased
     pub fn publish_index<T: MimirObject>(
         &mut self,
         dataset: &str,
         index: TypedIndex<T>,
+        private: bool,
     ) -> Result<(), Error> {
         debug!("publishing index");
 
@@ -492,18 +494,23 @@ impl Rubber {
             .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
 
         let type_index = get_main_type_index::<T>();
-        self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
-            .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
-
-        if T::is_geo_data() {
-            self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
-                .context("Error occurred when making alias: munin_geo_data")?;
-            self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
-                .context("Error occurred when making alias: munin")?;
-        } else {
-            self.alias("munin", &vec![type_index.to_string()], &vec![])
-                .context("Error occurred when making alias: munin")?;
+        if !private {
+            self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
+                .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
         }
+
+        if !private {
+            if T::is_geo_data() {
+                self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
+                    .context("Error occurred when making alias: munin_geo_data")?;
+                self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
+                    .context("Error occurred when making alias: munin")?;
+            } else {
+                self.alias("munin", &vec![type_index.to_string()], &vec![])
+                    .context("Error occurred when making alias: munin")?;
+            }
+        }
+
         for i in last_indexes {
             self.delete_index(&i)
                 .with_context(|_| format!("Error occurred when deleting index: {}", i))?;
@@ -601,6 +608,7 @@ impl Rubber {
     pub fn index<T, I>(
         &mut self,
         dataset: &str,
+        private: bool,
         index_settings: &IndexSettings,
         iter: I,
     ) -> Result<usize, Error>
@@ -613,7 +621,7 @@ impl Rubber {
             .make_index(dataset, index_settings)
             .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)?;
-        self.publish_index(dataset, index)?;
+        self.publish_index(dataset, index, private)?;
         Ok(nb_elements)
     }
 

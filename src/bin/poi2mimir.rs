@@ -151,6 +151,7 @@ fn index_poi(
     cnx_string: &str,
     dataset: &str,
     file: &PathBuf,
+    private: bool,
     nb_shards: usize,
     nb_replicas: usize,
 ) -> Result<(), mimirsbrunn::Error>
@@ -169,7 +170,7 @@ where
     import_pois(&mut rubber, &index, file)?;
 
     rubber
-        .publish_index(dataset, index)
+        .publish_index(dataset, index, private)
         .map_err(|err| format_err!("Failed to publish index {}.", err))
 }
 
@@ -191,6 +192,10 @@ struct Args {
     /// A dataset is a label, that can be used for filtering the data.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
+
+    /// Indicate if the POI dataset is private
+    #[structopt(short = "p", long = "private")]
+    private: bool,
 
     /// Number of threads to use
     #[structopt(
@@ -214,6 +219,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         &args.connection_string,
         &args.dataset,
         &args.input,
+        args.private,
         args.nb_shards,
         args.nb_replicas,
     )

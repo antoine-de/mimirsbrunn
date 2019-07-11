@@ -75,7 +75,7 @@ pub fn import_stops(
         update_global_stop_index(&mut rubber, stops.iter(), dataset, &index_settings)?;
 
     info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.index(dataset, &index_settings, stops.into_iter())?;
+    let nb_stops = rubber.index(dataset, false, &index_settings, stops.into_iter())?;
     info!("Nb of indexed stops: {}", nb_stops);
 
     publish_global_index(&mut rubber, &global_index)
