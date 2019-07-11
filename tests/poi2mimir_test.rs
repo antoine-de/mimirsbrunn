@@ -28,8 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::get_first_index_aliases;
 use reqwest;
+use serde_json::value::Value;
 use std::path::Path;
 
 /// Inserts POI into Elasticsearch and check results.
@@ -64,48 +64,64 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
+    // Now import some POI. We will assume this is a private dataset, so we pass
+    // the private flag to poi2mimir.
     let poi2mimir = out_dir.join("../../../poi2mimir").display().to_string();
     crate::launch_and_assert(
         &poi2mimir,
         &[
             "--input=./tests/fixtures/poi/test.poi".into(),
             format!("--connection-string={}", es_wrapper.host()),
+            "--dataset=mti".into(),
+            "--private".into(),
         ],
         &es_wrapper,
     );
 
-    // Make sure import went smoothly by checking the number of indices.
-
-    // after an import, we should have 1 index, and some aliases to this index
+    // Now we'll make sure that the 'munin_poi_mti_{timestamp}' index is aliased by only one alias,
+    // Namely 'munin_poi_mti'. So we'll get all the aliases.
     let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
-    let json: serde_json::value::Value = res.json().unwrap();
+    let json: Value = res.json().unwrap();
     let raw_indexes = json.as_object().unwrap();
+
     let first_indexes: Vec<String> = raw_indexes.keys().cloned().collect();
 
-    assert_eq!(first_indexes.len(), 3); // 3 indexes
-                                        // our index should be aliased by the master_index + an alias over the document type + dataset
-    let aliases = get_first_index_aliases(raw_indexes);
+    let raw_poi_index = first_indexes
+        .iter()
+        .find(|index| index.starts_with("munin_poi_mti"))
+        .unwrap();
 
-    // for the moment 'munin' is hard coded, but hopefully that will change
-    assert_eq!(
-        aliases,
-        vec!["munin", "munin_addr", "munin_addr_fr", "munin_geo_data"]
-    );
+    // The result of raw_indexes[raw_poi_index] is an object that looks like:
+    // Object({"aliases": Object({"munin_poi_mti": Object({})})})
+    // So we turn it into a map, get the 'aliases' value,
+    // turn the result into a map, and get the key (hopefully its unique).
+    let poi_index_alias = raw_indexes
+        .get(raw_poi_index)
+        .and_then(|json| json.as_object())
+        .and_then(|s| s.get("aliases"))
+        .and_then(|json| json.as_object())
+        .and_then(|s| s.keys().cloned().next())
+        .unwrap_or_else(String::new);
 
-    // Making sure that there are as many POI in ES as there are the input file.
-    assert_eq!(es_wrapper.count("_type:poi"), 2);
+    assert_eq!(poi_index_alias, "munin_poi_mti");
+
+    // Now we're sure we're hitting the munin_poi_mti index, count how many documents
+    // we have in there.
+    assert_eq!(es_wrapper.count("munin_poi_mti", "_type:poi"), 2);
+
+    // Ok, now check that we can get a POI on that index
+    let agence_du_four = es_wrapper
+        .search_and_filter_on_index("munin_poi_mti", "label:Agence TCL Du Four", |place| {
+            place.label().starts_with("Agence TCL Du Four à Chaux")
+        })
+        .next()
+        .expect("Could not find Agence TCL Du Four");
+    assert!(agence_du_four.is_poi());
 
     // We test that the POI that was close to an address has been 'attached' to that address,
     // and inherited its admin and address: (Note that the data have been manipulated to fit)
-    let agence_du_four = es_wrapper
-        .search_and_filter("label:Agence TCL Du Four", |_| true)
-        .filter(|place| place.label().starts_with("Agence TCL Du Four à Chaux"))
-        .next()
-        .unwrap();
-    assert!(agence_du_four.is_poi());
-
     assert_eq!(
         agence_du_four
             .admins()
@@ -119,11 +135,20 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // If the POI has a city admin, then its weight is that of the city (or at least != 0.0)
     assert_ne!(agence_du_four.poi().unwrap().weight, 0.0);
 
+    // Make sure that that POI is not visible from the global index
+    assert!(es_wrapper
+        .search_and_filter("label:Agence TCL Du Four", |place| {
+            place.label().starts_with("Agence TCL Du Four à Chaux")
+        })
+        .next()
+        .is_none());
+
     // We test the opposite of the previous case: a POI that is far from any address
     // Currently, this POI should not even be in the index...
     assert!(es_wrapper
-        .search_and_filter("label:Station Bellecour", |_| true)
-        .filter(|place| place.label().contains("Station Bellecour"))
+        .search_and_filter_on_index("munin_poi_mti", "label:Station Bellecour", |place| place
+            .label()
+            .contains("Station Bellecour"))
         .next()
         .is_none());
 }

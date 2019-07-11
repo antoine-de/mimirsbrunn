@@ -315,7 +315,7 @@ pub fn test_i18n_poi(mut es: crate::ElasticSearchWrapper<'_>) {
     // we index the poi above
     let _result = es
         .rubber
-        .index("munin_poi", &index_settings, std::iter::once(colosseo));
+        .public_index("munin_poi", &index_settings, std::iter::once(colosseo));
 
     es.refresh();
 

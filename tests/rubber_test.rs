@@ -84,7 +84,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
     };
     let result = es
         .rubber
-        .index(dataset, &index_settings, std::iter::once(bob));
+        .public_index(dataset, &index_settings, std::iter::once(bob));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -115,7 +115,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         nb_shards: 2,
         nb_replicas: 1,
     };
-    let result = rubber.index(dataset, &index_settings, checker_iter);
+    let result = rubber.public_index(dataset, &index_settings, checker_iter);
     assert!(
         result.is_ok(),
         "impossible to index bobette, res: {:?}",
@@ -182,7 +182,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
     };
     let result = es
         .rubber
-        .index(dataset, &index_settings, std::iter::once(admin));
+        .public_index(dataset, &index_settings, std::iter::once(admin));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element
@@ -279,7 +279,7 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
     };
     let result = es
         .rubber
-        .index("fr", &index_settings, std::iter::once(admin));
+        .public_index("fr", &index_settings, std::iter::once(admin));
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1); // we have indexed 1 element

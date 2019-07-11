@@ -1,7 +1,7 @@
 use crate::Error;
 use csv;
 use failure::ResultExt;
-use mimir::rubber::{IndexSettings, Rubber};
+use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Addr;
 use par_map::ParMap;
 use serde::de::DeserializeOwned;
@@ -57,7 +57,7 @@ where
     info!("importing addresses: {} addresses added.", nb);
 
     rubber
-        .publish_index(dataset, addr_index)
+        .publish_index(dataset, addr_index, IndexVisibility::Public)
         .context("Error while publishing the index")?;
     Ok(())
 }

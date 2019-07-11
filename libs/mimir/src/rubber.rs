@@ -108,6 +108,15 @@ impl<T> TypedIndex<T> {
     }
 }
 
+/// Index Visibility
+pub enum IndexVisibility {
+    /// Public means the index is aliased to the global indices
+    Public,
+
+    /// Private means the index is not aliased to the global indices.
+    Private,
+}
+
 #[derive(Debug)]
 pub struct IndexSettings {
     pub nb_shards: usize,
@@ -473,10 +482,12 @@ impl Rubber {
     /// publish the index as the new index for this doc_type and this dataset
     /// move the index alias of the doc_type and the dataset to point to this indexes
     /// and remove the old index
+    /// visibility: Indicate if the index is public or private
     pub fn publish_index<T: MimirObject>(
         &mut self,
         dataset: &str,
         index: TypedIndex<T>,
+        visibility: IndexVisibility,
     ) -> Result<(), Error> {
         debug!("publishing index");
 
@@ -492,18 +503,23 @@ impl Rubber {
             .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
 
         let type_index = get_main_type_index::<T>();
-        self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
-            .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
-
-        if T::is_geo_data() {
-            self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
-                .context("Error occurred when making alias: munin_geo_data")?;
-            self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
-                .context("Error occurred when making alias: munin")?;
-        } else {
-            self.alias("munin", &vec![type_index.to_string()], &vec![])
-                .context("Error occurred when making alias: munin")?;
+        if let IndexVisibility::Public = visibility {
+            self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
+                .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
         }
+
+        if let IndexVisibility::Public = visibility {
+            if T::is_geo_data() {
+                self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
+                    .context("Error occurred when making alias: munin_geo_data")?;
+                self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
+                    .context("Error occurred when making alias: munin")?;
+            } else {
+                self.alias("munin", &vec![type_index.to_string()], &vec![])
+                    .context("Error occurred when making alias: munin")?;
+            }
+        }
+
         for i in last_indexes {
             self.delete_index(&i)
                 .with_context(|_| format!("Error occurred when deleting index: {}", i))?;
@@ -593,6 +609,34 @@ impl Rubber {
         Ok(nb)
     }
 
+    /// Shortcut to `index` for a public index
+    pub fn public_index<T, I>(
+        &mut self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+        iter: I,
+    ) -> Result<usize, Error>
+    where
+        T: MimirObject + std::marker::Send + 'static,
+        I: Iterator<Item = T>,
+    {
+        self.index(dataset, IndexVisibility::Public, index_settings, iter)
+    }
+
+    /// Shortcut to `index` for a private index
+    pub fn private_index<T, I>(
+        &mut self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+        iter: I,
+    ) -> Result<usize, Error>
+    where
+        T: MimirObject + std::marker::Send + 'static,
+        I: Iterator<Item = T>,
+    {
+        self.index(dataset, IndexVisibility::Private, index_settings, iter)
+    }
+
     /// add all the element of 'iter' into elasticsearch
     ///
     /// To have zero downtime:
@@ -601,6 +645,7 @@ impl Rubber {
     pub fn index<T, I>(
         &mut self,
         dataset: &str,
+        visibility: IndexVisibility,
         index_settings: &IndexSettings,
         iter: I,
     ) -> Result<usize, Error>
@@ -613,7 +658,7 @@ impl Rubber {
             .make_index(dataset, index_settings)
             .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)?;
-        self.publish_index(dataset, index)?;
+        self.publish_index(dataset, index, visibility)?;
         Ok(nb_elements)
     }
 
