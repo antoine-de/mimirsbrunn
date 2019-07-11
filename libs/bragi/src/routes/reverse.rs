@@ -1,7 +1,7 @@
 use crate::extractors::BragiQuery;
 use crate::routes::params;
 use crate::{model, model::FromWithLang, Context};
-use actix_web::{Json, State};
+use actix_web::web::{Data, Json};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -15,7 +15,7 @@ pub struct Params {
 
 pub fn reverse(
     params: BragiQuery<Params>,
-    state: State<Context>,
+    state: Data<Context>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
     let mut rubber = state.get_rubber_for_reverse(params.timeout.map(Duration::from_millis));
     let coord = params::make_coord(params.lon, params.lat)?;

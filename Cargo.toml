@@ -16,7 +16,7 @@ slog-envlogger = "2.1"
 slog-async = "2.3"
 structopt = "0.2"
 csv = "1"
-rs-es = { git = "https://github.com/antoine-de/rs-es.git", branch = "clonable_client", version = "^0.11.4", features = ["geo"]}
+rs-es = { git = "https://github.com/CanalTP/rs-es.git", rev = "f172ab956172", version = "^0.11.4", features = ["geo"]}
 regex = "1"
 osmpbfreader = "0.13"
 chrono = "0.4"
@@ -52,7 +52,7 @@ path = "libs/tools"
 [dev-dependencies]
 reqwest = "=0.9.16"
 approx = "0.2.0"
-actix-web = "0.7"
+actix-web = "1"
 
 [dev-dependencies.docker_wrapper]
 path = "libs/docker_wrapper"

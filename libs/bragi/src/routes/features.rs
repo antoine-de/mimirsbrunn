@@ -1,6 +1,6 @@
 use crate::extractors::BragiQuery;
 use crate::{model, model::FromWithLang, query, Context};
-use actix_web::{Json, Path, State};
+use actix_web::web::{Data, Json, Path};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -16,7 +16,7 @@ pub struct Params {
 
 pub fn features(
     params: BragiQuery<Params>,
-    state: State<Context>,
+    state: Data<Context>,
     id: Path<String>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
     let rubber = state.get_rubber_for_features(params.timeout.map(Duration::from_millis));
