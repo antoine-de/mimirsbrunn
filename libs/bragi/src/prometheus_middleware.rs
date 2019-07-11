@@ -1,6 +1,6 @@
 // shamelessly taken from https://github.com/nlopes/actix-web-prom
 // we are unfortunatly not able to directly use this great crate,
-// because  we want to use the anme of the endpoint for retrocompatibility
+// because  we want to use the name of the endpoint for retrocompatibility
 // (and as a side effect we also added the 'in flight' queries (but for this we could have used the Registry))
 
 use std::marker::PhantomData;
