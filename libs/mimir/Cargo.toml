@@ -24,7 +24,7 @@ geo = "0.12"
 geo-types = "0.4"
 geojson = { version = "0.16", features = ["geo-types"] }
 failure = "0.1"
-cosmogony = { git = "https://github.com/antoine-de/cosmogony.git", branch = "update_gep" }
+cosmogony = "0.7"
 par-map = "0.1.4"
 lazy_static = "1"
 prometheus = {version= "0.7"}

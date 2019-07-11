@@ -30,7 +30,7 @@ itertools = "0.8"
 transit_model = "0.5"
 osm_boundaries_utils = "0.5"
 failure = "0.1"
-cosmogony = { git = "https://github.com/antoine-de/cosmogony.git", branch = "update_gep" }
+cosmogony = "0.7"
 par-map = "0.1.4"
 lazy_static = "1.3"
 num_cpus = "1.10"

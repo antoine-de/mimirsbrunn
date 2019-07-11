@@ -18,7 +18,7 @@ prometheus = {version= "0.7", features = ["process"]}
 heck = "0.3"
 failure = "0.1"
 num_cpus = "1"
-cosmogony = { git = "https://github.com/antoine-de/cosmogony.git", branch = "update_gep" }
+cosmogony = "0.7"
 actix-web = "1"
 actix-rt = "0.2"
 actix-cors = "0.1"
