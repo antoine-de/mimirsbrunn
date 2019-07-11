@@ -27,18 +27,12 @@ actix-http = "0.2"
 actix-server-config = "0.1"
 serde_qs = "0.5"
 futures = "0.1"
-
-[dependencies.mimir]
-path = "../mimir"
-
-[dev-dependencies.docker_wrapper]
-path = "../docker_wrapper"
-
-[dev-dependencies.tools]
-path = "../tools"
+mimir = { path = "../mimir" }
 
 [dev-dependencies]
 reqwest = "=0.9.16"
+docker_wrapper = { path = "../docker_wrapper" }
+tools = { path = "../tools" }
 
 [build-dependencies]
 git-version = "0.2"

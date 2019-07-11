@@ -40,22 +40,15 @@ address-formatter = "^0.2.1"
 navitia-poi-model = "0.2.0"
 walkdir = "2"
 
-[dependencies.bragi]
-path = "libs/bragi"
-
-[dependencies.mimir]
-path = "libs/mimir"
-
-[dev-dependencies.tools]
-path = "libs/tools"
+mimir = { path = "libs/mimir" }
+bragi = { path = "libs/bragi" }
 
 [dev-dependencies]
 reqwest = "=0.9.16"
 approx = "0.3"
 actix-web = "1"
-
-[dev-dependencies.docker_wrapper]
-path = "libs/docker_wrapper"
+tools = { path = "libs/tools" }
+docker_wrapper = { path = "libs/docker_wrapper" }
 
 [build-dependencies]
 git-version = "0.2"
