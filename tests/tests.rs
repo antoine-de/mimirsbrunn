@@ -145,6 +145,7 @@ fn all_tests() {
     bragi_poi_test::test_i18n_poi(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_three_cities_test::bragi_three_cities_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_poi_test::bragi_poi_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_poi_test::bragi_private_poi_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_stops_test::bragi_stops_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_ntfs_test::bragi_ntfs_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_filter_types_test::bragi_filter_types_test(ElasticSearchWrapper::new(&docker_wrapper));
