@@ -4,7 +4,7 @@
         "analysis": {
             "filter": {
                 "prefix_filter": {
-                    "type":     "edge_ngram",
+                    "type": "edge_ngram",
                     "min_gram": 1,
                     "max_gram": 20
                 },
@@ -38,10 +38,16 @@
                     "char_filter" : [ ]
                 },
                 "ngram": {
-                    "type": "custom",
-                    "tokenizer": "standard",
-                    "filter": [ "lowercase", "asciifolding", "ngram_filter" ],
-                    "char_filter" : [ ]
+                    "tokenizer": "my_ngram_tokenizer",
+                    "filter": [ "lowercase", "asciifolding" ]
+                }
+            },
+            "tokenizer": {
+                "my_ngram_tokenizer": {
+                    "type": "nGram",
+                    "min_gram": "3",
+                    "max_gram": "3",
+                    "token_chars": [ "letter", "digit" ]
                 }
             }
         }
