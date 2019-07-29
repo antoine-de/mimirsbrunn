@@ -224,10 +224,10 @@ fn long_bano_address_test(bragi: &mut BragiHandler) {
         "/autocomplete?q=The Marvellous Navitia Developers Kisio Digital 20 rue hector \
          malot paris",
     );
-    assert_eq!(all_20.len(), 1);
+    assert_eq!(all_20.len(), 2);
     assert_eq!(
         get_values(&all_20, "label"),
-        vec!["20 Rue Hector Malot (Paris)"]
+        vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]
     );
 }
 
