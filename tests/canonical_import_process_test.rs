@@ -244,8 +244,8 @@ pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let mut bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
 
     // the status does not check the ES connexion, so for the status all is good
-    let resp = bragi.raw_get("/status").unwrap();
-    assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
+    let (status, _) = bragi.raw_get("/status");
+    assert_eq!(status, actix_web::http::StatusCode::OK);
 
     // the autocomplete gives a 503
     let r = bragi.get_unchecked_json("/autocomplete?q=toto");
@@ -309,11 +309,9 @@ fn wrong_shape_test(bragi: &mut BragiHandler) {
     let shape = r#"{"shape":{"type":"Feature","geometry":{"type":"Polygon",
         "coordinates":[[[2.376488, 48.846431],
         [2.376306, 48.846430],[2.376309, 48.846606],[ 2.376486, 48.846603], [2.376488, 48.846431]]]}}}"#;
-    let r = bragi
-        .raw_post_shape("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape)
-        .unwrap();
+    let (status, r) = bragi.raw_post("/autocomplete?q=15 Rue Hector Malot, (Paris)", shape);
 
-    assert_eq!(r.status(), actix_web::http::StatusCode::BAD_REQUEST);
+    assert_eq!(status, actix_web::http::StatusCode::BAD_REQUEST);
 
     assert_eq!(
         bragi.to_json(r),

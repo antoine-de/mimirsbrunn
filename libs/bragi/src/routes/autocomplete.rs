@@ -2,7 +2,7 @@ use crate::extractors::BragiQuery;
 use crate::model::{Autocomplete, BragiError, FromWithLang};
 use crate::routes::params;
 use crate::{model, query, Context};
-use actix_web::{Json, State};
+use actix_web::web::{Data, Json};
 use geojson::{GeoJson, Geometry};
 use mimir::objects::Coord;
 use serde::{Deserialize, Serialize};
@@ -60,6 +60,8 @@ pub struct Params {
     q: String,
     #[serde(default)]
     pt_dataset: Vec<String>,
+    #[serde(default)]
+    poi_dataset: Vec<String>,
     #[serde(rename = "_all_data", default)]
     all_data: bool,
     //Note: for the moment we can't use an external struct and flatten it (https://github.com/nox/serde_urlencoded/issues/33)
@@ -137,6 +139,11 @@ pub fn call_autocomplete(
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>(),
+        &params
+            .poi_dataset
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
         params.all_data,
         params.offset,
         params.limit,
@@ -154,14 +161,14 @@ pub fn call_autocomplete(
 
 pub fn autocomplete(
     params: BragiQuery<Params>,
-    state: State<Context>,
+    state: Data<Context>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
     call_autocomplete(&*params, &*state, None)
 }
 
 pub fn post_autocomplete(
     params: BragiQuery<Params>,
-    state: State<Context>,
+    state: Data<Context>,
     json_params: Json<JsonParams>,
 ) -> Result<Json<Autocomplete>, model::BragiError> {
     call_autocomplete(

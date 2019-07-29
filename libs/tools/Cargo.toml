@@ -1,0 +1,23 @@
+[package]
+name = "tools"
+version = "0.0.1"
+authors = ["Guillaume Gomez <guillaume1.gomez@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+reqwest = "=0.9.16"
+failure = "0.1"
+serde_json = "1"
+slog = { version = "2", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4"
+actix-http-test = "0.2"
+actix-http = "0.2"
+actix-web = "1"
+actix-cors = "0.1"
+actix-service = "0.4"
+futures = "0.1"
+bytes = "0.4"
+url = "1"
+mimir = { path = "../mimir" }
+bragi = { path = "../bragi" }
+docker_wrapper = { path = "../docker_wrapper" }

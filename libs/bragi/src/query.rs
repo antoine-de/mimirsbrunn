@@ -328,6 +328,7 @@ fn build_query<'a>(
 fn query(
     q: &str,
     pt_datasets: &[&str],
+    poi_datasets: &[&str],
     all_data: bool,
     rubber: &mut Rubber,
     match_type: MatchType,
@@ -353,7 +354,7 @@ fn query(
         poi_types,
     );
 
-    let indexes = get_indexes(all_data, &pt_datasets, types);
+    let indexes = get_indexes(all_data, &pt_datasets, &poi_datasets, types);
     let indexes = indexes
         .iter()
         .map(|index| index.as_str())
@@ -398,6 +399,7 @@ fn query(
 
 pub fn features(
     pt_datasets: &[&str],
+    poi_datasets: &[&str],
     all_data: bool,
     id: &str,
     mut rubber: Rubber,
@@ -412,7 +414,7 @@ pub fn features(
     let filter = Query::build_bool().with_must(filters).build();
     let query = Query::build_bool().with_filter(filter).build();
 
-    let indexes = get_indexes(all_data, &pt_datasets, &[]);
+    let indexes = get_indexes(all_data, &pt_datasets, &poi_datasets, &[]);
     let indexes = indexes
         .iter()
         .map(|index| index.as_str())
@@ -460,6 +462,7 @@ pub fn features(
 pub fn autocomplete(
     q: &str,
     pt_datasets: &[&str],
+    poi_datasets: &[&str],
     all_data: bool,
     offset: u64,
     limit: u64,
@@ -488,6 +491,7 @@ pub fn autocomplete(
     let results = query(
         &q,
         &pt_datasets,
+        &poi_datasets,
         all_data,
         &mut rubber,
         MatchType::Prefix,
@@ -505,6 +509,7 @@ pub fn autocomplete(
         query(
             &q,
             &pt_datasets,
+            &poi_datasets,
             all_data,
             &mut rubber,
             MatchType::Fuzzy,

@@ -108,6 +108,15 @@ impl<T> TypedIndex<T> {
     }
 }
 
+/// Index Visibility
+pub enum IndexVisibility {
+    /// Public means the index is aliased to the global indices
+    Public,
+
+    /// Private means the index is not aliased to the global indices.
+    Private,
+}
+
 #[derive(Debug)]
 pub struct IndexSettings {
     pub nb_shards: usize,
@@ -215,16 +224,32 @@ pub fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
         .build()
 }
 
-pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<String> {
+pub fn get_indexes(
+    all_data: bool,
+    pt_datasets: &[&str],
+    poi_datasets: &[&str],
+    types: &[&str],
+) -> Vec<String> {
+    // If we want it all, we return 'munin', which an alias over all public indices,
+    // and 'munin_poi_*' which returns all private indices (for poi).
     if all_data {
-        return vec!["munin".to_string()];
+        return vec!["munin".to_string(), "munin_poi_*".to_string()];
     }
 
     let mut result: Vec<String> = vec![];
+
+    let select_type = |t: &str| -> bool {
+        if poi_datasets.is_empty() {
+            t != "public_transport:stop_area"
+        } else {
+            t != "public_transport:stop_area" && t != "poi"
+        }
+    };
+
     if types.is_empty() {
         result.push("munin_geo_data".to_string());
     } else {
-        for type_ in types.iter().filter(|t| **t != "public_transport:stop_area") {
+        for type_ in types.iter().filter(|&&t| select_type(t)) {
             result.push(get_indexes_by_type(type_));
         }
     }
@@ -233,8 +258,16 @@ pub fn get_indexes(all_data: bool, pt_datasets: &[&str], types: &[&str]) -> Vec<
         match pt_datasets {
             [] => (),
             [dataset] => result.push(format!("munin_stop_{}", dataset)),
+            // TODO Investigate why we assume that if there is more than one dataset, then
+            // we just end up using 'munin_global_stops'?
             _ => result.push("munin_global_stops".to_string()),
         };
+    }
+
+    if types.is_empty() || types.contains(&"poi") {
+        poi_datasets
+            .iter()
+            .for_each(|dataset| result.push(format!("munin_poi_{}", dataset)));
     }
 
     result
@@ -436,7 +469,7 @@ impl Rubber {
 
     pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
         let types = vec!["house".into(), "street".into()];
-        let indexes = get_indexes(false, &[], &types);
+        let indexes = get_indexes(false, &[], &[], &types);
         let indexes = indexes
             .iter()
             .map(|index| index.as_str())
@@ -473,10 +506,12 @@ impl Rubber {
     /// publish the index as the new index for this doc_type and this dataset
     /// move the index alias of the doc_type and the dataset to point to this indexes
     /// and remove the old index
+    /// visibility: Indicate if the index is public or private
     pub fn publish_index<T: MimirObject>(
         &mut self,
         dataset: &str,
         index: TypedIndex<T>,
+        visibility: IndexVisibility,
     ) -> Result<(), Error> {
         debug!("publishing index");
 
@@ -492,18 +527,23 @@ impl Rubber {
             .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
 
         let type_index = get_main_type_index::<T>();
-        self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
-            .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
-
-        if T::is_geo_data() {
-            self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
-                .context("Error occurred when making alias: munin_geo_data")?;
-            self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
-                .context("Error occurred when making alias: munin")?;
-        } else {
-            self.alias("munin", &vec![type_index.to_string()], &vec![])
-                .context("Error occurred when making alias: munin")?;
+        if let IndexVisibility::Public = visibility {
+            self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
+                .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
         }
+
+        if let IndexVisibility::Public = visibility {
+            if T::is_geo_data() {
+                self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
+                    .context("Error occurred when making alias: munin_geo_data")?;
+                self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
+                    .context("Error occurred when making alias: munin")?;
+            } else {
+                self.alias("munin", &vec![type_index.to_string()], &vec![])
+                    .context("Error occurred when making alias: munin")?;
+            }
+        }
+
         for i in last_indexes {
             self.delete_index(&i)
                 .with_context(|_| format!("Error occurred when deleting index: {}", i))?;
@@ -593,6 +633,34 @@ impl Rubber {
         Ok(nb)
     }
 
+    /// Shortcut to `index` for a public index
+    pub fn public_index<T, I>(
+        &mut self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+        iter: I,
+    ) -> Result<usize, Error>
+    where
+        T: MimirObject + std::marker::Send + 'static,
+        I: Iterator<Item = T>,
+    {
+        self.index(dataset, IndexVisibility::Public, index_settings, iter)
+    }
+
+    /// Shortcut to `index` for a private index
+    pub fn private_index<T, I>(
+        &mut self,
+        dataset: &str,
+        index_settings: &IndexSettings,
+        iter: I,
+    ) -> Result<usize, Error>
+    where
+        T: MimirObject + std::marker::Send + 'static,
+        I: Iterator<Item = T>,
+    {
+        self.index(dataset, IndexVisibility::Private, index_settings, iter)
+    }
+
     /// add all the element of 'iter' into elasticsearch
     ///
     /// To have zero downtime:
@@ -601,6 +669,7 @@ impl Rubber {
     pub fn index<T, I>(
         &mut self,
         dataset: &str,
+        visibility: IndexVisibility,
         index_settings: &IndexSettings,
         iter: I,
     ) -> Result<usize, Error>
@@ -613,7 +682,7 @@ impl Rubber {
             .make_index(dataset, index_settings)
             .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
         let nb_elements = self.bulk_index(&index, iter)?;
-        self.publish_index(dataset, index)?;
+        self.publish_index(dataset, index, visibility)?;
         Ok(nb_elements)
     }
 
@@ -654,82 +723,105 @@ impl Rubber {
     }
 }
 
-#[test]
-pub fn test_valid_url() {
-    Rubber::new("http://localhost:9200");
-    Rubber::new("localhost:9200");
-    Rubber::new("http://bob");
-}
+#[cfg(test)]
+mod tests {
 
-#[test]
-#[should_panic]
-pub fn test_invalid_url_no_port() {
-    Rubber::new("localhost");
-}
+    use super::*;
 
-#[test]
-fn test_get_indexes_impl() {
-    // all_data
-    assert_eq!(get_indexes(true, &[], &[]), vec!["munin"]);
+    #[test]
+    pub fn test_valid_url() {
+        Rubber::new("http://localhost:9200");
+        Rubber::new("localhost:9200");
+        Rubber::new("http://bob");
+    }
 
-    // no dataset and no types
-    assert_eq!(get_indexes(false, &[], &[]), vec!["munin_geo_data"]);
+    #[test]
+    #[should_panic]
+    pub fn test_invalid_url_no_port() {
+        Rubber::new("localhost");
+    }
 
-    // dataset fr + no types
-    assert_eq!(
-        get_indexes(false, &["fr"], &[]),
-        vec!["munin_geo_data", "munin_stop_fr"]
-    );
+    #[test]
+    fn test_get_indexes_impl() {
+        // all_data
+        assert_eq!(
+            get_indexes(true, &[], &[], &[]),
+            vec!["munin", "munin_poi_*"]
+        );
 
-    // no dataset + types poi, city, street, house and public_transport:stop_area
-    // => munin_stop is not included
-    assert_eq!(
-        get_indexes(
-            false,
-            &[],
-            &[
-                "poi",
-                "city",
-                "street",
-                "house",
-                "public_transport:stop_area",
-            ],
-        ),
-        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
-    );
+        // no dataset and no types
+        assert_eq!(get_indexes(false, &[], &[], &[]), vec!["munin_geo_data"]);
 
-    // no dataset fr + type public_transport:stop_area only
-    assert_eq!(
-        get_indexes(false, &[], &["public_transport:stop_area"]),
-        Vec::<String>::new()
-    );
+        // dataset fr + no types
+        assert_eq!(
+            get_indexes(false, &["fr"], &[], &[]),
+            vec!["munin_geo_data", "munin_stop_fr"]
+        );
 
-    // dataset fr + types poi, city, street, house and public_transport:stop_area
-    assert_eq!(
-        get_indexes(
-            false,
-            &["fr"],
-            &[
-                "poi",
-                "city",
-                "street",
-                "house",
-                "public_transport:stop_area",
-            ],
-        ),
-        vec![
-            "munin_poi",
-            "munin_admin",
-            "munin_street",
-            "munin_addr",
-            "munin_stop_fr",
-        ]
-    );
+        // no dataset + types poi, city, street, house and public_transport:stop_area
+        // => munin_stop is not included
+        assert_eq!(
+            get_indexes(
+                false,
+                &[],
+                &[],
+                &[
+                    "poi",
+                    "city",
+                    "street",
+                    "house",
+                    "public_transport:stop_area",
+                ],
+            ),
+            vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+        );
 
-    // dataset fr types poi, city, street, house without public_transport:stop_area
-    //  => munin_stop_fr is not included
-    assert_eq!(
-        get_indexes(false, &["fr"], &["poi", "city", "street", "house"],),
-        vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
-    );
+        // no dataset fr + type public_transport:stop_area only
+        assert_eq!(
+            get_indexes(false, &[], &[], &["public_transport:stop_area"]),
+            Vec::<String>::new()
+        );
+
+        // dataset fr + types poi, city, street, house and public_transport:stop_area
+        assert_eq!(
+            get_indexes(
+                false,
+                &["fr"],
+                &[],
+                &[
+                    "poi",
+                    "city",
+                    "street",
+                    "house",
+                    "public_transport:stop_area",
+                ],
+            ),
+            vec![
+                "munin_poi",
+                "munin_admin",
+                "munin_street",
+                "munin_addr",
+                "munin_stop_fr",
+            ]
+        );
+
+        // dataset fr types poi, city, street, house without public_transport:stop_area
+        //  => munin_stop_fr is not included
+        assert_eq!(
+            get_indexes(false, &["fr"], &[], &["poi", "city", "street", "house"],),
+            vec!["munin_poi", "munin_admin", "munin_street", "munin_addr"]
+        );
+
+        // dataset fr with poi mti...
+        //  => munin_poi should not be included, and munin_poi_mti is included
+        assert_eq!(
+            get_indexes(
+                false,
+                &["fr"],
+                &["mti"],
+                &["poi", "city", "street", "house"],
+            ),
+            vec!["munin_admin", "munin_street", "munin_addr", "munin_poi_mti"]
+        );
+    }
 }

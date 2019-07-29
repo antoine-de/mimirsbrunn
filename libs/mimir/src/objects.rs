@@ -29,6 +29,7 @@
 // www.navitia.io
 use cosmogony::ZoneType;
 use geojson::Geometry;
+use navitia_poi_model;
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
@@ -196,11 +197,22 @@ impl<T: MimirObject> MimirObject for Rc<T> {
         T::es_id(self)
     }
 }
+
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Default)]
 pub struct Property {
     pub key: String,
     pub value: String,
 }
+
+impl From<navitia_poi_model::Property> for Property {
+    fn from(property: navitia_poi_model::Property) -> Property {
+        Property {
+            key: property.key,
+            value: property.value,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Poi {
     pub id: String,
@@ -235,6 +247,15 @@ pub struct Poi {
 pub struct PoiType {
     pub id: String,
     pub name: String,
+}
+
+impl From<&navitia_poi_model::PoiType> for PoiType {
+    fn from(poi_type: &navitia_poi_model::PoiType) -> PoiType {
+        PoiType {
+            id: poi_type.id.clone(),
+            name: poi_type.name.clone(),
+        }
+    }
 }
 
 impl MimirObject for Poi {
@@ -568,7 +589,7 @@ fn custom_multi_polygon_deserialize<'de, D>(
 where
     D: serde::de::Deserializer<'de>,
 {
-    use geojson::conversion::TryInto;
+    use std::convert::TryInto;
 
     Option::<geojson::GeoJson>::deserialize(d).map(|option| {
         option.and_then(|geojson| match geojson {
@@ -798,6 +819,7 @@ impl Coord {
             && self.lon() <= 180.
     }
 }
+
 impl Default for Coord {
     fn default() -> Coord {
         Coord(geo::Coordinate { x: 0., y: 0. })
@@ -893,5 +915,11 @@ impl<'de> Deserialize<'de> for Coord {
 
         const FIELDS: &'static [&'static str] = &["lat", "lon"];
         deserializer.deserialize_struct("Coord", FIELDS, CoordVisitor)
+    }
+}
+
+impl From<&navitia_poi_model::Coord> for Coord {
+    fn from(coord: &navitia_poi_model::Coord) -> Coord {
+        Coord::new(coord.lon(), coord.lat())
     }
 }

@@ -133,7 +133,7 @@ fn send_to_es(
 ) -> Result<(), Error> {
     let mut rubber = Rubber::new(cnx_string);
     rubber.initialize_templates()?;
-    let nb_admins = rubber.index(dataset, &index_settings, admins)?;
+    let nb_admins = rubber.public_index(dataset, &index_settings, admins)?;
     info!("{} admins added.", nb_admins);
     Ok(())
 }
@@ -147,7 +147,7 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
-    use cosmogony::zone::ZoneType::City;
+    use cosmogony::ZoneType::City;
 
     let mut max_weight = 1.0;
     let mut cosmogony_id_to_osm_id = BTreeMap::new();

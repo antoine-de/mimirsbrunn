@@ -56,7 +56,7 @@ pub struct ApiError {
 // Q: It would be better to move it to ::v1 as it depends on the api interface
 // how can we do this ?
 impl actix_web::error::ResponseError for BragiError {
-    fn error_response(&self) -> actix_web::HttpResponse {
+    fn render_response(&self) -> actix_web::HttpResponse {
         match *self {
             BragiError::ObjectNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
                 short: "query error".to_owned(),

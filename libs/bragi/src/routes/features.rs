@@ -1,6 +1,6 @@
 use crate::extractors::BragiQuery;
 use crate::{model, model::FromWithLang, query, Context};
-use actix_web::{Json, Path, State};
+use actix_web::web::{Data, Json, Path};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -8,6 +8,8 @@ use std::time::Duration;
 pub struct Params {
     #[serde(default)]
     pt_dataset: Vec<String>,
+    #[serde(default)]
+    poi_dataset: Vec<String>,
     #[serde(rename = "_all_data", default)]
     all_data: bool,
     /// timeout in milliseconds
@@ -16,13 +18,18 @@ pub struct Params {
 
 pub fn features(
     params: BragiQuery<Params>,
-    state: State<Context>,
+    state: Data<Context>,
     id: Path<String>,
 ) -> Result<Json<model::Autocomplete>, model::BragiError> {
     let rubber = state.get_rubber_for_features(params.timeout.map(Duration::from_millis));
     let features = query::features(
         &params
             .pt_dataset
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        &params
+            .poi_dataset
             .iter()
             .map(String::as_str)
             .collect::<Vec<_>>(),
