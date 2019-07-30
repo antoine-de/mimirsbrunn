@@ -205,17 +205,15 @@ fn build_query<'a>(
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
-        string_should.push(
-            if coord.is_some() {
-                build_multi_match("label.ngram", &format_labels_ngram_field)
-                    .with_boost(3.8)
-                    .build()
-            } else {
-                build_multi_match("label.ngram", &format_labels_ngram_field)
-                    .with_boost(1.8)
-                    .build()
-            }
-        );
+        string_should.push(if coord.is_some() {
+            build_multi_match("label.ngram", &format_labels_ngram_field)
+                .with_boost(3.8)
+                .build()
+        } else {
+            build_multi_match("label.ngram", &format_labels_ngram_field)
+                .with_boost(1.8)
+                .build()
+        });
     }
     let string_query = Query::build_bool()
         .with_should(string_should)

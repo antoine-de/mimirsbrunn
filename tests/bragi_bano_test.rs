@@ -227,7 +227,10 @@ fn long_bano_address_test(bragi: &mut BragiHandler) {
     assert_eq!(all_20.len(), 2);
     assert_eq!(
         get_values(&all_20, "label"),
-        vec!["20 Rue Hector Malot (Paris)", "20 Rue Hector Malot (Trifouilli-les-Oies)"]
+        vec![
+            "20 Rue Hector Malot (Paris)",
+            "20 Rue Hector Malot (Trifouilli-les-Oies)"
+        ]
     );
 }
 
