@@ -297,15 +297,15 @@ fn poi_misspelt_one_word_admin_test(bragi: &mut BragiHandler) {
     assert!(get_values(&geocodings, "label").contains(&"Melun Rp (Melun)",));
 
     // when we search for 'Meluuun', we should find some places in melun
-    let geocodings = bragi.get("/autocomplete?q=Meluuun");
+    let geocodings = bragi.get("/autocomplete?q=Meluun");
     for postcodes in get_values(&geocodings, "postcode") {
         assert!(postcodes.split(';').any(|p| p == "77000"));
     }
     // we should also be able to find the city of melun which will carry more postcodes
     let cities = filter_by(&geocodings, "zone_type", "city");
-    assert_eq!(cities.len(), 0);
-    // let melun = &cities.first().unwrap();
-    // assert_eq!(get_value(melun, "name"), "Melun");
+    assert_eq!(cities.len(), 1);
+    let melun = &cities.first().unwrap();
+    assert_eq!(get_value(melun, "name"), "Melun");
 }
 
 fn poi_from_osm_with_address_addr_test(bragi: &mut BragiHandler) {
@@ -448,7 +448,5 @@ fn poi_filter_dataset_visibility_test(bragi: &mut BragiHandler) {
     assert_eq!(poi["label"], "Agence Keolis (Livry-sur-Seine)");
 
     let res = bragi.get("/autocomplete?q=Agence Keolis&type[]=poi&poi_dataset[]=effia");
-    //let poi = res.first().unwrap();
-    //println!("{:?}", poi);
     assert!(res.first().is_none());
 }

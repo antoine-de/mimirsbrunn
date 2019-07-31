@@ -230,7 +230,7 @@ fn build_query<'a>(
                 build_proximity_with_boost(coord, 0.4),
             ]
         } else {
-            admin_weight = 0.1;
+            admin_weight = 0.12;
             vec![
                 build_with_weight(0.4),
                 build_proximity_with_boost(coord, 0.4),
@@ -295,9 +295,9 @@ fn build_query<'a>(
         MatchType::Fuzzy => Query::build_match("full_label.ngram".to_string(), q.to_string())
             .with_minimum_should_match(MinimumShouldMatch::from(vec![
                 CombinationMinimumShouldMatch::new(1i64, -1i64),
-                CombinationMinimumShouldMatch::new(4i64, -2i64),
+                CombinationMinimumShouldMatch::new(3i64, -2i64),
                 CombinationMinimumShouldMatch::new(9i64, -4i64),
-                CombinationMinimumShouldMatch::new(20i64, 15f64),
+                CombinationMinimumShouldMatch::new(20i64, 25f64),
             ]))
             .build(),
     };
