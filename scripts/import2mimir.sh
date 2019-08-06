@@ -69,6 +69,8 @@ log_error()
 # We check all the executables that will be called in this script.
 check_requirements()
 {
+    log_info "Checking requirements"
+
     # Check that you have wget, unzip, docker
     command -v wget > /dev/null 2>&1  || { log_error "wget not found. You need to install wget."; return 1; }
     command -v unzip > /dev/null 2>&1  || { log_error "unzip not found. You need to install unzip"; return 1; }
@@ -81,12 +83,13 @@ check_requirements()
     local OSM2MIMIR="${MIMIR_DIR}/target/release/osm2mimir"
     command -v "${OSM2MIMIR}" > /dev/null 2>&1  || { log_error "osm2mimir not found in ${MIMIR_DIR}. You need to get osm2mimir from https://github.com/CanalTP/mimirsbrunn and build it with 'cargo build --release'"; return 1; }
 
-    return 0;
+    return 0
 }
 
 # We check the validity of the command line arguments and the configuration
 check_arguments()
 {
+    log_info "Checking arguments"
     # Check that the variable $ES_PORT is set and non-empty
     [[ -z "${ES_PORT+xxx}" ]] &&
     { log_error "The variable \$ES_PORT is not set. Make sure it is set in the configuration file."; usage; return 1; }
@@ -123,7 +126,7 @@ check_arguments()
     [[ -z "$ES_NAME" && "${ES_NAME+xxx}" = "xxx" ]] &&
     { log_error "The variable \$ES_NAME is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
 
-    return 0;
+    return 0
 }
 
 # We check the presence of directories (possibly create them), and remote machines.
@@ -136,13 +139,7 @@ check_environment()
 
     # Check that the data directory exists and is writable.
     # TODO
-    return 0;
-}
-
-# $1 index name
-check_index_exist() {
-    curl -X GET "10.0.3.13:9200/_cat/indices" | grep $1
-    return $?
+    return 0
 }
 
 # $1: string to search for
@@ -159,13 +156,14 @@ search_in()
     [[ "${KEY}" = "${ELEMENT}" ]] && { return 1; }
   done
   IFS=$OIFS
-  return 0;
+  return 0
 }
 
 # This is a violent function... It tears the existing docker named ${ES_NAME}
 restart_docker_es() {
-  docker ps --format '{{.Names}}' | grep "${ES_NAME}" 2>&1 >/dev/null
-  if [[ $? == 0 ]]; then
+  log_info "Checking docker ${ES_NAME}"
+  local DOCKER_NAMES=`docker ps --all --format '{{.Names}}'`
+  if [[ ${DOCKER_NAMES} =~ ${ES_NAME} ]]; then
     log_info "docker container "${ES_NAME}" is running"
     docker stop es > /dev/null 2> /dev/null
     log_info "docker container "${ES_NAME}" stopped"
