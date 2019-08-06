@@ -175,9 +175,10 @@ where
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
+        let clock = SystemTime::now();
         MetricsResponse {
             fut: self.service.call(req),
-            clock: SystemTime::now(),
+            clock: clock,
             inner: self.inner.clone(),
             _t: PhantomData,
         }
