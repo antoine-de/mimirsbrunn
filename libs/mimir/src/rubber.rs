@@ -244,7 +244,7 @@ pub fn get_indexes(
         if poi_datasets.is_empty() {
             t != "public_transport:stop_area"
         } else {
-            t != "public_transport:stop_area" || t != "poi"
+            t != "public_transport:stop_area" && t != "poi"
         }
     };
 
