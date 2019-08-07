@@ -37,6 +37,8 @@ use mimir::{rubber, Poi, PoiType};
 use osm_boundaries_utils::build_boundary;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use slog::{slog_info, slog_warn};
+use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::io;

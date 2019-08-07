@@ -28,19 +28,20 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-#[macro_use]
-extern crate failure;
+// #[macro_use]
+// extern crate slog;
+// #[macro_use]
+// extern crate slog_scope;
+// #[macro_use]
+// extern crate failure;
 
 pub mod objects;
 pub mod rubber;
 
 pub use crate::objects::*;
-use slog::Drain;
-use slog::Never;
+use slog::{self, o, slog_o, Drain, Never};
+use slog_json;
+use slog_scope;
 use std::env;
 
 pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {

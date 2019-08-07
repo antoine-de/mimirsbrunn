@@ -3,9 +3,8 @@
 // because  we want to use the name of the endpoint for retrocompatibility
 // (and as a side effect we also added the 'in flight' queries (but for this we could have used the Registry))
 
-use std::marker::PhantomData;
-use std::sync::Arc;
-use std::time::SystemTime;
+// #[macro_use]
+// extern crate prometheus;
 
 use actix_service::{Service, Transform};
 use actix_web::{
@@ -16,7 +15,10 @@ use actix_web::{
 };
 use futures::future::{ok, FutureResult};
 use futures::{Async, Future, Poll};
-use prometheus::{opts, Encoder, TextEncoder};
+use prometheus::{self, Encoder, TextEncoder};
+use std::marker::PhantomData;
+use std::sync::Arc;
+use std::time::SystemTime;
 
 lazy_static::lazy_static! {
     static ref PATH_TO_NAME: std::collections::HashMap<&'static str, &'static str> = {
@@ -54,6 +56,7 @@ lazy_static::lazy_static! {
         &["handler", "method", "status"]
     )
     .unwrap();
+
     static ref HTTP_REQ_HISTOGRAM: prometheus::HistogramVec = prometheus::register_histogram_vec!(
         "bragi_http_request_duration_seconds",
         "The HTTP request latencies in seconds.",
@@ -61,6 +64,7 @@ lazy_static::lazy_static! {
         prometheus::exponential_buckets(0.001, 1.5, 25).unwrap()
     )
     .unwrap();
+
     static ref HTTP_IN_FLIGHT: prometheus::Gauge = prometheus::register_gauge!(
         "bragi_http_requests_in_flight",
         "current number of http request being served"

@@ -7,6 +7,7 @@
 /// (cf https://github.com/nox/serde_urlencoded/issues/6)
 use crate::model::ApiError;
 use actix_web::{dev::Payload, FromRequest, HttpRequest};
+use failure::Fail;
 use std::ops::{Deref, DerefMut};
 
 #[derive(Fail, Debug)]

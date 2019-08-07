@@ -34,6 +34,8 @@ use cosmogony::ZoneType;
 use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
 use osm_boundaries_utils::build_boundary;
+use slog::{slog_info, slog_warn};
+use slog_scope::{info, warn};
 use std::collections::BTreeSet;
 
 pub type StreetsVec = Vec<mimir::Street>;

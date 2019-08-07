@@ -29,14 +29,11 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-#[macro_use]
-extern crate failure;
-#[macro_use]
 extern crate prometheus;
+
 use mimir::rubber::Rubber;
+use slog::slog_debug;
+use slog_scope::debug;
 use std::time::Duration;
 use structopt::StructOpt;
 

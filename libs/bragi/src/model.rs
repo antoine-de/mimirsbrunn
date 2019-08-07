@@ -28,9 +28,12 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use failure::Fail;
 use heck::SnakeCase;
 use rs_es::error::EsError;
 use serde::{Deserialize, Serialize};
+use slog::slog_error;
+use slog_scope::error;
 use std::sync::Arc;
 
 #[derive(Fail, Debug)]
