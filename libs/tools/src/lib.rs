@@ -1,6 +1,8 @@
 use docker_wrapper::*;
 use serde_json::value::Value;
 use serde_json::Map;
+use std::time::Duration;
+
 #[macro_use]
 extern crate slog;
 #[macro_use]
@@ -193,17 +195,18 @@ impl BragiHandler {
         BragiHandler { app: srv }
     }
 
-    pub fn raw_get(&mut self, q: &str) -> (actix_http::http::StatusCode, bytes::Bytes) {
-        let q = url_encode(q);
-        let req = self.app.get(q);
+    pub fn raw_get(&mut self, query: &str) -> (actix_http::http::StatusCode, bytes::Bytes) {
+        let query = url_encode(query);
+        // Use a long timeout to prevent timeout error in DNS resolution:
+        let req = self.app.get(query).timeout(Duration::from_secs(10));
 
-        let mut r = self.app.block_on(req.send()).unwrap();
+        let mut resp = self.app.block_on(req.send()).unwrap();
 
-        let status = r.status();
+        let status = resp.status();
 
         // TODO: at one point it would be nice to read the body only if we need it,
         // but for the moment I'm not able to return a future here
-        let body = self.app.block_on(r.body()).unwrap();
+        let body = self.app.block_on(resp.body()).unwrap();
         (status, body)
     }
 
