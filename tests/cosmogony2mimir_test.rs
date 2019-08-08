@@ -83,7 +83,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
             assert_relative_eq!(
                 livry_sur_seine.weight,
-                0.000030426344273625653,
+                0.0000013707142857142856,
                 epsilon = f64::EPSILON
             );
             assert!(livry_sur_seine.coord.is_valid());
@@ -143,7 +143,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
                 .into_iter()
                 .collect()
             );
-            assert_eq!(fr.weight, 1.0);
+            assert_relative_eq!(fr.weight, 0.04505024571428572, epsilon = f64::EPSILON);
             assert!(fr.coord.is_valid());
             assert_eq!(fr.zone_type, Some(ZoneType::Country));
             assert!(fr
@@ -171,7 +171,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     match fausse_seine_max_weight {
         &mimir::Place::Admin(ref a) => {
             assert_eq!(a.id, "admin:osm:relation:80071");
-            assert_relative_eq!(a.weight, 0.0006276959580242658, epsilon = f64::EPSILON);
+            assert_relative_eq!(a.weight, 0.000028277857142857143, epsilon = f64::EPSILON);
         }
         _ => panic!("should be an admin"),
     }
