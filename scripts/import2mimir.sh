@@ -334,23 +334,23 @@ restart_docker_es 9200
 download_osm
 [[ $? != 0 ]] && { log_error "Could not download osm. Aborting"; exit 1; }
 
+download_bano
+[[ $? != 0 ]] && { log_error "Could not download bano. Aborting"; exit 1; }
+
+download_ntfs
+[[ $? != 0 ]] && { log_error "Could not download ntfs. Aborting"; exit 1; }
+
 generate_cosmogony
 [[ $? != 0 ]] && { log_error "Could not generate cosmogony. Aborting"; exit 1; }
 
 import_cosmogony
 [[ $? != 0 ]] && { log_error "Could not import cosmogony into mimir. Aborting"; exit 1; }
 
-download_bano
-[[ $? != 0 ]] && { log_error "Could not download bano. Aborting"; exit 1; }
-
 import_bano
 [[ $? != 0 ]] && { log_error "Could not import bano into mimir. Aborting"; exit 1; }
 
 import_osm
 [[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
-
-download_ntfs
-[[ $? != 0 ]] && { log_error "Could not download ntfs. Aborting"; exit 1; }
 
 import_ntfs
 [[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }
