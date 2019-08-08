@@ -286,7 +286,11 @@ impl Rubber {
         }
     }
 
-    pub fn new_with_timeout(cnx: &str, timeout: Option<time::Duration>) -> Rubber {
+    pub fn new_with_timeout<T>(cnx: &str, timeout: T) -> Rubber
+    where
+        T: Into<Option<time::Duration>>,
+    {
+        let timeout = timeout.into();
         Rubber {
             es_client: rs_es::Client::init_with_timeout(&cnx, timeout).unwrap(),
             http_client: reqwest::Client::builder().timeout(timeout).build().unwrap(),

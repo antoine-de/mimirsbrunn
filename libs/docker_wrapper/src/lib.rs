@@ -33,11 +33,11 @@ extern crate slog;
 #[macro_use]
 extern crate slog_scope;
 
-use std::error::Error;
-use std::process::Command;
-
 use mimir::rubber::Rubber;
 use reqwest;
+use std::error::Error;
+use std::process::Command;
+use std::time::Duration;
 
 /// This struct wraps a docker (for the moment explicitly ElasticSearch)
 /// Allowing to setup a docker, tear it down and to provide its address and port
@@ -94,7 +94,7 @@ impl DockerWrapper {
     pub fn new() -> Result<DockerWrapper, Box<dyn Error>> {
         let mut wrapper = DockerWrapper { ip: "".to_string() };
         wrapper.setup()?;
-        let rubber = Rubber::new(&wrapper.host());
+        let rubber = Rubber::new_with_timeout(&wrapper.host(), Duration::from_secs(10)); // use a long timeout
         rubber.initialize_templates().unwrap();
         Ok(wrapper)
     }
