@@ -286,12 +286,24 @@ fn build_query<'a>(
         filters.push(build_coverage_condition(pt_datasets));
     }
 
+    // We want to limit the search to the geographic shape given in argument,
+    // except for stop areas
     if let Some(s) = shape {
-        filters.push(
-            Query::build_geo_shape("approx_coord")
-                .with_geojson(s)
-                .build(),
-        );
+        let filter_wo_stop = Query::build_bool()
+            .with_must(vec![
+                Query::build_bool()
+                    .with_must_not(Query::build_term("_type", Stop::doc_type()).build())
+                    .build(),
+                Query::build_geo_shape("approx_coord")
+                    .with_geojson(s)
+                    .build(),
+            ])
+            .build();
+        let filter_w_stop = Query::build_term("_type", Stop::doc_type()).build();
+        let geo_filter = Query::build_bool()
+            .with_should(vec![filter_w_stop, filter_wo_stop])
+            .build();
+        filters.push(geo_filter);
     }
 
     let mut query = Query::build_bool()

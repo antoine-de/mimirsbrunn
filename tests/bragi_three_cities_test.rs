@@ -68,6 +68,16 @@ pub fn bragi_three_cities_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
+    let stops2mimir = out_dir.join("../../../stops2mimir").display().to_string();
+    crate::launch_and_assert(
+        &stops2mimir,
+        &[
+            "--input=./tests/fixtures/stops_shape.txt".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
+
     three_cities_housenumber_zip_code_test(&mut bragi);
     three_cities_zip_code_test(&mut bragi);
     three_cities_zip_code_address_test(&mut bragi);
@@ -195,4 +205,52 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
 
     let geocodings = bragi.post("/autocomplete?q=Melun", shape);
     assert_eq!(geocodings.len(), 0);
+
+    // shape filtering does not apply to stop areas.
+    //
+    //      A ---------------------D                 48.5372
+    //      |                      |
+    //      |      ===== street1   | ==== street2
+    //      |                      |
+    //      |      O stop1         | O stop2
+    //      B ---------------------C                 48.5366
+    //
+    //      2.6565                 2.6576
+    //
+    // Search with shape and stops, we should have, based on the diagram:
+    // - street1 visible     (because within shape)
+    // - stop1 visible       (because within shape)
+    // - street2 not visible (because outside of shape)
+    // - stop2 visible       (because type=stop area)
+    //
+    // We also want to make sure street2 is visible if we don't use shape filtering
+
+    let shape = r#"{"shape": {"type": "Feature","properties":{},"geometry":{"type":"Polygon",
+        "coordinates": [[[2.6565, 48.5372],
+        [2.6576, 48.5372],[2.6573, 48.5366],[2.6564, 48.5365],[2.6565, 48.5372]]]}}}"#;
+
+    let geocodings = bragi.post("/autocomplete?q=Rue du Port", shape);
+    assert_eq!(geocodings.len(), 1);
+    assert_eq!(
+        get_values(&geocodings, "label"),
+        vec!["Rue du Port (Melun)"]
+    );
+
+    let geocodings = bragi.post("/autocomplete?q=Stop In&_all_data=true", shape);
+    assert_eq!(geocodings.len(), 1);
+    assert_eq!(get_values(&geocodings, "label"), vec!["Stop In (Melun)"]);
+
+    let geocodings = bragi.post("/autocomplete?q=Stop Out&_all_data=true", shape);
+    assert_eq!(geocodings.len(), 1);
+    assert_eq!(get_values(&geocodings, "label"), vec!["Stop Out (Melun)"]);
+
+    let geocodings = bragi.post("/autocomplete?q=Four", shape);
+    assert_eq!(geocodings.len(), 0);
+
+    let geocodings = bragi.get("/autocomplete?q=Four");
+    assert_eq!(geocodings.len(), 1);
+    assert_eq!(
+        get_values(&geocodings, "label"),
+        vec!["Rue du Four à Chaux (Livry-sur-Seine)"]
+    );
 }
