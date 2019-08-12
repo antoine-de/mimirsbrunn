@@ -26,8 +26,5 @@ NTFS_REGION="fr-idf"
 # OSM Region
 OSM_REGION="ile-de-france"
 
-# Base directory for mimirbrunn
-MIMIR_DIR="/home/matt/lab/rust/projects/kisio/mimirsbrunn"
-
 # Base directory for cosmogony
-COSMO_DIR="/home/matt/lab/rust/projects/kisio/cosmogony"
+COSMO_DIR=""

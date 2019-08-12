@@ -14,6 +14,7 @@ LOG_FILE="${APPLICATION}-${EXECUTION_DATE}.log"
 CONFIG_FILE="${APPLICATION}.rc"
 QUIET=false
 DEFAULT_TASK="none"
+readonly MIMIR_DIR="$(cd "${SCRIPT_DIR}/.." >/dev/null 2>&1 && pwd)"
 
 version()
 {
@@ -76,9 +77,25 @@ check_requirements()
     command -v unzip > /dev/null 2>&1  || { log_error "unzip not found. You need to install unzip"; return 1; }
     command -v docker > /dev/null 2>&1  || { log_error "docker not found. You need to install docker"; return 1; }
 
-    # Check that you have cosmogony and mimir
+    # Check that you have cosmogony
+    # So we need to check that we have the COSMO_DIR variable set, and then that the project
+    # has been built in release mode.
+    [[ -z "${COSMO_DIR+xxx}" ]] &&
+    { log_error "The variable \$COSMO_DIR is not set. Make sure it is set in the configuration file (${CONFIG_FILE}).";
+      log_error "COSMO_DIR should point to the root of the cosmogony project, that you can find at";
+      log_error "https://github.com/osm-without-borders/cosmogony.";
+      usage; return 1; }
+    [[ -z "$COSMO_DIR" && "${COSMO_DIR+xxx}" = "xxx" ]] &&
+    { log_error "The variable \$COSMO_DIR is set but empty. Make sure it is set in the configuration file (${CONFIG_FILE})."
+      log_error "COSMO_DIR should point to the root of the cosmogony project, that you can find at";
+      log_error "https://github.com/osm-without-borders/cosmogony.";
+      log_error "Build the project in release mode following the documentation of the project.";
+      usage; return 1; }
+
     local COSMOGONY="${COSMO_DIR}/target/release/cosmogony"
-    command -v "${COSMOGONY}" > /dev/null 2>&1  || { log_error "cosmogony not found in ${COSMO_DIR}. You need to get cosmogony from https://github.com/osm-without-borders/cosmogony and build it with 'cargo build --release'"; return 1; }
+    command -v "${COSMOGONY}" > /dev/null 2>&1  || { log_error "cosmogony not found in ${COSMO_DIR}.";
+    log_error "You need to get cosmogony from https://github.com/osm-without-borders/cosmogony";
+    log_error "and build it with 'cargo build --release'"; return 1; }
 
     local OSM2MIMIR="${MIMIR_DIR}/target/release/osm2mimir"
     command -v "${OSM2MIMIR}" > /dev/null 2>&1  || { log_error "osm2mimir not found in ${MIMIR_DIR}. You need to get osm2mimir from https://github.com/CanalTP/mimirsbrunn and build it with 'cargo build --release'"; return 1; }
