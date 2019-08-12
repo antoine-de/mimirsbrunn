@@ -222,6 +222,9 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
     // - stop1 visible       (because within shape)
     // - street2 not visible (because outside of shape)
     // - stop2 visible       (because type=stop area)
+    //
+    // We also want to make sure street2 is visible if we don't use shape filtering
+
     let shape = r#"{"shape": {"type": "Feature","properties":{},"geometry":{"type":"Polygon",
         "coordinates": [[[2.6565, 48.5372],
         [2.6576, 48.5372],[2.6573, 48.5366],[2.6564, 48.5365],[2.6565, 48.5372]]]}}}"#;
@@ -243,4 +246,11 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
 
     let geocodings = bragi.post("/autocomplete?q=Four", shape);
     assert_eq!(geocodings.len(), 0);
+
+    let geocodings = bragi.get("/autocomplete?q=Four");
+    assert_eq!(geocodings.len(), 1);
+    assert_eq!(
+        get_values(&geocodings, "label"),
+        vec!["Rue du Four à Chaux (Livry-sur-Seine)"]
+    );
 }
