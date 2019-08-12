@@ -3,9 +3,6 @@
 // because  we want to use the name of the endpoint for retrocompatibility
 // (and as a side effect we also added the 'in flight' queries (but for this we could have used the Registry))
 
-// #[macro_use]
-// extern crate prometheus;
-
 use actix_service::{Service, Transform};
 use actix_web::{
     dev::{Body, BodySize, MessageBody, ResponseBody, ServiceRequest, ServiceResponse},
