@@ -32,6 +32,8 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils, Error};
 use failure::ResultExt;
+use slog::slog_info;
+use slog_scope::info;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::sync::Arc;

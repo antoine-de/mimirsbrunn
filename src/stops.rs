@@ -34,6 +34,8 @@ use failure::format_err;
 use failure::{Error, ResultExt};
 use mimir;
 use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
+use slog::{slog_info, slog_warn};
+use slog_scope::{info, warn};
 use std::collections::HashMap;
 use std::mem::replace;
 use std::ops::Deref;

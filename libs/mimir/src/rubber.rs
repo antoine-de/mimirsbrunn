@@ -30,7 +30,7 @@
 
 use super::objects::{Admin, MimirObject};
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
-use failure::{Error, ResultExt};
+use failure::{bail, format_err, Error, ResultExt};
 use prometheus::{exponential_buckets, histogram_opts, register_histogram, Histogram};
 use reqwest::StatusCode;
 use rs_es::error::EsError;
@@ -40,6 +40,8 @@ use rs_es::query::Query;
 use rs_es::units as rs_u;
 use rs_es::units::Duration;
 use rs_es::EsResponse;
+use slog::{slog_debug, slog_info, slog_warn};
+use slog_scope::{debug, info, warn};
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::time;

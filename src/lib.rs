@@ -28,11 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
 pub mod addr_reader;
 pub mod admin_geofinder;
 pub mod labels;

@@ -2,6 +2,9 @@
 /// the current format is '{nice name} ({city})'
 /// the {nice name} being for addresses the housenumber and the street (correctly ordered)
 /// and for the rest of the objects, only their names
+use slog::slog_warn;
+use slog_scope::warn;
+
 fn format_label<'a>(
     nice_name: String,
     admins: impl Iterator<Item = &'a mimir::Admin> + Clone,

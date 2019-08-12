@@ -42,6 +42,8 @@ use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
 use serde_json;
+use slog::{slog_debug, slog_error, slog_warn};
+use slog_scope::{debug, error, warn};
 use std::{fmt, iter};
 
 lazy_static::lazy_static! {
