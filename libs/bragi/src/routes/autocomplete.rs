@@ -93,19 +93,22 @@ impl Params {
         self.poi_types.iter().map(PoiType::as_str).collect()
     }
     fn coord(&self) -> Result<Option<Coord>, BragiError> {
-        match (self.lon, self.lat) {
-            (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
-            (None, None) => Ok(None),
-            _ => Err(BragiError::InvalidParam(
-                "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
-            )),
-        }
+        Self::build_coord(self.lon, self.lat)
     }
     fn langs(&self) -> Vec<&str> {
         self.lang.iter().map(|l| l.as_str()).collect()
     }
     fn timeout(&self) -> Option<Duration> {
         self.timeout.map(Duration::from_millis)
+    }
+    fn build_coord(lon: Option<f64>, lat: Option<f64>) -> Result<Option<Coord>, BragiError> {
+        match (lon, lat) {
+            (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
+            (None, None) => Ok(None),
+            _ => Err(BragiError::InvalidParam(
+                "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
+            )),
+        }
     }
 }
 

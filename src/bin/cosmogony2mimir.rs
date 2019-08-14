@@ -149,18 +149,16 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
     use cosmogony::ZoneType::City;
 
-    let mut max_weight = 1.0;
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     for z in read_zones(&args.input)? {
-        max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
         let insee = match z.zone_type {
             Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
             _ => None,
         };
         cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
     }
-    let max_weight = max_weight;
     let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
+    let max_weight = utils::ADMIN_MAX_WEIGHT;
 
     info!("importing cosmogony into Mimir");
     let admins = read_zones(&args.input)?.map(|z| {
