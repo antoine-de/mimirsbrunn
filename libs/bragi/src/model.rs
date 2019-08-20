@@ -116,6 +116,8 @@ pub struct Feature {
     pub properties: Properties,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explanation: Option<mimir::Explanation>,
 }
 
 #[derive(Serialize, Debug)]
@@ -253,6 +255,7 @@ impl FromWithLang<mimir::Place> for Feature {
     fn from_with_lang(other: mimir::Place, lang: Option<&str>) -> Feature {
         let geom = other.to_geom();
         let distance = other.distance();
+        let explanation = other.explanation();
         let geocoding = match other {
             mimir::Place::Admin(admin) => GeocodingResponse::from_with_lang(admin, lang),
             mimir::Place::Street(street) => GeocodingResponse::from_with_lang(street, lang),
@@ -267,6 +270,7 @@ impl FromWithLang<mimir::Place> for Feature {
                 geocoding: geocoding,
             },
             distance: distance,
+            explanation: explanation,
         }
     }
 }

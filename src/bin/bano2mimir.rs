@@ -134,6 +134,7 @@ impl Bano {
             approx_coord: None,
             distance: None,
             country_codes: country_codes.clone(),
+            explanation: None,
         };
         mimir::Addr {
             id: format!(
@@ -167,6 +168,7 @@ impl Bano {
             zip_codes: vec![self.zip.clone()],
             distance: None,
             country_codes,
+            explanation: None,
         }
     }
 }

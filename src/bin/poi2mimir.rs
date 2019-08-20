@@ -108,6 +108,7 @@ fn into_mimir_poi(
         names: I18nProperties::default(),
         labels: I18nProperties::default(),
         distance: None,
+        explanation: None,
     };
 
     Ok(poi)

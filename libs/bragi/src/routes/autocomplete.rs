@@ -80,6 +80,9 @@ pub struct Params {
     #[serde(default, rename = "poi_type")]
     poi_types: Vec<PoiType>,
     lang: Option<String>,
+    // Forwards a request for explanation to Elastic Search.
+    // This parameter is useful to analyze the order in which search results appear.
+    debug: Option<bool>,
 }
 
 impl Params {
@@ -157,6 +160,7 @@ pub fn call_autocomplete(
         &params.poi_types_as_str(),
         &langs,
         rubber,
+        params.debug.unwrap_or(false),
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(Json)

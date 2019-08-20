@@ -28,7 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::objects::{Admin, MimirObject};
+use super::objects::{Admin, Explanation, MimirObject};
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use failure::{bail, format_err, Error, ResultExt};
 use prometheus::{exponential_buckets, histogram_opts, register_histogram, Histogram};
@@ -171,7 +171,7 @@ pub fn read_places(
         .hits
         .hits
         .into_iter()
-        .filter_map(|hit| make_place(hit.doc_type, hit.source))
+        .filter_map(|hit| make_place(hit.doc_type, hit.source, hit.explanation))
         .map(|mut place| {
             if let Some(ref p) = point {
                 use geo::prelude::HaversineDistance;
@@ -185,8 +185,12 @@ pub fn read_places(
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
-pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Option<Place> {
-    value.and_then(|v| {
+pub fn make_place(
+    doc_type: String,
+    value: Option<Box<serde_json::Value>>,
+    explanation: Option<serde_json::Value>,
+) -> Option<Place> {
+    let place = value.and_then(|v| {
         fn convert<T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
         where
             for<'de> T: serde::Deserialize<'de>,
@@ -207,7 +211,20 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
                 None
             }
         }
-    })
+    });
+    match explanation {
+        Some(explanation) => match serde_json::from_value::<Explanation>(explanation) {
+            Ok(explanation) => match place {
+                Some(mut place) => {
+                    place.set_explanation(explanation);
+                    Some(place)
+                }
+                None => None,
+            },
+            Err(err) => place,
+        },
+        None => place,
+    }
 }
 
 /// Create a `rs_es::Query` that boosts results according to the

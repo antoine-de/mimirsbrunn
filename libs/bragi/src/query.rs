@@ -379,6 +379,7 @@ fn query(
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
+    debug: bool,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
@@ -425,6 +426,12 @@ fn query(
         // No need to fetch "boundary" as it's not used in the geocoding response
         // and is very large in some documents (countries...)
         .with_source(Source::exclude(&["boundary"]));
+
+    // We don't want to clutter the Query URL, so we only add an explanation if the option is used
+    let search_query = match debug {
+        true => search_query.with_explain(true),
+        false => search_query,
+    };
 
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
@@ -512,6 +519,7 @@ pub fn autocomplete(
     poi_types: &[&str],
     langs: &[&str],
     mut rubber: Rubber,
+    debug: bool,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -542,6 +550,7 @@ pub fn autocomplete(
         &zone_types,
         &poi_types,
         &langs,
+        debug,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -560,6 +569,7 @@ pub fn autocomplete(
             &zone_types,
             &poi_types,
             &langs,
+            debug,
         )
         .map_err(model::BragiError::from)
     } else {

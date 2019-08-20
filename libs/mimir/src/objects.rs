@@ -33,7 +33,7 @@ use navitia_poi_model;
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
-use slog::slog_warn;
+// use slog::slog_warn;
 use slog_scope::warn;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -163,6 +163,28 @@ impl Place {
             Place::Stop(ref o) => &o.coord,
         }
     }
+
+    pub fn set_explanation(&mut self, explanation: Explanation) {
+        match self {
+            Place::Admin(ref mut o) => o.explanation = Some(explanation),
+            Place::Street(ref mut o) => o.explanation = Some(explanation),
+            Place::Addr(ref mut o) => o.explanation = Some(explanation),
+            Place::Poi(ref mut o) => o.explanation = Some(explanation),
+            Place::Stop(ref mut o) => o.explanation = Some(explanation),
+        }
+    }
+
+    /* We can afford to clone the explanation because we're in debug mode
+     * and performance are less critical */
+    pub fn explanation(&self) -> Option<Explanation> {
+        match self {
+            Place::Admin(ref o) => o.explanation.clone(),
+            Place::Street(ref o) => o.explanation.clone(),
+            Place::Addr(ref o) => o.explanation.clone(),
+            Place::Poi(ref o) => o.explanation.clone(),
+            Place::Stop(ref o) => o.explanation.clone(),
+        }
+    }
 }
 
 pub trait MimirObject: serde::Serialize {
@@ -243,6 +265,8 @@ pub struct Poi {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub explanation: Option<Explanation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -486,6 +510,8 @@ pub struct Stop {
     pub lines: Vec<Line>,
     #[serde(default)]
     pub country_codes: Vec<String>,
+
+    pub explanation: Option<Explanation>,
 }
 
 impl MimirObject for Stop {
@@ -557,6 +583,8 @@ pub struct Admin {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub explanation: Option<Explanation>,
 }
 
 impl Admin {
@@ -702,6 +730,8 @@ pub struct Street {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub explanation: Option<Explanation>,
 }
 impl Incr for Street {
     fn id(&self) -> &str {
@@ -754,6 +784,8 @@ pub struct Addr {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub explanation: Option<Explanation>,
 }
 
 impl MimirObject for Addr {
@@ -925,4 +957,16 @@ impl From<&navitia_poi_model::Coord> for Coord {
     fn from(coord: &navitia_poi_model::Coord) -> Coord {
         Coord::new(coord.lon(), coord.lat())
     }
+}
+
+/// This structure is used when analyzing the result of an Elasticsearch 'explanation' query,
+/// which describes the construction of the score". It is a tree structure.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Explanation {
+    /// score assigned by elasticsearch for that item
+    pub value: f64,
+    /// description of the operation used to obtained `value` from each `details` values.
+    pub description: String,
+    /// leafs
+    pub details: Vec<Explanation>,
 }

@@ -177,6 +177,7 @@ pub fn read_administrative_regions(
                 names: mimir::I18nProperties::default(),
                 labels: mimir::I18nProperties::default(),
                 distance: None,
+                explanation: None,
             };
             administrative_regions.push(admin);
         }
