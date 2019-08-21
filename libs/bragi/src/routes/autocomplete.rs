@@ -82,6 +82,8 @@ pub struct Params {
     lang: Option<String>,
     // Forwards a request for explanation to Elastic Search.
     // This parameter is useful to analyze the order in which search results appear.
+    // It is prefixed by an underscore to indicate its not a public parameter.
+    #[serde(default, rename = "_debug")]
     debug: Option<bool>,
 }
 

@@ -221,7 +221,7 @@ pub fn make_place(
                 }
                 None => None,
             },
-            Err(err) => place,
+            Err(_err) => place,
         },
         None => place,
     }
