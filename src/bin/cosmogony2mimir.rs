@@ -41,6 +41,8 @@ use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::sync::Arc;
 use structopt::StructOpt;
 
 trait IntoAdmin {
@@ -50,6 +52,7 @@ trait IntoAdmin {
         langs: &[String],
         retrocompat_on_french_id: bool,
         max_weight: f64,
+        all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin;
 }
 
@@ -71,6 +74,7 @@ impl IntoAdmin for Zone {
         langs: &[String],
         french_id_retrocompatibility: bool,
         max_weight: f64,
+        all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin {
         let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
         let zip_codes = admin::read_zip_codes(&self.tags);
@@ -92,7 +96,7 @@ impl IntoAdmin for Zone {
             .and_then(|id| zones_osm_id.get(&id))
             .map(|(id, insee)| format_id(id, insee.as_ref()));
         let codes = osm_utils::get_osm_codes_from_tags(&self.tags);
-        Admin {
+        let mut admin = Admin {
             id: zones_osm_id
                 .get(&self.id)
                 .map(|(id, insee)| format_id(id, insee.as_ref()))
@@ -104,7 +108,11 @@ impl IntoAdmin for Zone {
             zip_codes: zip_codes,
             weight: utils::normalize_weight(weight, max_weight),
             bbox: self.bbox,
-            boundary: self.boundary,
+            boundary: if all_admins.is_some() {
+                self.boundary
+            } else {
+                None
+            },
             coord: center.clone(),
             approx_coord: Some(center.into()),
             zone_type: self.zone_type,
@@ -122,7 +130,26 @@ impl IntoAdmin for Zone {
                 .collect(),
             distance: None,
             context: None,
+            administrative_regions: Vec::new(),
+        };
+        if let Some(ref admins) = all_admins {
+            let mut a = Vec::new();
+            let mut current = &admin;
+            while current.parent_id.is_some() {
+                a.push(current.parent_id.clone().unwrap());
+                if let Some(par) = admins.get(a.last().unwrap()) {
+                    current = par;
+                } else {
+                    break;
+                }
+            }
+            admin.administrative_regions = a
+                .into_iter()
+                .filter_map(|a| admins.get(&a))
+                .map(|x| Arc::clone(x))
+                .collect::<Vec<_>>();
         }
+        admin
     }
 }
 
@@ -162,12 +189,26 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
     let max_weight = utils::ADMIN_MAX_WEIGHT;
 
     info!("importing cosmogony into Mimir");
+    let admins_without_boundaries = read_zones(&args.input)?
+        .map(|z| {
+            let admin = z.into_admin(
+                &cosmogony_id_to_osm_id,
+                &args.langs,
+                args.french_id_retrocompatibility,
+                max_weight,
+                None,
+            );
+            (admin.id.clone(), Arc::new(admin))
+        })
+        .collect::<HashMap<_, _>>();
+
     let admins = read_zones(&args.input)?.map(|z| {
         z.into_admin(
             &cosmogony_id_to_osm_id,
             &args.langs,
             args.french_id_retrocompatibility,
             max_weight,
+            Some(&admins_without_boundaries),
         )
     });
 

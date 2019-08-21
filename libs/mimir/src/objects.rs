@@ -555,6 +555,7 @@ pub struct Admin {
         default
     )]
     pub boundary: Option<geo::MultiPolygon<f64>>,
+    pub administrative_regions: Vec<Arc<Admin>>,
 
     #[serde(
         serialize_with = "serialize_rect",
