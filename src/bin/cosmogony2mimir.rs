@@ -190,16 +190,19 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
         zones.push(z);
     }
 
-    let admins_without_boundaries = zones.into_iter().map(|z| {
-        let admin = z.into_admin(
-            &cosmogony_id_to_osm_id,
-            &args.langs,
-            args.french_id_retrocompatibility,
-            max_weight,
-            None,
-        );
-        (admin.id.clone(), Arc::new(admin))
-    }).collect::<HashMap<_, _>>();
+    let admins_without_boundaries = zones
+        .into_iter()
+        .map(|z| {
+            let admin = z.into_admin(
+                &cosmogony_id_to_osm_id,
+                &args.langs,
+                args.french_id_retrocompatibility,
+                max_weight,
+                None,
+            );
+            (admin.id.clone(), Arc::new(admin))
+        })
+        .collect::<HashMap<_, _>>();
 
     info!("importing cosmogony into Mimir");
 
