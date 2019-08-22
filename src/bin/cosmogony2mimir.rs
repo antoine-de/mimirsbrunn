@@ -108,11 +108,7 @@ impl IntoAdmin for Zone {
             zip_codes: zip_codes,
             weight: utils::normalize_weight(weight, max_weight),
             bbox: self.bbox,
-            boundary: if all_admins.is_some() {
-                self.boundary
-            } else {
-                None
-            },
+            boundary: self.boundary,
             coord: center.clone(),
             approx_coord: Some(center.into()),
             zone_type: self.zone_type,
@@ -133,17 +129,19 @@ impl IntoAdmin for Zone {
             administrative_regions: Vec::new(),
         };
         if let Some(ref admins) = all_admins {
-            let mut a = Vec::new();
+            // Get a list of encompassing parent ids, which will be used as the get
+            // administrative_regions.
+            let mut parent_ids = Vec::new();
             let mut current = &admin;
             while current.parent_id.is_some() {
-                a.push(current.parent_id.clone().unwrap());
-                if let Some(par) = admins.get(a.last().unwrap()) {
+                parent_ids.push(current.parent_id.clone().unwrap());
+                if let Some(par) = admins.get(parent_ids.last().unwrap()) {
                     current = par;
                 } else {
                     break;
                 }
             }
-            admin.administrative_regions = a
+            admin.administrative_regions = parent_ids
                 .into_iter()
                 .filter_map(|a| admins.get(&a))
                 .map(|x| Arc::clone(x))
@@ -179,16 +177,17 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
 
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     let max_weight = utils::ADMIN_MAX_WEIGHT;
-    let mut zones = Vec::new();
-    for mut z in read_zones(&args.input)? {
-        let insee = match z.zone_type {
-            Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
-            _ => None,
-        };
-        cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
-        z.boundary = None; // to prevent too much memory consumption
-        zones.push(z);
-    }
+    let zones = read_zones(&args.input)?
+        .map(|mut zone| {
+            let insee = match zone.zone_type {
+                Some(City) => admin::read_insee(&zone.tags).map(|s| s.to_owned()),
+                _ => None,
+            };
+            cosmogony_id_to_osm_id.insert(zone.id.clone(), (zone.osm_id.clone(), insee));
+            zone.boundary = None; // to prevent too much memory consumption
+            zone
+        })
+        .collect::<Vec<_>>();
 
     let admins_without_boundaries = zones
         .into_iter()
