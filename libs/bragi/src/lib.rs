@@ -32,7 +32,6 @@
 extern crate prometheus;
 
 use mimir::rubber::Rubber;
-use slog::slog_debug;
 use slog_scope::debug;
 use std::time::Duration;
 use structopt::StructOpt;

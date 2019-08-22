@@ -28,11 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
 use cosmogony::{Zone, ZoneIndex};
 use failure::Error;
 use mimir::objects::Admin;
@@ -40,6 +35,7 @@ use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
+use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use structopt::StructOpt;
 
@@ -139,10 +135,8 @@ fn send_to_es(
 }
 
 fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
-    Ok(cosmogony::read_zones_from_file(input)?.filter_map(|r| {
-        r.map_err(|e| log::warn!("impossible to read zone: {}", e))
-            .ok()
-    }))
+    Ok(cosmogony::read_zones_from_file(input)?
+        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok()))
 }
 
 fn index_cosmogony(args: Args) -> Result<(), Error> {

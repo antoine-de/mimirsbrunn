@@ -30,7 +30,6 @@
 
 use crate::Error;
 use mimir;
-use slog::slog_error;
 use slog_scope::error;
 use std::process::exit;
 use std::sync::Arc;

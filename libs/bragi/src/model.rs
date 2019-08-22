@@ -32,7 +32,6 @@ use failure::Fail;
 use heck::SnakeCase;
 use rs_es::error::EsError;
 use serde::{Deserialize, Serialize};
-use slog::slog_error;
 use slog_scope::error;
 use std::sync::Arc;
 
