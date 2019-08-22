@@ -163,6 +163,28 @@ impl Place {
             Place::Stop(ref o) => &o.coord,
         }
     }
+
+    pub fn set_context(&mut self, context: Context) {
+        match self {
+            Place::Admin(ref mut o) => o.context = Some(context),
+            Place::Street(ref mut o) => o.context = Some(context),
+            Place::Addr(ref mut o) => o.context = Some(context),
+            Place::Poi(ref mut o) => o.context = Some(context),
+            Place::Stop(ref mut o) => o.context = Some(context),
+        }
+    }
+
+    /* We can afford to clone the context because we're in debug mode
+     * and performance are less critical */
+    pub fn context(&self) -> Option<Context> {
+        match self {
+            Place::Admin(ref o) => o.context.clone(),
+            Place::Street(ref o) => o.context.clone(),
+            Place::Addr(ref o) => o.context.clone(),
+            Place::Poi(ref o) => o.context.clone(),
+            Place::Stop(ref o) => o.context.clone(),
+        }
+    }
 }
 
 pub trait MimirObject: serde::Serialize {
@@ -243,6 +265,8 @@ pub struct Poi {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub context: Option<Context>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -486,6 +510,8 @@ pub struct Stop {
     pub lines: Vec<Line>,
     #[serde(default)]
     pub country_codes: Vec<String>,
+
+    pub context: Option<Context>,
 }
 
 impl MimirObject for Stop {
@@ -557,6 +583,8 @@ pub struct Admin {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub context: Option<Context>,
 }
 
 impl Admin {
@@ -702,6 +730,8 @@ pub struct Street {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub context: Option<Context>,
 }
 impl Incr for Street {
     fn id(&self) -> &str {
@@ -754,6 +784,8 @@ pub struct Addr {
     /// Not serialized as is because it is returned in the `Feature` object
     #[serde(default, skip)]
     pub distance: Option<u32>,
+
+    pub context: Option<Context>,
 }
 
 impl MimirObject for Addr {
@@ -925,4 +957,24 @@ impl From<&navitia_poi_model::Coord> for Coord {
     fn from(coord: &navitia_poi_model::Coord) -> Coord {
         Coord::new(coord.lon(), coord.lat())
     }
+}
+
+/// Contextual information related to the query. It can be used to store information
+/// for monitoring performance, search relevance, ...
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Context {
+    /// Elasticsearch explanation
+    pub explanation: Option<Explanation>,
+}
+
+/// This structure is used when analyzing the result of an Elasticsearch 'explanation' query,
+/// which describes the construction of the score". It is a tree structure.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Explanation {
+    /// score assigned by elasticsearch for that item
+    pub value: f64,
+    /// description of the operation used to obtained `value` from each `details` values.
+    pub description: String,
+    /// leafs
+    pub details: Vec<Explanation>,
 }

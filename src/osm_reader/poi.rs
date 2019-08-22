@@ -265,6 +265,7 @@ fn parse_poi(
         labels: mimir::I18nProperties::default(),
         distance: None,
         country_codes,
+        context: None,
     })
 }
 

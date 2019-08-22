@@ -102,6 +102,7 @@ impl OpenAddresse {
             approx_coord: None,
             distance: None,
             country_codes: country_codes.clone(),
+            context: None,
         };
 
         mimir::Addr {
@@ -136,6 +137,7 @@ impl OpenAddresse {
             zip_codes: vec![self.postcode],
             distance: None,
             country_codes,
+            context: None,
         }
     }
 }

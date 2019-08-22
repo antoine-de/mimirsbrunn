@@ -121,6 +121,7 @@ impl IntoAdmin for Zone {
                 .filter(|(k, _)| langs.contains(&k))
                 .collect(),
             distance: None,
+            context: None,
         }
     }
 }
