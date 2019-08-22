@@ -33,7 +33,7 @@ use navitia_poi_model;
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
-// use slog::slog_warn;
+use slog::slog_warn;
 use slog_scope::warn;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -164,25 +164,25 @@ impl Place {
         }
     }
 
-    pub fn set_explanation(&mut self, explanation: Explanation) {
+    pub fn set_context(&mut self, context: Context) {
         match self {
-            Place::Admin(ref mut o) => o.explanation = Some(explanation),
-            Place::Street(ref mut o) => o.explanation = Some(explanation),
-            Place::Addr(ref mut o) => o.explanation = Some(explanation),
-            Place::Poi(ref mut o) => o.explanation = Some(explanation),
-            Place::Stop(ref mut o) => o.explanation = Some(explanation),
+            Place::Admin(ref mut o) => o.context = Some(context),
+            Place::Street(ref mut o) => o.context = Some(context),
+            Place::Addr(ref mut o) => o.context = Some(context),
+            Place::Poi(ref mut o) => o.context = Some(context),
+            Place::Stop(ref mut o) => o.context = Some(context),
         }
     }
 
-    /* We can afford to clone the explanation because we're in debug mode
+    /* We can afford to clone the context because we're in debug mode
      * and performance are less critical */
-    pub fn explanation(&self) -> Option<Explanation> {
+    pub fn context(&self) -> Option<Context> {
         match self {
-            Place::Admin(ref o) => o.explanation.clone(),
-            Place::Street(ref o) => o.explanation.clone(),
-            Place::Addr(ref o) => o.explanation.clone(),
-            Place::Poi(ref o) => o.explanation.clone(),
-            Place::Stop(ref o) => o.explanation.clone(),
+            Place::Admin(ref o) => o.context.clone(),
+            Place::Street(ref o) => o.context.clone(),
+            Place::Addr(ref o) => o.context.clone(),
+            Place::Poi(ref o) => o.context.clone(),
+            Place::Stop(ref o) => o.context.clone(),
         }
     }
 }
@@ -266,7 +266,7 @@ pub struct Poi {
     #[serde(default, skip)]
     pub distance: Option<u32>,
 
-    pub explanation: Option<Explanation>,
+    pub context: Option<Context>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -511,7 +511,7 @@ pub struct Stop {
     #[serde(default)]
     pub country_codes: Vec<String>,
 
-    pub explanation: Option<Explanation>,
+    pub context: Option<Context>,
 }
 
 impl MimirObject for Stop {
@@ -584,7 +584,7 @@ pub struct Admin {
     #[serde(default, skip)]
     pub distance: Option<u32>,
 
-    pub explanation: Option<Explanation>,
+    pub context: Option<Context>,
 }
 
 impl Admin {
@@ -731,7 +731,7 @@ pub struct Street {
     #[serde(default, skip)]
     pub distance: Option<u32>,
 
-    pub explanation: Option<Explanation>,
+    pub context: Option<Context>,
 }
 impl Incr for Street {
     fn id(&self) -> &str {
@@ -785,7 +785,7 @@ pub struct Addr {
     #[serde(default, skip)]
     pub distance: Option<u32>,
 
-    pub explanation: Option<Explanation>,
+    pub context: Option<Context>,
 }
 
 impl MimirObject for Addr {
@@ -957,6 +957,14 @@ impl From<&navitia_poi_model::Coord> for Coord {
     fn from(coord: &navitia_poi_model::Coord) -> Coord {
         Coord::new(coord.lon(), coord.lat())
     }
+}
+
+/// Contextual information related to the query. It can be used to store information
+/// for monitoring performance, search relevance, ...
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Context {
+    /// Elasticsearch explanation
+    pub explanation: Option<Explanation>,
 }
 
 /// This structure is used when analyzing the result of an Elasticsearch 'explanation' query,

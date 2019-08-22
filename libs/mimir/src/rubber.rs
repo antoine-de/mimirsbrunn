@@ -28,7 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::objects::{Admin, Explanation, MimirObject};
+use super::objects::{Admin, Context, Explanation, MimirObject};
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use failure::{bail, format_err, Error, ResultExt};
 use prometheus::{exponential_buckets, histogram_opts, register_histogram, Histogram};
@@ -216,7 +216,9 @@ pub fn make_place(
         Some(explanation) => match serde_json::from_value::<Explanation>(explanation) {
             Ok(explanation) => match place {
                 Some(mut place) => {
-                    place.set_explanation(explanation);
+                    place.set_context(Context {
+                        explanation: Some(explanation),
+                    });
                     Some(place)
                 }
                 None => None,

@@ -106,7 +106,7 @@ pub fn streets(
                     approx_coord: Some(coord.into()),
                     distance: None,
                     country_codes,
-                    explanation: None,
+                    context: None,
                 })
             })
             .next()
@@ -162,7 +162,7 @@ pub fn streets(
             approx_coord: Some(coord.into()),
             distance: None,
             country_codes,
-            explanation: None,
+            context: None,
         })
     });
     street_list.extend(streets);
