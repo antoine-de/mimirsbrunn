@@ -28,11 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
 use lazy_static::lazy_static;
 use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
@@ -40,6 +35,7 @@ use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels;
 use serde::{Deserialize, Serialize};
+use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::fs;
 use std::ops::Deref;

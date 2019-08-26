@@ -28,10 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
+use slog_scope::info;
 
 use failure::format_err;
 use lazy_static::lazy_static;
