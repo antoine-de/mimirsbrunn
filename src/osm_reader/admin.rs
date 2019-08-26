@@ -178,6 +178,7 @@ pub fn read_administrative_regions(
                 labels: mimir::I18nProperties::default(),
                 distance: None,
                 context: None,
+                administrative_regions: Vec::new(),
             };
             administrative_regions.push(admin);
         }

@@ -303,6 +303,12 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             Some(other.zip_codes.join(";"))
         };
         let label = Some(label.to_owned());
+        let associated_admins = other
+            .administrative_regions
+            .iter()
+            .map(|a| AssociatedAdmin::from_with_lang(a, lang))
+            .collect();
+
         GeocodingResponse {
             id: other.id,
             citycode: insee,
@@ -319,6 +325,7 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             bbox: other.bbox,
             codes: other.codes,
             country_codes: other.country_codes,
+            administrative_regions: associated_admins,
             ..Default::default()
         }
     }
