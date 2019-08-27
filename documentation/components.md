@@ -21,7 +21,7 @@ You first needs to generate cosmogony data (as for the moment there are none alr
 
 Then to import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --cosmogony2mimir -- --input=cosmogony.jsonl.gz --connection-string=http://localhost:9200
+cargo run --release --bin cosmogony2mimir -- --input=cosmogony.jsonl.gz --connection-string=http://localhost:9200
 ```
 
 #### osm2mimir
@@ -32,7 +32,7 @@ curl -O http://download.geofabrik.de/europe/france-latest.osm.pbf
 ```
 - Then to import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --osm2mimir -- --input=france-latest.osm.pbf --import-way --import-poi --connection-string=http://localhost:9200
+cargo run --release --bin osm2mimir -- --input=france-latest.osm.pbf --import-way --import-poi --connection-string=http://localhost:9200
 ```
 
 #### bano2mimir
@@ -44,7 +44,7 @@ gunzip full.csv.gz
 ```
 - To import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --bano2mimir --input full.csv --connection-string=http://localhost:9200/
+cargo run --release --bin bano2mimir -- --input full.csv --connection-string=http://localhost:9200/
 ```
 
 #### ntfs2mimir
@@ -53,7 +53,7 @@ cargo run --release --bano2mimir --input full.csv --connection-string=http://loc
 
 - To import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
+cargo run --release --bin ntfs2mimir -- -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
 ```
 
 - The ntfs input file needs to match the [NTFS specification](https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md).
@@ -73,7 +73,7 @@ This is a format used by other geocoding API such as [Addok](https://github.com/
 
 - To run Bragi:
 ```shell
-cargo run --release --bragi --connection-string=http://localhost:9200/munin
+cargo run --release --bin bragi -- --connection-string=http://localhost:9200/munin
 ```
 
 - Then you can call the API (the default Bragi's listening port is 4000):
