@@ -59,7 +59,7 @@ Mimirsbrunn relies on geographical datasets to find what users are looking for.
 These locations belong to different data types and come from various sources.
 To import these locations Mimirsbrunn comes along with the following specific tools:
 
-|       Data Types       |                     Data Sources                      |    [Import Tools](#components)    |
+|       Data Types       |                     Data Sources                      |            Import Tools           |
 | :--------------------: | :---------------------------------------------------: | :-------------------------------: |
 |       Addresses        | OpenAddresses  or BANO (the french opendata dataset)  | openaddresses2mimir or bano2mimir |
 |        Streets         |                     OpenStreetMap                     |             osm2mimir             |
