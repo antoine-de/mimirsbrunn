@@ -36,6 +36,88 @@ use slog_scope::info;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::sync::Arc;
+use osmpbfreader::{StoreObjs, OsmId, OsmObj, OsmObjWrapper, NodeId, WayId, RelationId};
+use rusqlite::{Connection, ToSql, NO_PARAMS};
+use serde_json;
+use std::fs;
+
+// TODO: regarder si diesel serait mieux
+struct DB {
+    conn: Connection,
+}
+
+impl DB {
+    fn new() -> DB {
+        let path = "./cosmogony_db.db3";
+        let _ = fs::remove_file(path); // we ignore any potential error
+        let conn = Connection::open(&path).expect("failed to open SQLITE connection");
+
+        conn.execute(
+            "CREATE TABLE ids (
+                id   INTEGER PRIMARY KEY,
+                obj  TEXT NOT NULL,
+             )",
+            NO_PARAMS,
+        ).expect("failed to create table");
+        DB {
+            conn,
+        }
+    }
+
+    fn get_from_id(&self, id: &OsmId) -> Option<OsmObj> {
+        let mut stmt = self.conn
+            .prepare("SELECT obj FROM ids WHERE id=?1").expect("prepare failed");
+        let mut iter = stmt.query(&[&id.as_i64() as &dyn ToSql]).expect("query_map failed");
+        while let Some(row) = iter.next().expect("next failed") {
+            let obj: String = row.get(0).expect("failed to get obj field");
+            return serde_json::from_str(&obj).expect("conversion from string failed")
+        }
+        None
+    }
+
+    fn iter<F: FnMut(OsmId, OsmObj)>(&self, mut f: F) {
+        let mut stmt = self.conn
+            .prepare("SELECT id, obj FROM ids").expect("prepare failed");
+        let mut rows = stmt.query(NO_PARAMS).expect("query_map failed");
+        while let Some(row) = rows.next().expect("next() failed") {
+            let id = row.get(0).expect("failed to get id field");
+            let obj: String = row.get(1).expect("failed to get obj field");
+
+            let obj: OsmObj = serde_json::from_str(&obj).expect("serde conversion failed");
+            let id = if obj.is_node() {
+                OsmId::Node(NodeId(id))
+            } else if obj.is_way() {
+                OsmId::Way(WayId(id))
+            } else {
+                OsmId::Relation(RelationId(id))
+            };
+            f(id, obj);
+        }
+    }
+}
+
+impl StoreObjs for DB {
+    fn insert(&mut self, id: OsmId, obj: OsmObj) {
+        let obj = serde_json::to_string(&obj).expect("failed to convert to json");
+        self.conn.execute(
+            "INSERT INTO ids(id, obj) VALUES (?1, ?2)",
+            &[&id.as_i64() as &dyn ToSql, &obj],
+        ).expect("failed to insert values");
+    }
+
+    fn contains_key(&self, id: &OsmId) -> bool {
+        let mut stmt = self.conn
+            .prepare("SELECT id FROM ids WHERE id=?1").expect("prepare failed");
+        let mut iter = stmt.query(&[&id.as_i64() as &dyn ToSql]).expect("query_map failed");
+        iter.next().expect("no row").is_some()
+    }
+
+    fn get(&self, key: &OsmId) -> Option<OsmObjWrapper> {
+        self.get_from_id(key).map(|x| OsmObjWrapper::Value(x))
+    }
+}
+
+// TODO: impl drop to remove sql file
 
 pub type AdminSet = BTreeSet<Arc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
@@ -66,8 +148,8 @@ pub fn streets(
         }
     }
     info!("reading pbf...");
-    let objs_map = pbf
-        .get_objs_and_deps(is_valid_obj)
+    let mut objs_map = DB::new();
+    pbf.get_objs_and_deps_store(is_valid_obj, &mut objs_map)
         .context("Error occurred when reading pbf")?;
     info!("reading pbf done.");
     let mut street_rel: StreetWithRelationSet = BTreeSet::new();
@@ -78,71 +160,75 @@ pub fn streets(
     // to group all these "way"s. In order not to have duplicates in autocompletion, we should tag
     // the osm ways in the relation not to index them twice.
 
-    for rel in objs_map.iter().filter_map(|(_, obj)| obj.relation()) {
-        let way_name = rel.tags.get("name");
-        rel.refs
-            .iter()
-            .filter(|ref_obj| ref_obj.member.is_way() && ref_obj.role == "street")
-            .filter_map(|ref_obj| {
-                let way = objs_map.get(&ref_obj.member)?.way()?;
-                let way_name = way_name.or_else(|| way.tags.get("name"))?;
-                let admins = get_street_admin(admins_geofinder, &objs_map, way);
-                let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
-                let street_label = labels::format_street_label(
-                    &way_name,
-                    admins.iter().map(|a| a.deref()),
-                    &country_codes,
-                );
-                let coord = get_way_coord(&objs_map, way);
-                Some(mimir::Street {
-                    id: format!("street:osm:relation:{}", rel.id.0.to_string()),
-                    name: way_name.to_string(),
-                    label: street_label,
-                    weight: 0.,
-                    zip_codes: utils::get_zip_codes_from_admins(&admins),
-                    administrative_regions: admins,
-                    coord: get_way_coord(&objs_map, way),
-                    approx_coord: Some(coord.into()),
-                    distance: None,
-                    country_codes,
-                    context: None,
+    objs_map.iter(|_, obj| {
+        if let Some(rel) = obj.relation() {
+            let way_name = rel.tags.get("name");
+            rel.refs
+                .iter()
+                .filter(|ref_obj| ref_obj.member.is_way() && ref_obj.role == "street")
+                .filter_map(|ref_obj| {
+                    let obj = objs_map.get(&ref_obj.member)?;
+                    let way = obj.way()?;
+                    let way_name = way_name.or_else(|| way.tags.get("name"))?;
+                    let admins = get_street_admin(admins_geofinder, &objs_map, way);
+                    let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
+                    let street_label = labels::format_street_label(
+                        &way_name,
+                        admins.iter().map(|a| a.deref()),
+                        &country_codes,
+                    );
+                    let coord = get_way_coord(&objs_map, way);
+                    Some(mimir::Street {
+                        id: format!("street:osm:relation:{}", rel.id.0.to_string()),
+                        name: way_name.to_string(),
+                        label: street_label,
+                        weight: 0.,
+                        zip_codes: utils::get_zip_codes_from_admins(&admins),
+                        administrative_regions: admins,
+                        coord: get_way_coord(&objs_map, way),
+                        approx_coord: Some(coord.into()),
+                        distance: None,
+                        country_codes,
+                        context: None,
+                    })
                 })
-            })
-            .next()
-            .map(|street| street_list.push(street));
+                .next()
+                .map(|street| street_list.push(street));
 
-        // Add osmid of all the relation members in the set
-        // We don't create any street for all the osmid present in street_rel
-        for ref_obj in &rel.refs {
-            if ref_obj.member.is_way() {
-                street_rel.insert(ref_obj.member);
+            // Add osmid of all the relation members in the set
+            // We don't create any street for all the osmid present in street_rel
+            for ref_obj in &rel.refs {
+                if ref_obj.member.is_way() {
+                    street_rel.insert(ref_obj.member);
+                }
             }
         }
-    }
+    });
 
     // we merge all the ways with a key = way_name + admin list of level(=city_level)
     // we use a map NameAdminMap <key, value> to manage the merging of ways
-    let keys_ids = objs_map
-        .iter()
-        .filter(|(osmid, _)| !street_rel.contains(osmid))
-        .filter_map(|(osmid, obj)| {
-            let way = obj.way()?;
-            let name = way.tags.get("name")?.to_string();
-            let admins = get_street_admin(admins_geofinder, &objs_map, way)
-                .into_iter()
-                .filter(|admin| admin.is_city())
-                .collect();
-            Some((StreetKey { name, admins }, osmid))
-        });
     let mut name_admin_map = NameAdminMap::default();
-    for (key, id) in keys_ids {
-        name_admin_map.entry(key).or_insert(vec![]).push(*id);
-    }
+    objs_map.iter(|osmid, obj| {
+        if street_rel.contains(&osmid) {
+            return;
+        }
+        if let Some(way) = obj.way() {
+            if let Some(name) = way.tags.get("name") {
+                let name = name.to_string();
+                let admins = get_street_admin(admins_geofinder, &objs_map, way)
+                    .into_iter()
+                    .filter(|admin| admin.is_city())
+                    .collect();
+                name_admin_map.entry(StreetKey { name, admins }).or_insert(vec![]).push(osmid);
+            }
+        }
+    });
 
     // Create a street for each way with osmid present in objs_map
     let streets = name_admin_map.values().filter_map(|way_ids| {
         let min_id = way_ids.iter().min()?;
-        let way = objs_map.get(&min_id)?.way()?;
+        let obj = objs_map.get(&min_id)?;
+        let way = obj.way()?;
         let name = way.tags.get("name")?.to_string();
         let admins = get_street_admin(admins_geofinder, &objs_map, way);
 
@@ -169,9 +255,9 @@ pub fn streets(
     Ok(street_list)
 }
 
-fn get_street_admin(
+fn get_street_admin<T: StoreObjs>(
     admins_geofinder: &AdminGeoFinder,
-    obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+    obj_map: &T,
     way: &osmpbfreader::objects::Way,
 ) -> Vec<Arc<mimir::Admin>> {
     /*
@@ -184,10 +270,13 @@ fn get_street_admin(
         .iter()
         .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
-        .filter_map(|node_obj| node_obj.node())
-        .map(|node| geo_types::Coordinate {
-            x: node.lon(),
-            y: node.lat(),
+        .filter_map(|node_obj| {
+            node_obj.node().map(|node| {
+                geo_types::Coordinate {
+                    x: node.lon(),
+                    y: node.lat(),
+                }
+            })
         })
         .next()
         .map_or(vec![], |c| admins_geofinder.get(&c))

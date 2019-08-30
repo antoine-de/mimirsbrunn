@@ -39,9 +39,13 @@ humanesort = "0.1.0-alpha"
 address-formatter = "^0.2.1"
 navitia-poi-model = "0.2.0"
 walkdir = "2"
+rusqlite = "0.20"
 
 mimir = { path = "libs/mimir" }
 bragi = { path = "libs/bragi" }
+
+[patch.crates-io]
+osmpbfreader = { path = "../osmpbfreader-rs" }
 
 [dev-dependencies]
 reqwest = "=0.9.16"
