@@ -9,7 +9,7 @@ Before using [Bragi](#bragi), you have to import data into Elasticsearch.
 The default and easiest way to import data is to use the [docker_mimir](https://github.com/QwantResearch/docker_mimir) tool.
 However the following import tools are still possible.
 
-**First** you have to import admins objects. You can load they from Cosmogony or from OSM. Cosmogony give better results. Use `cosmogony2mimir` or `osm2mimir --import-admin`.
+**First** you have to import admins objects. You can load them from Cosmogony or from OSM. Cosmogony give better results. Use `cosmogony2mimir` or `osm2mimir --import-admin`.
 
 #### cosmogony2mimir
 
