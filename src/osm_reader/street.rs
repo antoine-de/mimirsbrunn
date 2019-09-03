@@ -36,26 +36,39 @@ use slog_scope::info;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::sync::Arc;
-use osmpbfreader::{StoreObjs, OsmId, OsmObj, OsmObjWrapper, NodeId, WayId, RelationId};
+use osmpbfreader::{StoreObjs, OsmId, OsmObj, NodeId, WayId, RelationId};
 use rusqlite::{Connection, ToSql, NO_PARAMS};
 use serde_json;
 use std::fs;
+use std::borrow::Cow;
 
 // TODO: regarder si diesel serait mieux
 struct DB {
     conn: Connection,
 }
 
+const DB_FILE_PATH: &str = "./cosmogony_db.db3";
+
+pub trait Getter {
+    fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>>;
+}
+
+impl Getter for BTreeMap<OsmId, OsmObj> {
+    fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>> {
+        self.get(key).map(|x| Cow::Borrowed(x))
+    }
+}
+
 impl DB {
     fn new() -> DB {
-        let path = "./cosmogony_db.db3";
-        let _ = fs::remove_file(path); // we ignore any potential error
-        let conn = Connection::open(&path).expect("failed to open SQLITE connection");
+        let _ = fs::remove_file(DB_FILE_PATH); // we ignore any potential error
+        let conn = Connection::open(&DB_FILE_PATH).expect("failed to open SQLITE connection");
 
         conn.execute(
             "CREATE TABLE ids (
                 id   INTEGER PRIMARY KEY,
                 obj  TEXT NOT NULL,
+                UNIQUE(id)
              )",
             NO_PARAMS,
         ).expect("failed to create table");
@@ -67,7 +80,7 @@ impl DB {
     fn get_from_id(&self, id: &OsmId) -> Option<OsmObj> {
         let mut stmt = self.conn
             .prepare("SELECT obj FROM ids WHERE id=?1").expect("prepare failed");
-        let mut iter = stmt.query(&[&id.as_i64() as &dyn ToSql]).expect("query_map failed");
+        let mut iter = stmt.query(&[&id.inner_id() as &dyn ToSql]).expect("query_map failed");
         while let Some(row) = iter.next().expect("next failed") {
             let obj: String = row.get(0).expect("failed to get obj field");
             return serde_json::from_str(&obj).expect("conversion from string failed")
@@ -100,20 +113,28 @@ impl StoreObjs for DB {
     fn insert(&mut self, id: OsmId, obj: OsmObj) {
         let obj = serde_json::to_string(&obj).expect("failed to convert to json");
         self.conn.execute(
-            "INSERT INTO ids(id, obj) VALUES (?1, ?2)",
-            &[&id.as_i64() as &dyn ToSql, &obj],
+            "INSERT OR IGNORE INTO ids(id, obj) VALUES (?1, ?2)",
+            &[&id.inner_id() as &dyn ToSql, &obj],
         ).expect("failed to insert values");
     }
 
     fn contains_key(&self, id: &OsmId) -> bool {
         let mut stmt = self.conn
             .prepare("SELECT id FROM ids WHERE id=?1").expect("prepare failed");
-        let mut iter = stmt.query(&[&id.as_i64() as &dyn ToSql]).expect("query_map failed");
+        let mut iter = stmt.query(&[&id.inner_id() as &dyn ToSql]).expect("query_map failed");
         iter.next().expect("no row").is_some()
     }
+}
 
-    fn get(&self, key: &OsmId) -> Option<OsmObjWrapper> {
-        self.get_from_id(key).map(|x| OsmObjWrapper::Value(x))
+impl Getter for DB {
+    fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>> {
+        self.get_from_id(key).map(|x| Cow::Owned(x))
+    }
+}
+
+impl Drop for DB {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(DB_FILE_PATH); // we ignore any potential error
     }
 }
 
@@ -255,7 +276,7 @@ pub fn streets(
     Ok(street_list)
 }
 
-fn get_street_admin<T: StoreObjs>(
+fn get_street_admin<T: StoreObjs + Getter>(
     admins_geofinder: &AdminGeoFinder,
     obj_map: &T,
     way: &osmpbfreader::objects::Way,

@@ -34,8 +34,9 @@ use osmpbfreader;
 use geo::centroid::Centroid;
 use geo::MultiPolygon;
 use osmpbfreader::StoreObjs;
+use super::street::Getter;
 
-pub fn get_way_coord<T: StoreObjs>(
+pub fn get_way_coord<T: StoreObjs + Getter>(
     obj_map: &T,
     way: &osmpbfreader::objects::Way,
 ) -> mimir::Coord {
