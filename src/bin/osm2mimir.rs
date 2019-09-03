@@ -90,6 +90,9 @@ struct Args {
     /// Number of replicas for the es index
     #[structopt(long = "nb-poi-replicas", default_value = "1")]
     nb_poi_replicas: usize,
+    /// DB file.
+    #[structopt(long = "db-file", parse(from_os_str))]
+    db_file: Option<PathBuf>,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -110,7 +113,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
     {
         info!("Extracting streets from osm");
-        let mut streets = streets(&mut osm_reader, &admins_geofinder)?;
+        let mut streets = streets(&mut osm_reader, &admins_geofinder, &args.db_file)?;
 
         info!("computing street weight");
         compute_street_weight(&mut streets);

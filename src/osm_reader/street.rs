@@ -32,22 +32,51 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils, Error};
 use failure::ResultExt;
-use slog_scope::info;
+use slog_scope::{error, info};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::sync::Arc;
-use osmpbfreader::{StoreObjs, OsmId, OsmObj, NodeId, WayId, RelationId};
+use osmpbfreader::{StoreObjs, OsmId, OsmObj};
 use rusqlite::{Connection, ToSql, NO_PARAMS};
 use serde_json;
 use std::fs;
 use std::borrow::Cow;
 
-// TODO: regarder si diesel serait mieux
-struct DB {
-    conn: Connection,
+macro_rules! err_logger {
+    ($obj:expr, $err_msg:expr) => {
+        match $obj {
+            Ok(x) => Some(x),
+            Err(e) => {
+                error!("{}: {}", $err_msg, e);
+                None
+            }
+        }?
+    };
+    ($obj:expr, $err_msg:expr, $ret:expr) => {
+        match $obj {
+            Ok(x) => x,
+            Err(e) => {
+                error!("{}: {}", $err_msg, e);
+                return $ret;
+            }
+        }
+    }
 }
 
-const DB_FILE_PATH: &str = "./cosmogony_db.db3";
+macro_rules! get_kind {
+    ($obj:expr) => {
+        if $obj.is_node() {
+            &"node"
+        } else if $obj.is_way() {
+            &"way"
+        } else if $obj.is_relation() {
+            &"relation"
+        } else {
+            panic!("Unknown OSM object kind!")
+        }
+    }
+}
 
 pub trait Getter {
     fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>>;
@@ -59,86 +88,94 @@ impl Getter for BTreeMap<OsmId, OsmObj> {
     }
 }
 
-impl DB {
-    fn new() -> DB {
-        let _ = fs::remove_file(DB_FILE_PATH); // we ignore any potential error
-        let conn = Connection::open(&DB_FILE_PATH).expect("failed to open SQLITE connection");
+struct DB<'a> {
+    conn: Connection,
+    db_file: &'a PathBuf,
+}
+
+impl<'a> DB<'a> {
+    fn new(db_file: &'a PathBuf) -> Result<DB<'a>, String> {
+        let _ = fs::remove_file(db_file); // we ignore any potential error
+        let conn = Connection::open(&db_file)
+            .map_err(|e| format!("failed to open SQLITE connection: {}", e))?;
 
         conn.execute(
             "CREATE TABLE ids (
-                id   INTEGER PRIMARY KEY,
+                id   INTEGER,
                 obj  TEXT NOT NULL,
-                UNIQUE(id)
+                kind TEXT NOT NULL,
+                UNIQUE(id, kind)
              )",
             NO_PARAMS,
-        ).expect("failed to create table");
-        DB {
+        ).map_err(|e| format!("failed to create table: {}", e))?;
+        Ok(DB {
             conn,
-        }
+            db_file,
+        })
     }
 
     fn get_from_id(&self, id: &OsmId) -> Option<OsmObj> {
-        let mut stmt = self.conn
-            .prepare("SELECT obj FROM ids WHERE id=?1").expect("prepare failed");
-        let mut iter = stmt.query(&[&id.inner_id() as &dyn ToSql]).expect("query_map failed");
-        while let Some(row) = iter.next().expect("next failed") {
-            let obj: String = row.get(0).expect("failed to get obj field");
-            return serde_json::from_str(&obj).expect("conversion from string failed")
+        let mut stmt = err_logger!(self.conn.prepare("SELECT obj FROM ids WHERE id=?1 AND kind=?2"),
+            "DB::get_from_id: prepare failed");
+        let mut iter = err_logger!(stmt.query(&[&id.inner_id() as &dyn ToSql, get_kind!(id)]),
+            "DB::get_from_id: query_map failed");
+        while let Some(row) = err_logger!(iter.next(), "DB::get_from_id: next failed") {
+            let obj: String = err_logger!(row.get(0), "DB::get_from_id: failed to get obj field");
+            err_logger!(serde_json::from_str(&obj),
+                "DB::get_from_id: conversion from string failed")
         }
         None
     }
 
-    fn iter<F: FnMut(OsmId, OsmObj)>(&self, mut f: F) {
-        let mut stmt = self.conn
-            .prepare("SELECT id, obj FROM ids").expect("prepare failed");
-        let mut rows = stmt.query(NO_PARAMS).expect("query_map failed");
-        while let Some(row) = rows.next().expect("next() failed") {
-            let id = row.get(0).expect("failed to get id field");
-            let obj: String = row.get(1).expect("failed to get obj field");
+    fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
+        let mut stmt = err_logger!(self.conn.prepare("SELECT obj FROM ids"),
+            "DB::for_each: prepare failed", ());
+        let mut rows = err_logger!(stmt.query(NO_PARAMS), "DB::for_each: query_map failed", ());
+        while let Some(row) = err_logger!(rows.next(), "DB::for_each: next failed", ()) {
+            let obj: String = err_logger!(row.get(0), "DB::for_each: failed to get obj field", ());
 
-            let obj: OsmObj = serde_json::from_str(&obj).expect("serde conversion failed");
-            let id = if obj.is_node() {
-                OsmId::Node(NodeId(id))
-            } else if obj.is_way() {
-                OsmId::Way(WayId(id))
-            } else {
-                OsmId::Relation(RelationId(id))
-            };
-            f(id, obj);
+            let obj: OsmObj = err_logger!(serde_json::from_str(&obj),
+                "DB::for_each: serde conversion failed",
+                ());
+            f(Cow::Owned(obj));
         }
     }
 }
 
-impl StoreObjs for DB {
+impl<'a> StoreObjs for DB<'a> {
     fn insert(&mut self, id: OsmId, obj: OsmObj) {
-        let obj = serde_json::to_string(&obj).expect("failed to convert to json");
-        self.conn.execute(
-            "INSERT OR IGNORE INTO ids(id, obj) VALUES (?1, ?2)",
-            &[&id.inner_id() as &dyn ToSql, &obj],
-        ).expect("failed to insert values");
+        let kind = get_kind!(obj);
+        let obj = err_logger!(serde_json::to_string(&obj),
+            "DB::insert: failed to convert to json", ());
+        err_logger!(self.conn.execute(
+            "INSERT OR IGNORE INTO ids(id, obj, kind) VALUES (?1, ?2, ?3)",
+            &[&id.inner_id() as &dyn ToSql, &obj, kind]),
+            "DB::insert: insert failed",
+            ());
     }
 
     fn contains_key(&self, id: &OsmId) -> bool {
-        let mut stmt = self.conn
-            .prepare("SELECT id FROM ids WHERE id=?1").expect("prepare failed");
-        let mut iter = stmt.query(&[&id.inner_id() as &dyn ToSql]).expect("query_map failed");
-        iter.next().expect("no row").is_some()
+        let mut stmt = err_logger!(self.conn.prepare("SELECT id FROM ids WHERE id=?1 AND kind=?2"),
+            "DB::contains_key: prepare failed",
+            false);
+        let mut iter = err_logger!(stmt.query(&[&id.inner_id() as &dyn ToSql, get_kind!(id)]),
+            "DB::contains_key: query_map failed",
+            false);
+        err_logger!(iter.next(), "DB::contains_key: no row", false).is_some()
     }
 }
 
-impl Getter for DB {
+impl<'a> Getter for DB<'a> {
     fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>> {
         self.get_from_id(key).map(|x| Cow::Owned(x))
     }
 }
 
-impl Drop for DB {
+impl<'a> Drop for DB<'a> {
     fn drop(&mut self) {
-        let _ = fs::remove_file(DB_FILE_PATH); // we ignore any potential error
+        let _ = fs::remove_file(self.db_file); // we ignore any potential error
     }
 }
-
-// TODO: impl drop to remove sql file
 
 pub type AdminSet = BTreeSet<Arc<mimir::Admin>>;
 pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
@@ -151,9 +188,66 @@ pub struct StreetKey {
     pub admins: AdminSet,
 }
 
+enum ObjWrapper<'a> {
+    Map(BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>),
+    DB(DB<'a>),
+}
+
+impl<'a> ObjWrapper<'a> {
+    fn new(db_file: &'a Option<PathBuf>) -> Result<ObjWrapper<'a>, Error> {
+        Ok(if let Some(ref db_file) = db_file {
+            info!("Running with DB storage");
+            ObjWrapper::DB(DB::new(db_file).map_err(|e| failure::err_msg(e))?)
+        } else {
+            info!("Running with BTreeMap (RAM) storage");
+            ObjWrapper::Map(BTreeMap::new())
+        })
+    }
+
+    fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
+        match *self {
+            ObjWrapper::Map(ref m) => {
+                let mut values = m.values();
+                while let Some(value) = values.next() {
+                    f(Cow::Borrowed(value));
+                }
+            }
+            ObjWrapper::DB(ref db) => db.for_each(f),
+        }
+    }
+}
+
+impl<'a> Getter for ObjWrapper<'a> {
+    fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>> {
+        match *self {
+            ObjWrapper::Map(ref m) => m.get(key).map(|x| Cow::Borrowed(x)),
+            ObjWrapper::DB(ref db) => db.get(key),
+        }
+    }
+}
+
+impl<'a> StoreObjs for ObjWrapper<'a> {
+    fn insert(&mut self, id: OsmId, obj: OsmObj) {
+        match *self {
+            ObjWrapper::Map(ref mut m) => {
+                m.insert(id, obj);
+            }
+            ObjWrapper::DB(ref mut db) => db.insert(id, obj),
+        }
+    }
+
+    fn contains_key(&self, id: &OsmId) -> bool {
+        match *self {
+            ObjWrapper::Map(ref m) => m.contains_key(id),
+            ObjWrapper::DB(ref db) => db.contains_key(id),
+        }
+    }
+}
+
 pub fn streets(
     pbf: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
+    db_file: &Option<PathBuf>,
 ) -> Result<StreetsVec, Error> {
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
@@ -169,7 +263,7 @@ pub fn streets(
         }
     }
     info!("reading pbf...");
-    let mut objs_map = DB::new();
+    let mut objs_map = ObjWrapper::new(db_file)?;
     pbf.get_objs_and_deps_store(is_valid_obj, &mut objs_map)
         .context("Error occurred when reading pbf")?;
     info!("reading pbf done.");
@@ -181,47 +275,50 @@ pub fn streets(
     // to group all these "way"s. In order not to have duplicates in autocompletion, we should tag
     // the osm ways in the relation not to index them twice.
 
-    objs_map.iter(|_, obj| {
-        if let Some(rel) = obj.relation() {
-            let way_name = rel.tags.get("name");
-            rel.refs
-                .iter()
-                .filter(|ref_obj| ref_obj.member.is_way() && ref_obj.role == "street")
-                .filter_map(|ref_obj| {
-                    let obj = objs_map.get(&ref_obj.member)?;
-                    let way = obj.way()?;
-                    let way_name = way_name.or_else(|| way.tags.get("name"))?;
-                    let admins = get_street_admin(admins_geofinder, &objs_map, way);
-                    let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
-                    let street_label = labels::format_street_label(
-                        &way_name,
-                        admins.iter().map(|a| a.deref()),
-                        &country_codes,
-                    );
-                    let coord = get_way_coord(&objs_map, way);
-                    Some(mimir::Street {
-                        id: format!("street:osm:relation:{}", rel.id.0.to_string()),
-                        name: way_name.to_string(),
-                        label: street_label,
-                        weight: 0.,
-                        zip_codes: utils::get_zip_codes_from_admins(&admins),
-                        administrative_regions: admins,
-                        coord: get_way_coord(&objs_map, way),
-                        approx_coord: Some(coord.into()),
-                        distance: None,
-                        country_codes,
-                        context: None,
-                    })
+    objs_map.for_each(|obj| {
+        let relation = obj.relation();
+        if relation.is_none() {
+            return;
+        }
+        let rel = obj.relation().expect("impossible unwrap failure occured");
+        let way_name = rel.tags.get("name");
+        rel.refs
+            .iter()
+            .filter(|ref_obj| ref_obj.member.is_way() && ref_obj.role == "street")
+            .filter_map(|ref_obj| {
+                let obj = objs_map.get(&ref_obj.member)?;
+                let way = obj.way()?;
+                let way_name = way_name.or_else(|| way.tags.get("name"))?;
+                let admins = get_street_admin(admins_geofinder, &objs_map, way);
+                let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
+                let street_label = labels::format_street_label(
+                    &way_name,
+                    admins.iter().map(|a| a.deref()),
+                    &country_codes,
+                );
+                let coord = get_way_coord(&objs_map, way);
+                Some(mimir::Street {
+                    id: format!("street:osm:relation:{}", rel.id.0.to_string()),
+                    name: way_name.to_string(),
+                    label: street_label,
+                    weight: 0.,
+                    zip_codes: utils::get_zip_codes_from_admins(&admins),
+                    administrative_regions: admins,
+                    coord: get_way_coord(&objs_map, way),
+                    approx_coord: Some(coord.into()),
+                    distance: None,
+                    country_codes,
+                    context: None,
                 })
-                .next()
-                .map(|street| street_list.push(street));
+            })
+            .next()
+            .map(|street| street_list.push(street));
 
-            // Add osmid of all the relation members in the set
-            // We don't create any street for all the osmid present in street_rel
-            for ref_obj in &rel.refs {
-                if ref_obj.member.is_way() {
-                    street_rel.insert(ref_obj.member);
-                }
+        // Add osmid of all the relation members in the set
+        // We don't create any street for all the osmid present in street_rel
+        for ref_obj in &rel.refs {
+            if ref_obj.member.is_way() {
+                street_rel.insert(ref_obj.member);
             }
         }
     });
@@ -229,7 +326,8 @@ pub fn streets(
     // we merge all the ways with a key = way_name + admin list of level(=city_level)
     // we use a map NameAdminMap <key, value> to manage the merging of ways
     let mut name_admin_map = NameAdminMap::default();
-    objs_map.iter(|osmid, obj| {
+    objs_map.for_each(|obj| {
+        let osmid = obj.id();
         if street_rel.contains(&osmid) {
             return;
         }

@@ -50,11 +50,7 @@ pub fn get_way_coord<T: StoreObjs + Getter>(
         .iter()
         .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
-        .filter(|obj| obj.node().is_some())
-        .map(|obj| {
-            let node = obj.node().unwrap();
-            mimir::Coord::new(node.lon(), node.lat())
-        })
+        .filter_map(|obj| obj.node().map(|node| mimir::Coord::new(node.lon(), node.lat())))
         .next()
         .unwrap_or_else(mimir::Coord::default)
 }
