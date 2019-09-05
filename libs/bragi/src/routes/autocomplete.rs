@@ -2,7 +2,8 @@ use crate::extractors::BragiQuery;
 use crate::model::{Autocomplete, BragiError, FromWithLang};
 use crate::routes::params;
 use crate::{model, query, Context};
-use actix_web::web::{Data, Json};
+use actix_http::http::header::{CacheControl, CacheDirective};
+use actix_web::web::{Data, HttpResponse, Json};
 use geojson::{GeoJson, Geometry};
 use mimir::objects::Coord;
 use serde::{Deserialize, Serialize};
@@ -137,7 +138,7 @@ pub fn call_autocomplete(
     params: &Params,
     state: &Context,
     shape: Option<Geometry>,
-) -> Result<Json<Autocomplete>, model::BragiError> {
+) -> Result<HttpResponse, model::BragiError> {
     let langs = params.langs();
     let rubber = state.get_rubber_for_autocomplete(params.timeout());
     let res = query::autocomplete(
@@ -165,13 +166,19 @@ pub fn call_autocomplete(
         params.debug.unwrap_or(false),
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
-        .map(Json)
+        .map(|v| {
+            HttpResponse::Ok()
+                .set(CacheControl(vec![CacheDirective::MaxAge(
+                    state.http_cache_duration,
+                )]))
+                .json(v)
+        })
 }
 
 pub fn autocomplete(
     params: BragiQuery<Params>,
     state: Data<Context>,
-) -> Result<Json<Autocomplete>, model::BragiError> {
+) -> Result<HttpResponse, model::BragiError> {
     call_autocomplete(&*params, &*state, None)
 }
 
@@ -179,7 +186,7 @@ pub fn post_autocomplete(
     params: BragiQuery<Params>,
     state: Data<Context>,
     json_params: Json<JsonParams>,
-) -> Result<Json<Autocomplete>, model::BragiError> {
+) -> Result<HttpResponse, model::BragiError> {
     call_autocomplete(
         &*params,
         &*state,

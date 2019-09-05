@@ -1,7 +1,8 @@
 use crate::extractors::BragiQuery;
 use crate::routes::params;
 use crate::{model, model::FromWithLang, Context};
-use actix_web::web::{Data, Json};
+use actix_http::http::header::{CacheControl, CacheDirective};
+use actix_web::web::{Data, HttpResponse};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -16,12 +17,18 @@ pub struct Params {
 pub fn reverse(
     params: BragiQuery<Params>,
     state: Data<Context>,
-) -> Result<Json<model::Autocomplete>, model::BragiError> {
+) -> Result<HttpResponse, model::BragiError> {
     let mut rubber = state.get_rubber_for_reverse(params.timeout.map(Duration::from_millis));
     let coord = params::make_coord(params.lon, params.lat)?;
     rubber
         .get_address(&coord)
         .map_err(model::BragiError::from)
         .map(|r| model::Autocomplete::from_with_lang(r, None))
-        .map(Json)
+        .map(|v| {
+            HttpResponse::Ok()
+                .set(CacheControl(vec![CacheDirective::MaxAge(
+                    state.http_cache_duration,
+                )]))
+                .json(v)
+        })
 }
