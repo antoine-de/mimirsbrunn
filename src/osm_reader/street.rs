@@ -32,16 +32,16 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils, Error};
 use failure::ResultExt;
+use osmpbfreader::{OsmId, OsmObj, StoreObjs};
+use rusqlite::{Connection, ToSql, NO_PARAMS};
+use serde_json;
 use slog_scope::{error, info};
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
-use osmpbfreader::{StoreObjs, OsmId, OsmObj};
-use rusqlite::{Connection, ToSql, NO_PARAMS};
-use serde_json;
-use std::fs;
-use std::borrow::Cow;
 
 macro_rules! err_logger {
     ($obj:expr, $err_msg:expr) => {
@@ -61,7 +61,7 @@ macro_rules! err_logger {
                 return $ret;
             }
         }
-    }
+    };
 }
 
 macro_rules! get_kind {
@@ -75,7 +75,7 @@ macro_rules! get_kind {
         } else {
             panic!("Unknown OSM object kind!")
         }
-    }
+    };
 }
 
 pub trait Getter {
@@ -107,36 +107,46 @@ impl<'a> DB<'a> {
                 UNIQUE(id, kind)
              )",
             NO_PARAMS,
-        ).map_err(|e| format!("failed to create table: {}", e))?;
-        Ok(DB {
-            conn,
-            db_file,
-        })
+        )
+        .map_err(|e| format!("failed to create table: {}", e))?;
+        Ok(DB { conn, db_file })
     }
 
     fn get_from_id(&self, id: &OsmId) -> Option<OsmObj> {
-        let mut stmt = err_logger!(self.conn.prepare("SELECT obj FROM ids WHERE id=?1 AND kind=?2"),
-            "DB::get_from_id: prepare failed");
-        let mut iter = err_logger!(stmt.query(&[&id.inner_id() as &dyn ToSql, get_kind!(id)]),
-            "DB::get_from_id: query_map failed");
+        let mut stmt = err_logger!(
+            self.conn
+                .prepare("SELECT obj FROM ids WHERE id=?1 AND kind=?2"),
+            "DB::get_from_id: prepare failed"
+        );
+        let mut iter = err_logger!(
+            stmt.query(&[&id.inner_id() as &dyn ToSql, get_kind!(id)]),
+            "DB::get_from_id: query_map failed"
+        );
         while let Some(row) = err_logger!(iter.next(), "DB::get_from_id: next failed") {
             let obj: String = err_logger!(row.get(0), "DB::get_from_id: failed to get obj field");
-            err_logger!(serde_json::from_str(&obj),
-                "DB::get_from_id: conversion from string failed")
+            err_logger!(
+                serde_json::from_str(&obj),
+                "DB::get_from_id: conversion from string failed"
+            )
         }
         None
     }
 
     fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
-        let mut stmt = err_logger!(self.conn.prepare("SELECT obj FROM ids"),
-            "DB::for_each: prepare failed", ());
+        let mut stmt = err_logger!(
+            self.conn.prepare("SELECT obj FROM ids"),
+            "DB::for_each: prepare failed",
+            ()
+        );
         let mut rows = err_logger!(stmt.query(NO_PARAMS), "DB::for_each: query_map failed", ());
         while let Some(row) = err_logger!(rows.next(), "DB::for_each: next failed", ()) {
             let obj: String = err_logger!(row.get(0), "DB::for_each: failed to get obj field", ());
 
-            let obj: OsmObj = err_logger!(serde_json::from_str(&obj),
+            let obj: OsmObj = err_logger!(
+                serde_json::from_str(&obj),
                 "DB::for_each: serde conversion failed",
-                ());
+                ()
+            );
             f(Cow::Owned(obj));
         }
     }
@@ -145,22 +155,33 @@ impl<'a> DB<'a> {
 impl<'a> StoreObjs for DB<'a> {
     fn insert(&mut self, id: OsmId, obj: OsmObj) {
         let kind = get_kind!(obj);
-        let obj = err_logger!(serde_json::to_string(&obj),
-            "DB::insert: failed to convert to json", ());
-        err_logger!(self.conn.execute(
-            "INSERT OR IGNORE INTO ids(id, obj, kind) VALUES (?1, ?2, ?3)",
-            &[&id.inner_id() as &dyn ToSql, &obj, kind]),
+        let obj = err_logger!(
+            serde_json::to_string(&obj),
+            "DB::insert: failed to convert to json",
+            ()
+        );
+        err_logger!(
+            self.conn.execute(
+                "INSERT OR IGNORE INTO ids(id, obj, kind) VALUES (?1, ?2, ?3)",
+                &[&id.inner_id() as &dyn ToSql, &obj, kind]
+            ),
             "DB::insert: insert failed",
-            ());
+            ()
+        );
     }
 
     fn contains_key(&self, id: &OsmId) -> bool {
-        let mut stmt = err_logger!(self.conn.prepare("SELECT id FROM ids WHERE id=?1 AND kind=?2"),
+        let mut stmt = err_logger!(
+            self.conn
+                .prepare("SELECT id FROM ids WHERE id=?1 AND kind=?2"),
             "DB::contains_key: prepare failed",
-            false);
-        let mut iter = err_logger!(stmt.query(&[&id.inner_id() as &dyn ToSql, get_kind!(id)]),
+            false
+        );
+        let mut iter = err_logger!(
+            stmt.query(&[&id.inner_id() as &dyn ToSql, get_kind!(id)]),
             "DB::contains_key: query_map failed",
-            false);
+            false
+        );
         err_logger!(iter.next(), "DB::contains_key: no row", false).is_some()
     }
 }
@@ -338,7 +359,10 @@ pub fn streets(
                     .into_iter()
                     .filter(|admin| admin.is_city())
                     .collect();
-                name_admin_map.entry(StreetKey { name, admins }).or_insert(vec![]).push(osmid);
+                name_admin_map
+                    .entry(StreetKey { name, admins })
+                    .or_insert(vec![])
+                    .push(osmid);
             }
         }
     });
@@ -390,11 +414,9 @@ fn get_street_admin<T: StoreObjs + Getter>(
         .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|node_obj| {
-            node_obj.node().map(|node| {
-                geo_types::Coordinate {
-                    x: node.lon(),
-                    y: node.lat(),
-                }
+            node_obj.node().map(|node| geo_types::Coordinate {
+                x: node.lon(),
+                y: node.lat(),
             })
         })
         .next()
