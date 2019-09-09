@@ -53,6 +53,35 @@ pub fn osm2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
+    check_results(es_wrapper);
+}
+
+/// Simple call to a BANO load into ES base
+/// Checks that we are able to find one object (a specific address)
+pub fn osm2mimir_sample_test_sqlite(es_wrapper: crate::ElasticSearchWrapper<'_>) {
+    let osm2mimir = Path::new(env!("OUT_DIR"))
+        .join("../../../osm2mimir")
+        .display()
+        .to_string();
+    crate::launch_and_assert(
+        &osm2mimir,
+        &[
+            "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--import-way".into(),
+            "--import-admin".into(),
+            "--import-poi".into(),
+            "--level=8".into(),
+            "--level=7".into(),
+            "--db-file=test-db.sqlite3".into(),
+            format!("--connection-string={}", es_wrapper.host()),
+        ],
+        &es_wrapper,
+    );
+
+    check_results(es_wrapper);
+}
+
+fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Livry-sur-Seine", |_| true)

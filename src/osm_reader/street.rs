@@ -101,7 +101,7 @@ impl<'a> DB<'a> {
 
         conn.execute(
             "CREATE TABLE ids (
-                id   INTEGER,
+                id   INTEGER NOT NULL,
                 obj  TEXT NOT NULL,
                 kind TEXT NOT NULL,
                 UNIQUE(id, kind)
@@ -124,10 +124,10 @@ impl<'a> DB<'a> {
         );
         while let Some(row) = err_logger!(iter.next(), "DB::get_from_id: next failed") {
             let obj: String = err_logger!(row.get(0), "DB::get_from_id: failed to get obj field");
-            err_logger!(
+            return err_logger!(
                 serde_json::from_str(&obj),
                 "DB::get_from_id: conversion from string failed"
-            )
+            );
         }
         None
     }

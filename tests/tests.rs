@@ -131,6 +131,7 @@ fn all_tests() {
     // we call all tests here
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_test::osm2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
+    osm2mimir_test::osm2mimir_sample_test_sqlite(ElasticSearchWrapper::new(&docker_wrapper));
     stops2mimir_test::stops2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(ElasticSearchWrapper::new(
         &docker_wrapper,
