@@ -34,7 +34,7 @@ use crate::{labels, utils, Error};
 use failure::ResultExt;
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
 use rusqlite::{Connection, ToSql, NO_PARAMS};
-use serde_json;
+use bincode;
 use slog_scope::{error, info};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
@@ -67,11 +67,11 @@ macro_rules! err_logger {
 macro_rules! get_kind {
     ($obj:expr) => {
         if $obj.is_node() {
-            &"node"
+            &0
         } else if $obj.is_way() {
-            &"way"
+            &1
         } else if $obj.is_relation() {
-            &"relation"
+            &2
         } else {
             panic!("Unknown OSM object kind!")
         }
@@ -102,8 +102,8 @@ impl<'a> DB<'a> {
         conn.execute(
             "CREATE TABLE ids (
                 id   INTEGER NOT NULL,
-                obj  TEXT NOT NULL,
-                kind TEXT NOT NULL,
+                obj  BLOB NOT NULL,
+                kind INTEGER NOT NULL,
                 UNIQUE(id, kind)
              )",
             NO_PARAMS,
@@ -123,11 +123,13 @@ impl<'a> DB<'a> {
             "DB::get_from_id: query_map failed"
         );
         while let Some(row) = err_logger!(iter.next(), "DB::get_from_id: next failed") {
-            let obj: String = err_logger!(row.get(0), "DB::get_from_id: failed to get obj field");
-            return err_logger!(
-                serde_json::from_str(&obj),
-                "DB::get_from_id: conversion from string failed"
+            let obj: Vec<u8> = err_logger!(row.get(0), "DB::get_from_id: failed to get obj field");
+            let obj: OsmObj = err_logger!(
+                bincode::deserialize(&obj),
+                "DB::for_each: serde conversion failed",
+                None
             );
+            return Some(obj);
         }
         None
     }
@@ -140,10 +142,10 @@ impl<'a> DB<'a> {
         );
         let mut rows = err_logger!(stmt.query(NO_PARAMS), "DB::for_each: query_map failed", ());
         while let Some(row) = err_logger!(rows.next(), "DB::for_each: next failed", ()) {
-            let obj: String = err_logger!(row.get(0), "DB::for_each: failed to get obj field", ());
+            let obj: Vec<u8> = err_logger!(row.get(0), "DB::for_each: failed to get obj field", ());
 
             let obj: OsmObj = err_logger!(
-                serde_json::from_str(&obj),
+                bincode::deserialize(&obj),
                 "DB::for_each: serde conversion failed",
                 ()
             );
@@ -155,15 +157,15 @@ impl<'a> DB<'a> {
 impl<'a> StoreObjs for DB<'a> {
     fn insert(&mut self, id: OsmId, obj: OsmObj) {
         let kind = get_kind!(obj);
-        let obj = err_logger!(
-            serde_json::to_string(&obj),
+        let ser_obj = err_logger!(
+            bincode::serialize(&obj),
             "DB::insert: failed to convert to json",
             ()
         );
         err_logger!(
             self.conn.execute(
                 "INSERT OR IGNORE INTO ids(id, obj, kind) VALUES (?1, ?2, ?3)",
-                &[&id.inner_id() as &dyn ToSql, &obj, kind]
+                &[&id.inner_id() as &dyn ToSql, &ser_obj, kind]
             ),
             "DB::insert: insert failed",
             ()
