@@ -53,7 +53,7 @@ pub fn osm2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &es_wrapper,
     );
 
-    check_results(es_wrapper);
+    check_results(es_wrapper, "btreemap backend");
 }
 
 /// Simple call to a BANO load into ES base
@@ -78,15 +78,15 @@ pub fn osm2mimir_sample_test_sqlite(es_wrapper: crate::ElasticSearchWrapper<'_>)
         &es_wrapper,
     );
 
-    check_results(es_wrapper);
+    check_results(es_wrapper, "sqlite backend");
 }
 
-fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
+fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Livry-sur-Seine", |_| true)
         .collect();
-    assert_eq!(res.len(), 5);
+    assert_eq!(res.len(), 5, "{}", test_name);
 
     let has_boundary = |res: &Vec<mimir::Place>, is_admin: bool| {
         res.iter()
@@ -95,22 +95,22 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
             .all(|a| a.boundary.clone().map_or(false, |b| !b.0.is_empty()))
     };
     // Admins have boundaries
-    assert!(has_boundary(&res, true));
+    assert!(has_boundary(&res, true), "{}", test_name);
 
     // Others places than Admin don't
-    assert!(!has_boundary(&res, false));
+    assert!(!has_boundary(&res, false), "{}", test_name);
 
-    assert!(res.iter().any(|r| r.is_admin()));
+    assert!(res.iter().any(|r| r.is_admin()), "{}", test_name);
 
     // Test that Créteil (admin_level 7) is not treated as a city (level 8)
     let admin_regions: Vec<_> = es_wrapper
         .search_and_filter("label:Créteil", |_| true)
         .collect();
-    assert!(admin_regions.len() >= 1);
+    assert!(admin_regions.len() >= 1, "{}", test_name);
     if let mimir::Place::Admin(ref creteil) = admin_regions[0] {
-        assert_eq!(creteil.name, "Créteil");
-        assert_eq!(creteil.level, 7);
-        assert!(creteil.zone_type.is_none());
+        assert_eq!(creteil.name, "Créteil", "{}", test_name);
+        assert_eq!(creteil.level, 7, "{}", test_name);
+        assert!(creteil.zone_type.is_none(), "{}", test_name);
     } else {
         panic!("creteil should be an admin");
     }
@@ -119,17 +119,19 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Rue des Près", |_| true)
         .collect();
-    assert!(res.len() != 0);
-    assert!(res[0].is_street());
+    assert!(res.len() != 0, "{}", test_name);
+    assert!(res[0].is_street(), "{}", test_name);
     // The first hit should be "Rue des Près"
-    assert_eq!(res[0].label(), "Rue des Près (Livry-sur-Seine)");
+    assert_eq!(res[0].label(), "Rue des Près (Livry-sur-Seine)", "{}", test_name);
 
     // And there should be only ONE "Rue des Près"
     assert_eq!(
         res.iter()
             .filter(|place| place.is_street() && place.label() == "Rue des Près (Livry-sur-Seine)")
             .count(),
-        1
+        1,
+        "{}",
+        test_name
     );
 
     // Test: Search for "Rue du Four à Chaux" in "Livry-sur-Seine"
@@ -149,7 +151,7 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         .collect();
 
     let nb = four_a_chaux_street.len();
-    assert_eq!(nb, 1);
+    assert_eq!(nb, 1, "{}", test_name);
 
     // Test the id is the min(=40812939) of all the ways composing the street
     assert!(four_a_chaux_street[0].address().map_or(false, |a| {
@@ -158,7 +160,7 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         } else {
             false
         }
-    }));
+    }), "{}", test_name);
 
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
@@ -173,15 +175,15 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let nb = es_wrapper
         .search_and_filter("label:Rue du Port (Melun)", place_filter)
         .count();
-    assert_eq!(nb, 1);
+    assert_eq!(nb, 1, "{}", test_name);
 
     // Test: Street admin is based on a middle node
     // (instead of the first node which is located outside Melun)
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Rue Marcel Houdet", |_| true)
         .collect();
-    assert!(res.len() != 0);
-    assert_eq!(res[0].label(), "Rue Marcel Houdet (Melun)");
+    assert!(res.len() != 0, "{}", test_name);
+    assert_eq!(res[0].label(), "Rue Marcel Houdet (Melun)", "{}", test_name);
     assert!(res[0]
         .admins()
         .iter()
@@ -192,18 +194,18 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Le-Mée-sur-Seine Courtilleraies", |_| true)
         .collect();
-    assert!(res.len() != 0);
+    assert!(res.len() != 0, "{}", test_name);
 
     let poi_type_post_office = "poi_type:amenity:post_office";
     assert!(res.iter().any(|r| r
         .poi()
-        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)));
+        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)), "{}", test_name);
 
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Melun Rp", |_| true)
         .collect();
-    assert!(res.len() != 0);
+    assert!(res.len() != 0, "{}", test_name);
     assert!(res.iter().any(|r| r
         .poi()
-        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)));
+        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)), "{}", test_name);
 }
