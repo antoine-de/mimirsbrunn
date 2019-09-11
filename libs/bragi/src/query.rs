@@ -37,11 +37,12 @@ use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
-use rs_es::query::functions::Modifier;
+use rs_es::query::functions::{DecayOptions, Function, Modifier};
 use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
 use serde_json;
+use slog_scope::{debug, error, warn};
 use std::{fmt, iter};
 
 lazy_static::lazy_static! {
@@ -97,22 +98,6 @@ impl fmt::Display for MatchType {
     }
 }
 
-/// Create a `rs_es::Query` that boosts results according to the
-/// distance to `coord`.
-fn build_proximity_with_boost(coord: &Coord, boost: f64) -> Query {
-    Query::build_function_score()
-        .with_boost(boost)
-        .with_function(
-            rs_es::query::functions::Function::build_decay(
-                "coord",
-                rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                rs_u::Distance::new(50f64, rs_u::DistanceUnit::Kilometer),
-            )
-            .build_gauss(),
-        )
-        .build()
-}
-
 // filter to handle PT coverages
 // we either want:
 // * to get objects with no coverage at all (non-PT objects)
@@ -130,10 +115,42 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
         .build()
 }
 
+/// Create a `rs_es::Query` that boosts results according to the
+/// distance to `coord`.
+fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
+    Query::build_function_score()
+        .with_functions(vec![
+            DecayOptions::new(
+                rs_u::Location::LatLon(coord.lat(), coord.lon()),
+                rs_u::Distance::new(130f64, rs_u::DistanceUnit::Kilometer),
+            )
+            .with_offset(rs_u::Distance::new(20f64, rs_u::DistanceUnit::Kilometer))
+            .with_decay(0.4f64)
+            .build("coord")
+            .build_exp(),
+            Function::build_weight(weight).build(),
+        ])
+        .with_boost_mode(BoostMode::Replace)
+        .build()
+}
+
+fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
+    let factor = factor.into();
+    Query::build_function_score()
+        .with_function(
+            Function::build_field_value_factor("weight")
+                .with_factor(factor.unwrap_or_else(|| 0.15))
+                .with_missing(0.)
+                .build(),
+        )
+        .with_boost_mode(BoostMode::Replace)
+        .build()
+}
+
 fn build_query<'a>(
     q: &str,
     match_type: MatchType,
-    coord: &Option<Coord>,
+    coord: Option<Coord>,
     shape: Option<Geometry>,
     pt_datasets: &[&str],
     all_data: bool,
@@ -141,8 +158,6 @@ fn build_query<'a>(
     zone_types: &[&str],
     poi_types: &[&str],
 ) -> Query {
-    use rs_es::query::functions::Function;
-
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
         Query::build_term("_type", T::doc_type())
@@ -191,32 +206,42 @@ fn build_query<'a>(
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
-        string_should.push(
+        string_should.push(if coord.is_some() {
+            build_multi_match("label.ngram", &format_labels_ngram_field)
+                .with_boost(3.8)
+                .build()
+        } else {
             build_multi_match("label.ngram", &format_labels_ngram_field)
                 .with_boost(1.8)
-                .build(),
-        );
+                .build()
+        });
     }
     let string_query = Query::build_bool()
         .with_should(string_should)
         .with_boost(1.)
         .build();
 
+    let mut admin_weight = 0.03;
+
     // Priorization by importance
-    let importance_query = match coord {
-        Some(ref c) => build_proximity_with_boost(c, 100.),
-        None => Query::build_function_score()
-            .with_function(
-                Function::build_field_value_factor("weight")
-                    .with_factor(0.15)
-                    .with_missing(0.)
-                    .build(),
-            )
-            .with_boost_mode(BoostMode::Replace)
-            .build(),
+    let mut importance_queries = if let Some(ref coord) = coord {
+        if let MatchType::Fuzzy = match_type {
+            vec![
+                build_with_weight(0.15),
+                build_proximity_with_boost(coord, 0.4),
+            ]
+        } else {
+            admin_weight = 0.12;
+            vec![
+                build_with_weight(0.4),
+                build_proximity_with_boost(coord, 0.4),
+            ]
+        }
+    } else {
+        vec![build_with_weight(None)]
     };
 
-    let importance_queries = match match_type {
+    match match_type {
         MatchType::Prefix => {
             let admin_importance_query = Query::build_function_score()
                 .with_query(Query::build_term("_type", Admin::doc_type()).build())
@@ -226,13 +251,13 @@ fn build_query<'a>(
                         .with_modifier(Modifier::Log1p)
                         .with_missing(0.)
                         .build(),
-                    Function::build_weight(0.03).build(),
+                    Function::build_weight(admin_weight).build(),
                 ])
                 .with_boost_mode(BoostMode::Replace)
                 .build();
-            vec![importance_query, admin_importance_query]
+            importance_queries.push(admin_importance_query);
         }
-        MatchType::Fuzzy => vec![importance_query],
+        MatchType::Fuzzy => {}
     };
 
     // filter to handle house number
@@ -270,9 +295,10 @@ fn build_query<'a>(
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
         MatchType::Fuzzy => Query::build_match("full_label.ngram".to_string(), q.to_string())
             .with_minimum_should_match(MinimumShouldMatch::from(vec![
-                CombinationMinimumShouldMatch::new(1i64, 75f64),
-                CombinationMinimumShouldMatch::new(6i64, 60f64),
-                CombinationMinimumShouldMatch::new(9i64, 40f64),
+                CombinationMinimumShouldMatch::new(1i64, -1i64),
+                CombinationMinimumShouldMatch::new(3i64, -2i64),
+                CombinationMinimumShouldMatch::new(9i64, -4i64),
+                CombinationMinimumShouldMatch::new(20i64, 25f64),
             ]))
             .build(),
     };
@@ -284,12 +310,24 @@ fn build_query<'a>(
         filters.push(build_coverage_condition(pt_datasets));
     }
 
+    // We want to limit the search to the geographic shape given in argument,
+    // except for stop areas
     if let Some(s) = shape {
-        filters.push(
-            Query::build_geo_shape("approx_coord")
-                .with_geojson(s)
-                .build(),
-        );
+        let filter_wo_stop = Query::build_bool()
+            .with_must(vec![
+                Query::build_bool()
+                    .with_must_not(Query::build_term("_type", Stop::doc_type()).build())
+                    .build(),
+                Query::build_geo_shape("approx_coord")
+                    .with_geojson(s)
+                    .build(),
+            ])
+            .build();
+        let filter_w_stop = Query::build_term("_type", Stop::doc_type()).build();
+        let geo_filter = Query::build_bool()
+            .with_should(vec![filter_w_stop, filter_wo_stop])
+            .build();
+        filters.push(geo_filter);
     }
 
     let mut query = Query::build_bool()
@@ -334,12 +372,13 @@ fn query(
     match_type: MatchType,
     offset: u64,
     limit: u64,
-    coord: &Option<Coord>,
+    coord: Option<Coord>,
     shape: Option<Geometry>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
     langs: &[&str],
+    debug: bool,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
@@ -386,6 +425,12 @@ fn query(
         // No need to fetch "boundary" as it's not used in the geocoding response
         // and is very large in some documents (countries...)
         .with_source(Source::exclude(&["boundary"]));
+
+    // We don't want to clutter the Query URL, so we only add an explanation if the option is used
+    let search_query = match debug {
+        true => search_query.with_explain(true),
+        false => search_query,
+    };
 
     if let Some(timeout) = &timeout {
         search_query.with_timeout(timeout.as_str());
@@ -473,6 +518,7 @@ pub fn autocomplete(
     poi_types: &[&str],
     langs: &[&str],
     mut rubber: Rubber,
+    debug: bool,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -497,12 +543,13 @@ pub fn autocomplete(
         MatchType::Prefix,
         offset,
         limit,
-        &coord,
+        coord,
         shape.clone(),
         &types,
         &zone_types,
         &poi_types,
         &langs,
+        debug,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -515,12 +562,13 @@ pub fn autocomplete(
             MatchType::Fuzzy,
             offset,
             limit,
-            &coord,
+            coord,
             shape,
             &types,
             &zone_types,
             &poi_types,
             &langs,
+            debug,
         )
         .map_err(model::BragiError::from)
     } else {

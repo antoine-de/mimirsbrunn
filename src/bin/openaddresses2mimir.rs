@@ -28,17 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
 use lazy_static::lazy_static;
 use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::addr_reader::import_addresses;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
 use serde::{Deserialize, Serialize};
+use slog_scope::{info, warn};
 use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -102,6 +98,7 @@ impl OpenAddresse {
             approx_coord: None,
             distance: None,
             country_codes: country_codes.clone(),
+            context: None,
         };
 
         mimir::Addr {
@@ -136,6 +133,7 @@ impl OpenAddresse {
             zip_codes: vec![self.postcode],
             distance: None,
             country_codes,
+            context: None,
         }
     }
 }

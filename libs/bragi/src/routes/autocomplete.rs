@@ -2,7 +2,8 @@ use crate::extractors::BragiQuery;
 use crate::model::{Autocomplete, BragiError, FromWithLang};
 use crate::routes::params;
 use crate::{model, query, Context};
-use actix_web::web::{Data, Json};
+use actix_http::http::header::{CacheControl, CacheDirective};
+use actix_web::web::{Data, HttpResponse, Json};
 use geojson::{GeoJson, Geometry};
 use mimir::objects::Coord;
 use serde::{Deserialize, Serialize};
@@ -80,6 +81,11 @@ pub struct Params {
     #[serde(default, rename = "poi_type")]
     poi_types: Vec<PoiType>,
     lang: Option<String>,
+    // Forwards a request for explanation to Elastic Search.
+    // This parameter is useful to analyze the order in which search results appear.
+    // It is prefixed by an underscore to indicate its not a public parameter.
+    #[serde(default, rename = "_debug")]
+    debug: Option<bool>,
 }
 
 impl Params {
@@ -93,19 +99,22 @@ impl Params {
         self.poi_types.iter().map(PoiType::as_str).collect()
     }
     fn coord(&self) -> Result<Option<Coord>, BragiError> {
-        match (self.lon, self.lat) {
-            (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
-            (None, None) => Ok(None),
-            _ => Err(BragiError::InvalidParam(
-                "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
-            )),
-        }
+        Self::build_coord(self.lon, self.lat)
     }
     fn langs(&self) -> Vec<&str> {
         self.lang.iter().map(|l| l.as_str()).collect()
     }
     fn timeout(&self) -> Option<Duration> {
         self.timeout.map(Duration::from_millis)
+    }
+    fn build_coord(lon: Option<f64>, lat: Option<f64>) -> Result<Option<Coord>, BragiError> {
+        match (lon, lat) {
+            (Some(lon), Some(lat)) => Ok(Some(params::make_coord(lon, lat)?)),
+            (None, None) => Ok(None),
+            _ => Err(BragiError::InvalidParam(
+                "you should provide a 'lon' AND a 'lat' parameter if you provide one of them",
+            )),
+        }
     }
 }
 
@@ -129,7 +138,7 @@ pub fn call_autocomplete(
     params: &Params,
     state: &Context,
     shape: Option<Geometry>,
-) -> Result<Json<Autocomplete>, model::BragiError> {
+) -> Result<HttpResponse, model::BragiError> {
     let langs = params.langs();
     let rubber = state.get_rubber_for_autocomplete(params.timeout());
     let res = query::autocomplete(
@@ -154,15 +163,22 @@ pub fn call_autocomplete(
         &params.poi_types_as_str(),
         &langs,
         rubber,
+        params.debug.unwrap_or(false),
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
-        .map(Json)
+        .map(|v| {
+            HttpResponse::Ok()
+                .set(CacheControl(vec![CacheDirective::MaxAge(
+                    state.http_cache_duration,
+                )]))
+                .json(v)
+        })
 }
 
 pub fn autocomplete(
     params: BragiQuery<Params>,
     state: Data<Context>,
-) -> Result<Json<Autocomplete>, model::BragiError> {
+) -> Result<HttpResponse, model::BragiError> {
     call_autocomplete(&*params, &*state, None)
 }
 
@@ -170,7 +186,7 @@ pub fn post_autocomplete(
     params: BragiQuery<Params>,
     state: Data<Context>,
     json_params: Json<JsonParams>,
-) -> Result<Json<Autocomplete>, model::BragiError> {
+) -> Result<HttpResponse, model::BragiError> {
     call_autocomplete(
         &*params,
         &*state,

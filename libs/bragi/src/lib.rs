@@ -29,14 +29,10 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-#[macro_use]
-extern crate failure;
-#[macro_use]
 extern crate prometheus;
+
 use mimir::rubber::Rubber;
+use slog_scope::debug;
 use std::time::Duration;
 use structopt::StructOpt;
 
@@ -95,6 +91,16 @@ pub struct Args {
         env = "BRAGI_MAX_ES_FEATURES_TIMEOUT"
     )]
     pub max_es_features_timeout: Option<u64>,
+
+    /// Cache duration for http response served by bragi
+    /// This only set the Cache-control Header, it doesn't enable cache on bragi side
+    /// The duration is in seconds
+    #[structopt(
+        long = "http-cache-duration",
+        env = "BRAGI_HTTP_CACHE_DURATION",
+        default_value = "3600"
+    )]
+    pub http_cache_duration: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -103,6 +109,7 @@ pub struct Context {
     features_rubber: Rubber,
     autocomplete_rubber: Rubber,
     pub cnx_string: String,
+    pub http_cache_duration: u32,
     // pub rubber: Rubber,
 }
 
@@ -135,6 +142,7 @@ impl From<&Args> for Context {
                 bounded_timeout(args.max_es_autocomplete_timeout),
             ),
             cnx_string: args.connection_string.clone(),
+            http_cache_duration: args.http_cache_duration.clone(),
         }
     }
 }

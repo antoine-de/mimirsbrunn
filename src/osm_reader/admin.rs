@@ -34,6 +34,7 @@ use cosmogony::ZoneType;
 use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
 use osm_boundaries_utils::build_boundary;
+use slog_scope::{info, warn};
 use std::collections::BTreeSet;
 
 pub type StreetsVec = Vec<mimir::Street>;
@@ -175,6 +176,8 @@ pub fn read_administrative_regions(
                 names: mimir::I18nProperties::default(),
                 labels: mimir::I18nProperties::default(),
                 distance: None,
+                context: None,
+                administrative_regions: Vec::new(),
             };
             administrative_regions.push(admin);
         }

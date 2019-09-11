@@ -1,12 +1,8 @@
 use docker_wrapper::*;
 use serde_json::value::Value;
 use serde_json::Map;
+use slog_scope::info;
 use std::time::Duration;
-
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
 
 pub struct ElasticSearchWrapper<'a> {
     pub docker_wrapper: &'a DockerWrapper,

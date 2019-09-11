@@ -9,6 +9,8 @@ Before using [Bragi](#bragi), you have to import data into Elasticsearch.
 The default and easiest way to import data is to use the [docker_mimir](https://github.com/QwantResearch/docker_mimir) tool.
 However the following import tools are still possible.
 
+**First** you have to import admins objects. You can load them from Cosmogony or from OSM. Cosmogony give better results. Use `cosmogony2mimir` or `osm2mimir --import-admin`.
+
 #### cosmogony2mimir
 
 - This tool imports [Cosmogony](https://github.com/osm-without-borders/cosmogony/) data into Mimir. Cosmogony data are generated from OSM and brings geographical zones with a structured hierarchy.
@@ -21,7 +23,7 @@ You first needs to generate cosmogony data (as for the moment there are none alr
 
 Then to import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --cosmogony2mimir -- --input=cosmogony.jsonl.gz --connection-string=http://localhost:9200
+cargo run --release --bin cosmogony2mimir -- --input=cosmogony.jsonl.gz --connection-string=http://localhost:9200
 ```
 
 #### osm2mimir
@@ -32,7 +34,7 @@ curl -O http://download.geofabrik.de/europe/france-latest.osm.pbf
 ```
 - Then to import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --osm2mimir -- --input=france-latest.osm.pbf --import-way --import-poi --connection-string=http://localhost:9200
+cargo run --release --bin osm2mimir -- --input=france-latest.osm.pbf --import-way --import-poi --connection-string=http://localhost:9200
 ```
 
 #### bano2mimir
@@ -44,7 +46,7 @@ gunzip full.csv.gz
 ```
 - To import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --bano2mimir --input full.csv --connection-string=http://localhost:9200/
+cargo run --release --bin bano2mimir -- --input full.csv --connection-string=http://localhost:9200/
 ```
 
 #### ntfs2mimir
@@ -53,7 +55,7 @@ cargo run --release --bano2mimir --input full.csv --connection-string=http://loc
 
 - To import all those data into Mimir, you only have to do:
 ```shell
-cargo run --release --ntfs2mimir -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
+cargo run --release --bin ntfs2mimir -- -i <path_to_folder_with_ntfs_file> --dataset=idf --connection-string=http://localhost:9200/
 ```
 
 - The ntfs input file needs to match the [NTFS specification](https://github.com/CanalTP/navitia/blob/dev/documentation/ntfs/ntfs_0.6.md).
@@ -73,7 +75,7 @@ This is a format used by other geocoding API such as [Addok](https://github.com/
 
 - To run Bragi:
 ```shell
-cargo run --release --bragi --connection-string=http://localhost:9200/munin
+cargo run --release --bin bragi -- --connection-string=http://localhost:9200/munin
 ```
 
 - Then you can call the API (the default Bragi's listening port is 4000):

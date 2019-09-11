@@ -28,15 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
 use failure::ResultExt;
 use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use serde::Deserialize;
+use slog_scope::{info, warn};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use structopt::StructOpt;

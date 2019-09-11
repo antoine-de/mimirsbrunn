@@ -32,6 +32,7 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils, Error};
 use failure::ResultExt;
+use slog_scope::info;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -104,6 +105,7 @@ pub fn streets(
                     approx_coord: Some(coord.into()),
                     distance: None,
                     country_codes,
+                    context: None,
                 })
             })
             .next()
@@ -159,6 +161,7 @@ pub fn streets(
             approx_coord: Some(coord.into()),
             distance: None,
             country_codes,
+            context: None,
         })
     });
     street_list.extend(streets);

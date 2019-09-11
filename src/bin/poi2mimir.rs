@@ -28,10 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
+use slog_scope::info;
 
 use failure::format_err;
 use lazy_static::lazy_static;
@@ -108,6 +105,7 @@ fn into_mimir_poi(
         names: I18nProperties::default(),
         labels: I18nProperties::default(),
         distance: None,
+        context: None,
     };
 
     Ok(poi)

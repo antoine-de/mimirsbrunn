@@ -28,11 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#[macro_use]
-extern crate slog;
-#[macro_use]
-extern crate slog_scope;
-
 use cosmogony::{Zone, ZoneIndex};
 use failure::Error;
 use mimir::objects::Admin;
@@ -40,7 +35,10 @@ use mimir::rubber::{IndexSettings, Rubber};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
+use slog_scope::{info, warn};
 use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::sync::Arc;
 use structopt::StructOpt;
 
 trait IntoAdmin {
@@ -50,6 +48,7 @@ trait IntoAdmin {
         langs: &[String],
         retrocompat_on_french_id: bool,
         max_weight: f64,
+        all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin;
 }
 
@@ -71,6 +70,7 @@ impl IntoAdmin for Zone {
         langs: &[String],
         french_id_retrocompatibility: bool,
         max_weight: f64,
+        all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin {
         let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
         let zip_codes = admin::read_zip_codes(&self.tags);
@@ -92,7 +92,7 @@ impl IntoAdmin for Zone {
             .and_then(|id| zones_osm_id.get(&id))
             .map(|(id, insee)| format_id(id, insee.as_ref()));
         let codes = osm_utils::get_osm_codes_from_tags(&self.tags);
-        Admin {
+        let mut admin = Admin {
             id: zones_osm_id
                 .get(&self.id)
                 .map(|(id, insee)| format_id(id, insee.as_ref()))
@@ -121,7 +121,29 @@ impl IntoAdmin for Zone {
                 .filter(|(k, _)| langs.contains(&k))
                 .collect(),
             distance: None,
+            context: None,
+            administrative_regions: Vec::new(),
+        };
+        if let Some(ref admins) = all_admins {
+            // Get a list of encompassing parent ids, which will be used as the get
+            // administrative_regions.
+            let mut parent_ids = Vec::new();
+            let mut current = &admin;
+            while current.parent_id.is_some() {
+                parent_ids.push(current.parent_id.clone().unwrap());
+                if let Some(par) = admins.get(parent_ids.last().unwrap()) {
+                    current = par;
+                } else {
+                    break;
+                }
+            }
+            admin.administrative_regions = parent_ids
+                .into_iter()
+                .filter_map(|a| admins.get(&a))
+                .map(|x| Arc::clone(x))
+                .collect::<Vec<_>>();
         }
+        admin
     }
 }
 
@@ -139,36 +161,51 @@ fn send_to_es(
 }
 
 fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
-    Ok(cosmogony::read_zones_from_file(input)?.filter_map(|r| {
-        r.map_err(|e| log::warn!("impossible to read zone: {}", e))
-            .ok()
-    }))
+    Ok(cosmogony::read_zones_from_file(input)?
+        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok()))
 }
 
 fn index_cosmogony(args: Args) -> Result<(), Error> {
     info!("building maps");
     use cosmogony::ZoneType::City;
 
-    let mut max_weight = 1.0;
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
-    for z in read_zones(&args.input)? {
-        max_weight = f64::max(max_weight, get_weight(&z.tags, &z.center_tags));
-        let insee = match z.zone_type {
-            Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
-            _ => None,
-        };
-        cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
-    }
-    let max_weight = max_weight;
-    let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
+    let max_weight = utils::ADMIN_MAX_WEIGHT;
+    let zones = read_zones(&args.input)?
+        .map(|mut zone| {
+            let insee = match zone.zone_type {
+                Some(City) => admin::read_insee(&zone.tags).map(|s| s.to_owned()),
+                _ => None,
+            };
+            cosmogony_id_to_osm_id.insert(zone.id.clone(), (zone.osm_id.clone(), insee));
+            zone.boundary = None; // to prevent too much memory consumption
+            zone
+        })
+        .collect::<Vec<_>>();
+
+    let admins_without_boundaries = zones
+        .into_iter()
+        .map(|z| {
+            let admin = z.into_admin(
+                &cosmogony_id_to_osm_id,
+                &args.langs,
+                args.french_id_retrocompatibility,
+                max_weight,
+                None,
+            );
+            (admin.id.clone(), Arc::new(admin))
+        })
+        .collect::<HashMap<_, _>>();
 
     info!("importing cosmogony into Mimir");
+
     let admins = read_zones(&args.input)?.map(|z| {
         z.into_admin(
             &cosmogony_id_to_osm_id,
             &args.langs,
             args.french_id_retrocompatibility,
             max_weight,
+            Some(&admins_without_boundaries),
         )
     });
 

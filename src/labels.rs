@@ -2,6 +2,8 @@
 /// the current format is '{nice name} ({city})'
 /// the {nice name} being for addresses the housenumber and the street (correctly ordered)
 /// and for the rest of the objects, only their names
+use slog_scope::warn;
+
 fn format_label<'a>(
     nice_name: String,
     admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
@@ -338,7 +340,7 @@ mod test {
             label,
             make_i18_prop(&[(
                 "ru",
-                "Дом-музей Рембрандта (Амстердам)"
+                "Дом-музей Рембрандта (Амстердам)",
             ),])
         );
     }

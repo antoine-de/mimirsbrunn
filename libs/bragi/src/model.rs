@@ -28,9 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use failure::Fail;
 use heck::SnakeCase;
 use rs_es::error::EsError;
 use serde::{Deserialize, Serialize};
+use slog_scope::error;
 use std::sync::Arc;
 
 #[derive(Fail, Debug)]
@@ -113,6 +115,8 @@ pub struct Feature {
     pub properties: Properties,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<mimir::Context>,
 }
 
 #[derive(Serialize, Debug)]
@@ -250,6 +254,7 @@ impl FromWithLang<mimir::Place> for Feature {
     fn from_with_lang(other: mimir::Place, lang: Option<&str>) -> Feature {
         let geom = other.to_geom();
         let distance = other.distance();
+        let context = other.context();
         let geocoding = match other {
             mimir::Place::Admin(admin) => GeocodingResponse::from_with_lang(admin, lang),
             mimir::Place::Street(street) => GeocodingResponse::from_with_lang(street, lang),
@@ -264,6 +269,7 @@ impl FromWithLang<mimir::Place> for Feature {
                 geocoding: geocoding,
             },
             distance: distance,
+            context: context,
         }
     }
 }
@@ -296,6 +302,12 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             Some(other.zip_codes.join(";"))
         };
         let label = Some(label.to_owned());
+        let associated_admins = other
+            .administrative_regions
+            .iter()
+            .map(|a| AssociatedAdmin::from_with_lang(a, lang))
+            .collect();
+
         GeocodingResponse {
             id: other.id,
             citycode: insee,
@@ -312,6 +324,7 @@ impl FromWithLang<mimir::Admin> for GeocodingResponse {
             bbox: other.bbox,
             codes: other.codes,
             country_codes: other.country_codes,
+            administrative_regions: associated_admins,
             ..Default::default()
         }
     }
