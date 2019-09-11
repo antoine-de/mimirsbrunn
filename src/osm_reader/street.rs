@@ -33,7 +33,7 @@ use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils, Error};
 use failure::ResultExt;
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
-use rusqlite::{Connection, ToSql, NO_PARAMS};
+use rusqlite::{Connection, DropBehavior, ToSql, NO_PARAMS};
 use bincode;
 use slog_scope::{error, info};
 use std::borrow::Cow;
@@ -166,32 +166,32 @@ impl<'a> DB<'a> {
         if self.buffer.is_empty() {
             return;
         }
-        let mut req = "INSERT OR IGNORE INTO ids(id, obj, kind) VALUES ".to_owned();
-        let mut pos = 1;
-        let elems = self.buffer.drain()
-            .filter_map(|(id, obj)| {
+        let mut tx = err_logger!(self.conn.transaction(),
+            "DB::flush_buffer: transaction creation failed",
+            ());
+        tx.set_drop_behavior(DropBehavior::Ignore);
+
+        {
+            let mut stmt = err_logger!(
+                tx.prepare("INSERT OR IGNORE INTO ids(id, obj, kind) VALUES (?1, ?2, ?3)"),
+                "DB::flush_buffer: prepare failed",
+                ()
+            );
+            for (id, obj) in self.buffer.drain() {
+                let ser_obj = match bincode::serialize(&obj) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        error!("DB::flush_buffer: failed to convert to json: {}", e);
+                        continue
+                    }
+                };
                 let kind = get_kind!(obj);
-                let ser_obj = err_logger!(
-                    bincode::serialize(&obj),
-                    "DB::insert: failed to convert to json",
-                    None
-                );
-                if pos < 3 {
-                    req.push_str(&format!("(?{},?{},?{})", pos, pos + 1, pos + 2));
-                } else {
-                    req.push_str(&format!(",(?{},?{},?{})", pos, pos + 1, pos + 2));
+                if let Err(e) = stmt.execute(&[&id.inner_id() as &dyn ToSql, &ser_obj, kind]) {
+                    error!("DB::flush_buffer: insert failed: {}", e);
                 }
-                pos += 3;
-                Some((id.inner_id(), ser_obj, kind as &dyn ToSql))
-            })
-            .collect::<Vec<_>>();
-        let mut req_elems = Vec::with_capacity(elems.len() * 3);
-        for i in 0..elems.len() {
-            req_elems.push(&elems[i].0 as &dyn ToSql);
-            req_elems.push(&elems[i].1 as &dyn ToSql);
-            req_elems.push(&elems[i].2);
+            }
         }
-        err_logger!(self.conn.execute(&req, &req_elems), "DB::flush_buffer: insert failed", ());
+        err_logger!(tx.commit(), "DB::flush_buffer: transaction commit failed", ());
     }
 }
 
