@@ -73,6 +73,7 @@ pub fn osm2mimir_sample_test_sqlite(es_wrapper: crate::ElasticSearchWrapper<'_>)
             "--level=8".into(),
             "--level=7".into(),
             "--db-file=test-db.sqlite3".into(),
+            "--db-buffer-size=1".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
         &es_wrapper,
@@ -122,7 +123,12 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     assert!(res.len() != 0, "{}", test_name);
     assert!(res[0].is_street(), "{}", test_name);
     // The first hit should be "Rue des Près"
-    assert_eq!(res[0].label(), "Rue des Près (Livry-sur-Seine)", "{}", test_name);
+    assert_eq!(
+        res[0].label(),
+        "Rue des Près (Livry-sur-Seine)",
+        "{}",
+        test_name
+    );
 
     // And there should be only ONE "Rue des Près"
     assert_eq!(
@@ -154,13 +160,17 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     assert_eq!(nb, 1, "{}", test_name);
 
     // Test the id is the min(=40812939) of all the ways composing the street
-    assert!(four_a_chaux_street[0].address().map_or(false, |a| {
-        if let mimir::Address::Street(s) = a {
-            s.id == "street:osm:way:40812939"
-        } else {
-            false
-        }
-    }), "{}", test_name);
+    assert!(
+        four_a_chaux_street[0].address().map_or(false, |a| {
+            if let mimir::Address::Street(s) = a {
+                s.id == "street:osm:way:40812939"
+            } else {
+                false
+            }
+        }),
+        "{}",
+        test_name
+    );
 
     // Test: Streets having the same label in different cities
     let place_filter = |place: &mimir::Place| {
@@ -197,15 +207,23 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     assert!(res.len() != 0, "{}", test_name);
 
     let poi_type_post_office = "poi_type:amenity:post_office";
-    assert!(res.iter().any(|r| r
-        .poi()
-        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)), "{}", test_name);
+    assert!(
+        res.iter().any(|r| r
+            .poi()
+            .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)),
+        "{}",
+        test_name
+    );
 
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Melun Rp", |_| true)
         .collect();
     assert!(res.len() != 0, "{}", test_name);
-    assert!(res.iter().any(|r| r
-        .poi()
-        .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)), "{}", test_name);
+    assert!(
+        res.iter().any(|r| r
+            .poi()
+            .map_or(false, |poi| poi.poi_type.id == poi_type_post_office)),
+        "{}",
+        test_name
+    );
 }

@@ -31,10 +31,10 @@ use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils, Error};
+use bincode;
 use failure::ResultExt;
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
 use rusqlite::{Connection, DropBehavior, ToSql, NO_PARAMS};
-use bincode;
 use slog_scope::{error, info};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -88,16 +88,15 @@ impl Getter for BTreeMap<OsmId, OsmObj> {
     }
 }
 
-const MAX_BUFFER_CAPACITY: usize = 10_000;
-
 struct DB<'a> {
     conn: Connection,
     db_file: &'a PathBuf,
     buffer: HashMap<OsmId, OsmObj>,
+    db_buffer_size: usize,
 }
 
 impl<'a> DB<'a> {
-    fn new(db_file: &'a PathBuf) -> Result<DB<'a>, String> {
+    fn new(db_file: &'a PathBuf, db_buffer_size: usize) -> Result<DB<'a>, String> {
         let _ = fs::remove_file(db_file); // we ignore any potential error
         let conn = Connection::open(&db_file)
             .map_err(|e| format!("failed to open SQLITE connection: {}", e))?;
@@ -112,7 +111,12 @@ impl<'a> DB<'a> {
             NO_PARAMS,
         )
         .map_err(|e| format!("failed to create table: {}", e))?;
-        Ok(DB { conn, db_file, buffer: HashMap::with_capacity(MAX_BUFFER_CAPACITY) })
+        Ok(DB {
+            conn,
+            db_file,
+            buffer: HashMap::with_capacity(db_buffer_size),
+            db_buffer_size,
+        })
     }
 
     fn get_from_id(&self, id: &OsmId) -> Option<Cow<OsmObj>> {
@@ -166,9 +170,11 @@ impl<'a> DB<'a> {
         if self.buffer.is_empty() {
             return;
         }
-        let mut tx = err_logger!(self.conn.transaction(),
+        let mut tx = err_logger!(
+            self.conn.transaction(),
             "DB::flush_buffer: transaction creation failed",
-            ());
+            ()
+        );
         tx.set_drop_behavior(DropBehavior::Ignore);
 
         {
@@ -182,7 +188,7 @@ impl<'a> DB<'a> {
                     Ok(s) => s,
                     Err(e) => {
                         error!("DB::flush_buffer: failed to convert to json: {}", e);
-                        continue
+                        continue;
                     }
                 };
                 let kind = get_kind!(obj);
@@ -191,13 +197,17 @@ impl<'a> DB<'a> {
                 }
             }
         }
-        err_logger!(tx.commit(), "DB::flush_buffer: transaction commit failed", ());
+        err_logger!(
+            tx.commit(),
+            "DB::flush_buffer: transaction commit failed",
+            ()
+        );
     }
 }
 
 impl<'a> StoreObjs for DB<'a> {
     fn insert(&mut self, id: OsmId, obj: OsmObj) {
-        if self.buffer.len() >= MAX_BUFFER_CAPACITY {
+        if self.buffer.len() >= self.db_buffer_size {
             self.flush_buffer();
         }
         /*let kind = get_kind!(obj);
@@ -267,10 +277,10 @@ enum ObjWrapper<'a> {
 }
 
 impl<'a> ObjWrapper<'a> {
-    fn new(db_file: &'a Option<PathBuf>) -> Result<ObjWrapper<'a>, Error> {
+    fn new(db_file: &'a Option<PathBuf>, db_buffer_size: usize) -> Result<ObjWrapper<'a>, Error> {
         Ok(if let Some(ref db_file) = db_file {
             info!("Running with DB storage");
-            ObjWrapper::DB(DB::new(db_file).map_err(|e| failure::err_msg(e))?)
+            ObjWrapper::DB(DB::new(db_file, db_buffer_size).map_err(|e| failure::err_msg(e))?)
         } else {
             info!("Running with BTreeMap (RAM) storage");
             ObjWrapper::Map(BTreeMap::new())
@@ -321,6 +331,7 @@ pub fn streets(
     pbf: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
     db_file: &Option<PathBuf>,
+    db_buffer_size: usize,
 ) -> Result<StreetsVec, Error> {
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
@@ -336,7 +347,7 @@ pub fn streets(
         }
     }
     info!("reading pbf...");
-    let mut objs_map = ObjWrapper::new(db_file)?;
+    let mut objs_map = ObjWrapper::new(db_file, db_buffer_size)?;
     pbf.get_objs_and_deps_store(is_valid_obj, &mut objs_map)
         .context("Error occurred when reading pbf")?;
     info!("reading pbf done.");

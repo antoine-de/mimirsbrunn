@@ -93,6 +93,9 @@ struct Args {
     /// DB file.
     #[structopt(long = "db-file", parse(from_os_str))]
     db_file: Option<PathBuf>,
+    /// DB buffer size.
+    #[structopt(long = "db-buffer-size", default_value = "50000")]
+    db_buffer_size: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -113,7 +116,12 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
     {
         info!("Extracting streets from osm");
-        let mut streets = streets(&mut osm_reader, &admins_geofinder, &args.db_file)?;
+        let mut streets = streets(
+            &mut osm_reader,
+            &admins_geofinder,
+            &args.db_file,
+            args.db_buffer_size,
+        )?;
 
         info!("computing street weight");
         compute_street_weight(&mut streets);
