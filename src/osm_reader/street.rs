@@ -210,23 +210,7 @@ impl<'a> StoreObjs for DB<'a> {
         if self.buffer.len() >= self.db_buffer_size {
             self.flush_buffer();
         }
-        /*let kind = get_kind!(obj);
-        let ser_obj = err_logger!(
-            bincode::serialize(&obj),
-            "DB::insert: failed to convert to json",
-            ()
-        );
-        err_logger!(
-            self.conn.execute(
-                "INSERT OR IGNORE INTO ids(id, obj, kind) VALUES (?1, ?2, ?3)",
-                &[&id.inner_id() as &dyn ToSql, &ser_obj, kind]
-            ),
-            "DB::insert: insert failed",
-            ()
-        );*/
-        if !self.contains_key(&id) {
-            self.buffer.insert(id, obj);
-        }
+        self.buffer.insert(id, obj);
     }
 
     fn contains_key(&self, id: &OsmId) -> bool {
