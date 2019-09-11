@@ -37,7 +37,7 @@ use rusqlite::{Connection, ToSql, NO_PARAMS};
 use bincode;
 use slog_scope::{error, info};
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -88,9 +88,12 @@ impl Getter for BTreeMap<OsmId, OsmObj> {
     }
 }
 
+const MAX_BUFFER_CAPACITY: usize = 10_000;
+
 struct DB<'a> {
     conn: Connection,
     db_file: &'a PathBuf,
+    buffer: HashMap<OsmId, OsmObj>,
 }
 
 impl<'a> DB<'a> {
@@ -109,10 +112,13 @@ impl<'a> DB<'a> {
             NO_PARAMS,
         )
         .map_err(|e| format!("failed to create table: {}", e))?;
-        Ok(DB { conn, db_file })
+        Ok(DB { conn, db_file, buffer: HashMap::with_capacity(MAX_BUFFER_CAPACITY) })
     }
 
-    fn get_from_id(&self, id: &OsmId) -> Option<OsmObj> {
+    fn get_from_id(&self, id: &OsmId) -> Option<Cow<OsmObj>> {
+        if let Some(obj) = self.buffer.get(id) {
+            return Some(Cow::Borrowed(obj));
+        }
         let mut stmt = err_logger!(
             self.conn
                 .prepare("SELECT obj FROM ids WHERE id=?1 AND kind=?2"),
@@ -129,12 +135,15 @@ impl<'a> DB<'a> {
                 "DB::for_each: serde conversion failed",
                 None
             );
-            return Some(obj);
+            return Some(Cow::Owned(obj));
         }
         None
     }
 
     fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
+        for (_, obj) in &self.buffer {
+            f(Cow::Borrowed(obj));
+        }
         let mut stmt = err_logger!(
             self.conn.prepare("SELECT obj FROM ids"),
             "DB::for_each: prepare failed",
@@ -152,11 +161,46 @@ impl<'a> DB<'a> {
             f(Cow::Owned(obj));
         }
     }
+
+    fn flush_buffer(&mut self) {
+        if self.buffer.is_empty() {
+            return;
+        }
+        let mut req = "INSERT OR IGNORE INTO ids(id, obj, kind) VALUES ".to_owned();
+        let mut pos = 1;
+        let elems = self.buffer.drain()
+            .filter_map(|(id, obj)| {
+                let kind = get_kind!(obj);
+                let ser_obj = err_logger!(
+                    bincode::serialize(&obj),
+                    "DB::insert: failed to convert to json",
+                    None
+                );
+                if pos < 3 {
+                    req.push_str(&format!("(?{},?{},?{})", pos, pos + 1, pos + 2));
+                } else {
+                    req.push_str(&format!(",(?{},?{},?{})", pos, pos + 1, pos + 2));
+                }
+                pos += 3;
+                Some((id.inner_id(), ser_obj, kind as &dyn ToSql))
+            })
+            .collect::<Vec<_>>();
+        let mut req_elems = Vec::with_capacity(elems.len() * 3);
+        for i in 0..elems.len() {
+            req_elems.push(&elems[i].0 as &dyn ToSql);
+            req_elems.push(&elems[i].1 as &dyn ToSql);
+            req_elems.push(&elems[i].2);
+        }
+        err_logger!(self.conn.execute(&req, &req_elems), "DB::flush_buffer: insert failed", ());
+    }
 }
 
 impl<'a> StoreObjs for DB<'a> {
     fn insert(&mut self, id: OsmId, obj: OsmObj) {
-        let kind = get_kind!(obj);
+        if self.buffer.len() >= MAX_BUFFER_CAPACITY {
+            self.flush_buffer();
+        }
+        /*let kind = get_kind!(obj);
         let ser_obj = err_logger!(
             bincode::serialize(&obj),
             "DB::insert: failed to convert to json",
@@ -169,10 +213,16 @@ impl<'a> StoreObjs for DB<'a> {
             ),
             "DB::insert: insert failed",
             ()
-        );
+        );*/
+        if !self.contains_key(&id) {
+            self.buffer.insert(id, obj);
+        }
     }
 
     fn contains_key(&self, id: &OsmId) -> bool {
+        if self.buffer.contains_key(id) {
+            return true;
+        }
         let mut stmt = err_logger!(
             self.conn
                 .prepare("SELECT id FROM ids WHERE id=?1 AND kind=?2"),
@@ -190,7 +240,7 @@ impl<'a> StoreObjs for DB<'a> {
 
 impl<'a> Getter for DB<'a> {
     fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>> {
-        self.get_from_id(key).map(|x| Cow::Owned(x))
+        self.get_from_id(key)
     }
 }
 
