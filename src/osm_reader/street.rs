@@ -78,6 +78,14 @@ macro_rules! get_kind {
     };
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(dead_code)]
+enum Kind {
+    Node = 0,
+    Way = 1,
+    Relation = 2,
+}
+
 pub trait Getter {
     fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>>;
 }
@@ -144,8 +152,10 @@ impl<'a> DB<'a> {
         None
     }
 
+    #[allow(dead_code)]
     fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
-        for (_, obj) in &self.buffer {
+        let mut values = self.buffer.values();
+        while let Some(obj) = values.next() {
             f(Cow::Borrowed(obj));
         }
         let mut stmt = err_logger!(
@@ -154,6 +164,33 @@ impl<'a> DB<'a> {
             ()
         );
         let mut rows = err_logger!(stmt.query(NO_PARAMS), "DB::for_each: query_map failed", ());
+        while let Some(row) = err_logger!(rows.next(), "DB::for_each: next failed", ()) {
+            let obj: Vec<u8> = err_logger!(row.get(0), "DB::for_each: failed to get obj field", ());
+
+            let obj: OsmObj = err_logger!(
+                bincode::deserialize(&obj),
+                "DB::for_each: serde conversion failed",
+                ()
+            );
+            f(Cow::Owned(obj));
+        }
+    }
+
+    fn for_each_filter<F: FnMut(Cow<OsmObj>)>(&self, filter: Kind, mut f: F) {
+        self.buffer
+            .values()
+            .filter(|e| *get_kind!(e) == filter as i32)
+            .for_each(|value| f(Cow::Borrowed(value)));
+        let mut stmt = err_logger!(
+            self.conn.prepare("SELECT obj FROM ids WHERE kind=?1"),
+            "DB::for_each: prepare failed",
+            ()
+        );
+        let mut rows = err_logger!(
+            stmt.query(&[&(filter as i32) as &dyn ToSql]),
+            "DB::for_each: query_map failed",
+            ()
+        );
         while let Some(row) = err_logger!(rows.next(), "DB::for_each: next failed", ()) {
             let obj: Vec<u8> = err_logger!(row.get(0), "DB::for_each: failed to get obj field", ());
 
@@ -271,6 +308,7 @@ impl<'a> ObjWrapper<'a> {
         })
     }
 
+    #[allow(dead_code)]
     fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
         match *self {
             ObjWrapper::Map(ref m) => {
@@ -280,6 +318,17 @@ impl<'a> ObjWrapper<'a> {
                 }
             }
             ObjWrapper::DB(ref db) => db.for_each(f),
+        }
+    }
+
+    fn for_each_filter<F: FnMut(Cow<OsmObj>)>(&self, filter: Kind, mut f: F) {
+        match *self {
+            ObjWrapper::Map(ref m) => {
+                m.values()
+                    .filter(|e| *get_kind!(e) == filter as i32)
+                    .for_each(|value| f(Cow::Borrowed(value)));
+            }
+            ObjWrapper::DB(ref db) => db.for_each_filter(filter, f),
         }
     }
 }
@@ -343,11 +392,7 @@ pub fn streets(
     // to group all these "way"s. In order not to have duplicates in autocompletion, we should tag
     // the osm ways in the relation not to index them twice.
 
-    objs_map.for_each(|obj| {
-        let relation = obj.relation();
-        if relation.is_none() {
-            return;
-        }
+    objs_map.for_each_filter(Kind::Relation, |obj| {
         let rel = obj.relation().expect("impossible unwrap failure occured");
         let way_name = rel.tags.get("name");
         rel.refs
@@ -394,7 +439,7 @@ pub fn streets(
     // we merge all the ways with a key = way_name + admin list of level(=city_level)
     // we use a map NameAdminMap <key, value> to manage the merging of ways
     let mut name_admin_map = NameAdminMap::default();
-    objs_map.for_each(|obj| {
+    objs_map.for_each_filter(Kind::Way, |obj| {
         let osmid = obj.id();
         if street_rel.contains(&osmid) {
             return;
