@@ -31,12 +31,13 @@
 use mimir;
 use osmpbfreader;
 
+use super::street::Getter;
 use geo::centroid::Centroid;
 use geo::MultiPolygon;
-use std::collections::BTreeMap;
+use osmpbfreader::StoreObjs;
 
-pub fn get_way_coord(
-    obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
+pub fn get_way_coord<T: StoreObjs + Getter>(
+    obj_map: &T,
     way: &osmpbfreader::objects::Way,
 ) -> mimir::Coord {
     /*
@@ -49,8 +50,10 @@ pub fn get_way_coord(
         .iter()
         .skip(nb_nodes / 2)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
-        .filter_map(|obj| obj.node())
-        .map(|node| mimir::Coord::new(node.lon(), node.lat()))
+        .filter_map(|obj| {
+            obj.node()
+                .map(|node| mimir::Coord::new(node.lon(), node.lat()))
+        })
         .next()
         .unwrap_or_else(mimir::Coord::default)
 }
