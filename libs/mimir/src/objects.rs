@@ -42,6 +42,7 @@ use std::iter::FromIterator;
 use std::rc::Rc;
 use std::sync::Arc;
 use transit_model::objects::Rgb;
+use transit_model_collection::Idx;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -349,15 +350,12 @@ pub struct Line {
 }
 
 pub trait FromTransitModel<T> {
-    fn from_transit_model(
-        idx: transit_model::collection::Idx<T>,
-        navitia: &transit_model::Model,
-    ) -> Self;
+    fn from_transit_model(idx: Idx<T>, navitia: &transit_model::Model) -> Self;
 }
 
 impl FromTransitModel<transit_model::objects::Line> for Line {
     fn from_transit_model(
-        l_idx: transit_model::collection::Idx<transit_model::objects::Line>,
+        l_idx: Idx<transit_model::objects::Line>,
         navitia: &transit_model::Model,
     ) -> Self {
         let line = &navitia.lines[l_idx];
