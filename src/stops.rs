@@ -42,7 +42,7 @@ use std::sync::Arc;
 
 const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
 
-pub fn set_weights<'a, It>(stops: It, nb_stop_points: &HashMap<String, u32>)
+pub fn initialize_weights<'a, It>(stops: It, nb_stop_points: &HashMap<String, u32>)
 where
     It: Iterator<Item = &'a mut mimir::Stop>,
 {
@@ -51,7 +51,7 @@ where
         stop.weight = if let Some(weight) = nb_stop_points.get(&stop.id) {
             *weight as f64 / max
         } else {
-            0.
+            0.0
         };
     }
 }
@@ -70,6 +70,20 @@ pub fn import_stops(
 
     for stop in &mut stops {
         stop.coverages.push(dataset.to_string());
+        let mut admin_weight = stop
+            .administrative_regions
+            .iter()
+            .filter(|adm| adm.is_city())
+            .map(|adm| adm.weight)
+            .next()
+            .unwrap_or(0.0);
+        // FIXME: 1024, automagic!
+        // It's a factor used to bring the stop weight and the admin weight in the same order of
+        // magnitude...
+        // We then use a log to compress the distance between low admin weight and high ones.
+        admin_weight = admin_weight * 1024.0 + 1.0;
+        admin_weight = admin_weight.log10();
+        stop.weight = (stop.weight + admin_weight) / 2.0;
     }
 
     let global_index =

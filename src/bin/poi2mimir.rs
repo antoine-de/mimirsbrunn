@@ -78,7 +78,7 @@ fn into_mimir_poi(
         .filter(|adm| adm.is_city())
         .map(|adm| adm.weight)
         .next()
-        .unwrap_or_else(|| 0.0);
+        .unwrap_or(0.0);
 
     let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
 

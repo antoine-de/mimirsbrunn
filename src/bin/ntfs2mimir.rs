@@ -186,7 +186,7 @@ fn run(args: Args) -> Result<(), transit_model::Error> {
         .iter()
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
         .collect();
-    set_weights(stops.iter_mut(), &nb_stop_points);
+    initialize_weights(stops.iter_mut(), &nb_stop_points);
 
     let index_settings = IndexSettings {
         nb_shards: args.nb_shards,
