@@ -34,8 +34,8 @@ use mimirsbrunn::stops::*;
 use slog_scope::{info, warn};
 use std::path::PathBuf;
 use structopt::StructOpt;
-use transit_model::collection::Idx;
 use transit_model::objects as navitia;
+use transit_model_collection::Idx;
 
 #[derive(Debug, StructOpt)]
 struct Args {

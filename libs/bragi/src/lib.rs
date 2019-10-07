@@ -64,7 +64,7 @@ pub struct Args {
     #[structopt(
         short = "t",
         long = "nb-threads",
-        raw(default_value = "&BRAGI_NB_THREADS"),
+        default_value = &BRAGI_NB_THREADS,
         env = "BRAGI_NB_THREADS"
     )]
     pub nb_threads: usize,

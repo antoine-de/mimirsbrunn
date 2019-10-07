@@ -199,7 +199,7 @@ struct Args {
     #[structopt(
         short = "t",
         long = "nb-threads",
-        raw(default_value = "&DEFAULT_NB_THREADS")
+        default_value = &DEFAULT_NB_THREADS
     )]
     nb_threads: usize,
 
