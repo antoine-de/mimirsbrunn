@@ -157,11 +157,11 @@ fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
 
     Query::build_function_score()
         .with_functions(vec![
-            weighted(Stop::doc_type(), 10.0),
-            weighted(Addr::doc_type(), 1.0),
-            weighted(Admin::doc_type(), 1.0),
-            weighted(Poi::doc_type(), 1.0),
-            weighted(Street::doc_type(), 1.0),
+            weighted(Stop::doc_type(), 1.0),
+            weighted(Addr::doc_type(), 0.5),
+            weighted(Admin::doc_type(), 0.5),
+            weighted(Poi::doc_type(), 0.5),
+            weighted(Street::doc_type(), 0.5),
         ])
         .with_boost_mode(BoostMode::Replace)
         .build()
