@@ -5,7 +5,7 @@ use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Addr;
 use par_map::ParMap;
 use serde::de::DeserializeOwned;
-use slog_scope::{debug, error, info};
+use slog_scope::{debug, error, info, warn};
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
 
@@ -19,7 +19,7 @@ pub fn import_addresses<T, F>(
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Addr + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + 'static,
 {
     let addr_index = rubber
@@ -39,17 +39,25 @@ where
                 .into_iter()
                 .flat_map(|rdr| {
                     rdr.into_deserialize().filter_map(|r| {
-                        r.map_err(|e| info!("impossible to read line, error: {}", e))
+                        r.map_err(|e| warn!("impossible to read line, error: {}", e))
                             .ok()
                     })
                 })
         })
         .with_nb_threads(nb_threads)
         .par_map(into_addr)
-        .filter(|a| {
-            !a.street.name.is_empty() || {
-                debug!("Address {} has no street name and has been ignored.", a.id);
-                false
+        .filter_map(|ra| match ra {
+            Ok(a) => {
+                if a.street.name.is_empty() {
+                    warn!("Address {} has no street name and has been ignored.", a.id);
+                    None
+                } else {
+                    Some(a)
+                }
+            }
+            Err(err) => {
+                warn!("Address Error ignored: {}", err);
+                None
             }
         });
     let nb = rubber

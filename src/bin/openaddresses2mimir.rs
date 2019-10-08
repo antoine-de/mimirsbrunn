@@ -63,7 +63,7 @@ impl OpenAddresse {
         self,
         admins_geofinder: &AdminGeoFinder,
         use_old_index_format: bool,
-    ) -> mimir::Addr {
+    ) -> Result<mimir::Addr, mimirsbrunn::Error> {
         let street_id = format!("street:{}", self.id); // TODO check if thats ok
         let admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
@@ -101,7 +101,7 @@ impl OpenAddresse {
             context: None,
         };
 
-        mimir::Addr {
+        Ok(mimir::Addr {
             id: format!(
                 "addr:{};{}{}",
                 self.lon,
@@ -134,7 +134,7 @@ impl OpenAddresse {
             distance: None,
             country_codes,
             context: None,
-        }
+        })
     }
 }
 
