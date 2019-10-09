@@ -37,7 +37,7 @@ use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
-use rs_es::query::functions::{DecayOptions, Function, Modifier};
+use rs_es::query::functions::{DecayOptions, FilteredFunction, Function, Modifier};
 use rs_es::query::Query;
 use rs_es::units as rs_u;
 use serde;
@@ -120,15 +120,23 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
 fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
     Query::build_function_score()
         .with_functions(vec![
-            DecayOptions::new(
-                rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                rs_u::Distance::new(130f64, rs_u::DistanceUnit::Kilometer),
-            )
-            .with_offset(rs_u::Distance::new(20f64, rs_u::DistanceUnit::Kilometer))
-            .with_decay(0.4f64)
-            .build("coord")
-            .build_exp(),
-            Function::build_weight(weight).build(),
+            FilteredFunction::build_filtered_function(
+                None,
+                DecayOptions::new(
+                    rs_u::Location::LatLon(coord.lat(), coord.lon()),
+                    rs_u::Distance::new(130f64, rs_u::DistanceUnit::Kilometer),
+                )
+                .with_offset(rs_u::Distance::new(20f64, rs_u::DistanceUnit::Kilometer))
+                .with_decay(0.4f64)
+                .build("coord")
+                .build_exp(),
+                None,
+            ),
+            FilteredFunction::build_filtered_function(
+                None,
+                Function::build_weight(weight).build(),
+                None,
+            ),
         ])
         .with_boost_mode(BoostMode::Replace)
         .build()
@@ -136,13 +144,25 @@ fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
 
 fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
     let factor = factor.into();
-    Query::build_function_score()
-        .with_function(
+    let weighted = |doc_type, weight| {
+        FilteredFunction::build_filtered_function(
+            Query::build_term("_type", doc_type).build(),
             Function::build_field_value_factor("weight")
-                .with_factor(factor.unwrap_or_else(|| 0.15))
-                .with_missing(0.)
+                .with_factor(factor.unwrap_or(0.75))
+                .with_missing(0.0)
                 .build(),
+            Function::build_weight(weight),
         )
+    };
+
+    Query::build_function_score()
+        .with_functions(vec![
+            weighted(Stop::doc_type(), 1.0),
+            weighted(Addr::doc_type(), 0.5),
+            weighted(Admin::doc_type(), 0.5),
+            weighted(Poi::doc_type(), 0.5),
+            weighted(Street::doc_type(), 0.5),
+        ])
         .with_boost_mode(BoostMode::Replace)
         .build()
 }
@@ -246,12 +266,20 @@ fn build_query<'a>(
             let admin_importance_query = Query::build_function_score()
                 .with_query(Query::build_term("_type", Admin::doc_type()).build())
                 .with_functions(vec![
-                    Function::build_field_value_factor("weight")
-                        .with_factor(1e6)
-                        .with_modifier(Modifier::Log1p)
-                        .with_missing(0.)
-                        .build(),
-                    Function::build_weight(admin_weight).build(),
+                    FilteredFunction::build_filtered_function(
+                        None,
+                        Function::build_field_value_factor("weight")
+                            .with_factor(1e6)
+                            .with_modifier(Modifier::Log1p)
+                            .with_missing(0.)
+                            .build(),
+                        None,
+                    ),
+                    FilteredFunction::build_filtered_function(
+                        None,
+                        Function::build_weight(admin_weight).build(),
+                        None,
+                    ),
                 ])
                 .with_boost_mode(BoostMode::Replace)
                 .build();

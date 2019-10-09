@@ -158,7 +158,7 @@ fn run(args: Args) -> Result<(), failure::Error> {
             stop.try_into_with_warn()
         })
         .collect();
-    set_weights(stops.iter_mut(), &nb_stop_points);
+    initialize_weights(stops.iter_mut(), &nb_stop_points);
 
     let index_settings = IndexSettings {
         nb_shards: args.nb_shards,
