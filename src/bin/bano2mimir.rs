@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use failure::ensure;
 use lazy_static::lazy_static;
 use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
@@ -62,21 +63,21 @@ pub struct Bano {
 }
 
 impl Bano {
-    pub fn insee(&self) -> &str {
-        assert!(self.id.len() >= 5);
-        self.id[..5].trim_start_matches('0')
+    pub fn insee(&self) -> Result<&str, mimirsbrunn::Error> {
+        ensure!(self.id.len() >= 5, "id must be longer than 5 characters");
+        Ok(self.id[..5].trim_start_matches('0'))
     }
-    pub fn fantoir(&self) -> &str {
-        assert!(self.id.len() >= 10);
-        &self.id[..10]
+    pub fn fantoir(&self) -> Result<&str, mimirsbrunn::Error> {
+        ensure!(self.id.len() >= 10, "id must be longer than 10 characters");
+        Ok(&self.id[..10])
     }
     pub fn into_addr(
         self,
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
         use_old_index_format: bool,
-    ) -> mimir::Addr {
-        let street_id = format!("street:{}", self.fantoir().to_string());
+    ) -> Result<mimir::Addr, mimirsbrunn::Error> {
+        let street_id = format!("street:{}", self.fantoir()?.to_string());
         let mut admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
             y: self.lat,
@@ -85,7 +86,7 @@ impl Bano {
         // If we have an admin corresponding to the INSEE, we know
         // that's the good one, thus we remove all the admins of its
         // level found by the geofinder, and add our admin.
-        if let Some(admin) = admins_from_insee.get(self.insee()) {
+        if let Some(admin) = admins_from_insee.get(self.insee()?) {
             admins.retain(|a| a.level != admin.level);
             admins.push(admin.clone());
         }
@@ -132,7 +133,7 @@ impl Bano {
             country_codes: country_codes.clone(),
             context: None,
         };
-        mimir::Addr {
+        Ok(mimir::Addr {
             id: format!(
                 "addr:{};{}{}",
                 self.lon,
@@ -165,7 +166,7 @@ impl Bano {
             distance: None,
             country_codes,
             context: None,
-        }
+        })
     }
 }
 
