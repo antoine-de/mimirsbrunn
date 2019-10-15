@@ -5,7 +5,7 @@ use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Addr;
 use par_map::ParMap;
 use serde::de::DeserializeOwned;
-use slog_scope::{debug, error, info, warn};
+use slog_scope::{error, info, warn};
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
 
