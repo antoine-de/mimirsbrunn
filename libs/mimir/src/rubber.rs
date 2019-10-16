@@ -41,7 +41,6 @@ use rs_es::query::Query;
 use rs_es::units as rs_u;
 use rs_es::units::Duration;
 use rs_es::EsResponse;
-use slog::{slog_debug, slog_info, slog_warn};
 use slog_scope::{debug, info, warn};
 use std::collections::BTreeMap;
 use std::marker::PhantomData;

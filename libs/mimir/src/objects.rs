@@ -33,7 +33,6 @@ use navitia_poi_model;
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
-use slog::slog_warn;
 use slog_scope::warn;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
