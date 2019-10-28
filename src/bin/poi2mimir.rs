@@ -65,9 +65,10 @@ fn into_mimir_poi(
         .ok()
         .and_then(|addrs| addrs.into_iter().next()); // Take the first place
 
-    let addr = place.as_ref().and_then(|addr| addr.address());
+    let addr = place.as_ref().and_then(|place| place.address());
 
-    let admins = admins_geofinder.get(&poi.coord);
+    // We the the admins from the address, or, if we don't have any, from the geofinder.
+    let admins = place.map_or_else(|| admins_geofinder.get(&poi.coord), |addr| addr.admins());
 
     if admins.is_empty() {
         return Err(format_err!("Could not find admins for POI {}", &poi.id));

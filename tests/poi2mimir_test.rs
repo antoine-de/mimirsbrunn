@@ -80,6 +80,31 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     // Now we'll make sure that the 'munin_poi_mti_{timestamp}' index is aliased by only one alias,
     // Namely 'munin_poi_mti'. So we'll get all the aliases.
+    // For reference, aliases should look like
+    //
+    // {                                   |
+    //   "munin_admin_fr_[timestamp]": {   |
+    //     "aliases": {                    |
+    //       "munin": {},                  |
+    //       "munin_admin": {},            | ==> Added by cosmogony2mimir
+    //       "munin_admin_fr": {},         |
+    //       "munin_geo_data": {}          |
+    //     }                               |
+    //   },                              ==
+    //   "munin_addr_fr_[timestamp]": {    |
+    //     "aliases": {                    |
+    //       "munin": {},                  |
+    //       "munin_addr": {},             | ==> Added by bano2mimir
+    //       "munin_addr_fr": {},          |
+    //       "munin_geo_data": {}          |
+    //     }                               |
+    //   },                              ==
+    //   "munin_poi_mti_[timestamp]": {    |
+    //     "aliases": {                    |
+    //       "munin_poi_mti": {}           | ==> Added by poi2mimir
+    //     }                               |
+    //   }                                 |
+    // }
     let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
@@ -107,9 +132,9 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     assert_eq!(poi_index_alias, "munin_poi_mti");
 
-    // Now we're sure we're hitting the munin_poi_mti index, count how many documents
-    // we have in there.
-    assert_eq!(es_wrapper.count("munin_poi_mti", "_type:poi"), 2);
+    // Now that we're sure we're hitting the munin_poi_mti index, count how many documents we have
+    // in there. This should be the same number of POI as in the test.poi file we inserted.
+    assert_eq!(es_wrapper.count("munin_poi_mti", "_type:poi"), 4);
 
     // Ok, now check that we can get a POI on that index
     let agence_du_four = es_wrapper
@@ -140,15 +165,6 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         .search_and_filter("label:Agence TCL Du Four", |place| {
             place.label().starts_with("Agence TCL Du Four à Chaux")
         })
-        .next()
-        .is_none());
-
-    // We test the opposite of the previous case: a POI that is far from any address
-    // Currently, this POI should not even be in the index...
-    assert!(es_wrapper
-        .search_and_filter_on_index("munin_poi_mti", "label:Station Bellecour", |place| place
-            .label()
-            .contains("Station Bellecour"))
         .next()
         .is_none());
 }
