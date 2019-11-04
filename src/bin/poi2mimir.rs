@@ -28,13 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use slog_scope::info;
+use slog_scope::{error, info};
 
 use failure::format_err;
 use lazy_static::lazy_static;
 use mimir::objects::{Coord, I18nProperties, Poi, PoiType, Property};
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber, TypedIndex};
-use mimirsbrunn::{labels, utils};
+use mimirsbrunn::{admin_geofinder::AdminGeoFinder, labels, utils};
 use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as NavitiaPoiType};
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -51,6 +51,7 @@ fn into_mimir_poi(
     poi: NavitiaPoi,
     poi_types: &HashMap<String, NavitiaPoiType>,
     rubber: &mut Rubber,
+    admins_geofinder: &AdminGeoFinder,
 ) -> Result<Poi, mimirsbrunn::Error> {
     let poi_type = poi_types
         .get(&poi.poi_type_id)
@@ -64,9 +65,10 @@ fn into_mimir_poi(
         .ok()
         .and_then(|addrs| addrs.into_iter().next()); // Take the first place
 
-    let addr = place.as_ref().and_then(|addr| addr.address());
+    let addr = place.as_ref().and_then(|place| place.address());
 
-    let admins = place.map_or_else(|| Vec::new(), |addr| addr.admins());
+    // We the the admins from the address, or, if we don't have any, from the geofinder.
+    let admins = place.map_or_else(|| admins_geofinder.get(&poi.coord), |addr| addr.admins());
 
     if admins.is_empty() {
         return Err(format_err!("Could not find admins for POI {}", &poi.id));
@@ -114,6 +116,7 @@ fn into_mimir_poi(
 fn import_pois(
     rubber: &mut Rubber,
     index: &TypedIndex<Poi>,
+    admins_geofinder: AdminGeoFinder,
     file: &PathBuf,
 ) -> Result<(), mimirsbrunn::Error>
 where
@@ -128,7 +131,7 @@ where
         .pois
         .into_iter()
         .filter_map(|(id, poi)| {
-            into_mimir_poi(poi, &poi_types, rubber)
+            into_mimir_poi(poi, &poi_types, rubber, &admins_geofinder)
                 .map_err(|err| info!("Could not extract information for POI '{}': {}", id, err))
                 .ok()
         })
@@ -165,7 +168,13 @@ where
 
     let index = rubber.make_index(dataset, &settings)?;
 
-    import_pois(&mut rubber, &index, file)?;
+    let admins = rubber.get_all_admins().map_err(|err| {
+        error!("Administratives regions not found in es db");
+        err
+    })?;
+    let admins_geofinder = admins.into_iter().collect();
+
+    import_pois(&mut rubber, &index, admins_geofinder, file)?;
 
     rubber
         .publish_index(dataset, index, visibility)
