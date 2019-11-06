@@ -171,21 +171,19 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
 
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     let max_weight = utils::ADMIN_MAX_WEIGHT;
-    let zones = read_zones(&args.input)?
-        .map(|mut zone| {
-            let insee = match zone.zone_type {
-                Some(City) => admin::read_insee(&zone.tags).map(|s| s.to_owned()),
-                _ => None,
-            };
-            cosmogony_id_to_osm_id.insert(zone.id.clone(), (zone.osm_id.clone(), insee));
-            zone.boundary = None; // to prevent too much memory consumption
-            zone
-        })
-        .collect::<Vec<_>>();
+    for z in read_zones(&args.input)? {
+        let insee = match z.zone_type {
+            Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
+            _ => None,
+        };
+        cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
+    }
+    let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
 
-    let admins_without_boundaries = zones
-        .into_iter()
-        .map(|z| {
+    info!("building admins hierarchy");
+    let admins_without_boundaries = read_zones(&args.input)?
+        .map(|mut z| {
+            z.boundary = None;
             let admin = z.into_admin(
                 &cosmogony_id_to_osm_id,
                 &args.langs,
