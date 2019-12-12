@@ -78,6 +78,14 @@ fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec
     lines
 }
 
+// This function
+fn normalize_id(id: &str) -> String {
+    format!(
+        "stop_area:{}",
+        id.replacen("StopArea:", "", 1).replace(" ", "")
+    )
+}
+
 fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
@@ -127,7 +135,7 @@ fn to_mimir(
     let lines = get_lines(idx, navitia);
 
     mimir::Stop {
-        id: format!("stop_area:{}", stop_area.id),
+        id: normalize_id(&stop_area.id),
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
         coord: coord.clone(),
