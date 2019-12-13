@@ -182,7 +182,7 @@ fn run(args: Args) -> Result<(), transit_model::Error> {
         .stop_areas
         .iter()
         .map(|(idx, sa)| {
-            let id = format!("stop_area:{}", sa.id);
+            let id = normalize_id(&sa.id);
             let nb_stop_points = navitia
                 .get_corresponding_from_idx::<_, navitia::StopPoint>(idx)
                 .len();
@@ -264,5 +264,14 @@ fn test_bad_file() {
             "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
             "No such file or directory (os error 2)",
         ]
+    );
+}
+
+#[test]
+fn test_normalize_id() {
+    assert_eq!(normalize_id("an id with space"), "stop_area:anidwithspace");
+    assert_eq!(
+        normalize_id("SIN:SA:ABCDE:StopArea:1234"),
+        "stop_area:SIN:SA:ABCDE:1234"
     );
 }
