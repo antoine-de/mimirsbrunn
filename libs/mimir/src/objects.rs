@@ -359,7 +359,7 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
     ) -> Self {
         let line = &navitia.lines[l_idx];
         Self {
-            id: format!("line:{}", line.id),
+            id: normalize_id("line", &line.id),
             name: line.name.clone(),
             code: line.code.clone(),
             color: line.color.clone(),
@@ -369,11 +369,11 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
                 .commercial_modes
                 .get(&line.commercial_mode_id)
                 .map(|c| CommercialMode {
-                    id: format!("commercial_mode:{}", c.id),
+                    id: normalize_id("commercial_mode", &c.id),
                     name: c.name.clone(),
                 }),
             network: navitia.networks.get(&line.network_id).map(|n| Network {
-                id: format!("network:{}", n.id),
+                id: normalize_id("network", &n.id),
                 name: n.name.clone(),
             }),
             physical_modes: navitia
@@ -382,7 +382,7 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
                 .map(|p_idx| {
                     let physical_mode = &navitia.physical_modes[p_idx];
                     PhysicalMode {
-                        id: format!("physical_mode:{}", physical_mode.id),
+                        id: normalize_id("physical_mode", &physical_mode.id),
                         name: physical_mode.name.clone(),
                     }
                 })
@@ -976,4 +976,28 @@ pub struct Explanation {
     pub description: String,
     /// leafs
     pub details: Vec<Explanation>,
+}
+
+// This function reformat the id by removing spaces, and prepending a prefix
+pub fn normalize_id(prefix: &str, id: &str) -> String {
+    match prefix {
+        "stop_area" => format!(
+            "{}:{}",
+            prefix,
+            &id.replacen("StopArea:", "", 1).replace(" ", "")
+        ),
+        _ => format!("{}:{}", prefix, &id.replace(" ", "")),
+    }
+}
+
+#[test]
+fn test_normalize_id() {
+    assert_eq!(
+        normalize_id("stop_area", "an id with space"),
+        "stop_area:anidwithspace"
+    );
+    assert_eq!(
+        normalize_id("stop_area", "SIN:SA:ABCDE:StopArea:1234"),
+        "stop_area:SIN:SA:ABCDE:1234"
+    );
 }

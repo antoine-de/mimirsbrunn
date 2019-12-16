@@ -87,7 +87,10 @@ fn to_mimir(
         .get_corresponding_from_idx(idx)
         .into_iter()
         .map(|cm_idx| mimir::CommercialMode {
-            id: format!("commercial_mode:{}", navitia.commercial_modes[cm_idx].id),
+            id: mimir::objects::normalize_id(
+                "commercial_mode",
+                &navitia.commercial_modes[cm_idx].id,
+            ),
             name: navitia.commercial_modes[cm_idx].name.clone(),
         })
         .collect();
@@ -95,7 +98,7 @@ fn to_mimir(
         .get_corresponding_from_idx(idx)
         .into_iter()
         .map(|pm_idx| mimir::PhysicalMode {
-            id: format!("physical_mode:{}", navitia.physical_modes[pm_idx].id),
+            id: mimir::objects::normalize_id("physical_mode", &navitia.physical_modes[pm_idx].id),
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
         .collect();
@@ -127,7 +130,7 @@ fn to_mimir(
     let lines = get_lines(idx, navitia);
 
     mimir::Stop {
-        id: format!("stop_area:{}", stop_area.id),
+        id: mimir::objects::normalize_id("stop_area", &stop_area.id),
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
         coord: coord.clone(),
@@ -174,7 +177,7 @@ fn run(args: Args) -> Result<(), transit_model::Error> {
         .stop_areas
         .iter()
         .map(|(idx, sa)| {
-            let id = format!("stop_area:{}", sa.id);
+            let id = mimir::objects::normalize_id("stop_area", &sa.id);
             let nb_stop_points = navitia
                 .get_corresponding_from_idx::<_, navitia::StopPoint>(idx)
                 .len();
