@@ -78,14 +78,6 @@ fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec
     lines
 }
 
-// This function
-fn normalize_id(id: &str) -> String {
-    format!(
-        "stop_area:{}",
-        id.replacen("StopArea:", "", 1).replace(" ", "")
-    )
-}
-
 fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
@@ -95,7 +87,10 @@ fn to_mimir(
         .get_corresponding_from_idx(idx)
         .into_iter()
         .map(|cm_idx| mimir::CommercialMode {
-            id: format!("commercial_mode:{}", navitia.commercial_modes[cm_idx].id),
+            id: mimir::objects::normalize_id(
+                "commercial_mode",
+                &navitia.commercial_modes[cm_idx].id,
+            ),
             name: navitia.commercial_modes[cm_idx].name.clone(),
         })
         .collect();
@@ -103,7 +98,7 @@ fn to_mimir(
         .get_corresponding_from_idx(idx)
         .into_iter()
         .map(|pm_idx| mimir::PhysicalMode {
-            id: format!("physical_mode:{}", navitia.physical_modes[pm_idx].id),
+            id: mimir::objects::normalize_id("physical_mode", &navitia.physical_modes[pm_idx].id),
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
         .collect();
@@ -135,7 +130,7 @@ fn to_mimir(
     let lines = get_lines(idx, navitia);
 
     mimir::Stop {
-        id: normalize_id(&stop_area.id),
+        id: mimir::objects::normalize_id("stop_area", &stop_area.id),
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
         coord: coord.clone(),
@@ -182,7 +177,7 @@ fn run(args: Args) -> Result<(), transit_model::Error> {
         .stop_areas
         .iter()
         .map(|(idx, sa)| {
-            let id = normalize_id(&sa.id);
+            let id = mimir::objects::normalize_id("stop_area", &sa.id);
             let nb_stop_points = navitia
                 .get_corresponding_from_idx::<_, navitia::StopPoint>(idx)
                 .len();
@@ -264,14 +259,5 @@ fn test_bad_file() {
             "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
             "No such file or directory (os error 2)",
         ]
-    );
-}
-
-#[test]
-fn test_normalize_id() {
-    assert_eq!(normalize_id("an id with space"), "stop_area:anidwithspace");
-    assert_eq!(
-        normalize_id("SIN:SA:ABCDE:StopArea:1234"),
-        "stop_area:SIN:SA:ABCDE:1234"
     );
 }
