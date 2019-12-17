@@ -366,11 +366,19 @@ pub fn streets(
     db_file: &Option<PathBuf>,
     db_buffer_size: usize,
 ) -> Result<StreetsVec, Error> {
+    // This is the list of highway that we don't want to index
+    // See [OSM Key Highway](https://wiki.openstreetmap.org/wiki/Key:highway) for background.
+    const INVALID_HIGHWAY: &'static [&'static str] =
+        &["bus_guideway", "escape", "bus_stop", "elevator", "platform"];
+
+    // For the object to be a valid street, it needs to be an osm highway of a valid type,
+    // or a relation of type associatedStreet.
     fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
-                way.tags.get("highway").map_or(false, |v| !v.is_empty())
-                    && way.tags.get("name").map_or(false, |v| !v.is_empty())
+                way.tags.get("highway").map_or(false, |v| {
+                    !v.is_empty() && !INVALID_HIGHWAY.iter().any(|&k| k == v)
+                }) && way.tags.get("name").map_or(false, |v| !v.is_empty())
             }
             osmpbfreader::OsmObj::Relation(ref rel) => rel
                 .tags
