@@ -45,7 +45,7 @@ lazy_static! {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub struct OpenAddresse {
+pub struct OpenAddress {
     pub id: String,
     pub street: String,
     pub postcode: String,
@@ -58,7 +58,7 @@ pub struct OpenAddresse {
     pub lon: f64,
 }
 
-impl OpenAddresse {
+impl OpenAddress {
     pub fn into_addr(
         self,
         admins_geofinder: &AdminGeoFinder,
@@ -167,7 +167,7 @@ where
         index_settings,
         dataset,
         files,
-        move |a: OpenAddresse| a.into_addr(&admins_geofinder, use_old_index_format),
+        move |a: OpenAddress| a.into_addr(&admins_geofinder, use_old_index_format),
     )
 }
 
