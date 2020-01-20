@@ -226,4 +226,11 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
         "{}",
         test_name
     );
+
+    // Test: Certain kind of highways should not be indexed.
+    // node id 451237947 is a 'bus_stop', and should not be found.
+    let res: Vec<_> = es_wrapper
+        .search_and_filter("label:Grand Châtelet", |_| true)
+        .collect();
+    assert!(res.len() == 0, "{}", test_name);
 }
