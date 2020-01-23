@@ -28,8 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use cosmogony::ZoneType;
+use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
 use navitia_poi_model;
+// use rstar::{RTreeObject, AABB};
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
@@ -211,6 +213,18 @@ impl<'a, T: MimirObject> MimirObject for &'a T {
 }
 
 impl<T: MimirObject> MimirObject for Rc<T> {
+    fn is_geo_data() -> bool {
+        T::is_geo_data()
+    }
+    fn doc_type() -> &'static str {
+        T::doc_type()
+    }
+    fn es_id(&self) -> Option<String> {
+        T::es_id(self)
+    }
+}
+
+impl<T: MimirObject> MimirObject for Arc<T> {
     fn is_geo_data() -> bool {
         T::is_geo_data()
     }
@@ -551,7 +565,7 @@ pub struct Admin {
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub boundary: Option<geo::MultiPolygon<f64>>,
+    pub boundary: Option<MultiPolygon<f64>>,
     #[serde(default)]
     pub administrative_regions: Vec<Arc<Admin>>,
 
@@ -561,7 +575,7 @@ pub struct Admin {
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo_types::Rect<f64>>,
+    pub bbox: Option<Rect<f64>>,
 
     #[serde(default)]
     pub zone_type: Option<ZoneType>,
@@ -596,7 +610,7 @@ impl Admin {
 }
 
 fn custom_multi_polygon_serialize<S>(
-    multi_polygon_option: &Option<geo::MultiPolygon<f64>>,
+    multi_polygon_option: &Option<MultiPolygon<f64>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -612,9 +626,7 @@ where
     }
 }
 
-fn custom_multi_polygon_deserialize<'de, D>(
-    d: D,
-) -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
+fn custom_multi_polygon_deserialize<'de, D>(d: D) -> Result<Option<MultiPolygon<f64>>, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
@@ -638,10 +650,7 @@ where
     })
 }
 
-pub fn serialize_rect<'a, S>(
-    bbox: &'a Option<geo_types::Rect<f64>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+pub fn serialize_rect<'a, S>(bbox: &'a Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -657,14 +666,14 @@ where
     }
 }
 
-fn deserialize_rect<'de, D>(d: D) -> Result<Option<geo_types::Rect<f64>>, D::Error>
+fn deserialize_rect<'de, D>(d: D) -> Result<Option<Rect<f64>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     Option::<Vec<f64>>::deserialize(d).map(|option| {
-        option.map(|b| geo_types::Rect {
-            min: geo_types::Coordinate { x: b[0], y: b[1] },
-            max: geo_types::Coordinate { x: b[2], y: b[3] },
+        option.map(|b| Rect {
+            min: Coordinate { x: b[0], y: b[1] },
+            max: Coordinate { x: b[2], y: b[3] },
         })
     })
 }

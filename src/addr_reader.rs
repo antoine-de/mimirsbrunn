@@ -62,7 +62,7 @@ where
         });
     let nb = rubber
         .bulk_index(&addr_index, iter)
-        .with_context(|_| format!("failed to bulk insert"))?;
+        .with_context(|err| format!("failed to bulk insert: {}", err))?;
     info!("importing addresses: {} addresses added.", nb);
 
     rubber

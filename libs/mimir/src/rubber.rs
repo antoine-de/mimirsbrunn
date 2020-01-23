@@ -185,13 +185,13 @@ pub fn read_places(
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
-pub fn make_place(
+pub fn make_place<'a>(
     doc_type: String,
     value: Option<Box<serde_json::Value>>,
     explanation: Option<serde_json::Value>,
 ) -> Option<Place> {
     let place = value.and_then(|v| {
-        fn convert<T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
+        fn convert<'a, T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
         where
             for<'de> T: serde::Deserialize<'de>,
         {

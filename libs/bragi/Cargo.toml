@@ -12,7 +12,7 @@ rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"]}
 serde = { version = "1", features = ["rc"]}
 serde_json = "1"
 geojson = { version = "0.16", features = ["geo-types"] }
-geo-types = "0.4"
+geo-types = "0.4.3"
 lazy_static = "1"
 prometheus = {version= "0.7", features = ["process"]}
 heck = "0.3"
