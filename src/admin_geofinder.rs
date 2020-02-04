@@ -28,8 +28,9 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use geo::algorithm::bounding_rect::BoundingRect;
-use geo::algorithm::euclidean_distance::EuclideanDistance;
+use geo::algorithm::{
+    bounding_rect::BoundingRect, contains::Contains, euclidean_distance::EuclideanDistance,
+};
 use geo_types::{MultiPolygon, Point};
 use mimir::Admin;
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
@@ -60,6 +61,12 @@ impl PointDistance for BoundedId {
     fn distance_2(&self, point: &Point<f64>) -> f64 {
         let d = self.boundary.euclidean_distance(point);
         d * d
+    }
+
+    // contains_point is provided, but we override the default implementation using
+    // the geo algorithms for performance, as suggested in rstar documentation.
+    fn contains_point(&self, point: &Point<f64>) -> bool {
+        self.boundary.contains(point)
     }
 }
 
@@ -106,9 +113,17 @@ impl AdminGeoFinder {
         admins
     }
 
-    /// Iterates on all the admins with a not None boundary.
-    pub fn admins(&self) -> impl Iterator<Item = Arc<Admin>> + '_ {
-        self.rtree.iter().map(|bounded_id| bounded_id.admin.clone())
+    /// Return an iterator over admins.
+    /// Since we can't modify admins once they are stored in the RTree,
+    /// and since this method requires Admins to have their boundary, we create
+    /// new admins by cloning the ones in the RTree, and adding their boundary.
+    /// Needless to say, this is probably an expensive method...
+    pub fn admins(&self) -> impl Iterator<Item = Admin> + '_ {
+        self.rtree.iter().map(|bounded_id| {
+            let mut admin = Admin::clone(&bounded_id.admin);
+            admin.boundary = Some(bounded_id.boundary.clone());
+            admin
+        })
     }
 }
 
