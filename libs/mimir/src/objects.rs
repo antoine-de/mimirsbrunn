@@ -634,13 +634,12 @@ where
 
     Option::<geojson::GeoJson>::deserialize(d).map(|option| {
         option.and_then(|geojson| match geojson {
-            geojson::GeoJson::Geometry(geojson_geom) => {
-                let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
-                match geo_geom {
-                    Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => Some(geo_multi_polygon),
-                    Ok(_) => None,
-                    Err(e) => {
-                        warn!("Error deserializing geometry: {}", e);
+            geojson::GeoJson::Geometry(geojson_geometry) => {
+                let res: Result<MultiPolygon<f64>, _> = geojson_geometry.value.try_into();
+                match res {
+                    Ok(multi_polygon) => Some(multi_polygon),
+                    Err(err) => {
+                        warn!("Cannot deserialize into MultiPolygon: {}", err);
                         None
                     }
                 }
@@ -648,6 +647,24 @@ where
             _ => None,
         })
     })
+
+    // Option::<geojson::GeoJson>::deserialize(d).map(|option| {
+    //     option.and_then(|geojson| match geojson {
+    //         geojson::GeoJson::Geometry(geojson_geom) => {
+    //             //let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
+    //             let t: MultiPolygon<f64> = geojson_geom.value.try_into();
+    //             match t {
+    //                 Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => Some(geo_multi_polygon),
+    //                 Ok(_) => None,
+    //                 Err(e) => {
+    //                     warn!("Error deserializing geometry: {}", e);
+    //                     None
+    //                 }
+    //             }
+    //         }
+    //         _ => None,
+    //     })
+    // })
 }
 
 pub fn serialize_rect<'a, S>(bbox: &'a Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
@@ -839,11 +856,11 @@ pub struct AliasParameter {
 // we want a custom serialization for coords, and so far the cleanest way
 // to do this that has been found is to wrap the coord in another struct
 #[derive(Debug, Clone, Copy)]
-pub struct Coord(pub geo::Coordinate<f64>);
+pub struct Coord(pub geo_types::Coordinate<f64>);
 
 impl Coord {
     pub fn new(lon: f64, lat: f64) -> Coord {
-        Coord(geo::Coordinate { x: lon, y: lat })
+        Coord(geo_types::Coordinate { x: lon, y: lat })
     }
     pub fn lon(&self) -> f64 {
         self.x
@@ -865,12 +882,12 @@ impl Coord {
 
 impl Default for Coord {
     fn default() -> Coord {
-        Coord(geo::Coordinate { x: 0., y: 0. })
+        Coord(geo_types::Coordinate { x: 0., y: 0. })
     }
 }
 
 impl ::std::ops::Deref for Coord {
-    type Target = geo::Coordinate<f64>;
+    type Target = geo_types::Coordinate<f64>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
