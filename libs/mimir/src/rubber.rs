@@ -164,7 +164,7 @@ pub fn read_places(
         "{} documents found in {} ms",
         result.hits.total, result.took
     );
-    let point: Option<geo::Point<f64>> = coord.map(|c| c.0.into());
+    let point: Option<geo_types::Point<f64>> = coord.map(|c| c.0.into());
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(result
@@ -174,7 +174,7 @@ pub fn read_places(
         .filter_map(|hit| make_place(hit.doc_type, hit.source, hit.explanation))
         .map(|mut place| {
             if let Some(ref p) = point {
-                use geo::prelude::HaversineDistance;
+                use geo::algorithm::haversine_distance::HaversineDistance;
                 let distance = p.haversine_distance(&place.coord().0.into()) as u32;
                 place.set_distance(distance);
             }

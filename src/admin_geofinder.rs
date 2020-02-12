@@ -33,10 +33,30 @@ use geo::algorithm::{
 };
 use geo_types::{MultiPolygon, Point};
 use mimir::Admin;
-use rstar::{PointDistance, RTree, RTreeObject, AABB};
-// use std::collections::BTreeMap;
+use rstar::{Envelope, PointDistance, RTree, RTreeObject, SelectionFunction, AABB};
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
+
+struct PointInEnvelopeSelectionFunction<T>
+where
+    T: RTreeObject,
+{
+    point: <T::Envelope as Envelope>::Point,
+}
+
+impl<T> SelectionFunction<T> for PointInEnvelopeSelectionFunction<T>
+where
+    T: RTreeObject,
+{
+    fn should_unpack_parent(&self, envelope: &T::Envelope) -> bool {
+        envelope.contains_point(&self.point)
+    }
+
+    fn should_unpack_leaf(&self, leaf: &T) -> bool {
+        leaf.envelope().contains_point(&self.point)
+    }
+}
 
 pub struct BoundedId {
     pub boundary: MultiPolygon<f64>,
@@ -44,34 +64,36 @@ pub struct BoundedId {
 }
 
 impl RTreeObject for BoundedId {
-    type Envelope = AABB<Point<f64>>;
+    type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
         let bb = self.boundary.bounding_rect().unwrap();
-        AABB::from_corners(
-            Point::new(bb.min.x, bb.min.y),
-            Point::new(bb.max.x, bb.max.y),
-        )
+        AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y])
     }
 }
 
 impl PointDistance for BoundedId {
     // This function computes the square of the distance from an Admin to a point.
     // We compute the distance from the boundary to a point.
-    fn distance_2(&self, point: &Point<f64>) -> f64 {
-        let d = self.boundary.euclidean_distance(point);
+    fn distance_2(&self, point: &[f64; 2]) -> f64 {
+        let p = Point::new(point[0], point[1]);
+        let d = self.boundary.euclidean_distance(&p);
         d * d
     }
 
     // contains_point is provided, but we override the default implementation using
     // the geo algorithms for performance, as suggested in rstar documentation.
-    fn contains_point(&self, point: &Point<f64>) -> bool {
-        self.boundary.contains(point)
+    fn contains_point(&self, point: &[f64; 2]) -> bool {
+        let p = Point::new(point[0], point[1]);
+        self.boundary.contains(&p)
     }
 }
 
+// In the AdminGeoFinder, we need search for admins in two ways:
+// Geographically, so we'll use an RTree.
 pub struct AdminGeoFinder {
     rtree: RTree<BoundedId>,
+    admin_by_id: BTreeMap<String, Arc<Admin>>,
 }
 
 impl AdminGeoFinder {
@@ -79,38 +101,74 @@ impl AdminGeoFinder {
         let mut admin = admin;
         let boundary = std::mem::replace(&mut admin.boundary, None);
         if let Some(boundary) = boundary {
+            let admin = Arc::new(admin);
             let bounded_id = BoundedId {
                 boundary,
-                admin: Arc::new(admin),
+                admin: admin.clone(),
             };
+            self.admin_by_id.insert(admin.id.clone(), admin);
             self.rtree.insert(bounded_id);
         }
     }
 
     // Get all Admins overlapping the given coordinates.
+    // Finding if a point is within a complex boundary, such as a multipolygon, is
+    // expensive, compared to finding if it is in the envelope of the boundary.
+    // So this function works in two stages:
+    // (1) First it finds the list of admins that _may_ contain the coordinates.
+    //     These admins's bbox contains the coordinates, but it does not mean the
+    //     admin actually contains the coordinates. We sort these admins by size.
+    //     We call them 'candidates'.
+    // (2) We then iterate through these candidates and see if we already have the
+    //     hierarchy which may have been previlously computed by eg. cosmogony.
     pub fn get(&self, coord: &geo_types::Coordinate<f64>) -> Vec<Arc<Admin>> {
-        let point: geo_types::Point<f64> = coord.clone().into();
+        let selection_function = PointInEnvelopeSelectionFunction {
+            point: [coord.x, coord.y],
+        };
         // Get a list of overlapping admins...
-        let mut admins: Vec<Arc<Admin>> = self
+        let mut candidates = self
             .rtree
-            .locate_all_at_point(&point)
-            .map(|bounded_id| bounded_id.admin.clone())
-            .collect();
-        // Then dedup by zone_type (provided the zone_type is not None)
-        // Note that dedup requires a sorted vector.
-        admins.sort_by_key(|adm| adm.zone_type);
-        admins.dedup_by(|adm1, adm2| {
-            if adm1.zone_type != adm2.zone_type {
-                false
-            } else {
-                if adm1.zone_type == None {
-                    false
-                } else {
-                    true
+            .locate_with_selection_function(selection_function)
+            //.map(|bounded_id| bounded_id.admin.clone())
+            .collect::<Vec<_>>();
+        candidates.sort_by_key(|adm| adm.admin.zone_type);
+
+        let mut tested_hierarchy = BTreeSet::<String>::new();
+        let mut added_zone_types = BTreeSet::new();
+        let mut res = vec![];
+
+        for candidate in candidates {
+            let boundary = &candidate.boundary;
+            let admin = &candidate.admin;
+            if tested_hierarchy.contains(&admin.id) {
+                res.push(admin.clone());
+            } else if admin
+                .zone_type
+                .as_ref()
+                .map_or(false, |zt| added_zone_types.contains(zt))
+            {
+                // we don't want it, we already have this kind of ZoneType
+            } else if boundary.contains(&geo_types::Point(*coord)) {
+                // we found a valid admin, we save it's hierarchy not to have to test their boundaries
+                if let Some(zt) = admin.zone_type {
+                    added_zone_types.insert(zt.clone());
                 }
+                let mut admin_parent_id = admin.parent_id.clone();
+                while let Some(id) = admin_parent_id {
+                    let admin_parent = self.admin_by_id.get(&id);
+                    if let Some(zt) = admin_parent.as_ref().and_then(|a| a.zone_type) {
+                        added_zone_types.insert(zt.clone());
+                    }
+                    if !tested_hierarchy.insert(id) {
+                        break; // stop the exploration of the hierarchy since we have already added this one
+                    }
+                    admin_parent_id = admin_parent.and_then(|a| a.parent_id.clone());
+                }
+
+                res.push(admin.clone());
             }
-        });
-        admins
+        }
+        res
     }
 
     /// Return an iterator over admins.
@@ -131,6 +189,7 @@ impl Default for AdminGeoFinder {
     fn default() -> Self {
         AdminGeoFinder {
             rtree: RTree::new(),
+            admin_by_id: BTreeMap::new(),
         }
     }
 }
@@ -350,7 +409,7 @@ mod tests {
         let admins = finder.get(&p(46., 46.).0);
         assert_eq!(admins.len(), 3);
         assert_eq!(admins[0].id, "bob_city");
-        assert_eq!(admins[1].id, "another_state");
+        assert_eq!(admins[1].id, "bob_state");
         assert_eq!(admins[2].id, "bob_country");
     }
 

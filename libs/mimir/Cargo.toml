@@ -22,8 +22,8 @@ chrono = "0.4"
 reqwest = "=0.9.16"
 geo = "0.12.2"
 geo-types = { version = "0.4.3", features = [ "rstar" ] }
-rstar = "0.2.0"
-geojson = { version = "0.16", features = ["geo-types"] }
+rstar = "0.7"
+geojson = { version = "0.17", features = ["geo-types"] }
 failure = "0.1"
 cosmogony = "0.7"
 par-map = "0.1.4"
