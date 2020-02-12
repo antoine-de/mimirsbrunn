@@ -1,17 +1,21 @@
 use crate::Error;
 use csv;
 use failure::ResultExt;
+use libflate::gzip;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Addr;
 use par_map::ParMap;
 use serde::de::DeserializeOwned;
 use slog_scope::{error, info, warn};
+use std::fs::File;
+use std::io::Read;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
 
 pub fn import_addresses<T, F>(
     rubber: &mut Rubber,
     has_headers: bool,
+    with_gzip: bool,
     nb_threads: usize,
     index_settings: IndexSettings,
     dataset: &str,
@@ -29,20 +33,31 @@ where
 
     let iter = files
         .into_iter()
-        .flat_map(|f| {
-            info!("importing {:?}...", &f);
+        .filter_map(|path| {
+            info!("importing {:?}...", &path);
+            File::open(&path)
+                .map_err(|err| error!("impossible to read file {:?}, error: {}", path, err))
+                .ok()
+        })
+        .filter_map(|file| {
+            if with_gzip {
+                gzip::Decoder::new(file)
+                    .map_err(|err| error!("impossible to read gzip in, error: {}", err))
+                    .map(|decoder| Box::new(decoder) as Box<dyn Read>)
+                    .ok()
+            } else {
+                Some(Box::new(file) as Box<dyn Read>)
+            }
+        })
+        .flat_map(|stream| {
             csv::ReaderBuilder::new()
                 .has_headers(has_headers)
-                .from_path(&f)
-                .map_err(|e| error!("impossible to read file {:?}, error: {}", f, e))
+                .from_reader(stream)
+                .into_deserialize()
+        })
+        .filter_map(|line| {
+            line.map_err(|e| warn!("impossible to read line, error: {}", e))
                 .ok()
-                .into_iter()
-                .flat_map(|rdr| {
-                    rdr.into_deserialize().filter_map(|r| {
-                        r.map_err(|e| warn!("impossible to read line, error: {}", e))
-                            .ok()
-                    })
-                })
         })
         .with_nb_threads(nb_threads)
         .par_map(into_addr)

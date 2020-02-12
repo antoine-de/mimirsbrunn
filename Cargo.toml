@@ -42,6 +42,7 @@ address-formatter = "^0.2.1"
 navitia-poi-model = "0.2.1"
 walkdir = "2"
 rusqlite = "0.20"
+libflate = "0.1"
 
 mimir = { path = "libs/mimir" }
 bragi = { path = "libs/bragi" }
