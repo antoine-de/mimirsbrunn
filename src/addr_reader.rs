@@ -1,7 +1,7 @@
 use crate::Error;
 use csv;
 use failure::ResultExt;
-use libflate::gzip;
+use flate2::read::GzDecoder;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
 use mimir::Addr;
 use par_map::ParMap;
@@ -36,17 +36,15 @@ where
         .filter_map(|path| {
             info!("importing {:?}...", &path);
             File::open(&path)
-                .map_err(|err| error!("impossible to read file {:?}, error: {}", path, err))
+                .map_err(|err| error!("Impossible to read file {:?}, error: {}", path, err))
                 .ok()
         })
-        .filter_map(|file| {
+        .map(|file| {
             if with_gzip {
-                gzip::Decoder::new(file)
-                    .map_err(|err| error!("impossible to read gzip in, error: {}", err))
-                    .map(|decoder| Box::new(decoder) as Box<dyn Read>)
-                    .ok()
+                let decoder = GzDecoder::new(file);
+                Box::new(decoder) as Box<dyn Read>
             } else {
-                Some(Box::new(file) as Box<dyn Read>)
+                Box::new(file) as Box<dyn Read>
             }
         })
         .flat_map(|stream| {
@@ -56,7 +54,7 @@ where
                 .into_deserialize()
         })
         .filter_map(|line| {
-            line.map_err(|e| warn!("impossible to read line, error: {}", e))
+            line.map_err(|e| warn!("Impossible to read line, error: {}", e))
                 .ok()
         })
         .with_nb_threads(nb_threads)
