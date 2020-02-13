@@ -15,7 +15,6 @@ use std::path::PathBuf;
 pub fn import_addresses<T, F>(
     rubber: &mut Rubber,
     has_headers: bool,
-    with_gzip: bool,
     nb_threads: usize,
     index_settings: IndexSettings,
     dataset: &str,
@@ -35,17 +34,22 @@ where
         .into_iter()
         .filter_map(|path| {
             info!("importing {:?}...", &path);
+            let with_gzip = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext == "gz" || ext.ends_with(".gz"))
+                .unwrap_or(false);
             File::open(&path)
                 .map_err(|err| error!("Impossible to read file {:?}, error: {}", path, err))
+                .map(|file| {
+                    if with_gzip {
+                        let decoder = GzDecoder::new(file);
+                        Box::new(decoder) as Box<dyn Read>
+                    } else {
+                        Box::new(file) as Box<dyn Read>
+                    }
+                })
                 .ok()
-        })
-        .map(|file| {
-            if with_gzip {
-                let decoder = GzDecoder::new(file);
-                Box::new(decoder) as Box<dyn Read>
-            } else {
-                Box::new(file) as Box<dyn Read>
-            }
         })
         .flat_map(|stream| {
             csv::ReaderBuilder::new()

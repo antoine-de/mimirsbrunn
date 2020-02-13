@@ -144,7 +144,6 @@ fn index_oa<I>(
     index_settings: IndexSettings,
     files: I,
     nb_threads: usize,
-    with_gzip: bool,
     use_old_index_format: bool,
 ) -> Result<(), mimirsbrunn::Error>
 where
@@ -164,7 +163,6 @@ where
     import_addresses(
         &mut rubber,
         true,
-        with_gzip,
         nb_threads,
         index_settings,
         dataset,
@@ -178,9 +176,6 @@ struct Args {
     /// openaddresses files. Can be either a directory or a file.
     #[structopt(short = "i", long = "input", parse(from_os_str))]
     input: PathBuf,
-    /// The input CSV file(s) have been compressed using gzip.
-    #[structopt(short = "x", long)]
-    gzip: bool,
     /// Elasticsearch parameters.
     #[structopt(
         short = "c",
@@ -246,7 +241,6 @@ fn run(args: Args) -> Result<(), failure::Error> {
             index_settings,
             path_iter,
             args.nb_threads,
-            args.gzip,
             args.use_old_index_format,
         )
     } else {
@@ -256,7 +250,6 @@ fn run(args: Args) -> Result<(), failure::Error> {
             index_settings,
             std::iter::once(args.input),
             args.nb_threads,
-            args.gzip,
             args.use_old_index_format,
         )
     }
