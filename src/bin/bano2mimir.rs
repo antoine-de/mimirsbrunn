@@ -32,13 +32,14 @@ use failure::ensure;
 use lazy_static::lazy_static;
 use mimir::objects::Admin;
 use mimir::rubber::{IndexSettings, Rubber};
-use mimirsbrunn::addr_reader::import_addresses;
+use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_streams};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::labels;
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::stdin;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -178,59 +179,12 @@ fn build_admin_from_bano_city(city: &str) -> Admin {
     }
 }
 
-fn index_bano<I>(
-    cnx_string: &str,
-    dataset: &str,
-    files: I,
-    nb_threads: usize,
-    nb_shards: usize,
-    nb_replicas: usize,
-    use_old_index_format: bool,
-) -> Result<(), mimirsbrunn::Error>
-where
-    I: Iterator<Item = std::path::PathBuf>,
-{
-    let mut rubber = Rubber::new(cnx_string);
-    rubber.initialize_templates()?;
-
-    let admins = rubber.get_all_admins().unwrap_or_else(|err| {
-        warn!(
-            "Administratives regions not found in es db for dataset {}. (error: {})",
-            dataset, err
-        );
-        vec![]
-    });
-    let admins_geofinder = admins.iter().cloned().collect();
-    let admins_by_insee = admins
-        .into_iter()
-        .filter(|a| !a.insee.is_empty())
-        .map(|mut a| {
-            a.boundary = None; // to save some space we remove the admin boundary
-            (a.insee.clone(), Arc::new(a))
-        })
-        .collect();
-
-    let index_settings = IndexSettings {
-        nb_shards: nb_shards,
-        nb_replicas: nb_replicas,
-    };
-
-    import_addresses(
-        &mut rubber,
-        false,
-        nb_threads,
-        index_settings,
-        dataset,
-        files,
-        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, use_old_index_format),
-    )
-}
-
 #[derive(StructOpt, Debug)]
 struct Args {
     /// Bano files. Can be either a directory or a file.
+    /// If this is left empty, addresses are read from standard input.
     #[structopt(short = "i", long = "input", parse(from_os_str))]
-    input: PathBuf,
+    input: Option<PathBuf>,
     /// Elasticsearch parameters.
     #[structopt(
         short = "c",
@@ -262,26 +216,72 @@ struct Args {
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     info!("importing bano into Mimir");
-    if args.input.is_dir() {
-        let paths: std::fs::ReadDir = fs::read_dir(&args.input)?;
-        index_bano(
-            &args.connection_string,
-            &args.dataset,
-            paths.map(|p| p.unwrap().path()),
-            args.nb_threads,
-            args.nb_shards,
-            args.nb_replicas,
-            args.use_old_index_format,
-        )
+
+    let mut rubber = Rubber::new(&args.connection_string);
+    let index_settings = IndexSettings {
+        nb_shards: args.nb_shards,
+        nb_replicas: args.nb_replicas,
+    };
+
+    // Fetch and index admins for `into_addr`
+    let into_addr = {
+        let admins = rubber.get_all_admins().unwrap_or_else(|err| {
+            warn!(
+                "Administratives regions not found in es db for dataset {}. (error: {})",
+                &args.dataset, err
+            );
+            vec![]
+        });
+
+        let admins_geofinder = admins.iter().cloned().collect();
+
+        let admins_by_insee = admins
+            .into_iter()
+            .filter(|a| !a.insee.is_empty())
+            .map(|mut a| {
+                a.boundary = None; // to save some space we remove the admin boundary
+                (a.insee.clone(), Arc::new(a))
+            })
+            .collect();
+
+        let use_old_index_format = args.use_old_index_format;
+        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, use_old_index_format)
+    };
+
+    if let Some(input_path) = args.input {
+        // Import from file(s)
+        if input_path.is_dir() {
+            let paths: std::fs::ReadDir = fs::read_dir(&input_path)?;
+            import_addresses_from_files(
+                &mut rubber,
+                false,
+                args.nb_threads,
+                index_settings,
+                &args.dataset,
+                paths.map(|p| p.unwrap().path()),
+                into_addr,
+            )
+        } else {
+            import_addresses_from_files(
+                &mut rubber,
+                false,
+                args.nb_threads,
+                index_settings,
+                &args.dataset,
+                std::iter::once(input_path),
+                into_addr,
+            )
+        }
     } else {
-        index_bano(
-            &args.connection_string,
-            &args.dataset,
-            std::iter::once(args.input),
+        // Import from stdin
+        import_addresses_from_streams(
+            &mut rubber,
+            false,
             args.nb_threads,
-            args.nb_shards,
-            args.nb_replicas,
-            args.use_old_index_format,
+            index_settings,
+            &args.dataset,
+            std::iter::once(stdin()),
+            into_addr,
         )
     }
 }

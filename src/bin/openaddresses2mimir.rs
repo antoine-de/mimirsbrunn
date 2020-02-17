@@ -30,11 +30,12 @@
 
 use lazy_static::lazy_static;
 use mimir::rubber::{IndexSettings, Rubber};
-use mimirsbrunn::addr_reader::import_addresses;
+use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_streams};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
+use std::io::stdin;
 use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -138,44 +139,12 @@ impl OpenAddress {
     }
 }
 
-fn index_oa<I>(
-    cnx_string: &str,
-    dataset: &str,
-    index_settings: IndexSettings,
-    files: I,
-    nb_threads: usize,
-    use_old_index_format: bool,
-) -> Result<(), mimirsbrunn::Error>
-where
-    I: Iterator<Item = std::path::PathBuf>,
-{
-    let mut rubber = Rubber::new(cnx_string);
-
-    let admins = rubber.get_all_admins().unwrap_or_else(|err| {
-        warn!(
-            "Administratives regions not found in es db for dataset {}. (error: {})",
-            dataset, err
-        );
-        vec![]
-    });
-    let admins_geofinder = admins.into_iter().collect();
-
-    import_addresses(
-        &mut rubber,
-        true,
-        nb_threads,
-        index_settings,
-        dataset,
-        files,
-        move |a: OpenAddress| a.into_addr(&admins_geofinder, use_old_index_format),
-    )
-}
-
 #[derive(StructOpt, Debug)]
 struct Args {
-    /// openaddresses files. Can be either a directory or a file.
+    /// OpenAddresses files. Can be either a directory or a file.
+    /// If this is left empty, addresses are read from standard input.
     #[structopt(short = "i", long = "input", parse(from_os_str))]
-    input: PathBuf,
+    input: Option<PathBuf>,
     /// Elasticsearch parameters.
     #[structopt(
         short = "c",
@@ -215,42 +184,76 @@ fn run(args: Args) -> Result<(), failure::Error> {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
+    let mut rubber = Rubber::new(&args.connection_string);
     let index_settings = IndexSettings {
         nb_shards: args.nb_shards,
         nb_replicas: args.nb_replicas,
     };
-    if args.input.is_dir() {
-        let paths = walkdir::WalkDir::new(&args.input);
-        let path_iter = paths
-            .into_iter()
-            .map(|p| p.unwrap().into_path())
-            .filter(|p| {
-                let f = p
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .map(|e| e == "csv" || e == ".csv.gz")
-                    .unwrap_or(false);
-                if !f {
-                    info!("skipping file {} as it is not a csv", p.display());
-                }
-                f
-            });
-        index_oa(
-            &args.connection_string,
-            &args.dataset,
-            index_settings,
-            path_iter,
-            args.nb_threads,
-            args.use_old_index_format,
-        )
+
+    // Fetch and index admins for `into_addr`
+    let into_addr = {
+        let admins = rubber.get_all_admins().unwrap_or_else(|err| {
+            warn!(
+                "Administratives regions not found in es db for dataset {}. (error: {})",
+                &args.dataset, err
+            );
+            vec![]
+        });
+        let admins_geofinder = admins.into_iter().collect();
+
+        let use_old_index_format = args.use_old_index_format;
+        move |a: OpenAddress| a.into_addr(&admins_geofinder, use_old_index_format)
+    };
+
+    if let Some(input_path) = args.input {
+        // Import from file(s)
+        if input_path.is_dir() {
+            let paths = walkdir::WalkDir::new(&input_path);
+            let path_iter = paths
+                .into_iter()
+                .map(|p| p.unwrap().into_path())
+                .filter(|p| {
+                    let f = p
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .map(|e| e == "gz")
+                        .unwrap_or(false);
+                    if !f {
+                        info!("skipping file {} as it is not a csv", p.display());
+                    }
+                    f
+                });
+
+            import_addresses_from_files(
+                &mut rubber,
+                true,
+                args.nb_threads,
+                index_settings,
+                &args.dataset,
+                path_iter,
+                into_addr,
+            )
+        } else {
+            import_addresses_from_files(
+                &mut rubber,
+                true,
+                args.nb_threads,
+                index_settings,
+                &args.dataset,
+                std::iter::once(input_path),
+                into_addr,
+            )
+        }
     } else {
-        index_oa(
-            &args.connection_string,
-            &args.dataset,
-            index_settings,
-            std::iter::once(args.input),
+        // Import from stdin
+        import_addresses_from_streams(
+            &mut rubber,
+            true,
             args.nb_threads,
-            args.use_old_index_format,
+            index_settings,
+            &args.dataset,
+            std::iter::once(stdin()),
+            into_addr,
         )
     }
 }
