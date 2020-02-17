@@ -59,6 +59,7 @@ where
 }
 
 pub struct BoundedId {
+    pub envelope: AABB<[f64; 2]>,
     pub boundary: MultiPolygon<f64>,
     pub admin: Arc<Admin>,
 }
@@ -67,8 +68,7 @@ impl RTreeObject for BoundedId {
     type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
-        let bb = self.boundary.bounding_rect().unwrap();
-        AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y])
+        self.envelope
     }
 }
 
@@ -101,9 +101,11 @@ impl AdminGeoFinder {
         let mut admin = admin;
         let boundary = std::mem::replace(&mut admin.boundary, None);
         if let Some(boundary) = boundary {
+            let bb = boundary.bounding_rect().unwrap();
             let admin = Arc::new(admin);
             let bounded_id = BoundedId {
-                boundary,
+                envelope: AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y]),
+                boundary: boundary,
                 admin: admin.clone(),
             };
             self.admin_by_id.insert(admin.id.clone(), admin);
@@ -129,8 +131,9 @@ impl AdminGeoFinder {
         let mut candidates = self
             .rtree
             .locate_with_selection_function(selection_function)
-            //.map(|bounded_id| bounded_id.admin.clone())
             .collect::<Vec<_>>();
+
+        // We sort them so we can start with the smallest zone_type.
         candidates.sort_by_key(|adm| adm.admin.zone_type);
 
         let mut tested_hierarchy = BTreeSet::<String>::new();
