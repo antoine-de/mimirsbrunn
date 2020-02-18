@@ -38,6 +38,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
 
+// This is a structure which is used in the RTree to customize the list of objects returned
+// when searching at a given location. This version just focuses on the envelope of the object,
+// for performance reason. The call envelope.contains() is much cheaper than boundary.contains().
+// On the other hand, there is a chance that the point is in the envelope but not in the boundary.
 struct PointInEnvelopeSelectionFunction<T>
 where
     T: RTreeObject,
@@ -58,13 +62,17 @@ where
     }
 }
 
-pub struct BoundedId {
+// This is the object stored in the RTree.
+// It splits the admin, taking the boundary in one field, and the rest as an Arc.
+// We store the envelope so we don't have to recompute it every time we query this bounded id
+pub struct SplitAdmin {
     pub envelope: AABB<[f64; 2]>,
     pub boundary: MultiPolygon<f64>,
     pub admin: Arc<Admin>,
 }
 
-impl RTreeObject for BoundedId {
+// This trait is needed so that SplitAdmin can be inserted in the RTree
+impl RTreeObject for SplitAdmin {
     type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
@@ -72,7 +80,7 @@ impl RTreeObject for BoundedId {
     }
 }
 
-impl PointDistance for BoundedId {
+impl PointDistance for SplitAdmin {
     // This function computes the square of the distance from an Admin to a point.
     // We compute the distance from the boundary to a point.
     fn distance_2(&self, point: &[f64; 2]) -> f64 {
@@ -91,8 +99,9 @@ impl PointDistance for BoundedId {
 
 // In the AdminGeoFinder, we need search for admins in two ways:
 // Geographically, so we'll use an RTree.
+// Using an id
 pub struct AdminGeoFinder {
-    rtree: RTree<BoundedId>,
+    rtree: RTree<SplitAdmin>,
     admin_by_id: BTreeMap<String, Arc<Admin>>,
 }
 
@@ -103,13 +112,13 @@ impl AdminGeoFinder {
         if let Some(boundary) = boundary {
             let bb = boundary.bounding_rect().unwrap();
             let admin = Arc::new(admin);
-            let bounded_id = BoundedId {
+            let split = SplitAdmin {
                 envelope: AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y]),
                 boundary: boundary,
                 admin: admin.clone(),
             };
             self.admin_by_id.insert(admin.id.clone(), admin);
-            self.rtree.insert(bounded_id);
+            self.rtree.insert(split);
         }
     }
 
@@ -180,9 +189,9 @@ impl AdminGeoFinder {
     /// new admins by cloning the ones in the RTree, and adding their boundary.
     /// Needless to say, this is probably an expensive method...
     pub fn admins(&self) -> impl Iterator<Item = Admin> + '_ {
-        self.rtree.iter().map(|bounded_id| {
-            let mut admin = Admin::clone(&bounded_id.admin);
-            admin.boundary = Some(bounded_id.boundary.clone());
+        self.rtree.iter().map(|split| {
+            let mut admin = Admin::clone(&split.admin);
+            admin.boundary = Some(split.boundary.clone());
             admin
         })
     }

@@ -31,7 +31,6 @@ use cosmogony::ZoneType;
 use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
 use navitia_poi_model;
-// use rstar::{RTreeObject, AABB};
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
@@ -647,24 +646,6 @@ where
             _ => None,
         })
     })
-
-    // Option::<geojson::GeoJson>::deserialize(d).map(|option| {
-    //     option.and_then(|geojson| match geojson {
-    //         geojson::GeoJson::Geometry(geojson_geom) => {
-    //             //let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
-    //             let t: MultiPolygon<f64> = geojson_geom.value.try_into();
-    //             match t {
-    //                 Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => Some(geo_multi_polygon),
-    //                 Ok(_) => None,
-    //                 Err(e) => {
-    //                     warn!("Error deserializing geometry: {}", e);
-    //                     None
-    //                 }
-    //             }
-    //         }
-    //         _ => None,
-    //     })
-    // })
 }
 
 pub fn serialize_rect<'a, S>(bbox: &'a Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
