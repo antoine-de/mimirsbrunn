@@ -34,6 +34,7 @@ use geo::algorithm::{
 use geo_types::{MultiPolygon, Point};
 use mimir::Admin;
 use rstar::{Envelope, PointDistance, RTree, RTreeObject, SelectionFunction, AABB};
+use slog_scope::{info, warn};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
@@ -109,16 +110,24 @@ impl AdminGeoFinder {
     pub fn insert(&mut self, admin: Admin) {
         let mut admin = admin;
         let boundary = std::mem::replace(&mut admin.boundary, None);
-        if let Some(boundary) = boundary {
-            let bb = boundary.bounding_rect().unwrap();
-            let admin = Arc::new(admin);
-            let split = SplitAdmin {
-                envelope: AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y]),
-                boundary: boundary,
-                admin: admin.clone(),
-            };
-            self.admin_by_id.insert(admin.id.clone(), admin);
-            self.rtree.insert(split);
+        match boundary {
+            Some(boundary) => match boundary.bounding_rect() {
+                Some(bb) => {
+                    let admin = Arc::new(admin);
+                    let split = SplitAdmin {
+                        envelope: AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y]),
+                        boundary: boundary,
+                        admin: admin.clone(),
+                    };
+                    self.admin_by_id.insert(admin.id.clone(), admin);
+                    self.rtree.insert(split);
+                }
+                None => warn!("Admin '{}' has a boundary but no bounding box", admin.id),
+            },
+            None => info!(
+                "Admin '{}' has no boundary (=> not inserted in the AdminGeoFinder)",
+                admin.id
+            ),
         }
     }
 
@@ -224,29 +233,6 @@ mod tests {
     use cosmogony::ZoneType;
     use geo::prelude::BoundingRect;
 
-    // the goal is that f in [down(f as f32) as f64, up(f as f32) as f64]
-    fn down(f: f32) -> f32 {
-        f - (f * ::std::f32::EPSILON).abs()
-    }
-    fn up(f: f32) -> f32 {
-        f + (f * ::std::f32::EPSILON).abs()
-    }
-
-    #[test]
-    fn test_up_down() {
-        for &f in [1.0f64, 0., -0., -1., 0.1, -0.1, 0.9, -0.9, 42., -42.].iter() {
-            let small_f = f as f32;
-            assert!(
-                down(small_f) as f64 <= f,
-                format!("{} <= {}", down(small_f) as f64, f)
-            );
-            assert!(
-                f <= up(small_f) as f64,
-                format!("{} <= {}", f, up(small_f) as f64)
-            );
-        }
-    }
-
     fn p(x: f64, y: f64) -> geo_types::Point<f64> {
         geo_types::Point(geo_types::Coordinate { x: x, y: y })
     }
@@ -337,17 +323,17 @@ mod tests {
         assert_eq!(admins.len(), 1);
     }
 
-    // #[test]
-    // fn test_two_no_zone_type() {
-    //     // a point can be associated to only 1 admin type
-    //     // but a point can be associated to multiple admin without zone_type
-    //     // (for retrocompatibility of the data imported without cosmogony)
-    //     let mut finder = AdminGeoFinder::default();
-    //     finder.insert(make_admin(40., None));
-    //     finder.insert(make_admin(43., None));
-    //     let admins = finder.get(&p(46., 46.).0);
-    //     assert_eq!(admins.len(), 2);
-    // }
+    #[test]
+    fn test_two_no_zone_type() {
+        // a point can be associated to only 1 admin type
+        // but a point can be associated to multiple admin without zone_type
+        // (for retrocompatibility of the data imported without cosmogony)
+        let mut finder = AdminGeoFinder::default();
+        finder.insert(make_admin(40., None));
+        finder.insert(make_admin(43., None));
+        let admins = finder.get(&p(46., 46.).0);
+        assert_eq!(admins.len(), 2);
+    }
 
     #[test]
     fn test_hierarchy() {
