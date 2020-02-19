@@ -164,7 +164,7 @@ pub fn read_places(
         "{} documents found in {} ms",
         result.hits.total, result.took
     );
-    let point: Option<geo::Point<f64>> = coord.map(|c| c.0.into());
+    let point: Option<geo_types::Point<f64>> = coord.map(|c| c.0.into());
     // for the moment rs-es does not handle enum Document,
     // so we need to convert the ES glob to a Place
     Ok(result
@@ -174,7 +174,7 @@ pub fn read_places(
         .filter_map(|hit| make_place(hit.doc_type, hit.source, hit.explanation))
         .map(|mut place| {
             if let Some(ref p) = point {
-                use geo::prelude::HaversineDistance;
+                use geo::algorithm::haversine_distance::HaversineDistance;
                 let distance = p.haversine_distance(&place.coord().0.into()) as u32;
                 place.set_distance(distance);
             }
@@ -185,13 +185,13 @@ pub fn read_places(
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
-pub fn make_place(
+pub fn make_place<'a>(
     doc_type: String,
     value: Option<Box<serde_json::Value>>,
     explanation: Option<serde_json::Value>,
 ) -> Option<Place> {
     let place = value.and_then(|v| {
-        fn convert<T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
+        fn convert<'a, T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
         where
             for<'de> T: serde::Deserialize<'de>,
         {

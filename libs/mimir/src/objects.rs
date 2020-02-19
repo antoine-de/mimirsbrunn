@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use cosmogony::ZoneType;
+use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
 use navitia_poi_model;
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
@@ -211,6 +212,18 @@ impl<'a, T: MimirObject> MimirObject for &'a T {
 }
 
 impl<T: MimirObject> MimirObject for Rc<T> {
+    fn is_geo_data() -> bool {
+        T::is_geo_data()
+    }
+    fn doc_type() -> &'static str {
+        T::doc_type()
+    }
+    fn es_id(&self) -> Option<String> {
+        T::es_id(self)
+    }
+}
+
+impl<T: MimirObject> MimirObject for Arc<T> {
     fn is_geo_data() -> bool {
         T::is_geo_data()
     }
@@ -551,7 +564,7 @@ pub struct Admin {
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub boundary: Option<geo::MultiPolygon<f64>>,
+    pub boundary: Option<MultiPolygon<f64>>,
     #[serde(default)]
     pub administrative_regions: Vec<Arc<Admin>>,
 
@@ -561,7 +574,7 @@ pub struct Admin {
         skip_serializing_if = "Option::is_none",
         default
     )]
-    pub bbox: Option<geo_types::Rect<f64>>,
+    pub bbox: Option<Rect<f64>>,
 
     #[serde(default)]
     pub zone_type: Option<ZoneType>,
@@ -596,7 +609,7 @@ impl Admin {
 }
 
 fn custom_multi_polygon_serialize<S>(
-    multi_polygon_option: &Option<geo::MultiPolygon<f64>>,
+    multi_polygon_option: &Option<MultiPolygon<f64>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
@@ -612,9 +625,7 @@ where
     }
 }
 
-fn custom_multi_polygon_deserialize<'de, D>(
-    d: D,
-) -> Result<Option<geo::MultiPolygon<f64>>, D::Error>
+fn custom_multi_polygon_deserialize<'de, D>(d: D) -> Result<Option<MultiPolygon<f64>>, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
@@ -622,13 +633,12 @@ where
 
     Option::<geojson::GeoJson>::deserialize(d).map(|option| {
         option.and_then(|geojson| match geojson {
-            geojson::GeoJson::Geometry(geojson_geom) => {
-                let geo_geom: Result<geo::Geometry<f64>, _> = geojson_geom.value.try_into();
-                match geo_geom {
-                    Ok(geo::Geometry::MultiPolygon(geo_multi_polygon)) => Some(geo_multi_polygon),
-                    Ok(_) => None,
-                    Err(e) => {
-                        warn!("Error deserializing geometry: {}", e);
+            geojson::GeoJson::Geometry(geojson_geometry) => {
+                let res: Result<MultiPolygon<f64>, _> = geojson_geometry.value.try_into();
+                match res {
+                    Ok(multi_polygon) => Some(multi_polygon),
+                    Err(err) => {
+                        warn!("Cannot deserialize into MultiPolygon: {}", err);
                         None
                     }
                 }
@@ -638,10 +648,7 @@ where
     })
 }
 
-pub fn serialize_rect<'a, S>(
-    bbox: &'a Option<geo_types::Rect<f64>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+pub fn serialize_rect<'a, S>(bbox: &'a Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -657,14 +664,14 @@ where
     }
 }
 
-fn deserialize_rect<'de, D>(d: D) -> Result<Option<geo_types::Rect<f64>>, D::Error>
+fn deserialize_rect<'de, D>(d: D) -> Result<Option<Rect<f64>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     Option::<Vec<f64>>::deserialize(d).map(|option| {
-        option.map(|b| geo_types::Rect {
-            min: geo_types::Coordinate { x: b[0], y: b[1] },
-            max: geo_types::Coordinate { x: b[2], y: b[3] },
+        option.map(|b| Rect {
+            min: Coordinate { x: b[0], y: b[1] },
+            max: Coordinate { x: b[2], y: b[3] },
         })
     })
 }
@@ -830,11 +837,11 @@ pub struct AliasParameter {
 // we want a custom serialization for coords, and so far the cleanest way
 // to do this that has been found is to wrap the coord in another struct
 #[derive(Debug, Clone, Copy)]
-pub struct Coord(pub geo::Coordinate<f64>);
+pub struct Coord(pub geo_types::Coordinate<f64>);
 
 impl Coord {
     pub fn new(lon: f64, lat: f64) -> Coord {
-        Coord(geo::Coordinate { x: lon, y: lat })
+        Coord(geo_types::Coordinate { x: lon, y: lat })
     }
     pub fn lon(&self) -> f64 {
         self.x
@@ -856,12 +863,12 @@ impl Coord {
 
 impl Default for Coord {
     fn default() -> Coord {
-        Coord(geo::Coordinate { x: 0., y: 0. })
+        Coord(geo_types::Coordinate { x: 0., y: 0. })
     }
 }
 
 impl ::std::ops::Deref for Coord {
-    type Target = geo::Coordinate<f64>;
+    type Target = geo_types::Coordinate<f64>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
