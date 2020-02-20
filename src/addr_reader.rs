@@ -7,6 +7,7 @@ use mimir::Addr;
 use par_map::ParMap;
 use serde::de::DeserializeOwned;
 use slog_scope::{error, info, warn};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::marker::{Send, Sync};
@@ -29,6 +30,9 @@ where
         .with_context(|_| format!("Error occurred when making index {}", dataset))?;
 
     info!("Add data in elasticsearch db.");
+
+    let mut country_stats = HashMap::new();
+
     let iter = addresses
         .into_iter()
         .with_nb_threads(nb_threads)
@@ -46,16 +50,37 @@ where
                 warn!("Address Error ignored: {}", err);
                 None
             }
+        })
+        .inspect(|addr| {
+            let country_code = addr
+                .country_codes
+                .first()
+                .map(|string| string.as_str())
+                .unwrap_or("other");
+
+            if let Some(count) = country_stats.get_mut(country_code) {
+                *count += 1;
+            } else {
+                country_stats.insert(country_code.to_string(), 1);
+            }
         });
 
     let nb = rubber
         .bulk_index(&addr_index, iter)
         .with_context(|err| format!("failed to bulk insert: {}", err))?;
     info!("importing addresses: {} addresses added.", nb);
-
     rubber
         .publish_index(dataset, addr_index, IndexVisibility::Public)
         .context("Error while publishing the index")?;
+
+    info!("Addresses imported per country:");
+    let mut country_stats: Vec<_> = country_stats.into_iter().collect();
+    country_stats.sort_unstable_by_key(|(_, count)| *count);
+
+    for (country, count) in country_stats.into_iter().rev() {
+        info!("{:>10} {}", country, count);
+    }
+
     Ok(())
 }
 
