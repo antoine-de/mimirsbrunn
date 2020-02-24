@@ -214,9 +214,9 @@ fn run(args: Args) -> Result<(), failure::Error> {
                 .map(|p| p.unwrap().into_path())
                 .filter(|p| {
                     let f = p
-                        .extension()
-                        .and_then(|e| e.to_str())
-                        .map(|e| e == "gz")
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .map(|name| name.ends_with(".csv") || name.ends_with(".csv.gz"))
                         .unwrap_or(false);
                     if !f {
                         info!("skipping file {} as it is not a csv", p.display());
