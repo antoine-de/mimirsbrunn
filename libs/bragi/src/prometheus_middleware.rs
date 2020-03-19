@@ -6,7 +6,7 @@
 use actix_service::{Service, Transform};
 use actix_web::{
     dev::{Body, BodySize, MessageBody, ResponseBody, ServiceRequest, ServiceResponse},
-    http::{Method, StatusCode},
+    http::{header, Method, StatusCode},
     web::Bytes,
     Error,
 };
@@ -224,6 +224,10 @@ where
             // the middleware and tell us what the endpoint should be.
             if inner.matches(&path, &method) {
                 head.status = StatusCode::OK;
+                head.headers.insert(
+                    header::CONTENT_TYPE,
+                    header::HeaderValue::from_static("text/plain; charset=utf-8"),
+                );
                 body = ResponseBody::Other(Body::from_message(inner.metrics()));
             }
             ResponseBody::Body(StreamLog {
