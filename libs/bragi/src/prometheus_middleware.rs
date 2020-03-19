@@ -36,11 +36,12 @@ fn get_ressource_name(path: &str) -> String {
     // so we use an hardcoded associated table
     PATH_TO_NAME
         .get(path)
+        .copied()
         .unwrap_or_else(|| {
             if path.starts_with("/features") {
                 &FEATURES_ROUTE
             } else {
-                &path
+                ""
             }
         })
         .to_string()
