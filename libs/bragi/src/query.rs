@@ -31,7 +31,7 @@ use super::model::{self, BragiError};
 use geojson::Geometry;
 use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
-use mimir::rubber::{get_indexes, read_places, Rubber};
+use mimir::rubber::{get_indexes, read_places, QuerySettings, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
 use rs_es::error::EsError;
@@ -177,6 +177,7 @@ fn build_query<'a>(
     langs: &'a [&'a str],
     zone_types: &[&str],
     poi_types: &[&str],
+    query_settings: &QuerySettings,
 ) -> Query {
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
@@ -186,13 +187,13 @@ fn build_query<'a>(
     }
     let type_query = Query::build_bool()
         .with_should(vec![
-            match_type_with_boost::<Addr>(30.),
-            match_type_with_boost::<Admin>(19.),
-            match_type_with_boost::<Stop>(18.),
-            match_type_with_boost::<Poi>(1.5),
-            match_type_with_boost::<Street>(1.),
+            match_type_with_boost::<Addr>(query_settings.type_query.address),
+            match_type_with_boost::<Admin>(query_settings.type_query.admin),
+            match_type_with_boost::<Stop>(query_settings.type_query.stop),
+            match_type_with_boost::<Poi>(query_settings.type_query.poi),
+            match_type_with_boost::<Street>(query_settings.type_query.street),
         ])
-        .with_boost(30.)
+        .with_boost(query_settings.type_query.global)
         .build();
 
     let format_names_field = |lang| format!("names.{}", lang);
@@ -211,50 +212,55 @@ fn build_query<'a>(
     // Priorization by query string
     let mut string_should = vec![
         build_multi_match("name", &format_names_field)
-            .with_boost(1.8)
+            .with_boost(query_settings.string_query.name)
             .build(),
         build_multi_match("label", &format_labels_field)
-            .with_boost(0.6)
+            .with_boost(query_settings.string_query.label)
             .build(),
         build_multi_match("label.prefix", &format_labels_prefix_field)
-            .with_boost(0.6)
+            .with_boost(query_settings.string_query.label_prefix)
             .build(),
-        Query::build_match("zip_codes", q).with_boost(1.).build(),
+        Query::build_match("zip_codes", q)
+            .with_boost(query_settings.string_query.zip_codes)
+            .build(),
         Query::build_match("house_number", q)
-            .with_boost(0.001)
+            .with_boost(query_settings.string_query.house_number)
             .build(),
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
         string_should.push(if coord.is_some() {
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(3.8)
+                .with_boost(query_settings.string_query.label_ngram_with_coord)
                 .build()
         } else {
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(1.8)
+                .with_boost(query_settings.string_query.label_ngram)
                 .build()
         });
     }
     let string_query = Query::build_bool()
         .with_should(string_should)
-        .with_boost(1.)
+        .with_boost(query_settings.string_query.global)
         .build();
 
-    let mut admin_weight = 0.03;
+    let mut admin_weight = query_settings.importance_query.admin_weight_fuzzy;
 
     // Priorization by importance
     let mut importance_queries = if let Some(ref coord) = coord {
         if let MatchType::Fuzzy = match_type {
             vec![
-                build_with_weight(0.15),
-                build_proximity_with_boost(coord, 0.4),
+                build_with_weight(query_settings.importance_query.build_weight_fuzzy),
+                build_proximity_with_boost(
+                    coord,
+                    query_settings.importance_query.proximity_boost_fuzzy,
+                ),
             ]
         } else {
-            admin_weight = 0.12;
+            admin_weight = query_settings.importance_query.admin_weight;
             vec![
-                build_with_weight(0.4),
-                build_proximity_with_boost(coord, 0.4),
+                build_with_weight(query_settings.importance_query.build_weight),
+                build_proximity_with_boost(coord, query_settings.importance_query.proximity_boost),
             ]
         }
     } else {
@@ -419,6 +425,7 @@ fn query(
         langs,
         zone_types,
         poi_types,
+        rubber.get_query_settings(),
     );
 
     let indexes = get_indexes(all_data, &pt_datasets, &poi_datasets, types);

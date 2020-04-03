@@ -1,0 +1,34 @@
+{
+    "type_query": {
+        "boosts": {
+            "address": 30.0,
+            "admin": 19.0,
+            "stop": 18.0,
+            "poi": 1.5,
+            "street": 1.0
+        },
+        "global_boost": 30.0
+    },
+    "string_query": {
+        "boosts": {
+            "name": 1.8,
+            "label": 0.6,
+            "label.prefix": 0.6,
+            "zip_codes": 1.0,
+            "house_number": 0.001,
+            "label.ngram_with_coord": 3.8,
+            "label.ngram": 1.8
+        },
+        "global_boost": 1.0
+    },
+    "importance_query": {
+        "boosts": {
+            "admin_weight_fuzzy": 0.03,
+            "build_weight_fuzzy": 0.15,
+            "proximity_boost_fuzzy": 0.4,
+            "admin_weight": 0.12,
+            "build_weight": 0.4,
+            "proximity_boost": 0.4
+        }
+    }
+}
