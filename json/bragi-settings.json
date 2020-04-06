@@ -3,8 +3,8 @@
         "boosts": {
             "address": 30.0,
             "admin": 19.0,
-            "stop": 18.0,
             "poi": 1.5,
+            "stop": 18.0,
             "street": 1.0
         },
         "global_boost": 30.0
@@ -22,13 +22,34 @@
         "global_boost": 1.0
     },
     "importance_query": {
-        "boosts": {
-            "admin_weight_fuzzy": 0.03,
-            "build_weight_fuzzy": 0.15,
-            "proximity_boost_fuzzy": 0.4,
-            "admin_weight": 0.12,
-            "build_weight": 0.4,
-            "proximity_boost": 0.4
+        "weights": {
+            "coords_fuzzy": {
+                "admin": 0.03,
+                "build": 0.15,
+                "missing": 0.0
+            },
+            "coords": {
+                "admin": 0.12,
+                "build": 0.4,
+                "missing": 0.0
+            },
+            "no_coords": {
+                "admin": 0.03,
+                "build": 0.75,
+                "missing": 0.0
+            },
+            "address": 0.5,
+            "admin": 0.5,
+            "poi": 0.5,
+            "stop": 1.0,
+            "street": 0.5
+        },
+        "proximity": {
+            "weight": 0.4,
+            "weight_fuzzy": 0.4,
+            "decay_distance": 130.0,
+            "offset_distance": 20.0,
+            "decay": 0.4
         }
     }
 }

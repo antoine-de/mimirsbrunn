@@ -108,7 +108,8 @@ pub struct Args {
     pub http_cache_duration: u32,
     #[structopt(
         long = "weight-config-file",
-        default_value = "json/bragi-settings.json")]
+        default_value = "json/bragi-settings.json"
+    )]
     pub weight_config_file: String,
 }
 

@@ -28,7 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::model::{self, BragiError};
-use crate::query_settings::QuerySettings;
+use crate::query_settings::{BuildWeight, Proximity, QuerySettings, Types};
 use geojson::Geometry;
 use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
@@ -118,24 +118,32 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
 
 /// Create a `rs_es::Query` that boosts results according to the
 /// distance to `coord`.
-fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
+fn build_proximity_with_boost(coord: &Coord, infos: &Proximity, is_fuzzy: bool) -> Query {
     Query::build_function_score()
         .with_functions(vec![
             FilteredFunction::build_filtered_function(
                 None,
                 DecayOptions::new(
                     rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                    rs_u::Distance::new(130f64, rs_u::DistanceUnit::Kilometer),
+                    rs_u::Distance::new(infos.decay_distance, rs_u::DistanceUnit::Kilometer),
                 )
-                .with_offset(rs_u::Distance::new(20f64, rs_u::DistanceUnit::Kilometer))
-                .with_decay(0.4f64)
+                .with_offset(rs_u::Distance::new(
+                    infos.offset_distance,
+                    rs_u::DistanceUnit::Kilometer,
+                ))
+                .with_decay(infos.decay)
                 .build("coord")
                 .build_exp(),
                 None,
             ),
             FilteredFunction::build_filtered_function(
                 None,
-                Function::build_weight(weight).build(),
+                Function::build_weight(if is_fuzzy {
+                    infos.weight_fuzzy
+                } else {
+                    infos.weight
+                })
+                .build(),
                 None,
             ),
         ])
@@ -143,14 +151,13 @@ fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
         .build()
 }
 
-fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
-    let factor = factor.into();
+fn build_with_weight(build_weight: &BuildWeight, types: &Types) -> Query {
     let weighted = |doc_type, weight| {
         FilteredFunction::build_filtered_function(
             Query::build_term("_type", doc_type).build(),
             Function::build_field_value_factor("weight")
-                .with_factor(factor.unwrap_or(0.75))
-                .with_missing(0.0)
+                .with_factor(build_weight.build)
+                .with_missing(build_weight.missing)
                 .build(),
             Function::build_weight(weight),
         )
@@ -158,11 +165,11 @@ fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
 
     Query::build_function_score()
         .with_functions(vec![
-            weighted(Stop::doc_type(), 1.0),
-            weighted(Addr::doc_type(), 0.5),
-            weighted(Admin::doc_type(), 0.5),
-            weighted(Poi::doc_type(), 0.5),
-            weighted(Street::doc_type(), 0.5),
+            weighted(Stop::doc_type(), types.stop),
+            weighted(Addr::doc_type(), types.address),
+            weighted(Admin::doc_type(), types.admin),
+            weighted(Poi::doc_type(), types.poi),
+            weighted(Street::doc_type(), types.street),
         ])
         .with_boost_mode(BoostMode::Replace)
         .build()
@@ -188,11 +195,11 @@ fn build_query<'a>(
     }
     let type_query = Query::build_bool()
         .with_should(vec![
-            match_type_with_boost::<Addr>(query_settings.type_query.address),
-            match_type_with_boost::<Admin>(query_settings.type_query.admin),
-            match_type_with_boost::<Stop>(query_settings.type_query.stop),
-            match_type_with_boost::<Poi>(query_settings.type_query.poi),
-            match_type_with_boost::<Street>(query_settings.type_query.street),
+            match_type_with_boost::<Addr>(query_settings.type_query.types.address),
+            match_type_with_boost::<Admin>(query_settings.type_query.types.admin),
+            match_type_with_boost::<Stop>(query_settings.type_query.types.stop),
+            match_type_with_boost::<Poi>(query_settings.type_query.types.poi),
+            match_type_with_boost::<Street>(query_settings.type_query.types.street),
         ])
         .with_boost(query_settings.type_query.global)
         .build();
@@ -245,27 +252,38 @@ fn build_query<'a>(
         .with_boost(query_settings.string_query.global)
         .build();
 
-    let mut admin_weight = query_settings.importance_query.admin_weight_fuzzy;
+    let mut admin_weight = query_settings.importance_query.weights.coords_fuzzy.admin;
 
     // Priorization by importance
     let mut importance_queries = if let Some(ref coord) = coord {
         if let MatchType::Fuzzy = match_type {
             vec![
-                build_with_weight(query_settings.importance_query.build_weight_fuzzy),
-                build_proximity_with_boost(
-                    coord,
-                    query_settings.importance_query.proximity_boost_fuzzy,
+                build_with_weight(
+                    &query_settings.importance_query.weights.coords_fuzzy,
+                    &query_settings.importance_query.weights.types,
                 ),
+                build_proximity_with_boost(coord, &query_settings.importance_query.proximity, true),
             ]
         } else {
-            admin_weight = query_settings.importance_query.admin_weight;
+            admin_weight = query_settings.importance_query.weights.coords.admin;
             vec![
-                build_with_weight(query_settings.importance_query.build_weight),
-                build_proximity_with_boost(coord, query_settings.importance_query.proximity_boost),
+                build_with_weight(
+                    &query_settings.importance_query.weights.coords,
+                    &query_settings.importance_query.weights.types,
+                ),
+                build_proximity_with_boost(
+                    coord,
+                    &query_settings.importance_query.proximity,
+                    false,
+                ),
             ]
         }
     } else {
-        vec![build_with_weight(None)]
+        admin_weight = query_settings.importance_query.weights.no_coords.admin;
+        vec![build_with_weight(
+            &query_settings.importance_query.weights.no_coords,
+            &query_settings.importance_query.weights.types,
+        )]
     };
 
     match match_type {

@@ -1,5 +1,3 @@
-
-
 macro_rules! getter {
     ($settings:expr, $to_get:expr, $extra:ident) => {{
         let tmp = getter!($settings, $to_get)?;
@@ -18,8 +16,7 @@ macro_rules! getter {
 }
 
 #[derive(Clone, Debug)]
-pub struct TypeQueryBoosts {
-    pub global: f64,
+pub struct Types {
     pub address: f64,
     pub admin: f64,
     pub stop: f64,
@@ -27,15 +24,29 @@ pub struct TypeQueryBoosts {
     pub street: f64,
 }
 
+impl Types {
+    fn new(settings: &serde_json::Value) -> Result<Types, String> {
+        Ok(Types {
+            address: getter!(settings, "/address", as_f64)?,
+            admin: getter!(settings, "/admin", as_f64)?,
+            stop: getter!(settings, "/stop", as_f64)?,
+            poi: getter!(settings, "/poi", as_f64)?,
+            street: getter!(settings, "/street", as_f64)?,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TypeQueryBoosts {
+    pub global: f64,
+    pub types: Types,
+}
+
 impl TypeQueryBoosts {
     fn new(settings: &serde_json::Value) -> Result<TypeQueryBoosts, String> {
         Ok(TypeQueryBoosts {
             global: getter!(settings, "/global_boost", as_f64)?,
-            address: getter!(settings, "/boosts/address", as_f64)?,
-            admin: getter!(settings, "/boosts/admin", as_f64)?,
-            stop: getter!(settings, "/boosts/stop", as_f64)?,
-            poi: getter!(settings, "/boosts/poi", as_f64)?,
-            street: getter!(settings, "/boosts/street", as_f64)?,
+            types: Types::new(getter!(settings, "/boosts")?)?,
         })
     }
 }
@@ -58,34 +69,83 @@ impl StringQueryBoosts {
             global: getter!(settings, "/global_boost", as_f64)?,
             name: getter!(settings, "/boosts/name", as_f64)?,
             label: getter!(settings, "/boosts/label", as_f64)?,
-            label_prefix: getter!(settings, "/boosts/label_prefix", as_f64)?,
+            label_prefix: getter!(settings, "/boosts/label.prefix", as_f64)?,
             zip_codes: getter!(settings, "/boosts/zip_codes", as_f64)?,
             house_number: getter!(settings, "/boosts/house_number", as_f64)?,
-            label_ngram_with_coord: getter!(settings, "/boosts/label_ngram_with_coord", as_f64)?,
-            label_ngram: getter!(settings, "/boosts/label_ngram", as_f64)?,
+            label_ngram_with_coord: getter!(settings, "/boosts/label.ngram_with_coord", as_f64)?,
+            label_ngram: getter!(settings, "/boosts/label.ngram", as_f64)?,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Proximity {
+    pub weight: f64,
+    pub weight_fuzzy: f64,
+    pub decay_distance: f64,
+    pub offset_distance: f64,
+    pub decay: f64,
+}
+
+impl Proximity {
+    fn new(settings: &serde_json::Value) -> Result<Proximity, String> {
+        Ok(Proximity {
+            weight: getter!(settings, "/weight", as_f64)?,
+            weight_fuzzy: getter!(settings, "/weight_fuzzy", as_f64)?,
+            decay_distance: getter!(settings, "/decay_distance", as_f64)?,
+            offset_distance: getter!(settings, "/offset_distance", as_f64)?,
+            decay: getter!(settings, "/decay", as_f64)?,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BuildWeight {
+    pub admin: f64,
+    pub build: f64,
+    pub missing: f64,
+}
+
+impl BuildWeight {
+    fn new(settings: &serde_json::Value) -> Result<BuildWeight, String> {
+        Ok(BuildWeight {
+            admin: getter!(settings, "/admin", as_f64)?,
+            build: getter!(settings, "/build", as_f64)?,
+            missing: getter!(settings, "/missing", as_f64)?,
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Weights {
+    pub coords_fuzzy: BuildWeight,
+    pub coords: BuildWeight,
+    pub no_coords: BuildWeight,
+    pub types: Types,
+}
+
+impl Weights {
+    fn new(settings: &serde_json::Value) -> Result<Weights, String> {
+        Ok(Weights {
+            coords_fuzzy: BuildWeight::new(getter!(settings, "/coords_fuzzy")?)?,
+            coords: BuildWeight::new(getter!(settings, "/coords")?)?,
+            no_coords: BuildWeight::new(getter!(settings, "/no_coords")?)?,
+            types: Types::new(settings)?,
         })
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct ImportanceQueryBoosts {
-    pub admin_weight_fuzzy: f64,
-    pub build_weight_fuzzy: f64,
-    pub proximity_boost_fuzzy: f64,
-    pub admin_weight: f64,
-    pub build_weight: f64,
-    pub proximity_boost: f64,
+    pub proximity: Proximity,
+    pub weights: Weights,
 }
 
 impl ImportanceQueryBoosts {
     fn new(settings: &serde_json::Value) -> Result<ImportanceQueryBoosts, String> {
         Ok(ImportanceQueryBoosts {
-            admin_weight_fuzzy: getter!(settings, "/boosts/admin_weight_fuzzy", as_f64)?,
-            build_weight_fuzzy: getter!(settings, "/boosts/build_weight_fuzzy", as_f64)?,
-            proximity_boost_fuzzy: getter!(settings, "/boosts/proximity_boost_fuzzy", as_f64)?,
-            admin_weight: getter!(settings, "/boosts/admin_weight", as_f64)?,
-            build_weight: getter!(settings, "/boosts/build_weight", as_f64)?,
-            proximity_boost: getter!(settings, "/boosts/proximity_boost", as_f64)?,
+            proximity: Proximity::new(getter!(settings, "/proximity")?)?,
+            weights: Weights::new(getter!(settings, "/weights")?)?,
         })
     }
 }
@@ -104,7 +164,7 @@ impl QuerySettings {
         Ok(QuerySettings {
             type_query: TypeQueryBoosts::new(getter!(settings, "/type_query")?)?,
             string_query: StringQueryBoosts::new(getter!(settings, "/string_query")?)?,
-            importance_query: ImportanceQueryBoosts::new(getter!(settings, "/string_query")?)?,
+            importance_query: ImportanceQueryBoosts::new(getter!(settings, "/importance_query")?)?,
         })
     }
 }
