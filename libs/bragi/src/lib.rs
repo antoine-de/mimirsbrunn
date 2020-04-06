@@ -36,6 +36,8 @@ use slog_scope::debug;
 use std::time::Duration;
 use structopt::StructOpt;
 
+use std::fs::read_to_string;
+
 mod extractors;
 mod model;
 pub mod prometheus_middleware;
@@ -104,6 +106,10 @@ pub struct Args {
         default_value = "3600"
     )]
     pub http_cache_duration: u32,
+    #[structopt(
+        long = "weight-config-file",
+        default_value = "json/bragi-settings.json")]
+    pub weight_config_file: String,
 }
 
 #[derive(Clone, Debug)]
@@ -132,6 +138,7 @@ impl From<&Args> for Context {
                 .or_else(|| max_es_timeout.clone())
         };
 
+        let content = read_to_string(&args.weight_config_file).expect("cannot read file");
         Self {
             reverse_rubber: Rubber::new_with_timeout(
                 &args.connection_string,
@@ -147,8 +154,7 @@ impl From<&Args> for Context {
             ),
             cnx_string: args.connection_string.clone(),
             http_cache_duration: args.http_cache_duration.clone(),
-            query_settings: QuerySettings::new(include_str!("../../../json/bragi-settings.json"))
-                .expect("failed to build query settings"),
+            query_settings: QuerySettings::new(&content).expect("failed to build query settings"),
         }
     }
 }
