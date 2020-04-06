@@ -28,10 +28,11 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::model::{self, BragiError};
+use crate::query_settings::QuerySettings;
 use geojson::Geometry;
 use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
-use mimir::rubber::{get_indexes, read_places, QuerySettings, Rubber};
+use mimir::rubber::{get_indexes, read_places, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es;
 use rs_es::error::EsError;
@@ -413,6 +414,7 @@ fn query(
     poi_types: &[&str],
     langs: &[&str],
     debug: bool,
+    query_settings: &QuerySettings,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
@@ -425,7 +427,7 @@ fn query(
         langs,
         zone_types,
         poi_types,
-        rubber.get_query_settings(),
+        query_settings,
     );
 
     let indexes = get_indexes(all_data, &pt_datasets, &poi_datasets, types);
@@ -554,6 +556,7 @@ pub fn autocomplete(
     langs: &[&str],
     mut rubber: Rubber,
     debug: bool,
+    query_settings: &QuerySettings,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -585,6 +588,7 @@ pub fn autocomplete(
         &poi_types,
         &langs,
         debug,
+        query_settings,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -604,6 +608,7 @@ pub fn autocomplete(
             &poi_types,
             &langs,
             debug,
+            query_settings,
         )
         .map_err(model::BragiError::from)
     } else {

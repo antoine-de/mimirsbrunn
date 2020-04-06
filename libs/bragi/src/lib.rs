@@ -39,9 +39,12 @@ use structopt::StructOpt;
 mod extractors;
 mod model;
 pub mod prometheus_middleware;
-pub mod query;
+pub(crate) mod query;
+mod query_settings;
 mod routes;
 pub mod server;
+
+pub use query_settings::QuerySettings;
 
 lazy_static::lazy_static! {
     static ref BRAGI_NB_THREADS: String = (8 * ::num_cpus::get()).to_string();
@@ -111,6 +114,7 @@ pub struct Context {
     pub cnx_string: String,
     pub http_cache_duration: u32,
     // pub rubber: Rubber,
+    query_settings: QuerySettings,
 }
 
 impl From<&Args> for Context {
@@ -143,6 +147,8 @@ impl From<&Args> for Context {
             ),
             cnx_string: args.connection_string.clone(),
             http_cache_duration: args.http_cache_duration.clone(),
+            query_settings: QuerySettings::new(include_str!("../../../json/bragi-settings.json"))
+                .expect("failed to build query settings"),
         }
     }
 }
@@ -156,6 +162,9 @@ impl Context {
     }
     pub fn get_rubber_for_autocomplete(&self, timeout: Option<Duration>) -> Rubber {
         clone_or_create(&self.autocomplete_rubber, timeout)
+    }
+    pub fn get_query_settings(&self) -> &QuerySettings {
+        &self.query_settings
     }
 }
 
