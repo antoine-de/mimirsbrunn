@@ -30,8 +30,8 @@
 
 use slog_scope::debug;
 
-fn main() {
+fn main() -> Result<(), String> {
     let _guard = mimir::logger_init();
     debug!("running bragi webserver");
-    bragi::server::runserver().unwrap();
+    bragi::server::runserver()
 }

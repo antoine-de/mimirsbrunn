@@ -5,6 +5,7 @@ use crate::routes::{
 use crate::{Args, Context};
 use actix_web::FromRequest;
 use actix_web::{middleware, web, App, HttpRequest, HttpServer};
+use std::convert::TryInto;
 use structopt::StructOpt;
 
 pub fn default_404(req: HttpRequest) -> Result<web::Json<()>, ActixError> {
@@ -43,9 +44,9 @@ pub fn configure_server(cfg: &mut web::ServiceConfig) {
     );
 }
 
-pub fn runserver() -> std::io::Result<()> {
+pub fn runserver() -> Result<(), String> {
     let args = Args::from_args();
-    let ctx: Context = (&args).into();
+    let ctx: Context = (&args).try_into()?;
     let prometheus = crate::prometheus_middleware::PrometheusMetrics::new("bragi", "/metrics");
     HttpServer::new(move || {
         App::new()
@@ -57,7 +58,9 @@ pub fn runserver() -> std::io::Result<()> {
             .configure(configure_server)
             .default_service(web::resource("").route(web::get().to(default_404)))
     })
-    .bind(&args.bind)?
+    .bind(&args.bind)
+    .map_err(|e| format!("Failed to bind `{}`: {}", args.bind, e))?
     .workers(args.nb_threads)
     .run()
+    .map_err(|e| format!("run failed: {}", e))
 }
