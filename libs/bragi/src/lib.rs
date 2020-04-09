@@ -33,6 +33,7 @@ extern crate prometheus;
 
 use mimir::rubber::Rubber;
 use slog_scope::debug;
+use std::convert::TryFrom;
 use std::time::Duration;
 use structopt::StructOpt;
 
@@ -108,9 +109,8 @@ pub struct Args {
     pub http_cache_duration: u32,
     #[structopt(
         long = "weight-config-file",
-        default_value = "json/bragi-settings.json"
     )]
-    pub weight_config_file: String,
+    pub weight_config_file: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -124,8 +124,10 @@ pub struct Context {
     query_settings: QuerySettings,
 }
 
-impl From<&Args> for Context {
-    fn from(args: &Args) -> Self {
+impl TryFrom<&Args> for Context {
+    type Error = String;
+
+    fn try_from(args: &Args) -> Result<Self, Self::Error> {
         let max_es_timeout = args.max_es_timeout.map(Duration::from_millis);
 
         // the timeout is the min between the timeout set at startup time and at query time
@@ -139,8 +141,13 @@ impl From<&Args> for Context {
                 .or_else(|| max_es_timeout.clone())
         };
 
-        let content = read_to_string(&args.weight_config_file).expect("cannot read file");
-        Self {
+        let content = match args.weight_config_file {
+            Some(ref file_path) => read_to_string(&file_path).map_err(|e| {
+                format!("Failed to read `{}`: {}", file_path, e)
+            })?,
+            None => include_str!("../../../json/bragi-settings.json").to_owned(),
+        };
+        Ok(Self {
             reverse_rubber: Rubber::new_with_timeout(
                 &args.connection_string,
                 bounded_timeout(args.max_es_reverse_timeout),
@@ -155,8 +162,8 @@ impl From<&Args> for Context {
             ),
             cnx_string: args.connection_string.clone(),
             http_cache_duration: args.http_cache_duration.clone(),
-            query_settings: QuerySettings::new(&content).expect("failed to build query settings"),
-        }
+            query_settings: QuerySettings::new(&content)?,
+        })
     }
 }
 
