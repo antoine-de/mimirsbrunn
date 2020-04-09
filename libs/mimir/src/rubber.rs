@@ -306,7 +306,7 @@ impl Rubber {
     where
         T: Into<Option<time::Duration>>,
     {
-        info!("elastic search host {} ", cnx);
+        debug!("elastic search host {} ", cnx);
 
         let timeout = timeout.into();
         Rubber {
