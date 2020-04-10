@@ -354,7 +354,7 @@ impl Rubber {
         debug!("creating index");
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
-        let settings = include_str!("../../../json/settings.json");
+        let settings = include_str!("../../../config/settings.json");
 
         let mut settings_json_value = serde_json::from_str::<serde_json::Value>(&settings)
             .map_err(|err| {
@@ -413,23 +413,23 @@ impl Rubber {
     pub fn initialize_templates(&self) -> Result<(), Error> {
         self.create_template(
             &"template_addr",
-            include_str!("../../../json/addr_settings.json"),
+            include_str!("../../../config/addr_settings.json"),
         )?;
         self.create_template(
             &"template_stop",
-            include_str!("../../../json/stop_settings.json"),
+            include_str!("../../../config/stop_settings.json"),
         )?;
         self.create_template(
             &"template_admin",
-            include_str!("../../../json/admin_settings.json"),
+            include_str!("../../../config/admin_settings.json"),
         )?;
         self.create_template(
             &"template_street",
-            include_str!("../../../json/street_settings.json"),
+            include_str!("../../../config/street_settings.json"),
         )?;
         self.create_template(
             &"template_poi",
-            include_str!("../../../json/poi_settings.json"),
+            include_str!("../../../config/poi_settings.json"),
         )?;
         Ok(())
     }
