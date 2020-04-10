@@ -195,11 +195,11 @@ fn build_query<'a>(
     }
     let type_query = Query::build_bool()
         .with_should(vec![
-            match_type_with_boost::<Addr>(query_settings.type_query.types.address),
-            match_type_with_boost::<Admin>(query_settings.type_query.types.admin),
-            match_type_with_boost::<Stop>(query_settings.type_query.types.stop),
-            match_type_with_boost::<Poi>(query_settings.type_query.types.poi),
-            match_type_with_boost::<Street>(query_settings.type_query.types.street),
+            match_type_with_boost::<Addr>(query_settings.type_query.boosts.address),
+            match_type_with_boost::<Admin>(query_settings.type_query.boosts.admin),
+            match_type_with_boost::<Stop>(query_settings.type_query.boosts.stop),
+            match_type_with_boost::<Poi>(query_settings.type_query.boosts.poi),
+            match_type_with_boost::<Street>(query_settings.type_query.boosts.street),
         ])
         .with_boost(query_settings.type_query.global)
         .build();
@@ -220,30 +220,30 @@ fn build_query<'a>(
     // Priorization by query string
     let mut string_should = vec![
         build_multi_match("name", &format_names_field)
-            .with_boost(query_settings.string_query.name)
+            .with_boost(query_settings.string_query.boosts.name)
             .build(),
         build_multi_match("label", &format_labels_field)
-            .with_boost(query_settings.string_query.label)
+            .with_boost(query_settings.string_query.boosts.label)
             .build(),
         build_multi_match("label.prefix", &format_labels_prefix_field)
-            .with_boost(query_settings.string_query.label_prefix)
+            .with_boost(query_settings.string_query.boosts.label_prefix)
             .build(),
         Query::build_match("zip_codes", q)
-            .with_boost(query_settings.string_query.zip_codes)
+            .with_boost(query_settings.string_query.boosts.zip_codes)
             .build(),
         Query::build_match("house_number", q)
-            .with_boost(query_settings.string_query.house_number)
+            .with_boost(query_settings.string_query.boosts.house_number)
             .build(),
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
         string_should.push(if coord.is_some() {
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(query_settings.string_query.label_ngram_with_coord)
+                .with_boost(query_settings.string_query.boosts.label_ngram_with_coord)
                 .build()
         } else {
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(query_settings.string_query.label_ngram)
+                .with_boost(query_settings.string_query.boosts.label_ngram)
                 .build()
         });
     }

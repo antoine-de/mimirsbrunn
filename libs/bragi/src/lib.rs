@@ -142,7 +142,7 @@ impl TryFrom<&Args> for Context {
         let content = match args.weight_config_file {
             Some(ref file_path) => read_to_string(&file_path)
                 .map_err(|e| format!("Failed to read `{}`: {}", file_path, e))?,
-            None => include_str!("../../../json/bragi-settings.json").to_owned(),
+            None => include_str!("../../../json/bragi-settings.toml").to_owned(),
         };
         Ok(Self {
             reverse_rubber: Rubber::new_with_timeout(
@@ -165,7 +165,7 @@ impl TryFrom<&Args> for Context {
                     args.weight_config_file
                         .as_ref()
                         .map(|x| x.as_str())
-                        .unwrap_or_else(|| "json/bragi-settings.json"),
+                        .unwrap_or_else(|| "json/bragi-settings.toml"),
                     e
                 )
             })?,
