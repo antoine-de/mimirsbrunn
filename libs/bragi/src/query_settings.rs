@@ -2,16 +2,15 @@ macro_rules! getter {
     ($settings:expr, $to_get:expr, $extra:ident) => {{
         let tmp = getter!($settings, $to_get)?;
         tmp.$extra().ok_or(format!(
-            "Failed to call `{}` on `{}` entry from bragi-settings.json",
+            "Failed to call `{}` on `{}` entry",
             stringify!($extra),
             $to_get,
         ))
     }};
     ($settings:expr, $to_get:expr) => {{
-        $settings.pointer(&$to_get).ok_or(format!(
-            "Missing `{}` entry from bragi-settings.json",
-            $to_get
-        ))
+        $settings
+            .pointer(&$to_get)
+            .ok_or(format!("Missing `{}` entry", $to_get))
     }};
 }
 

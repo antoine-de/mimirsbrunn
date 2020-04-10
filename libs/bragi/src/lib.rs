@@ -107,9 +107,7 @@ pub struct Args {
         default_value = "3600"
     )]
     pub http_cache_duration: u32,
-    #[structopt(
-        long = "weight-config-file",
-    )]
+    #[structopt(long = "weight-config-file")]
     pub weight_config_file: Option<String>,
 }
 
@@ -142,9 +140,8 @@ impl TryFrom<&Args> for Context {
         };
 
         let content = match args.weight_config_file {
-            Some(ref file_path) => read_to_string(&file_path).map_err(|e| {
-                format!("Failed to read `{}`: {}", file_path, e)
-            })?,
+            Some(ref file_path) => read_to_string(&file_path)
+                .map_err(|e| format!("Failed to read `{}`: {}", file_path, e))?,
             None => include_str!("../../../json/bragi-settings.json").to_owned(),
         };
         Ok(Self {
@@ -162,7 +159,16 @@ impl TryFrom<&Args> for Context {
             ),
             cnx_string: args.connection_string.clone(),
             http_cache_duration: args.http_cache_duration.clone(),
-            query_settings: QuerySettings::new(&content)?,
+            query_settings: QuerySettings::new(&content).map_err(|e| {
+                format!(
+                    "failed to parse `{}`: {}",
+                    args.weight_config_file
+                        .as_ref()
+                        .map(|x| x.as_str())
+                        .unwrap_or_else(|| "json/bragi-settings.json"),
+                    e
+                )
+            })?,
         })
     }
 }
