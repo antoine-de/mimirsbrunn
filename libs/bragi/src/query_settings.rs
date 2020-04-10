@@ -102,7 +102,7 @@ impl Proximity {
 #[derive(Clone, Debug)]
 pub struct BuildWeight {
     pub admin: f64,
-    pub build: f64,
+    pub factor: f64,
     pub missing: f64,
 }
 
@@ -110,7 +110,7 @@ impl BuildWeight {
     fn new(settings: &serde_json::Value) -> Result<BuildWeight, String> {
         Ok(BuildWeight {
             admin: getter!(settings, "/admin", as_f64)?,
-            build: getter!(settings, "/build", as_f64)?,
+            factor: getter!(settings, "/factor", as_f64)?,
             missing: getter!(settings, "/missing", as_f64)?,
         })
     }
