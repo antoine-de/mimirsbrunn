@@ -2,7 +2,7 @@
 !src/
 !libs/
 !tests/
-!json/
+!config/
 !Cargo*
 !build.rs
 !.git/

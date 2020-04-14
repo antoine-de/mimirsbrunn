@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use super::model::{self, BragiError};
+use crate::query_settings::{BuildWeight, Proximity, QuerySettings, Types};
 use geojson::Geometry;
 use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
@@ -117,24 +118,32 @@ fn build_coverage_condition(pt_datasets: &[&str]) -> Query {
 
 /// Create a `rs_es::Query` that boosts results according to the
 /// distance to `coord`.
-fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
+fn build_proximity_with_boost(coord: &Coord, infos: &Proximity, is_fuzzy: bool) -> Query {
     Query::build_function_score()
         .with_functions(vec![
             FilteredFunction::build_filtered_function(
                 None,
                 DecayOptions::new(
                     rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                    rs_u::Distance::new(130f64, rs_u::DistanceUnit::Kilometer),
+                    rs_u::Distance::new(infos.decay_distance, rs_u::DistanceUnit::Kilometer),
                 )
-                .with_offset(rs_u::Distance::new(20f64, rs_u::DistanceUnit::Kilometer))
-                .with_decay(0.4f64)
+                .with_offset(rs_u::Distance::new(
+                    infos.offset_distance,
+                    rs_u::DistanceUnit::Kilometer,
+                ))
+                .with_decay(infos.decay)
                 .build("coord")
                 .build_exp(),
                 None,
             ),
             FilteredFunction::build_filtered_function(
                 None,
-                Function::build_weight(weight).build(),
+                Function::build_weight(if is_fuzzy {
+                    infos.weight_fuzzy
+                } else {
+                    infos.weight
+                })
+                .build(),
                 None,
             ),
         ])
@@ -142,14 +151,13 @@ fn build_proximity_with_boost(coord: &Coord, weight: f64) -> Query {
         .build()
 }
 
-fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
-    let factor = factor.into();
+fn build_with_weight(build_weight: &BuildWeight, types: &Types) -> Query {
     let weighted = |doc_type, weight| {
         FilteredFunction::build_filtered_function(
             Query::build_term("_type", doc_type).build(),
             Function::build_field_value_factor("weight")
-                .with_factor(factor.unwrap_or(0.75))
-                .with_missing(0.0)
+                .with_factor(build_weight.factor)
+                .with_missing(build_weight.missing)
                 .build(),
             Function::build_weight(weight),
         )
@@ -157,11 +165,11 @@ fn build_with_weight<A: Into<Option<f64>>>(factor: A) -> Query {
 
     Query::build_function_score()
         .with_functions(vec![
-            weighted(Stop::doc_type(), 1.0),
-            weighted(Addr::doc_type(), 0.5),
-            weighted(Admin::doc_type(), 0.5),
-            weighted(Poi::doc_type(), 0.5),
-            weighted(Street::doc_type(), 0.5),
+            weighted(Stop::doc_type(), types.stop),
+            weighted(Addr::doc_type(), types.address),
+            weighted(Admin::doc_type(), types.admin),
+            weighted(Poi::doc_type(), types.poi),
+            weighted(Street::doc_type(), types.street),
         ])
         .with_boost_mode(BoostMode::Replace)
         .build()
@@ -177,6 +185,7 @@ fn build_query<'a>(
     langs: &'a [&'a str],
     zone_types: &[&str],
     poi_types: &[&str],
+    query_settings: &QuerySettings,
 ) -> Query {
     // Priorization by type
     fn match_type_with_boost<T: MimirObject>(boost: f64) -> Query {
@@ -186,13 +195,13 @@ fn build_query<'a>(
     }
     let type_query = Query::build_bool()
         .with_should(vec![
-            match_type_with_boost::<Addr>(30.),
-            match_type_with_boost::<Admin>(19.),
-            match_type_with_boost::<Stop>(18.),
-            match_type_with_boost::<Poi>(1.5),
-            match_type_with_boost::<Street>(1.),
+            match_type_with_boost::<Addr>(query_settings.type_query.boosts.address),
+            match_type_with_boost::<Admin>(query_settings.type_query.boosts.admin),
+            match_type_with_boost::<Stop>(query_settings.type_query.boosts.stop),
+            match_type_with_boost::<Poi>(query_settings.type_query.boosts.poi),
+            match_type_with_boost::<Street>(query_settings.type_query.boosts.street),
         ])
-        .with_boost(30.)
+        .with_boost(query_settings.type_query.global)
         .build();
 
     let format_names_field = |lang| format!("names.{}", lang);
@@ -211,54 +220,70 @@ fn build_query<'a>(
     // Priorization by query string
     let mut string_should = vec![
         build_multi_match("name", &format_names_field)
-            .with_boost(1.8)
+            .with_boost(query_settings.string_query.boosts.name)
             .build(),
         build_multi_match("label", &format_labels_field)
-            .with_boost(0.6)
+            .with_boost(query_settings.string_query.boosts.label)
             .build(),
         build_multi_match("label.prefix", &format_labels_prefix_field)
-            .with_boost(0.6)
+            .with_boost(query_settings.string_query.boosts.label_prefix)
             .build(),
-        Query::build_match("zip_codes", q).with_boost(1.).build(),
+        Query::build_match("zip_codes", q)
+            .with_boost(query_settings.string_query.boosts.zip_codes)
+            .build(),
         Query::build_match("house_number", q)
-            .with_boost(0.001)
+            .with_boost(query_settings.string_query.boosts.house_number)
             .build(),
     ];
     if let MatchType::Fuzzy = match_type {
         let format_labels_ngram_field = |lang| format!("labels.{}.ngram", lang);
         string_should.push(if coord.is_some() {
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(3.8)
+                .with_boost(query_settings.string_query.boosts.label_ngram_with_coord)
                 .build()
         } else {
             build_multi_match("label.ngram", &format_labels_ngram_field)
-                .with_boost(1.8)
+                .with_boost(query_settings.string_query.boosts.label_ngram)
                 .build()
         });
     }
     let string_query = Query::build_bool()
         .with_should(string_should)
-        .with_boost(1.)
+        .with_boost(query_settings.string_query.global)
         .build();
 
-    let mut admin_weight = 0.03;
+    let mut admin_weight = query_settings.importance_query.weights.coords_fuzzy.admin;
 
     // Priorization by importance
     let mut importance_queries = if let Some(ref coord) = coord {
         if let MatchType::Fuzzy = match_type {
             vec![
-                build_with_weight(0.15),
-                build_proximity_with_boost(coord, 0.4),
+                build_with_weight(
+                    &query_settings.importance_query.weights.coords_fuzzy,
+                    &query_settings.importance_query.weights.types,
+                ),
+                build_proximity_with_boost(coord, &query_settings.importance_query.proximity, true),
             ]
         } else {
-            admin_weight = 0.12;
+            admin_weight = query_settings.importance_query.weights.coords.admin;
             vec![
-                build_with_weight(0.4),
-                build_proximity_with_boost(coord, 0.4),
+                build_with_weight(
+                    &query_settings.importance_query.weights.coords,
+                    &query_settings.importance_query.weights.types,
+                ),
+                build_proximity_with_boost(
+                    coord,
+                    &query_settings.importance_query.proximity,
+                    false,
+                ),
             ]
         }
     } else {
-        vec![build_with_weight(None)]
+        admin_weight = query_settings.importance_query.weights.no_coords.admin;
+        vec![build_with_weight(
+            &query_settings.importance_query.weights.no_coords,
+            &query_settings.importance_query.weights.types,
+        )]
     };
 
     match match_type {
@@ -407,6 +432,7 @@ fn query(
     poi_types: &[&str],
     langs: &[&str],
     debug: bool,
+    query_settings: &QuerySettings,
 ) -> Result<Vec<mimir::Place>, EsError> {
     let query_type = match_type.to_string();
     let query = build_query(
@@ -419,6 +445,7 @@ fn query(
         langs,
         zone_types,
         poi_types,
+        query_settings,
     );
 
     let indexes = get_indexes(all_data, &pt_datasets, &poi_datasets, types);
@@ -547,6 +574,7 @@ pub fn autocomplete(
     langs: &[&str],
     mut rubber: Rubber,
     debug: bool,
+    query_settings: &QuerySettings,
 ) -> Result<Vec<mimir::Place>, BragiError> {
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
@@ -578,6 +606,7 @@ pub fn autocomplete(
         &poi_types,
         &langs,
         debug,
+        query_settings,
     )
     .map_err(model::BragiError::from)?;
     if results.is_empty() {
@@ -597,6 +626,7 @@ pub fn autocomplete(
             &poi_types,
             &langs,
             debug,
+            query_settings,
         )
         .map_err(model::BragiError::from)
     } else {

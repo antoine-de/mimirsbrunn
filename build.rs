@@ -29,7 +29,7 @@ fn validate_json_files(dir: &Path) -> io::Result<()> {
 }
 
 fn main() {
-    if let Err(e) = validate_json_files(Path::new("json")) {
+    if let Err(e) = validate_json_files(Path::new("config")) {
         eprintln!("=> Failure in JSON validation!\n=> {}", e);
         panic!("");
     }

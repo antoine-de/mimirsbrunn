@@ -1,0 +1,51 @@
+[type_query]
+global = 30.0
+
+    [type_query.boosts]
+    address = 30.0
+    admin = 19.0
+    poi = 1.5
+    stop = 18.0
+    street = 1.0
+
+[string_query]
+global = 1.0
+
+    [string_query.boosts]
+    name = 1.8
+    label = 0.6
+    label_prefix = 0.6
+    zip_codes = 1.0
+    house_number = 0.001
+    label_ngram_with_coord = 3.8
+    label_ngram = 1.8
+
+[importance_query]
+    [importance_query.weights]
+    address = 0.5
+    admin = 0.5
+    poi = 0.5
+    stop = 1.0
+    street = 0.5
+
+        [importance_query.weights.coords_fuzzy]
+        admin = 0.03
+        factor = 0.15
+        missing = 0.0
+
+        [importance_query.weights.coords]
+        admin = 0.12
+        factor = 0.4
+        missing = 0.0
+
+        [importance_query.weights.no_coords]
+        admin = 0.03
+        factor = 0.75
+        missing = 0.0
+
+    [importance_query.proximity]
+    weight = 0.4
+    weight_fuzzy = 0.4
+    decay_distance = 130.0
+    offset_distance = 20.0
+    decay = 0.4

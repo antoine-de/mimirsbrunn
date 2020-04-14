@@ -164,6 +164,7 @@ pub fn call_autocomplete(
         &langs,
         rubber,
         params.debug.unwrap_or(false),
+        state.get_query_settings(),
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(|v| {
