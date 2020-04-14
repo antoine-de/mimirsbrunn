@@ -47,6 +47,7 @@ mod query_settings;
 mod routes;
 pub mod server;
 
+pub use query::make_place as query_make_place;
 pub use query_settings::QuerySettings;
 
 lazy_static::lazy_static! {

@@ -2,6 +2,7 @@ use docker_wrapper::*;
 use serde_json::value::Value;
 use serde_json::Map;
 use slog_scope::info;
+use std::convert::TryFrom;
 use std::time::Duration;
 
 pub struct ElasticSearchWrapper<'a> {
@@ -152,7 +153,7 @@ impl<'a> ElasticSearchWrapper<'a> {
                     doc_type.and_then(|doc_type| {
                         // The real object is contained in the _source section.
                         obj.get("_source").and_then(|src| {
-                            bragi::query::make_place(doc_type, Some(Box::new(src.clone())))
+                            bragi::query_make_place(doc_type, Some(Box::new(src.clone())))
                         })
                     })
                 })
@@ -167,10 +168,11 @@ pub struct BragiHandler {
 
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
-        let ctx = bragi::Context::from(&bragi::Args {
+        let ctx = bragi::Context::try_from(&bragi::Args {
             connection_string: url.clone(),
             ..Default::default()
-        });
+        })
+        .expect("failed to create bragi Context");
 
         let prometheus = bragi::prometheus_middleware::PrometheusMetrics::new("bragi", "/metrics");
         let srv = actix_http_test::TestServer::new(move || {
