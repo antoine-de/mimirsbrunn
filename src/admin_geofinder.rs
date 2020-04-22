@@ -116,7 +116,7 @@ impl AdminGeoFinder {
                     let admin = Arc::new(admin);
                     let split = SplitAdmin {
                         envelope: AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y]),
-                        boundary: boundary,
+                        boundary,
                         admin: admin.clone(),
                     };
                     self.admin_by_id.insert(admin.id.clone(), admin);
@@ -234,7 +234,7 @@ mod tests {
     use geo::prelude::BoundingRect;
 
     fn p(x: f64, y: f64) -> geo_types::Point<f64> {
-        geo_types::Point(geo_types::Coordinate { x: x, y: y })
+        geo_types::Point(geo_types::Coordinate { x, y })
     }
 
     fn make_admin(offset: f64, zt: Option<ZoneType>) -> ::mimir::Admin {
@@ -279,7 +279,7 @@ mod tests {
             bbox: boundary.bounding_rect(),
             boundary: Some(boundary),
             insee: "outlook".to_string(),
-            zone_type: zone_type,
+            zone_type,
             parent_id: parent_offset.map(|id| id.into()),
             ..Default::default()
         }

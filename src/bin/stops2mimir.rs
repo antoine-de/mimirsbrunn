@@ -121,7 +121,7 @@ impl GtfsStop {
             let coord = mimir::Coord::new(self.stop_lon, self.stop_lat);
             Ok(mimir::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
-                coord: coord.clone(),
+                coord,
                 approx_coord: Some(coord.into()),
                 label: self.stop_name.clone(),
                 name: self.stop_name,

@@ -40,10 +40,12 @@ use std::mem::replace;
 use std::ops::Deref;
 use std::sync::Arc;
 
-const GLOBAL_STOP_INDEX_NAME: &'static str = "munin_global_stops";
+const GLOBAL_STOP_INDEX_NAME: &str = "munin_global_stops";
 
-pub fn initialize_weights<'a, It>(stops: It, nb_stop_points: &HashMap<String, u32>)
-where
+pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
+    stops: It,
+    nb_stop_points: &HashMap<String, u32, S>,
+) where
     It: Iterator<Item = &'a mut mimir::Stop>,
 {
     let max = *nb_stop_points.values().max().unwrap_or(&1) as f64;
@@ -209,7 +211,7 @@ fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .flat_map(|stops| stops.into_iter())
-        .chain(stops.into_iter().cloned());
+        .chain(stops.cloned());
 
     let all_merged_stops = merge_stops(all_es_stops);
     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
@@ -235,7 +237,7 @@ fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(
         .collect();
     rubber.alias(
         GLOBAL_STOP_INDEX_NAME,
-        &vec![new_global_index.to_string()],
+        &[new_global_index.to_string()],
         &last_global_indexes,
     )?;
 

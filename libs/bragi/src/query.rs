@@ -27,6 +27,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+#![allow(clippy::too_many_arguments)]
 use super::model::{self, BragiError};
 use crate::query_settings::{BuildWeight, Proximity, QuerySettings, Types};
 use geojson::Geometry;
@@ -482,9 +483,10 @@ fn query(
         .with_source(Source::exclude(&["boundary"]));
 
     // We don't want to clutter the Query URL, so we only add an explanation if the option is used
-    let search_query = match debug {
-        true => search_query.with_explain(true),
-        false => search_query,
+    let search_query = if debug {
+        search_query.with_explain(true)
+    } else {
+        search_query
     };
 
     if let Some(timeout) = &timeout {
@@ -492,7 +494,9 @@ fn query(
     }
     let result = search_query.send()?;
 
-    timer.map(|t| t.observe_duration());
+    if let Some(t) = timer {
+        t.observe_duration()
+    }
 
     read_places(result, coord.as_ref())
 }
@@ -550,7 +554,9 @@ pub fn features(
 
     let result = search_query.send()?;
 
-    timer.map(|t| t.observe_duration());
+    if let Some(t) = timer {
+        t.observe_duration()
+    }
 
     if result.hits.total == 0 {
         Err(BragiError::ObjectNotFound)

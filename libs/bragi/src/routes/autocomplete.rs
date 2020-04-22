@@ -26,8 +26,8 @@ enum Type {
 }
 
 impl Type {
-    fn as_str(&self) -> &'static str {
-        match *self {
+    fn as_str(self) -> &'static str {
+        match self {
             Type::City => "city",
             Type::House => "house",
             Type::Poi => "poi",
@@ -90,7 +90,7 @@ pub struct Params {
 
 impl Params {
     fn types_as_str(&self) -> Vec<&str> {
-        self.types.iter().map(Type::as_str).collect()
+        self.types.iter().map(|t| Type::as_str(*t)).collect()
     }
     fn zone_types_as_str(&self) -> Vec<&str> {
         self.zone_types.iter().map(|x| x.as_str()).collect()

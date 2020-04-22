@@ -6,15 +6,15 @@ use slog_scope::warn;
 
 fn format_label<'a>(
     nice_name: String,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    mut admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
     _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
 ) -> String {
-    let city = admins.clone().find(|adm| adm.is_city());
+    let city = admins.find(|adm| adm.is_city());
     let city_name = city.map(|a| a.name.to_string());
 
     match city_name {
         Some(n) => format!("{} ({})", nice_name, n),
-        None => nice_name.to_string(),
+        None => nice_name,
     }
 }
 
@@ -108,7 +108,7 @@ pub fn format_international_poi_label<'a>(
                 None
             } else {
                 Some(mimir::Property {
-                    key: lang.to_string(),
+                    key: (*lang).to_string(),
                     value: i18n_poi_label,
                 })
             }
@@ -163,7 +163,7 @@ impl FormatPlaceHolder {
         place[Component::Road] = Some(self.street);
 
         for a in admins {
-            if let Some(addr_equivalent) = cosmo_to_addr_formatter_type(&a.zone_type) {
+            if let Some(addr_equivalent) = cosmo_to_addr_formatter_type(a.zone_type) {
                 place[addr_equivalent] = Some(a.name.clone());
             }
         }
@@ -172,7 +172,7 @@ impl FormatPlaceHolder {
 }
 
 fn cosmo_to_addr_formatter_type(
-    cosmo_type: &Option<cosmogony::ZoneType>,
+    cosmo_type: Option<cosmogony::ZoneType>,
 ) -> Option<address_formatter::Component> {
     use address_formatter::Component;
     match cosmo_type {

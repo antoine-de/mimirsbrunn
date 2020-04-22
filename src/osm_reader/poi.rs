@@ -98,18 +98,14 @@ impl PoiConfig {
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
             if !ids.insert(&poi_type.id) {
-                Err(format!(
-                    "poi_type_id {:?} present several times",
-                    poi_type.id
-                ))?;
+                return Err(format!("poi_type_id {:?} present several times", poi_type.id).into());
             }
         }
         for rule in &self.rules {
             if !ids.contains(rule.poi_type_id.as_str()) {
-                Err(format!(
-                    "poi_type_id {:?} in a rule not declared",
-                    rule.poi_type_id
-                ))?;
+                return Err(
+                    format!("poi_type_id {:?} in a rule not declared", rule.poi_type_id).into(),
+                );
             }
         }
         Ok(())
@@ -124,7 +120,7 @@ impl PoiConfig {
     }
 }
 
-const DEFAULT_JSON_POI_TYPES: &'static str = r#"
+const DEFAULT_JSON_POI_TYPES: &str = r#"
 {
   "poi_types": [
     {"id": "amenity:college", "name": "École"},
@@ -249,12 +245,12 @@ fn parse_poi(
     };
     let country_codes = utils::find_country_codes(adms.iter().map(|a| a.deref()));
     Some(mimir::Poi {
-        id: id,
+        id,
         name: name.to_string(),
         label: labels::format_poi_label(name, adms.iter().map(|a| a.deref()), &country_codes),
-        coord: coord.clone(),
+        coord,
         approx_coord: Some(coord.into()),
-        zip_codes: zip_codes,
+        zip_codes,
         administrative_regions: adms,
         weight: 0.,
         poi_type: poi_type.clone(),

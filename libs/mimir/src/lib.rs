@@ -83,6 +83,6 @@ where
 
     let log = slog::Logger::root(drain.fuse(), slog_o!());
     let scope_guard = slog_scope::set_global_logger(log);
-    let log_guard = slog_stdlog::init().unwrap();
-    (scope_guard, log_guard)
+    slog_stdlog::init().unwrap();
+    (scope_guard, ())
 }

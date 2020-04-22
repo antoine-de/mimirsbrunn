@@ -97,15 +97,15 @@ impl IntoAdmin for Zone {
                 .get(&self.id)
                 .map(|(id, insee)| format_id(id, insee.as_ref()))
                 .expect("unable to find zone id in zones_osm_id"),
-            insee: insee.unwrap_or("".to_owned()),
+            insee: insee.unwrap_or_else(|| "".to_owned()),
             level: self.admin_level.unwrap_or(0),
-            label: label,
+            label,
             name: self.name,
-            zip_codes: zip_codes,
+            zip_codes,
             weight: utils::normalize_weight(weight, max_weight),
             bbox: self.bbox,
             boundary: self.boundary,
-            coord: center.clone(),
+            coord: center,
             approx_coord: Some(center.into()),
             zone_type: self.zone_type,
             parent_id: parent_osm_id,
@@ -113,7 +113,7 @@ impl IntoAdmin for Zone {
             // not the country code of it's country from the hierarchy
             // (so it has a country code mainly if it is a country)
             country_codes: utils::get_country_code(&codes).into_iter().collect(),
-            codes: codes,
+            codes,
             names: osm_utils::get_names_from_tags(&self.tags, &langs),
             labels: self
                 .international_labels

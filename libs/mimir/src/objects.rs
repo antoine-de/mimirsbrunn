@@ -27,6 +27,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+#![allow(clippy::large_enum_variant, clippy::needless_lifetimes)]
 use cosmogony::ZoneType;
 use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
@@ -55,7 +56,7 @@ pub enum Place {
     Admin(Admin),
     Street(Street),
     Addr(Addr),
-    Poi(Poi),
+    Poi(Poi), // Boxing for avoiding large enum variants
     Stop(Stop),
 }
 
@@ -64,7 +65,7 @@ pub enum Place {
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Address {
     Street(Street),
-    Addr(Addr),
+    Addr(Addr), // Boxing for avoiding large enum variants
 }
 
 impl Place {
@@ -376,7 +377,7 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
             name: line.name.clone(),
             code: line.code.clone(),
             color: line.color.clone(),
-            sort_order: line.sort_order.clone(),
+            sort_order: line.sort_order,
             text_color: line.text_color.clone(),
             commercial_mode: navitia
                 .commercial_modes
@@ -452,10 +453,7 @@ impl FromIterator<(String, String)> for I18nProperties {
     fn from_iter<I: IntoIterator<Item = (String, String)>>(iter: I) -> Self {
         let properties = iter
             .into_iter()
-            .map(|(k, v)| Property {
-                key: k.to_string(),
-                value: v.to_string(),
-            })
+            .map(|(k, v)| Property { key: k, value: v })
             .collect::<Vec<_>>();
         I18nProperties(properties)
     }
@@ -954,7 +952,7 @@ impl<'de> Deserialize<'de> for Coord {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["lat", "lon"];
+        const FIELDS: &[&str] = &["lat", "lon"];
         deserializer.deserialize_struct("Coord", FIELDS, CoordVisitor)
     }
 }

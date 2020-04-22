@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+#![allow(clippy::option_as_ref_deref)]
 #[macro_use]
 extern crate prometheus;
 
@@ -137,7 +138,7 @@ impl TryFrom<&Args> for Context {
                     Some(dt) => t.min(dt),
                     None => t,
                 })
-                .or_else(|| max_es_timeout.clone())
+                .or_else(|| max_es_timeout)
         };
 
         let content = match args.weight_config_file {
@@ -159,7 +160,7 @@ impl TryFrom<&Args> for Context {
                 bounded_timeout(args.max_es_autocomplete_timeout),
             ),
             cnx_string: args.connection_string.clone(),
-            http_cache_duration: args.http_cache_duration.clone(),
+            http_cache_duration: args.http_cache_duration,
             query_settings: QuerySettings::new(&content).map_err(|e| {
                 format!(
                     "failed to parse `{}`: {}",

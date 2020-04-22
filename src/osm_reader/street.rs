@@ -27,6 +27,12 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
+#![allow(
+    clippy::unused_unit,
+    clippy::needless_return,
+    clippy::never_loop,
+    clippy::option_map_unit_fn
+)]
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
@@ -154,9 +160,8 @@ impl<'a> DB<'a> {
 
     #[allow(dead_code)]
     fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
-        let mut values = self.buffer.values();
-        while let Some(obj) = values.next() {
-            f(Cow::Borrowed(obj));
+        for value in self.buffer.values() {
+            f(Cow::Borrowed(value));
         }
         let mut stmt = err_logger!(
             self.conn.prepare("SELECT obj FROM ids"),
@@ -301,7 +306,7 @@ impl<'a> ObjWrapper<'a> {
     fn new(db_file: &'a Option<PathBuf>, db_buffer_size: usize) -> Result<ObjWrapper<'a>, Error> {
         Ok(if let Some(ref db_file) = db_file {
             info!("Running with DB storage");
-            ObjWrapper::DB(DB::new(db_file, db_buffer_size).map_err(|e| failure::err_msg(e))?)
+            ObjWrapper::DB(DB::new(db_file, db_buffer_size).map_err(failure::err_msg)?)
         } else {
             info!("Running with BTreeMap (RAM) storage");
             ObjWrapper::Map(BTreeMap::new())
@@ -312,8 +317,7 @@ impl<'a> ObjWrapper<'a> {
     fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
         match *self {
             ObjWrapper::Map(ref m) => {
-                let mut values = m.values();
-                while let Some(value) = values.next() {
+                for value in m.values() {
                     f(Cow::Borrowed(value));
                 }
             }
@@ -368,7 +372,7 @@ pub fn streets(
 ) -> Result<StreetsVec, Error> {
     // This is the list of highway that we don't want to index
     // See [OSM Key Highway](https://wiki.openstreetmap.org/wiki/Key:highway) for background.
-    const INVALID_HIGHWAY: &'static [&'static str] =
+    const INVALID_HIGHWAY: &[&str] =
         &["bus_guideway", "escape", "bus_stop", "elevator", "platform"];
 
     // For the object to be a valid street, it needs to be an osm highway of a valid type,
@@ -461,7 +465,7 @@ pub fn streets(
                     .collect();
                 name_admin_map
                     .entry(StreetKey { name, admins })
-                    .or_insert(vec![])
+                    .or_insert_with(|| vec![])
                     .push(osmid);
             }
         }
