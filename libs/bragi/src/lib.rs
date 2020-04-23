@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-#![allow(clippy::option_as_ref_deref)]
 #[macro_use]
 extern crate prometheus;
 
@@ -161,14 +160,13 @@ impl TryFrom<&Args> for Context {
             ),
             cnx_string: args.connection_string.clone(),
             http_cache_duration: args.http_cache_duration,
-            query_settings: QuerySettings::new(&content).map_err(|e| {
+            query_settings: QuerySettings::new(&content).map_err(|err| {
                 format!(
                     "failed to parse `{}`: {}",
                     args.weight_config_file
-                        .as_ref()
-                        .map(|x| x.as_str())
+                        .as_deref()
                         .unwrap_or_else(|| "config/bragi-settings.toml"),
-                    e
+                    err
                 )
             })?,
         })

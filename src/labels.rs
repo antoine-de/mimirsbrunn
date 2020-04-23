@@ -193,7 +193,7 @@ mod test {
 
     fn make_i18_prop(val: &[(&str, &str)]) -> mimir::I18nProperties {
         val.iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect()
     }
 
@@ -268,27 +268,19 @@ mod test {
             "573",
             "Herengracht",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
         );
         assert_eq!(name, "Herengracht 573");
         assert_eq!(label, "Herengracht 573 (Amsterdam)");
     }
     #[test]
     fn nl_street() {
-        let label = format_street_label(
-            "Herengracht",
-            get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
-        );
+        let label = format_street_label("Herengracht", get_nl_admins().iter(), &["nl".to_owned()]);
         assert_eq!(label, "Herengracht (Amsterdam)");
     }
     #[test]
     fn nl_poi() {
-        let label = format_poi_label(
-            "Delirium Cafe",
-            get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
-        );
+        let label = format_poi_label("Delirium Cafe", get_nl_admins().iter(), &["nl".to_owned()]);
         assert_eq!(label, "Delirium Cafe (Amsterdam)");
     }
 
@@ -298,7 +290,7 @@ mod test {
             "20",
             "rue hector malot",
             get_fr_admins().iter(),
-            &vec!["fr".to_owned()],
+            &["fr".to_owned()],
         );
         assert_eq!(name, "20 rue hector malot");
         assert_eq!(label, "20 rue hector malot (Paris)");
@@ -308,13 +300,13 @@ mod test {
         let label = format_street_label(
             "rue hector malot",
             get_fr_admins().iter(),
-            &vec!["fr".to_owned()],
+            &["fr".to_owned()],
         );
         assert_eq!(label, "rue hector malot (Paris)");
     }
     #[test]
     fn fr_poi() {
-        let label = format_poi_label("Le Rossli", get_fr_admins().iter(), &vec!["fr".to_owned()]);
+        let label = format_poi_label("Le Rossli", get_fr_admins().iter(), &["fr".to_owned()]);
         assert_eq!(label, "Le Rossli (Paris)");
     }
 
@@ -327,7 +319,7 @@ mod test {
             "Rembrandthuis",
             "Rembrandthuis (Amsterdam)",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
             &["ru".to_owned()],
         );
         assert_eq!(
@@ -346,7 +338,7 @@ mod test {
             "Rembrandthuis",
             "Rembrandthuis (Amsterdam)",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
             &["fr".to_owned()],
         );
         assert_eq!(label, make_i18_prop(&[]));
@@ -362,7 +354,7 @@ mod test {
             "Rembrandthuis",
             "Rembrandthuis (Amsterdam)",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
             &["ja".to_owned()],
         );
         assert_eq!(

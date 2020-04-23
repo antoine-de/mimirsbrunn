@@ -27,7 +27,6 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-#![allow(clippy::large_enum_variant, clippy::needless_lifetimes)]
 use cosmogony::ZoneType;
 use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
@@ -51,6 +50,7 @@ pub trait Incr: Clone {
 }
 
 /// Object stored in elastic search
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Place {
     Admin(Admin),
@@ -61,6 +61,7 @@ pub enum Place {
 }
 
 /// Object stored in elastic search
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Address {
@@ -646,6 +647,7 @@ where
     })
 }
 
+#[allow(clippy::needless_lifetimes)]
 pub fn serialize_rect<'a, S>(bbox: &'a Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,

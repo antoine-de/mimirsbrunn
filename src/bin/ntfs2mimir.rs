@@ -227,7 +227,6 @@ fn test_bad_connection_string() {
     let causes = run(args)
         .unwrap_err()
         .iter_chain()
-        .into_iter()
         .map(|cause| format!("{}", cause))
         .collect::<Vec<String>>();
     assert_eq!(
@@ -253,7 +252,6 @@ fn test_bad_file() {
     let causes = run(args)
         .unwrap_err()
         .iter_chain()
-        .into_iter()
         .map(|cause| format!("{}", cause))
         .collect::<Vec<String>>();
     assert_eq!(

@@ -274,7 +274,7 @@ mod tests {
             label: format!("city {}", offset),
             zip_codes: vec!["421337".to_string()],
             weight: 0f64,
-            coord: coord.clone(),
+            coord,
             approx_coord: Some(coord.into()),
             bbox: boundary.bounding_rect(),
             boundary: Some(boundary),

@@ -9,7 +9,6 @@ variables:
 stages:
   - check
   - build
-  - test
 
 .update-rust: &update-rust
   - rustup update
@@ -35,7 +34,7 @@ lint:
   image: rust:latest
   script:
     - rustup component add clippy
-    - cargo clippy -- -D warnings
+    - cargo clippy --workspace --bins --examples --tests --release -- -D warnings
 
 coverage:
   stage: check
@@ -50,17 +49,6 @@ build-release:
   image: rust:latest
   script:
     - cargo build --release
-  cache:
-    key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
-    paths:
-      - Cargo.lock
-      - target/release/
-
-unit-test:
-  stage: test
-  image: rust:latest
-  script:
-    - cargo test --release
   cache:
     key: "$CI_JOB_NAME-$CI_COMMIT_REF_SLUG"
     paths:

@@ -27,7 +27,9 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-#![allow(dead_code)]
+
+// #![allow(dead_code)]
+
 use failure::Fail;
 use heck::SnakeCase;
 use rs_es::error::EsError;
@@ -41,8 +43,6 @@ pub enum BragiError {
     ObjectNotFound,
     #[fail(display = "Invalid parameter: {}", _0)]
     InvalidParam(&'static str),
-    #[fail(display = "Impossible to find object")]
-    IndexNotFound,
     #[fail(display = "invalid query {}", _0)]
     Es(EsError),
     #[fail(display = "invalid shape: {}", _0)]
@@ -70,10 +70,6 @@ impl actix_web::error::ResponseError for BragiError {
             }),
             BragiError::InvalidParam(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
                 short: "validation error".to_owned(),
-                long: format!("{}", self),
-            }),
-            BragiError::IndexNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
-                short: "query error".to_owned(),
                 long: format!("{}", self),
             }),
             BragiError::Es(ref es_error) => {

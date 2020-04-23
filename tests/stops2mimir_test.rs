@@ -56,7 +56,7 @@ pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:unknown", |_| true)
         .collect();
-    assert!(res.len() == 0);
+    assert!(res.is_empty());
 
     // Test: search for "République"
     let res: Vec<_> = es_wrapper

@@ -27,7 +27,6 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-#![allow(clippy::too_many_arguments)]
 use super::model::{self, BragiError};
 use crate::query_settings::{BuildWeight, Proximity, QuerySettings, Types};
 use geojson::Geometry;
@@ -176,6 +175,7 @@ fn build_with_weight(build_weight: &BuildWeight, types: &Types) -> Query {
         .build()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_query<'a>(
     q: &str,
     match_type: MatchType,
@@ -417,6 +417,7 @@ fn build_query<'a>(
     query.build()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn query(
     q: &str,
     pt_datasets: &[&str],
@@ -495,7 +496,7 @@ fn query(
     let result = search_query.send()?;
 
     if let Some(t) = timer {
-        t.observe_duration()
+        t.observe_duration();
     }
 
     read_places(result, coord.as_ref())
@@ -565,6 +566,7 @@ pub fn features(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn autocomplete(
     q: &str,
     pt_datasets: &[&str],
