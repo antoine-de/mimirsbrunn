@@ -28,8 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-// #![allow(dead_code)]
-
 use failure::Fail;
 use heck::SnakeCase;
 use rs_es::error::EsError;

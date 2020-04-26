@@ -56,7 +56,7 @@ pub enum Place {
     Admin(Admin),
     Street(Street),
     Addr(Addr),
-    Poi(Poi), // Boxing for avoiding large enum variants
+    Poi(Poi),
     Stop(Stop),
 }
 
@@ -66,7 +66,7 @@ pub enum Place {
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Address {
     Street(Street),
-    Addr(Addr), // Boxing for avoiding large enum variants
+    Addr(Addr),
 }
 
 impl Place {
