@@ -30,7 +30,6 @@
 use cosmogony::ZoneType;
 use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
-use navitia_poi_model;
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
@@ -50,6 +49,7 @@ pub trait Incr: Clone {
 }
 
 /// Object stored in elastic search
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Place {
     Admin(Admin),
@@ -60,6 +60,7 @@ pub enum Place {
 }
 
 /// Object stored in elastic search
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Address {
@@ -376,7 +377,7 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
             name: line.name.clone(),
             code: line.code.clone(),
             color: line.color.clone(),
-            sort_order: line.sort_order.clone(),
+            sort_order: line.sort_order,
             text_color: line.text_color.clone(),
             commercial_mode: navitia
                 .commercial_modes
@@ -452,10 +453,7 @@ impl FromIterator<(String, String)> for I18nProperties {
     fn from_iter<I: IntoIterator<Item = (String, String)>>(iter: I) -> Self {
         let properties = iter
             .into_iter()
-            .map(|(k, v)| Property {
-                key: k.to_string(),
-                value: v.to_string(),
-            })
+            .map(|(k, v)| Property { key: k, value: v })
             .collect::<Vec<_>>();
         I18nProperties(properties)
     }
@@ -648,7 +646,7 @@ where
     })
 }
 
-pub fn serialize_rect<'a, S>(bbox: &'a Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize_rect<S>(bbox: &Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -954,7 +952,7 @@ impl<'de> Deserialize<'de> for Coord {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["lat", "lon"];
+        const FIELDS: &[&str] = &["lat", "lon"];
         deserializer.deserialize_struct("Coord", FIELDS, CoordVisitor)
     }
 }

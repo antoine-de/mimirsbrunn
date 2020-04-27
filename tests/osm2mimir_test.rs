@@ -107,7 +107,7 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     let admin_regions: Vec<_> = es_wrapper
         .search_and_filter("label:Créteil", |_| true)
         .collect();
-    assert!(admin_regions.len() >= 1, "{}", test_name);
+    assert!(!admin_regions.is_empty(), "{}", test_name);
     if let mimir::Place::Admin(ref creteil) = admin_regions[0] {
         assert_eq!(creteil.name, "Créteil", "{}", test_name);
         assert_eq!(creteil.level, 7, "{}", test_name);
@@ -120,7 +120,7 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Rue des Près", |_| true)
         .collect();
-    assert!(res.len() != 0, "{}", test_name);
+    assert!(!res.is_empty(), "{}", test_name);
     assert!(res[0].is_street(), "{}", test_name);
     // The first hit should be "Rue des Près"
     assert_eq!(
@@ -192,7 +192,7 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Rue Marcel Houdet", |_| true)
         .collect();
-    assert!(res.len() != 0, "{}", test_name);
+    assert!(!res.len() != 0, "{}", test_name);
     assert_eq!(res[0].label(), "Rue Marcel Houdet (Melun)", "{}", test_name);
     assert!(res[0]
         .admins()
@@ -204,7 +204,7 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Le-Mée-sur-Seine Courtilleraies", |_| true)
         .collect();
-    assert!(res.len() != 0, "{}", test_name);
+    assert!(!res.is_empty(), "{}", test_name);
 
     let poi_type_post_office = "poi_type:amenity:post_office";
     assert!(
@@ -218,7 +218,7 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Melun Rp", |_| true)
         .collect();
-    assert!(res.len() != 0, "{}", test_name);
+    assert!(!res.is_empty(), "{}", test_name);
     assert!(
         res.iter().any(|r| r
             .poi()
@@ -232,5 +232,5 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Grand Châtelet", |_| true)
         .collect();
-    assert!(res.len() == 0, "{}", test_name);
+    assert!(res.is_empty(), "{}", test_name);
 }

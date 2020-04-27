@@ -137,7 +137,7 @@ impl TryFrom<&Args> for Context {
                     Some(dt) => t.min(dt),
                     None => t,
                 })
-                .or_else(|| max_es_timeout.clone())
+                .or_else(|| max_es_timeout)
         };
 
         let content = match args.weight_config_file {
@@ -159,15 +159,14 @@ impl TryFrom<&Args> for Context {
                 bounded_timeout(args.max_es_autocomplete_timeout),
             ),
             cnx_string: args.connection_string.clone(),
-            http_cache_duration: args.http_cache_duration.clone(),
-            query_settings: QuerySettings::new(&content).map_err(|e| {
+            http_cache_duration: args.http_cache_duration,
+            query_settings: QuerySettings::new(&content).map_err(|err| {
                 format!(
                     "failed to parse `{}`: {}",
                     args.weight_config_file
-                        .as_ref()
-                        .map(|x| x.as_str())
+                        .as_deref()
                         .unwrap_or_else(|| "config/bragi-settings.toml"),
-                    e
+                    err
                 )
             })?,
         })

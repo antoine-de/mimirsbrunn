@@ -41,8 +41,6 @@ pub enum BragiError {
     ObjectNotFound,
     #[fail(display = "Invalid parameter: {}", _0)]
     InvalidParam(&'static str),
-    #[fail(display = "Impossible to find object")]
-    IndexNotFound,
     #[fail(display = "invalid query {}", _0)]
     Es(EsError),
     #[fail(display = "invalid shape: {}", _0)]
@@ -70,10 +68,6 @@ impl actix_web::error::ResponseError for BragiError {
             }),
             BragiError::InvalidParam(_) => actix_web::HttpResponse::BadRequest().json(ApiError {
                 short: "validation error".to_owned(),
-                long: format!("{}", self),
-            }),
-            BragiError::IndexNotFound => actix_web::HttpResponse::NotFound().json(ApiError {
-                short: "query error".to_owned(),
                 long: format!("{}", self),
             }),
             BragiError::Es(ref es_error) => {
@@ -164,7 +158,7 @@ impl FromWithLang<&mimir::Admin> for AssociatedAdmin {
             insee: admin.insee.clone(),
             bbox: admin.bbox,
             codes: admin.codes.clone(),
-            coord: admin.coord.clone(),
+            coord: admin.coord,
             level: admin.level,
             parent_id: admin.parent_id.clone(),
             zip_codes: admin.zip_codes.clone(),
@@ -265,11 +259,9 @@ impl FromWithLang<mimir::Place> for Feature {
         Feature {
             feature_type: "Feature".to_string(),
             geometry: geom,
-            properties: Properties {
-                geocoding: geocoding,
-            },
-            distance: distance,
-            context: context,
+            properties: Properties { geocoding },
+            distance,
+            context,
         }
     }
 }
@@ -365,13 +357,13 @@ impl FromWithLang<mimir::Street> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
-            citycode: citycode,
+            citycode,
             place_type: type_,
             name: name.clone(),
-            postcode: postcode,
-            label: label,
+            postcode,
+            label,
             street: name,
-            city: city,
+            city,
             administrative_regions: associated_admins,
             country_codes: other.country_codes,
             ..Default::default()
@@ -402,14 +394,14 @@ impl FromWithLang<mimir::Addr> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
-            citycode: citycode,
+            citycode,
             place_type: type_,
-            name: name,
-            postcode: postcode,
-            label: label,
-            housenumber: housenumber,
+            name,
+            postcode,
+            label,
+            housenumber,
             street: street_name,
-            city: city,
+            city,
             administrative_regions: associated_admins,
             country_codes: other.country_codes,
             ..Default::default()
@@ -446,12 +438,12 @@ impl FromWithLang<mimir::Poi> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
-            citycode: citycode,
+            citycode,
             place_type: type_,
-            name: name,
-            postcode: postcode,
-            label: label,
-            city: city,
+            name,
+            postcode,
+            label,
+            city,
             administrative_regions: associated_admins,
             poi_types: vec![other.poi_type],
             properties: other.properties,
@@ -491,12 +483,12 @@ impl FromWithLang<mimir::Stop> for GeocodingResponse {
 
         GeocodingResponse {
             id: other.id,
-            citycode: citycode,
+            citycode,
             place_type: type_,
-            name: name,
-            postcode: postcode,
-            label: label,
-            city: city,
+            name,
+            postcode,
+            label,
+            city,
             administrative_regions: associated_admins,
             commercial_modes: other.commercial_modes,
             physical_modes: other.physical_modes,
@@ -529,7 +521,7 @@ impl Autocomplete {
                 version: "0.1.0".to_string(),
                 query: Some(q),
             },
-            features: features,
+            features,
         }
     }
 }

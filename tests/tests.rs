@@ -27,7 +27,6 @@
 // www.navitia.io
 #![recursion_limit = "128"]
 
-#[macro_use]
 extern crate slog;
 #[macro_use]
 extern crate slog_scope;

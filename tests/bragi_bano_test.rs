@@ -76,8 +76,8 @@ fn simple_bano_autocomplete_test(bragi: &mut BragiHandler) {
                 {
                     "geometry": {
                         "coordinates": [
-                            2.376379,
-                            48.846495
+                            2.376_379,
+                            48.846_495
                         ],
                         "type": "Point"
                     },
@@ -143,8 +143,8 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
               "type": "Feature",
               "geometry": {
                 "coordinates": [
-                  2.376379,
-                  48.846495
+                  2.376_379,
+                  48.846_495
                 ],
                 "type": "Point"
               },

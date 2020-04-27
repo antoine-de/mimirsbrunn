@@ -46,7 +46,7 @@ use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::time;
 
-const SYNONYMS: [&'static str; 17] = [
+const SYNONYMS: [&str; 17] = [
     "cc,centre commercial",
     "hotel de ville,mairie",
     "gare sncf,gare",
@@ -104,7 +104,7 @@ pub struct TypedIndex<T> {
 impl<T> TypedIndex<T> {
     pub fn new(name: String) -> TypedIndex<T> {
         TypedIndex {
-            name: name,
+            name,
             _type: PhantomData,
         }
     }
@@ -185,13 +185,13 @@ pub fn read_places(
 
 /// takes a ES json blob and build a Place from it
 /// it uses the _type field of ES to know which type of the Place enum to fill
-pub fn make_place<'a>(
+pub fn make_place(
     doc_type: String,
     value: Option<Box<serde_json::Value>>,
     explanation: Option<serde_json::Value>,
 ) -> Option<Place> {
     let place = value.and_then(|v| {
-        fn convert<'a, T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
+        fn convert<T>(v: serde_json::Value, f: fn(T) -> Place) -> Option<Place>
         where
             for<'de> T: serde::Deserialize<'de>,
         {
@@ -350,7 +350,7 @@ impl Rubber {
         Ok(TypedIndex::new(index_name))
     }
 
-    pub fn create_index(&self, name: &String, index_settings: &IndexSettings) -> Result<(), Error> {
+    pub fn create_index(&self, name: &str, index_settings: &IndexSettings) -> Result<(), Error> {
         debug!("creating index");
         // Note: in rs_es it can be done with MappingOperation but for the moment I think
         // storing the mapping in json is more convenient
@@ -363,7 +363,7 @@ impl Rubber {
 
         let synonyms: Vec<_> = SYNONYMS
             .iter()
-            .map(|s| serde_json::Value::String(s.to_string()))
+            .map(|s| serde_json::Value::String((*s).to_string()))
             .collect();
 
         *settings_json_value
@@ -490,7 +490,7 @@ impl Rubber {
     }
 
     pub fn get_address(&mut self, coord: &Coord) -> Result<Vec<Place>, EsError> {
-        let types = vec!["house".into(), "street".into()];
+        let types = vec!["house", "street"];
         let indexes = get_indexes(false, &[], &[], &types);
         let indexes = indexes
             .iter()
@@ -545,23 +545,23 @@ impl Rubber {
         let last_indexes = self.get_last_index(&index, dataset)?;
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
-        self.alias(&dataset_index, &vec![index.name.clone()], &last_indexes)
+        self.alias(&dataset_index, &[index.name], &last_indexes)
             .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
 
         let type_index = get_main_type_index::<T>();
         if let IndexVisibility::Public = visibility {
-            self.alias(&type_index, &vec![dataset_index.clone()], &last_indexes)
+            self.alias(&type_index, &[dataset_index], &last_indexes)
                 .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
         }
 
         if let IndexVisibility::Public = visibility {
             if T::is_geo_data() {
-                self.alias("munin_geo_data", &vec![type_index.to_string()], &vec![])
+                self.alias("munin_geo_data", &[type_index], &[])
                     .context("Error occurred when making alias: munin_geo_data")?;
-                self.alias("munin", &vec!["munin_geo_data".to_string()], &vec![])
+                self.alias("munin", &["munin_geo_data".to_string()], &[])
                     .context("Error occurred when making alias: munin")?;
             } else {
-                self.alias("munin", &vec![type_index.to_string()], &vec![])
+                self.alias("munin", &[type_index], &[])
                     .context("Error occurred when making alias: munin")?;
             }
         }
@@ -607,7 +607,7 @@ impl Rubber {
         }
     }
 
-    pub fn delete_index(&mut self, index: &String) -> Result<(), Error> {
+    pub fn delete_index(&mut self, index: &str) -> Result<(), Error> {
         debug!("deleting index {}", &index);
         let res = self
             .es_client
@@ -729,7 +729,7 @@ impl Rubber {
             .scan(&Duration::minutes(1))?;
         loop {
             let page = scan.scroll(&mut self.es_client, &Duration::minutes(1))?;
-            if page.hits.hits.len() == 0 {
+            if page.hits.hits.is_empty() {
                 break;
             }
             result.extend(

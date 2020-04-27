@@ -28,8 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 use mimir::rubber::Rubber;
-use reqwest;
-use retry;
 use slog_scope::{info, warn};
 use std::error::Error;
 use std::process::Command;

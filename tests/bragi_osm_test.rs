@@ -130,7 +130,7 @@ fn bbox_admin_test(bragi: &mut BragiHandler) {
     let all_20 = bragi.get("/autocomplete?q=77000 Vaux-le-Pénil");
     let first_city = all_20.iter().find(|e| get_value(e, "type") == "zone");
     let result = first_city.unwrap().get("bbox").unwrap().as_array().unwrap();
-    let expected = vec![2.663446, 48.5064094, 2.7334936, 48.5419672];
+    let expected = vec![2.663_446, 48.506_409_4, 2.733_493_6, 48.541_967_2];
     assert_eq!(expected.len(), result.len());
     //check that coords are "close" from the expected value
     for (r, e) in result.iter().map(|r| r.as_f64().unwrap()).zip(expected) {

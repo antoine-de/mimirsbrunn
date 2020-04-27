@@ -27,7 +27,7 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-
+#![allow(clippy::cognitive_complexity)]
 use cosmogony::ZoneType;
 use mimir;
 use std::collections::BTreeMap;
@@ -67,11 +67,11 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Livry-sur-Seine", |_| true)
         .collect();
-    assert!(res.len() >= 1);
+    assert!(!res.is_empty());
 
     let livry_sur_seine = &res[0];
-    match livry_sur_seine {
-        &mimir::Place::Admin(ref livry_sur_seine) => {
+    match *livry_sur_seine {
+        mimir::Place::Admin(ref livry_sur_seine) => {
             assert_eq!(livry_sur_seine.id, "admin:osm:relation:215390");
             assert_eq!(livry_sur_seine.name, "Livry-sur-Seine");
             assert_eq!(
@@ -83,7 +83,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
             assert_eq!(livry_sur_seine.zip_codes, vec!["77000"]);
             assert_relative_eq!(
                 livry_sur_seine.weight,
-                0.0000013707142857142856,
+                0.000_001_370_714_285_714_285_6,
                 epsilon = f64::EPSILON
             );
             assert!(livry_sur_seine.coord.is_valid());
@@ -96,17 +96,17 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("name:Seine-et-Marne", |_| true)
         .collect();
-    assert!(res.len() >= 1);
+    assert!(!res.is_empty());
 
     let sem = &res[0];
-    match sem {
-        &mimir::Place::Admin(ref sem) => {
+    match *sem {
+        mimir::Place::Admin(ref sem) => {
             assert_eq!(sem.name, "Fausse Seine-et-Marne");
             assert_eq!(sem.id, "admin:osm:relation:424253843");
             assert_eq!(sem.label, "Fausse Seine-et-Marne, France hexagonale");
             assert_eq!(sem.insee, "77");
             assert_eq!(sem.zip_codes, Vec::<String>::new());
-            assert_eq!(sem.weight, 0f64);
+            assert!(sem.weight < std::f64::EPSILON);
             assert!(sem.coord.is_valid());
             assert_eq!(sem.zone_type, Some(ZoneType::StateDistrict));
             assert_eq!(sem.administrative_regions.len(), 1);
@@ -123,11 +123,11 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("name:France", |_| true)
         .collect();
-    assert!(res.len() >= 1);
+    assert!(!res.is_empty());
 
     let fr = &res[0];
-    match fr {
-        &mimir::Place::Admin(ref fr) => {
+    match *fr {
+        mimir::Place::Admin(ref fr) => {
             assert_eq!(fr.id, "admin:osm:relation:424256272");
             assert_eq!(fr.name, "France hexagonale");
             assert_eq!(fr.label, "France hexagonale");
@@ -149,7 +149,7 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
                 .into_iter()
                 .collect()
             );
-            assert_relative_eq!(fr.weight, 0.04505024571428572, epsilon = f64::EPSILON);
+            assert_relative_eq!(fr.weight, 0.045_050_245_714_285_72, epsilon = f64::EPSILON);
             assert!(fr.coord.is_valid());
             assert_eq!(fr.zone_type, Some(ZoneType::Country));
             assert!(fr
@@ -171,13 +171,17 @@ pub fn cosmogony2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter("label:Melun", |_| true)
         .collect();
-    assert!(res.len() >= 1);
+    assert!(!res.is_empty());
 
     let fausse_seine_max_weight = &res[0];
-    match fausse_seine_max_weight {
-        &mimir::Place::Admin(ref a) => {
+    match *fausse_seine_max_weight {
+        mimir::Place::Admin(ref a) => {
             assert_eq!(a.id, "admin:osm:relation:80071");
-            assert_relative_eq!(a.weight, 0.000028277857142857143, epsilon = f64::EPSILON);
+            assert_relative_eq!(
+                a.weight,
+                0.000_028_277_857_142_857_143,
+                epsilon = f64::EPSILON
+            );
         }
         _ => panic!("should be an admin"),
     }

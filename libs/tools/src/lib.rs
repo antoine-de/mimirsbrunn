@@ -38,7 +38,7 @@ impl<'a> ElasticSearchWrapper<'a> {
 
     pub fn new(docker_wrapper: &DockerWrapper) -> ElasticSearchWrapper<'_> {
         let mut es_wrapper = ElasticSearchWrapper {
-            docker_wrapper: docker_wrapper,
+            docker_wrapper,
             rubber: mimir::rubber::Rubber::new(&docker_wrapper.host()),
         };
         es_wrapper.init();
@@ -169,7 +169,7 @@ pub struct BragiHandler {
 impl BragiHandler {
     pub fn new(url: String) -> BragiHandler {
         let ctx = bragi::Context::try_from(&bragi::Args {
-            connection_string: url.clone(),
+            connection_string: url,
             ..Default::default()
         })
         .expect("failed to create bragi Context");
@@ -225,13 +225,13 @@ impl BragiHandler {
         let (status, s) = self.raw_get(q);
         assert!(status.is_success(), "invalid status: {}", status);
 
-        self.to_json(s)
+        self.as_json(s)
     }
 
     pub fn get_unchecked_json(&mut self, q: &str) -> (actix_web::http::StatusCode, Value) {
         let (status, s) = self.raw_get(q);
 
-        (status, self.to_json(s))
+        (status, self.as_json(s))
     }
 
     pub fn raw_post(
@@ -267,10 +267,10 @@ impl BragiHandler {
         let (status, s) = self.raw_post(q, shape);
         assert!(status.is_success(), "invalid status: {}", status);
 
-        self.to_json(s)
+        self.as_json(s)
     }
 
-    pub fn to_json(&mut self, b: bytes::Bytes) -> Value {
+    pub fn as_json(&mut self, b: bytes::Bytes) -> Value {
         let body = std::str::from_utf8(&b).unwrap();
         serde_json::from_str(body).unwrap()
     }

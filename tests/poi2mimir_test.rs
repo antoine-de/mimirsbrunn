@@ -158,7 +158,11 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     );
 
     // If the POI has a city admin, then its weight is that of the city (or at least != 0.0)
-    assert_ne!(agence_du_four.poi().unwrap().weight, 0.0);
+    assert_relative_ne!(
+        agence_du_four.poi().unwrap().weight,
+        0.0f64,
+        epsilon = std::f64::EPSILON
+    );
 
     // Make sure that that POI is not visible from the global index
     assert!(es_wrapper

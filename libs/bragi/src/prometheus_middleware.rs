@@ -180,7 +180,7 @@ where
         let clock = SystemTime::now();
         MetricsResponse {
             fut: self.service.call(req),
-            clock: clock,
+            clock,
             inner: self.inner.clone(),
             _t: PhantomData,
         }

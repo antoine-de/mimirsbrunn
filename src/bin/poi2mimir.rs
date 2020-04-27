@@ -56,7 +56,7 @@ fn into_mimir_poi(
     let poi_type = poi_types
         .get(&poi.poi_type_id)
         .ok_or_else(|| format_err!("could not find Poi Type '{}'", poi.poi_type_id))
-        .map(|poi_type| PoiType::from(poi_type))?;
+        .map(PoiType::from)?;
 
     let coord = Coord::from(&poi.coord);
 
@@ -89,21 +89,17 @@ fn into_mimir_poi(
 
     let poi = Poi {
         id: poi.id,
-        label: label,
+        label,
         name: poi.name,
-        coord: coord.clone(),
+        coord,
         approx_coord: Some(coord.into()),
         administrative_regions: admins,
-        weight: weight,
+        weight,
         zip_codes: vec![],
-        poi_type: poi_type,
-        properties: poi
-            .properties
-            .into_iter()
-            .map(|p| Property::from(p))
-            .collect(),
+        poi_type,
+        properties: poi.properties.into_iter().map(Property::from).collect(),
         address: addr,
-        country_codes: country_codes,
+        country_codes,
         names: I18nProperties::default(),
         labels: I18nProperties::default(),
         distance: None,
@@ -162,8 +158,8 @@ where
     rubber.initialize_templates()?;
 
     let settings = IndexSettings {
-        nb_shards: nb_shards,
-        nb_replicas: nb_replicas,
+        nb_shards,
+        nb_replicas,
     };
 
     let index = rubber.make_index(dataset, &settings)?;

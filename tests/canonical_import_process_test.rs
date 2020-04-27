@@ -28,6 +28,8 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+#![allow(clippy::cognitive_complexity)]
+
 use super::count_types;
 use super::get_poi_type_ids;
 use super::get_value;
@@ -116,7 +118,7 @@ fn melun_test(bragi: &mut BragiHandler) {
     assert_eq!(melun["city"], serde_json::Value::Null);
     assert_eq!(
         melun["bbox"],
-        json!(vec![2.6284669, 48.5235259, 2.6820184, 48.5607616])
+        json!(vec![2.628_466_9, 48.523_525_9, 2.682_018_4, 48.560_761_6])
     );
     let admins = melun["administrative_regions"]
         .as_array()
@@ -245,7 +247,7 @@ fn lang_test(bragi: &mut BragiHandler) {
 }
 
 pub fn bragi_invalid_es_test(_es_wrapper: crate::ElasticSearchWrapper<'_>) {
-    let mut bragi = BragiHandler::new(format!("http://invalid_es_url/munin"));
+    let mut bragi = BragiHandler::new("http://invalid_es_url/munin".to_string());
 
     // the status does not check the ES connexion, so for the status all is good
     let (status, _) = bragi.raw_get("/status");
@@ -318,7 +320,7 @@ fn wrong_shape_test(bragi: &mut BragiHandler) {
     assert_eq!(status, actix_web::http::StatusCode::BAD_REQUEST);
 
     assert_eq!(
-        bragi.to_json(r),
+        bragi.as_json(r),
         json!({
             "short": "validation error",
             "long": "invalid json: Json deserialize error: expected a GeoJSON property at line 3 column 102",

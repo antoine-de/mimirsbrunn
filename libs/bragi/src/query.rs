@@ -30,19 +30,15 @@
 use super::model::{self, BragiError};
 use crate::query_settings::{BuildWeight, Proximity, QuerySettings, Types};
 use geojson::Geometry;
-use mimir;
 use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
-use rs_es;
 use rs_es::error::EsError;
 use rs_es::operations::search::Source;
 use rs_es::query::compound::BoostMode;
 use rs_es::query::functions::{DecayOptions, FilteredFunction, Function, Modifier};
 use rs_es::query::Query;
 use rs_es::units as rs_u;
-use serde;
-use serde_json;
 use slog_scope::{debug, error, warn};
 use std::{fmt, iter};
 
@@ -175,6 +171,7 @@ fn build_with_weight(build_weight: &BuildWeight, types: &Types) -> Query {
         .build()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_query<'a>(
     q: &str,
     match_type: MatchType,
@@ -416,6 +413,7 @@ fn build_query<'a>(
     query.build()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn query(
     q: &str,
     pt_datasets: &[&str],
@@ -482,9 +480,10 @@ fn query(
         .with_source(Source::exclude(&["boundary"]));
 
     // We don't want to clutter the Query URL, so we only add an explanation if the option is used
-    let search_query = match debug {
-        true => search_query.with_explain(true),
-        false => search_query,
+    let search_query = if debug {
+        search_query.with_explain(true)
+    } else {
+        search_query
     };
 
     if let Some(timeout) = &timeout {
@@ -492,7 +491,9 @@ fn query(
     }
     let result = search_query.send()?;
 
-    timer.map(|t| t.observe_duration());
+    if let Some(t) = timer {
+        t.observe_duration();
+    }
 
     read_places(result, coord.as_ref())
 }
@@ -550,7 +551,9 @@ pub fn features(
 
     let result = search_query.send()?;
 
-    timer.map(|t| t.observe_duration());
+    if let Some(t) = timer {
+        t.observe_duration()
+    }
 
     if result.hits.total == 0 {
         Err(BragiError::ObjectNotFound)
@@ -559,6 +562,7 @@ pub fn features(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn autocomplete(
     q: &str,
     pt_datasets: &[&str],

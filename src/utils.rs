@@ -29,7 +29,6 @@
 // www.navitia.io
 
 use crate::Error;
-use mimir;
 use slog_scope::error;
 use std::process::exit;
 use std::sync::Arc;
@@ -47,7 +46,7 @@ pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
         return vec![];
     }
     admins
-        .into_iter()
+        .iter()
         .filter(|adm| adm.level == level)
         .flat_map(|adm| adm.zip_codes.iter().cloned())
         .collect()
@@ -57,8 +56,8 @@ pub const ADMIN_MAX_WEIGHT: f64 = 1_400_000_000.; // China's population
 
 /// normalize the admin weight for it to be in [0, 1]
 pub fn normalize_admin_weight(admins: &mut [mimir::Admin]) {
-    for ref mut a in admins {
-        a.weight = normalize_weight(a.weight, ADMIN_MAX_WEIGHT);
+    for admin in admins {
+        admin.weight = normalize_weight(admin.weight, ADMIN_MAX_WEIGHT);
     }
 }
 

@@ -6,15 +6,15 @@ use slog_scope::warn;
 
 fn format_label<'a>(
     nice_name: String,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    mut admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
     _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
 ) -> String {
-    let city = admins.clone().find(|adm| adm.is_city());
+    let city = admins.find(|adm| adm.is_city());
     let city_name = city.map(|a| a.name.to_string());
 
     match city_name {
         Some(n) => format!("{} ({})", nice_name, n),
-        None => nice_name.to_string(),
+        None => nice_name,
     }
 }
 
@@ -108,7 +108,7 @@ pub fn format_international_poi_label<'a>(
                 None
             } else {
                 Some(mimir::Property {
-                    key: lang.to_string(),
+                    key: (*lang).to_string(),
                     value: i18n_poi_label,
                 })
             }
@@ -163,7 +163,7 @@ impl FormatPlaceHolder {
         place[Component::Road] = Some(self.street);
 
         for a in admins {
-            if let Some(addr_equivalent) = cosmo_to_addr_formatter_type(&a.zone_type) {
+            if let Some(addr_equivalent) = cosmo_to_addr_formatter_type(a.zone_type) {
                 place[addr_equivalent] = Some(a.name.clone());
             }
         }
@@ -172,7 +172,7 @@ impl FormatPlaceHolder {
 }
 
 fn cosmo_to_addr_formatter_type(
-    cosmo_type: &Option<cosmogony::ZoneType>,
+    cosmo_type: Option<cosmogony::ZoneType>,
 ) -> Option<address_formatter::Component> {
     use address_formatter::Component;
     match cosmo_type {
@@ -193,7 +193,7 @@ mod test {
 
     fn make_i18_prop(val: &[(&str, &str)]) -> mimir::I18nProperties {
         val.iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect()
     }
 
@@ -268,27 +268,19 @@ mod test {
             "573",
             "Herengracht",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
         );
         assert_eq!(name, "Herengracht 573");
         assert_eq!(label, "Herengracht 573 (Amsterdam)");
     }
     #[test]
     fn nl_street() {
-        let label = format_street_label(
-            "Herengracht",
-            get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
-        );
+        let label = format_street_label("Herengracht", get_nl_admins().iter(), &["nl".to_owned()]);
         assert_eq!(label, "Herengracht (Amsterdam)");
     }
     #[test]
     fn nl_poi() {
-        let label = format_poi_label(
-            "Delirium Cafe",
-            get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
-        );
+        let label = format_poi_label("Delirium Cafe", get_nl_admins().iter(), &["nl".to_owned()]);
         assert_eq!(label, "Delirium Cafe (Amsterdam)");
     }
 
@@ -298,7 +290,7 @@ mod test {
             "20",
             "rue hector malot",
             get_fr_admins().iter(),
-            &vec!["fr".to_owned()],
+            &["fr".to_owned()],
         );
         assert_eq!(name, "20 rue hector malot");
         assert_eq!(label, "20 rue hector malot (Paris)");
@@ -308,13 +300,13 @@ mod test {
         let label = format_street_label(
             "rue hector malot",
             get_fr_admins().iter(),
-            &vec!["fr".to_owned()],
+            &["fr".to_owned()],
         );
         assert_eq!(label, "rue hector malot (Paris)");
     }
     #[test]
     fn fr_poi() {
-        let label = format_poi_label("Le Rossli", get_fr_admins().iter(), &vec!["fr".to_owned()]);
+        let label = format_poi_label("Le Rossli", get_fr_admins().iter(), &["fr".to_owned()]);
         assert_eq!(label, "Le Rossli (Paris)");
     }
 
@@ -327,7 +319,7 @@ mod test {
             "Rembrandthuis",
             "Rembrandthuis (Amsterdam)",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
             &["ru".to_owned()],
         );
         assert_eq!(
@@ -346,7 +338,7 @@ mod test {
             "Rembrandthuis",
             "Rembrandthuis (Amsterdam)",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
             &["fr".to_owned()],
         );
         assert_eq!(label, make_i18_prop(&[]));
@@ -362,7 +354,7 @@ mod test {
             "Rembrandthuis",
             "Rembrandthuis (Amsterdam)",
             get_nl_admins().iter(),
-            &vec!["nl".to_owned()],
+            &["nl".to_owned()],
             &["ja".to_owned()],
         );
         assert_eq!(

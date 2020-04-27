@@ -40,8 +40,6 @@ pub mod rubber;
 
 pub use crate::objects::*;
 use slog::{self, o, slog_o, Drain, Never};
-use slog_json;
-use slog_scope;
 use std::env;
 
 pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {
@@ -83,6 +81,6 @@ where
 
     let log = slog::Logger::root(drain.fuse(), slog_o!());
     let scope_guard = slog_scope::set_global_logger(log);
-    let log_guard = slog_stdlog::init().unwrap();
-    (scope_guard, log_guard)
+    slog_stdlog::init().unwrap();
+    (scope_guard, ())
 }

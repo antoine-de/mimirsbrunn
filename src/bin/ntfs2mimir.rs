@@ -32,6 +32,8 @@ use failure::ResultExt;
 use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use slog_scope::{info, warn};
+use std::collections::{hash_map::DefaultHasher, HashMap};
+use std::hash::BuildHasherDefault;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use transit_model::objects as navitia;
@@ -133,13 +135,13 @@ fn to_mimir(
         id: mimir::objects::normalize_id("stop_area", &stop_area.id),
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
-        coord: coord.clone(),
+        coord,
         approx_coord: Some(coord.into()),
-        commercial_modes: commercial_modes,
-        physical_modes: physical_modes,
-        lines: lines,
-        comments: comments,
-        timezone: stop_area.timezone.clone().unwrap_or(format!("")),
+        commercial_modes,
+        physical_modes,
+        lines,
+        comments,
+        timezone: stop_area.timezone.clone().unwrap_or_else(|| format!("")),
         codes: stop_area
             .codes
             .iter()
@@ -156,7 +158,7 @@ fn to_mimir(
                 value: v.clone(),
             })
             .collect(),
-        feed_publishers: feed_publishers,
+        feed_publishers,
         ..Default::default()
     }
 }
@@ -173,7 +175,8 @@ fn run(args: Args) -> Result<(), transit_model::Error> {
     }
 
     let navitia = transit_model::ntfs::read(&args.input)?;
-    let nb_stop_points = navitia
+
+    let nb_stop_points: HashMap<String, u32, BuildHasherDefault<DefaultHasher>> = navitia
         .stop_areas
         .iter()
         .map(|(idx, sa)| {
@@ -224,7 +227,6 @@ fn test_bad_connection_string() {
     let causes = run(args)
         .unwrap_err()
         .iter_chain()
-        .into_iter()
         .map(|cause| format!("{}", cause))
         .collect::<Vec<String>>();
     assert_eq!(
@@ -250,7 +252,6 @@ fn test_bad_file() {
     let causes = run(args)
         .unwrap_err()
         .iter_chain()
-        .into_iter()
         .map(|cause| format!("{}", cause))
         .collect::<Vec<String>>();
     assert_eq!(

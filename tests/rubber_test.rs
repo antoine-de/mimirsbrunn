@@ -72,7 +72,7 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         name: "bob's street".to_string(),
         label: "bob's name".to_string(),
         weight: 0.42,
-        coord: coord.clone(),
+        coord,
         approx_coord: Some(coord.into()),
         ..Default::default()
     };
@@ -93,13 +93,13 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
 
     check_has_bob(&es);
 
-    let coord = Coord::new(2.68326290f64, 48.5110722f64);
+    let coord = Coord::new(2.683_262_90f64, 48.511_072_2f64);
     let bobette = Street {
         id: "bobette".to_string(),
         name: "bobette's street".to_string(),
         label: "bobette's name".to_string(),
         weight: 0.24,
-        coord: coord.clone(),
+        coord,
         approx_coord: Some(coord.into()),
         ..Default::default()
     };
@@ -138,8 +138,8 @@ pub fn rubber_zero_downtime_test(mut es: crate::ElasticSearchWrapper<'_>) {
         assert_eq!(es_bob.pointer("/weight"), Some(&json!(0.24)));
 
         let es_coord = es_bob.pointer("/coord").unwrap();
-        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
-        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
+        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.511_072_2)));
+        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.683_262_90)));
     };
     check_has_elt(&es, check_is_bobette);
 }
@@ -158,7 +158,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         ]),
         vec![],
     )]);
-    let coord = Coord::new(2.68326290f64, 48.5110722f64);
+    let coord = Coord::new(2.683_262_90f64, 48.511_072_2f64);
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -167,7 +167,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
-        coord: coord.clone(),
+        coord,
         approx_coord: Some(coord.into()),
         bbox: boundary.bounding_rect(),
         boundary: Some(boundary),
@@ -200,8 +200,8 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
         assert_eq!(es_source.pointer("/insee"), Some(&json!("insee:dummy")));
 
         let es_coord = es_source.pointer("/coord").unwrap();
-        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.5110722)));
-        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.68326290)));
+        assert_eq!(es_coord.pointer("/lat"), Some(&json!(48.511_072_2)));
+        assert_eq!(es_coord.pointer("/lon"), Some(&json!(2.683_262_90)));
 
         assert_eq!(
             es_source.pointer("/boundary/type"),
@@ -257,7 +257,7 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
 
     es.refresh();
     assert_eq!(get_munin_indexes(&es), [old_idx_name.to_string()]);
-    let coord = Coord::new(2.68326290f64, 48.5110722f64);
+    let coord = Coord::new(2.683_262_90f64, 48.511_072_2f64);
     let admin = Admin {
         id: "admin:bob".to_string(),
         insee: "insee:dummy".to_string(),
@@ -266,7 +266,7 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
         label: "my admin (zip_code)".to_string(),
         zip_codes: vec!["zip_code".to_string()],
         weight: 1f64,
-        coord: coord.clone(),
+        coord,
         approx_coord: Some(coord.into()),
         zone_type: Some(ZoneType::City),
         ..Default::default()
