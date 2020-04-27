@@ -32,7 +32,6 @@ use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils};
 use failure::format_err;
 use failure::{Error, ResultExt};
-use mimir;
 use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
 use slog_scope::{info, warn};
 use std::collections::HashMap;

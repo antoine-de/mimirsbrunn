@@ -320,7 +320,7 @@ fn wrong_shape_test(bragi: &mut BragiHandler) {
     assert_eq!(status, actix_web::http::StatusCode::BAD_REQUEST);
 
     assert_eq!(
-        bragi.json(r),
+        bragi.as_json(r),
         json!({
             "short": "validation error",
             "long": "invalid json: Json deserialize error: expected a GeoJSON property at line 3 column 102",

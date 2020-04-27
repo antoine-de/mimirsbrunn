@@ -29,7 +29,6 @@
 // www.navitia.io
 
 use crate::Error;
-use mimir;
 use slog_scope::error;
 use std::process::exit;
 use std::sync::Arc;

@@ -37,7 +37,6 @@ use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils, Error};
-use bincode;
 use failure::ResultExt;
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
 use rusqlite::{Connection, DropBehavior, ToSql, NO_PARAMS};

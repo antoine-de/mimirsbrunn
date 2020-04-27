@@ -40,8 +40,6 @@ pub mod rubber;
 
 pub use crate::objects::*;
 use slog::{self, o, slog_o, Drain, Never};
-use slog_json;
-use slog_scope;
 use std::env;
 
 pub fn logger_init() -> (slog_scope::GlobalLoggerGuard, ()) {

@@ -28,9 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use mimir;
-use osmpbfreader;
-
 use super::street::Getter;
 use geo::centroid::Centroid;
 use geo::MultiPolygon;

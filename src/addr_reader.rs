@@ -1,5 +1,4 @@
 use crate::Error;
-use csv;
 use failure::ResultExt;
 use flate2::read::GzDecoder;
 use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
