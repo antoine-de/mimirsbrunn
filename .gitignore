@@ -2,3 +2,5 @@
 libs/*/target/*
 build_packages/*
 *~
+import2mimir-*.log
+scripts/*.log
