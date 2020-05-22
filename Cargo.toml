@@ -45,12 +45,12 @@ flate2 = "1.0"
 
 mimir = { path = "libs/mimir" }
 bragi = { path = "libs/bragi" }
+tools = { path = "libs/tools" }
 
 [dev-dependencies]
 reqwest = "=0.9.16"
 approx = "0.3"
 actix-web = "1"
-tools = { path = "libs/tools" }
 docker_wrapper = { path = "libs/docker_wrapper" }
 
 [build-dependencies]
