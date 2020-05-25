@@ -39,7 +39,6 @@ use std::io::stdin;
 use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tools::round_at;
 
 lazy_static! {
     static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
@@ -65,7 +64,7 @@ impl OpenAddress {
         self,
         admins_geofinder: &AdminGeoFinder,
         use_old_index_format: bool,
-        coord_precision: u32,
+        id_precision: usize,
     ) -> Result<mimir::Addr, mimirsbrunn::Error> {
         let street_id = format!("street:{}", self.id); // TODO check if thats ok
         let admins = admins_geofinder.get(&geo::Coordinate {
@@ -89,11 +88,7 @@ impl OpenAddress {
             &country_codes,
         );
 
-        let coord = mimir::Coord::new(
-            round_at(self.lon, coord_precision),
-            round_at(self.lat, coord_precision),
-        );
-
+        let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
             id: street_id,
             name: self.street,
@@ -108,28 +103,41 @@ impl OpenAddress {
             context: None,
         };
 
+        let id_suffix = {
+            if use_old_index_format {
+                String::new()
+            } else {
+                format!(
+                    ":{}",
+                    self.number
+                        .replace(" ", "")
+                        .replace("\t", "")
+                        .replace("\r", "")
+                        .replace("\n", "")
+                        .replace("/", "-")
+                        .replace(".", "-")
+                        .replace(":", "-")
+                        .replace(";", "-")
+                )
+            }
+        };
+
+        let id = {
+            if id_precision > 0 {
+                format!(
+                    "addr:{:.precision$};{:.precision$}{}",
+                    self.lon,
+                    self.lat,
+                    id_suffix,
+                    precision = id_precision
+                )
+            } else {
+                format!("addr:{};{}{}", self.lon, self.lat, id_suffix)
+            }
+        };
+
         Ok(mimir::Addr {
-            id: format!(
-                "addr:{};{}{}",
-                coord.lon(),
-                coord.lat(),
-                if use_old_index_format {
-                    String::new()
-                } else {
-                    format!(
-                        ":{}",
-                        self.number
-                            .replace(" ", "")
-                            .replace("\t", "")
-                            .replace("\r", "")
-                            .replace("\n", "")
-                            .replace("/", "-")
-                            .replace(".", "-")
-                            .replace(":", "-")
-                            .replace(";", "-")
-                    )
-                }
-            ),
+            id,
             name: addr_name,
             label: addr_label,
             house_number: self.number,
@@ -151,10 +159,10 @@ struct Args {
     /// If this is left empty, addresses are read from standard input.
     #[structopt(short = "i", long = "input", parse(from_os_str))]
     input: Option<PathBuf>,
-    /// Float precision for coordinates of imported addresses.
-    /// Set to 0 to leave coordinates unchanged.
-    #[structopt(short = "p", long = "coord-precision", default_value = "6")]
-    coord_precision: u32,
+    /// Float precision for coordinates used to define the `id` field of addresses.
+    /// Set to 0 to use exact coordinates.
+    #[structopt(short = "p", long = "id-precision", default_value = "6")]
+    id_precision: usize,
     /// Elasticsearch parameters.
     #[structopt(
         short = "c",
@@ -212,9 +220,9 @@ fn run(args: Args) -> Result<(), failure::Error> {
 
         let admins_geofinder = admins.into_iter().collect();
         let use_old_index_format = args.use_old_index_format;
-        let coord_precision = args.coord_precision;
+        let id_precision = args.id_precision;
 
-        move |a: OpenAddress| a.into_addr(&admins_geofinder, use_old_index_format, coord_precision)
+        move |a: OpenAddress| a.into_addr(&admins_geofinder, use_old_index_format, id_precision)
     };
 
     if let Some(input_path) = args.input {

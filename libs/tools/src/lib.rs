@@ -299,9 +299,3 @@ fn url_encode(q: &str) -> String {
             .collect();
     q.replace("%3F", "?")
 }
-
-/// Return a close float with at most `precision` floating point values.
-pub fn round_at(x: f64, precision: u32) -> f64 {
-    let factor = 10u64.pow(precision) as f64;
-    (x * factor).round() / factor
-}
