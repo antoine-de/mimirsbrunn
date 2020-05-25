@@ -44,6 +44,8 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &[
             "--input=./tests/fixtures/sample-oa.csv".into(),
             format!("--connection-string={}", es_wrapper.host()),
+            "--coord-precision".into(),
+            "5".into(),
         ],
         &es_wrapper,
     );
@@ -52,6 +54,10 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         .search_and_filter("72 Otto-Braun-Straße", |_| true)
         .collect();
     assert_eq!(res.len(), 1);
+
+    // Coordinate should be rounded down
+    assert_eq!(res[0].coord().lon(), 13.41931);
+    assert_eq!(res[0].coord().lat(), 52.52354);
 
     // after an import, we should have 1 index, and some aliases to this index
     let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();

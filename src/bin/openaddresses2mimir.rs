@@ -153,7 +153,7 @@ struct Args {
     input: Option<PathBuf>,
     /// Float precision for coordinates of imported addresses.
     /// Set to 0 to leave coordinates unchanged.
-    #[structopt(short = "p", default_value = "6")]
+    #[structopt(short = "p", long = "coord-precision", default_value = "6")]
     coord_precision: u32,
     /// Elasticsearch parameters.
     #[structopt(
