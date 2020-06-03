@@ -93,6 +93,7 @@ pub struct Rubber {
     // Note: The timeout is used for the http client AND for the ES internal query
     pub timeout: Option<time::Duration>,
     pub cnx_string: String,
+    pub nb_insert_threads: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -314,7 +315,16 @@ impl Rubber {
             http_client: reqwest::Client::builder().timeout(timeout).build().unwrap(),
             cnx_string: cnx.to_owned(),
             timeout,
+            nb_insert_threads: 1,
         }
+    }
+
+    /// Change the number of parallel threads used to insert data into Elasticsearch
+    /// during `bulk_index`. Note that if too many insertions are performed in parallel,
+    /// Elasticsearch may raise an error.
+    pub fn with_nb_insert_threads(mut self, value: usize) -> Self {
+        self.nb_insert_threads = value;
+        self
     }
 
     pub fn get(&self, path: &str) -> Result<reqwest::Response, EsError> {
@@ -632,27 +642,33 @@ impl Rubber {
     {
         use par_map::ParMap;
         use rs_es::operations::bulk::Action;
-        let mut nb = 0;
-        let chunk_size = 1000;
-        let chunks = iter.pack(chunk_size).par_map(|v| {
-            v.into_iter()
-                .map(|v| {
-                    v.es_id()
-                        .into_iter()
-                        .fold(Action::index(v), |action, id| action.with_id(id))
-                })
-                .collect::<Vec<_>>()
-        });
-        for chunk in chunks.filter(|c| !c.is_empty()) {
-            nb += chunk.len();
-            self.es_client
-                .bulk(&chunk)
-                .with_index(&index.name)
-                .with_doc_type(T::doc_type())
-                .send()?;
-        }
 
-        Ok(nb)
+        let chunk_size = 1000;
+        let index_name = index.name.to_owned();
+        let client = self.es_client.clone();
+
+        iter.pack(chunk_size)
+            .par_map(|v| {
+                v.into_iter()
+                    .map(|v| {
+                        v.es_id()
+                            .into_iter()
+                            .fold(Action::index(v), |action, id| action.with_id(id))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .with_nb_threads(self.nb_insert_threads)
+            .par_map(move |chunk| {
+                client
+                    .clone()
+                    .bulk(&chunk)
+                    .with_index(&index_name)
+                    .with_doc_type(T::doc_type())
+                    .send()?;
+
+                Ok(chunk.len())
+            })
+            .try_fold(0, |sum, res| res.map(|chunk_len| sum + chunk_len))
     }
 
     /// Shortcut to `index` for a public index

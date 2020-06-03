@@ -96,6 +96,10 @@ struct Args {
     /// DB buffer size.
     #[structopt(long = "db-buffer-size", default_value = "50000")]
     db_buffer_size: usize,
+    /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
+    /// to handle values that are too high.
+    #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
+    nb_insert_threads: usize,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -104,7 +108,8 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     let mut osm_reader = make_osm_reader(&args.input)?;
     debug!("creation of indexes");
-    let mut rubber = Rubber::new(&args.connection_string);
+    let mut rubber =
+        Rubber::new(&args.connection_string).with_nb_insert_threads(args.nb_insert_threads);
     rubber.initialize_templates()?;
 
     info!("creating adminstrative regions");

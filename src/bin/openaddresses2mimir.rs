@@ -165,6 +165,10 @@ struct Args {
         default_value = &DEFAULT_NB_THREADS
     )]
     nb_threads: usize,
+    /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
+    /// to handle values that are too high.
+    #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
+    nb_insert_threads: usize,
     /// Number of shards for the es index
     #[structopt(short = "s", long = "nb-shards", default_value = "5")]
     nb_shards: usize,
@@ -184,7 +188,9 @@ fn run(args: Args) -> Result<(), failure::Error> {
         warn!("city-level option is deprecated, it now has no effect.");
     }
 
-    let mut rubber = Rubber::new(&args.connection_string);
+    let mut rubber =
+        Rubber::new(&args.connection_string).with_nb_insert_threads(args.nb_insert_threads);
+
     let index_settings = IndexSettings {
         nb_shards: args.nb_shards,
         nb_replicas: args.nb_replicas,
