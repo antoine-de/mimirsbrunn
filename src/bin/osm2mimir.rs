@@ -114,7 +114,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         rubber.get_all_admins()?
     };
     let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
-    {
+    if args.import_way {
         info!("Extracting streets from osm");
         let mut streets = streets(
             &mut osm_reader,
@@ -126,22 +126,20 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         info!("computing street weight");
         compute_street_weight(&mut streets);
 
-        if args.import_way {
-            let street_index_settings = IndexSettings {
-                nb_shards: args.nb_street_shards,
-                nb_replicas: args.nb_street_replicas,
-            };
-            info!("importing streets into Mimir");
-            let nb_streets = rubber
-                .public_index(&args.dataset, &street_index_settings, streets.into_iter())
-                .with_context(|_| {
-                    format!(
-                        "Error occurred when requesting street number in {}",
-                        args.dataset
-                    )
-                })?;
-            info!("Nb of indexed street: {}", nb_streets);
-        }
+        let street_index_settings = IndexSettings {
+            nb_shards: args.nb_street_shards,
+            nb_replicas: args.nb_street_replicas,
+        };
+        info!("importing streets into Mimir");
+        let nb_streets = rubber
+            .public_index(&args.dataset, &street_index_settings, streets.into_iter())
+            .with_context(|_| {
+                format!(
+                    "Error occurred when requesting street number in {}",
+                    args.dataset
+                )
+            })?;
+        info!("Nb of indexed street: {}", nb_streets);
     }
     if args.import_admin {
         let admin_index_settings = IndexSettings {
