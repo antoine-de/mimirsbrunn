@@ -41,7 +41,7 @@ use std::iter::FromIterator;
 use std::rc::Rc;
 use std::sync::Arc;
 use transit_model::objects::Rgb;
-use transit_model_collection::Idx;
+use typed_index_collection::Idx;
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;
@@ -407,23 +407,23 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
 
 // we want the lines to be sorted in a way where
 // line-3 is before line-11, so be use a humane_sort
-impl humanesort::HumaneOrder for Line {
-    fn humane_cmp(&self, other: &Self) -> Ordering {
-        // if only one object has a sort_order, it has the priority
-        // so it's smaller than the other object
-        match (&self.sort_order, &other.sort_order) {
-            (None, Some(_)) => Ordering::Greater,
-            (Some(_), None) => Ordering::Less,
-            (Some(s), Some(o)) => s.cmp(o),
-            (None, None) => Ordering::Equal,
-        }
-        .then_with(|| match (&self.code, &other.code) {
-            (Some(c), Some(o)) => c.humane_cmp(o),
-            _ => Ordering::Equal,
-        })
-        .then_with(|| self.name.humane_cmp(&other.name))
-    }
-}
+// impl humanesort::HumaneOrder for Line {
+//     fn humane_cmp(&self, other: &Self) -> Ordering {
+//         // if only one object has a sort_order, it has the priority
+//         // so it's smaller than the other object
+//         match (&self.sort_order, &other.sort_order) {
+//             (None, Some(_)) => Ordering::Greater,
+//             (Some(_), None) => Ordering::Less,
+//             (Some(s), Some(o)) => s.cmp(o),
+//             (None, None) => Ordering::Equal,
+//         }
+//         .then_with(|| match (&self.code, &other.code) {
+//             (Some(c), Some(o)) => c.humane_cmp(o),
+//             _ => Ordering::Equal,
+//         })
+//         .then_with(|| self.name.humane_cmp(&other.name))
+//     }
+// }
 
 #[derive(Default, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct I18nProperties(pub Vec<Property>);
@@ -655,7 +655,7 @@ where
             // bbox serialized as an array
             // using GeoJSON bounding box format
             // See RFC 7946: https://tools.ietf.org/html/rfc7946#section-5
-            let geojson_bbox: geojson::Bbox = vec![b.min.x, b.min.y, b.max.x, b.max.y];
+            let geojson_bbox: geojson::Bbox = vec![b.min().x, b.min().y, b.max().x, b.max().y];
             geojson_bbox.serialize(serializer)
         }
         None => serializer.serialize_none(),
@@ -667,9 +667,11 @@ where
     D: serde::Deserializer<'de>,
 {
     Option::<Vec<f64>>::deserialize(d).map(|option| {
-        option.map(|b| Rect {
-            min: Coordinate { x: b[0], y: b[1] },
-            max: Coordinate { x: b[2], y: b[3] },
+        option.map(|b| {
+            Rect::new(
+                Coordinate { x: b[0], y: b[1] }, // min
+                Coordinate { x: b[2], y: b[3] }, // max
+            )
         })
     })
 }

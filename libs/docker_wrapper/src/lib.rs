@@ -71,7 +71,7 @@ impl DockerWrapper {
         let retry = retry::retry(
             200,
             100,
-            || reqwest::get(&self.host()),
+            || reqwest::blocking::get(&self.host()),
             |response| {
                 response
                     .as_ref()

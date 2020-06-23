@@ -29,7 +29,6 @@
 // www.navitia.io
 
 use super::get_first_index_aliases;
-use reqwest;
 use std::path::Path;
 
 /// Returns the total number of results in the ES
@@ -58,7 +57,8 @@ pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     assert_eq!(res.len(), 2);
 
     // after an import, we should have 1 index, and some aliases to this index
-    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    let res =
+        reqwest::blocking::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
     let json: serde_json::value::Value = res.json().unwrap();
@@ -86,7 +86,8 @@ pub fn bano2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     );
 
     // we should still have only one index (but a different one)
-    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    let res =
+        reqwest::blocking::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
     let json: serde_json::value::Value = res.json().unwrap();

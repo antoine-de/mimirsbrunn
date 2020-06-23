@@ -115,7 +115,10 @@ impl AdminGeoFinder {
                 Some(bb) => {
                     let admin = Arc::new(admin);
                     let split = SplitAdmin {
-                        envelope: AABB::from_corners([bb.min.x, bb.min.y], [bb.max.x, bb.max.y]),
+                        envelope: AABB::from_corners(
+                            [bb.min().x, bb.min().y],
+                            [bb.max().x, bb.max().y],
+                        ),
                         boundary,
                         admin: admin.clone(),
                     };

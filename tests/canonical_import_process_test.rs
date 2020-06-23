@@ -323,7 +323,7 @@ fn wrong_shape_test(bragi: &mut BragiHandler) {
         bragi.as_json(r),
         json!({
             "short": "validation error",
-            "long": "invalid json: Json deserialize error: expected a GeoJSON property at line 3 column 102",
+            "long": "invalid json: Json deserialize error: Expected GeoJSON property \'properties\'. at line 3 column 102",
         })
     );
 }

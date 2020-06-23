@@ -75,7 +75,9 @@ lazy_static::lazy_static! {
     .unwrap();
 }
 
-fn check_response(resp: reqwest::Response) -> Result<reqwest::Response, EsError> {
+fn check_response(
+    resp: reqwest::blocking::Response,
+) -> Result<reqwest::blocking::Response, EsError> {
     let mut resp = resp;
     let status = resp.status();
     match status {
@@ -89,7 +91,7 @@ fn check_response(resp: reqwest::Response) -> Result<reqwest::Response, EsError>
 pub struct Rubber {
     pub es_client: rs_es::Client,
     // some operation are not implemented in rs_es, we need to use a raw http client
-    http_client: reqwest::Client,
+    http_client: reqwest::blocking::Client,
     // Note: The timeout is used for the http client AND for the ES internal query
     pub timeout: Option<time::Duration>,
     pub cnx_string: String,
@@ -312,7 +314,10 @@ impl Rubber {
         let timeout = timeout.into();
         Rubber {
             es_client: rs_es::Client::init_with_timeout(&cnx, timeout).unwrap(),
-            http_client: reqwest::Client::builder().timeout(timeout).build().unwrap(),
+            http_client: reqwest::blocking::Client::builder()
+                .timeout(timeout)
+                .build()
+                .unwrap(),
             cnx_string: cnx.to_owned(),
             timeout,
             nb_insert_threads: 1,
@@ -327,21 +332,21 @@ impl Rubber {
         self
     }
 
-    pub fn get(&self, path: &str) -> Result<reqwest::Response, EsError> {
+    pub fn get(&self, path: &str) -> Result<reqwest::blocking::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a get on {}", path);
         let url = self.es_client.full_url(path);
         let result = self.http_client.get(url).send()?;
         check_response(result)
     }
-    fn put(&self, path: &str, body: &str) -> Result<reqwest::Response, EsError> {
+    fn put(&self, path: &str, body: &str) -> Result<reqwest::blocking::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
         let result = self.http_client.put(url).body(body.to_owned()).send()?;
         check_response(result)
     }
-    fn post(&self, path: &str, body: &str) -> Result<reqwest::Response, EsError> {
+    fn post(&self, path: &str, body: &str) -> Result<reqwest::blocking::Response, EsError> {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a post on {} with {}", path, body);
         let url = self.es_client.full_url(path);

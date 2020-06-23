@@ -5,7 +5,7 @@ authors = ["dt.ro <dt.ro@canaltp.fr>"]
 edition = "2018"
 
 [dependencies]
-reqwest = "=0.9.16"
+reqwest = { version = "0.10", features = [ "blocking", "json" ] }
 slog = { version = "2", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4"
 retry = "0.4"

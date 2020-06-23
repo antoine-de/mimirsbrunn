@@ -32,12 +32,13 @@ use failure::ResultExt;
 use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use slog_scope::{info, warn};
+use std::cmp::Ordering;
 use std::collections::{hash_map::DefaultHasher, HashMap};
 use std::hash::BuildHasherDefault;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use transit_model::objects as navitia;
-use transit_model_collection::Idx;
+use typed_index_collection::Idx;
 
 #[derive(Debug, StructOpt)]
 struct Args {
@@ -66,7 +67,6 @@ struct Args {
 }
 
 fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec<mimir::Line> {
-    use humanesort::HumaneSortable;
     use mimir::FromTransitModel;
     let mut lines: Vec<_> = navitia
         .get_corresponding_from_idx(idx)
@@ -75,8 +75,20 @@ fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec
         .collect();
 
     // we want the lines to be sorted in a way where
-    // line-3 is before line-11, so be use a humane_sort
-    lines.humane_sort();
+    // line-3 is before line-11, so be use a human_sort
+    lines.sort_by(|lhs, rhs| {
+        match (&lhs.sort_order, &rhs.sort_order) {
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(s), Some(o)) => s.cmp(o),
+            (None, None) => Ordering::Equal,
+        }
+        .then_with(|| match (&lhs.code, &rhs.code) {
+            (Some(l), Some(r)) => human_sort::compare(l, r),
+            _ => Ordering::Equal,
+        })
+        .then_with(|| human_sort::compare(&lhs.name, &rhs.name))
+    });
     lines
 }
 
@@ -233,8 +245,7 @@ fn test_bad_connection_string() {
         causes,
         [
             "Error occurred when importing stops into bob on http://localhost:1".to_string(),
-            "Error: http://localhost:1/_template/template_addr: error trying to connect: Connection refused (os error 111) while creating template template_addr"
-                .to_string(),
+            "Error: HTTP Error while creating template template_addr".to_string(),
         ]
     );
 }

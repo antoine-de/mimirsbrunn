@@ -28,7 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use reqwest;
 use std::path::Path;
 
 pub fn osm2mimir_bano2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
@@ -59,7 +58,8 @@ pub fn osm2mimir_bano2mimir_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     );
 
     // after an import, we should have 4 indexes, and some aliases to this index
-    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    let res =
+        reqwest::blocking::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
     let json: serde_json::Value = res.json().unwrap();

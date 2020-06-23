@@ -29,7 +29,6 @@
 // www.navitia.io
 
 use super::get_first_index_aliases;
-use reqwest;
 use std::path::Path;
 
 /// Simple call to a OA load into ES base
@@ -62,7 +61,8 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     };
 
     // after an import, we should have 1 index, and some aliases to this index
-    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    let res =
+        reqwest::blocking::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
     let json: serde_json::Value = res.json().unwrap();
@@ -89,7 +89,8 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     );
 
     // we should still have only one index (but a different one)
-    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    let res =
+        reqwest::blocking::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
     let json: serde_json::Value = res.json().unwrap();

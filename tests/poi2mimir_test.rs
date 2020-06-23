@@ -105,7 +105,8 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     //     }                               |
     //   }                                 |
     // }
-    let mut res = reqwest::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
+    let res =
+        reqwest::blocking::get(&format!("{host}/_aliases", host = es_wrapper.host())).unwrap();
     assert_eq!(res.status(), reqwest::StatusCode::OK);
 
     let json: Value = res.json().unwrap();

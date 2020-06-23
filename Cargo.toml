@@ -10,44 +10,44 @@ edition = "2018"
 
 [dependencies]
 log = { version = "0.4", features = ["release_max_level_debug"] }
-slog = { version = "2.4", features = ["max_level_trace", "release_max_level_debug"]}
-slog-scope = "4.1"
-slog-envlogger = "2.1"
-slog-async = "2.3"
+slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
+slog-scope = "4.3"
+slog-envlogger = "2.2"
+slog-async = "2.5"
 structopt = "0.3"
-csv = "1"
-rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"]}
+csv = "1.1"
+rs-es = { git = "https://github.com/crocme10/rs-es", features = ["geo"]}
 regex = "1"
-osmpbfreader = "0.13.2"
+osmpbfreader = "0.13"
 chrono = "0.4"
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
-bincode = "1.1"
-geo = "0.12.2"
-geo-types = { version = "0.4.3", features = [ "rstar" ] }
-rstar = "0.7"
-itertools = "0.8"
-transit_model = "0.8"
-transit_model_collection = "*"
-osm_boundaries_utils = "0.5"
+bincode = "1.2"
+geo = "0.14"
+geo-types = { version = "0.6", features = [ "rstar" ] }
+rstar = "0.8"
+itertools = "0.9"
+transit_model = "0.20"
+typed_index_collection = "1.1"
+osm_boundaries_utils = "0.6"
 failure = "0.1"
-cosmogony = "0.7"
+cosmogony = { path = "../cosmogony/cosmogony" }
 par-map = "0.1.4"
-lazy_static = "1.3"
-num_cpus = "1.10"
-assert_float_eq = "1"
-humanesort = "0.1.0-alpha"
-address-formatter = "^0.2.1"
-navitia-poi-model = "0.2.1"
-walkdir = "2"
-rusqlite = "0.20"
+lazy_static = "1.4"
+num_cpus = "1.13"
+assert_float_eq = "1.1"
+human-sort = "0.2"
+address-formatter = "0.2.1"
+navitia-poi-model = { git = "https://github.com/crocme10/tartare-tools", branch = "update_dependencies" }
+walkdir = "2.3"
+rusqlite = "0.23"
 flate2 = "1.0"
 
 mimir = { path = "libs/mimir" }
 bragi = { path = "libs/bragi" }
 
 [dev-dependencies]
-reqwest = "=0.9.16"
+reqwest = { version = "0.10", features = [ "blocking", "json" ] }
 approx = "0.3"
 actix-web = "1"
 tools = { path = "libs/tools" }

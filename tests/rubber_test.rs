@@ -29,13 +29,10 @@
 // www.navitia.io
 
 use cosmogony::ZoneType;
-use geo;
 use geo::prelude::BoundingRect;
 use mimir::rubber::{self, IndexSettings, Rubber};
 use mimir::{Admin, Coord, MimirObject, Street};
-use reqwest;
 use serde_json::{json, Value};
-use std;
 
 fn check_has_elt<F: FnMut(&Value)>(es: &crate::ElasticSearchWrapper<'_>, mut fun: F) {
     let search = es.search("*:*"); // we get all documents in the base
@@ -241,7 +238,7 @@ pub fn rubber_custom_id(mut es: crate::ElasticSearchWrapper<'_>) {
 /// if an import has been stopped in the middle)
 pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
     // we create a ghost ES index
-    let client = reqwest::Client::new();
+    let client = reqwest::blocking::Client::new();
     let old_idx_name = "munin_admin_fr_20170313_113227_006297916";
     let res = client
         .put(&format!(
@@ -293,8 +290,8 @@ pub fn rubber_ghost_index_cleanup(mut es: crate::ElasticSearchWrapper<'_>) {
 
 // return the list of the munin indexes
 fn get_munin_indexes(es: &crate::ElasticSearchWrapper<'_>) -> Vec<String> {
-    let client = reqwest::Client::new();
-    let mut res = client
+    let client = reqwest::blocking::Client::new();
+    let res = client
         .get(&format!("{host}/_aliases", host = es.host()))
         .send()
         .unwrap();
@@ -307,8 +304,8 @@ fn get_munin_indexes(es: &crate::ElasticSearchWrapper<'_>) -> Vec<String> {
 
 // return the list of the munin indexes
 fn get_index_info(es: &crate::ElasticSearchWrapper<'_>, index: &str) -> Value {
-    let client = reqwest::Client::new();
-    let mut res = client
+    let client = reqwest::blocking::Client::new();
+    let res = client
         .get(&format!("{host}/{index}", host = es.host(), index = index))
         .send()
         .unwrap();

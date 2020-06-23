@@ -73,7 +73,7 @@ impl actix_web::error::ResponseError for BragiError {
             BragiError::Es(ref es_error) => {
                 error!("es error on query: {}", &es_error);
                 match es_error {
-                    EsError::HttpError(_) => {
+                    EsError::HttpError { source: _ } => {
                         actix_web::HttpResponse::ServiceUnavailable().json(ApiError {
                             short: "query error".to_owned(),
                             long: "service unavailable".to_owned(),

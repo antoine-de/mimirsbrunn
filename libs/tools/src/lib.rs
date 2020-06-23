@@ -25,7 +25,7 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn refresh(&self) {
         info!("Refreshing ES indexes");
 
-        let res = reqwest::Client::new()
+        let res = reqwest::blocking::Client::new()
             .get(&format!("{}/_refresh", self.host()))
             .send()
             .unwrap();
@@ -51,7 +51,7 @@ impl<'a> ElasticSearchWrapper<'a> {
     pub fn count<'b, T: Into<Option<&'b str>>>(&self, index: T, word: &str) -> u64 {
         let index = index.into().unwrap_or("munin");
         info!("counting documents with {}/_count?q={}", index, word);
-        let mut res = self
+        let res = self
             .rubber
             .get(&format!("{}/_count?q={}", index, word))
             .unwrap();
@@ -69,7 +69,7 @@ impl<'a> ElasticSearchWrapper<'a> {
         word: &str,
     ) -> serde_json::Value {
         let index = index.into().unwrap_or("munin");
-        let mut res = self
+        let res = self
             .rubber
             .get(&format!("{}/_search?q={}", index, word))
             .unwrap();
