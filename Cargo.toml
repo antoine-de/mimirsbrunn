@@ -19,6 +19,7 @@ csv = "1.1"
 rs-es = { git = "https://github.com/crocme10/rs-es", features = ["geo"]}
 regex = "1"
 osmpbfreader = "0.13"
+osm_boundaries_utils = "0.6"
 chrono = "0.4"
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
@@ -29,9 +30,8 @@ rstar = "0.8"
 itertools = "0.9"
 transit_model = "0.20"
 typed_index_collection = "1.1"
-osm_boundaries_utils = "0.6"
 failure = "0.1"
-cosmogony = { path = "../cosmogony/cosmogony" }
+cosmogony = { git = "https://github.com/crocme10/cosmogony", branch = "update_dependencies" }
 par-map = "0.1.4"
 lazy_static = "1.4"
 num_cpus = "1.13"

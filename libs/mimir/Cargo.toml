@@ -25,7 +25,7 @@ geo-types = { version = "0.6", features = [ "rstar" ] }
 rstar = "0.8"
 geojson = { version = "0.19", features = ["geo-types"] }
 failure = "0.1"
-cosmogony = { path = "../../../cosmogony/cosmogony" }
+cosmogony = { git = "https://github.com/crocme10/cosmogony", branch = "update_dependencies" }
 par-map = "0.1.4"
 lazy_static = "1"
 prometheus = {version= "0.7"}

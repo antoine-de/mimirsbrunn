@@ -405,26 +405,6 @@ impl FromTransitModel<transit_model::objects::Line> for Line {
     }
 }
 
-// we want the lines to be sorted in a way where
-// line-3 is before line-11, so be use a humane_sort
-// impl humanesort::HumaneOrder for Line {
-//     fn humane_cmp(&self, other: &Self) -> Ordering {
-//         // if only one object has a sort_order, it has the priority
-//         // so it's smaller than the other object
-//         match (&self.sort_order, &other.sort_order) {
-//             (None, Some(_)) => Ordering::Greater,
-//             (Some(_), None) => Ordering::Less,
-//             (Some(s), Some(o)) => s.cmp(o),
-//             (None, None) => Ordering::Equal,
-//         }
-//         .then_with(|| match (&self.code, &other.code) {
-//             (Some(c), Some(o)) => c.humane_cmp(o),
-//             _ => Ordering::Equal,
-//         })
-//         .then_with(|| self.name.humane_cmp(&other.name))
-//     }
-// }
-
 #[derive(Default, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct I18nProperties(pub Vec<Property>);
 

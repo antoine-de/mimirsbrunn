@@ -763,6 +763,7 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 [[package]]
 name = "cosmogony"
 version = "0.7.3"
+source = "git+https://github.com/crocme10/cosmogony?branch=update_dependencies#4b251cbe554fa04938f000e43a00315e36054437"
 dependencies = [
  "env_logger",
  "failure",

@@ -8,8 +8,8 @@ edition = "2018"
 reqwest = { version = "0.10", features = [ "blocking", "json" ] }
 failure = "0.1"
 serde_json = "1"
-slog = { version = "2", features = ["max_level_trace", "release_max_level_info"]}
-slog-scope = "4"
+slog = { version = "2.5", features = ["max_level_trace", "release_max_level_info"]}
+slog-scope = "4.3"
 actix-http-test = "0.2"
 actix-http = "0.2"
 actix-web = "1"
