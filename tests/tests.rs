@@ -41,6 +41,7 @@ mod bragi_filter_types_test;
 mod bragi_ntfs_test;
 mod bragi_osm_test;
 mod bragi_poi_test;
+mod bragi_postcode_test;
 mod bragi_stops_test;
 mod bragi_synonyms_test;
 mod bragi_three_cities_test;
@@ -150,6 +151,7 @@ fn all_tests() {
     bragi_ntfs_test::bragi_ntfs_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_filter_types_test::bragi_filter_types_test(ElasticSearchWrapper::new(&docker_wrapper));
     bragi_synonyms_test::bragi_synonyms_test(ElasticSearchWrapper::new(&docker_wrapper));
+    bragi_postcode_test::bragi_postcode_test(ElasticSearchWrapper::new(&docker_wrapper));
     openaddresses2mimir_test::oa2mimir_simple_test(ElasticSearchWrapper::new(&docker_wrapper));
     cosmogony2mimir_test::cosmogony2mimir_test(ElasticSearchWrapper::new(&docker_wrapper));
     canonical_import_process_test::canonical_import_process_test(ElasticSearchWrapper::new(
