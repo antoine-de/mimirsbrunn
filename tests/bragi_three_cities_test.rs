@@ -248,6 +248,7 @@ fn three_cities_shape_test(bragi: &mut BragiHandler) {
     assert_eq!(geocodings.len(), 0);
 
     let geocodings = bragi.get("/autocomplete?q=Four");
+    dbg!(&geocodings);
     assert_eq!(geocodings.len(), 1);
     assert_eq!(
         get_values(&geocodings, "label"),
