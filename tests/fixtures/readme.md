@@ -40,6 +40,19 @@ Melun city has been modified to bear multiple postcodes, including numbers and l
 
 The file also contains a few other incomplete relations.
 
+#### Streets
+
+name | city
+--- | ---
+Rue du Port | Melun
+Rue Marcel Houdet | Melun
+Rue des Près | Livry sur Seine
+Rue du four à Chaux | Livry sur Seine
+Rue du Pet au Diable | Vaux le Pénil
+Rue du Port | Vaux le Pénil
+Rue de la Noue | Vaux le Pénil
+Rue des 18 Arpents | Le Coudray-Montceaux
+
 #### POIs
 The OSM file contains the following objects :
 

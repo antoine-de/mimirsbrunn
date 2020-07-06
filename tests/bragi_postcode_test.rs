@@ -70,9 +70,20 @@ pub fn bragi_postcode_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
 
     // When a postcode is searched, we don't expect any address with a matching house number.
     let response = bragi.get("/autocomplete?q=77000");
-
     assert!(!response.is_empty());
     assert!(response
         .iter()
         .all(|res| get_value(res, "housenumber") != "77000"));
+
+    // The address can still be found when more info is given
+    let response = bragi.get("/autocomplete?q=77000 Southwest");
+    assert!(response
+        .iter()
+        .any(|res| get_value(res, "street") == "7th Line Southwest"));
+
+    // When searching for a number only, we should still be able to find road names
+    let response = bragi.get("/autocomplete?q=18");
+    assert!(response
+        .iter()
+        .any(|res| get_value(res, "street") == "Rue des 18 Arpents"));
 }
