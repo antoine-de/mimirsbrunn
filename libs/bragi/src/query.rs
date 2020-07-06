@@ -310,18 +310,27 @@ fn build_query<'a>(
         MatchType::Fuzzy => {}
     };
 
-    // filter to handle house number
-    // we either want:
-    // * to exactly match the document house_number
-    // * or that the document has no house_number
-    let house_number_condition = Query::build_bool()
-        .with_should(vec![
+    let house_number_condition = {
+        if q.split_whitespace().count() > 1 {
+            // Filter to handle house number.
+            // We either want:
+            // * to exactly match the document house_number
+            // * or that the document has no house_number
+            Query::build_bool()
+                .with_should(vec![
+                    Query::build_bool()
+                        .with_must_not(Query::build_exists("house_number").build())
+                        .build(),
+                    Query::build_match("house_number", q.to_string()).build(),
+                ])
+                .build()
+        } else {
+            // If the query contains a single word, we don't exect any house number in the result.
             Query::build_bool()
                 .with_must_not(Query::build_exists("house_number").build())
-                .build(),
-            Query::build_match("house_number", q.to_string()).build(),
-        ])
-        .build();
+                .build()
+        }
+    };
 
     use rs_es::query::CombinationMinimumShouldMatch;
     use rs_es::query::MinimumShouldMatch;
