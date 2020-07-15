@@ -1,4 +1,3 @@
-use git_version;
 use json;
 
 use std::ffi::OsStr;
@@ -13,6 +12,11 @@ fn validate_json_files(dir: &Path) -> io::Result<()> {
         if path.is_dir() {
             validate_json_files(&path)?;
         } else if path.extension() == Some(OsStr::new("json")) {
+            println!(
+                "cargo:rerun-if-changed={}",
+                path.to_str().expect("invalid UTF-8 for path")
+            );
+
             let mut reader = BufReader::new(File::open(&path)?);
             let mut content = String::new();
             reader.read_to_string(&mut content)?;
@@ -33,5 +37,4 @@ fn main() {
         eprintln!("=> Failure in JSON validation!\n=> {}", e);
         panic!("");
     }
-    git_version::set_env_with_name("CARGO_PKG_VERSION");
 }

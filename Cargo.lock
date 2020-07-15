@@ -1625,7 +1625,6 @@ dependencies = [
  "flate2 1.0.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "geo-types 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "git-version 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "humanesort 0.1.0-alpha (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "json 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
