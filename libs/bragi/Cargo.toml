@@ -29,6 +29,7 @@ serde_qs = "0.5"
 futures = "0.1"
 mimir = { path = "../mimir" }
 toml = "0.5.6"
+git-version = "0.3"
 
 [dev-dependencies]
 reqwest = "=0.9.16"
