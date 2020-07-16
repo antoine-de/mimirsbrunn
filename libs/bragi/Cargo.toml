@@ -35,6 +35,3 @@ git-version = "0.3"
 reqwest = "=0.9.16"
 docker_wrapper = { path = "../docker_wrapper" }
 tools = { path = "../tools" }
-
-[build-dependencies]
-git-version = "0.2"
