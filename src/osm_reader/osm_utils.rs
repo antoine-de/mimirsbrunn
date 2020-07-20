@@ -28,7 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use super::street::Getter;
+use super::osm_store::Getter;
 use geo::centroid::Centroid;
 use geo::MultiPolygon;
 use osmpbfreader::StoreObjs;

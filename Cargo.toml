@@ -8,6 +8,9 @@ edition = "2018"
 
 [workspace]
 
+[features]
+db-storage = [ "rusqlite" ]
+
 [dependencies]
 log = { version = "0.4", features = ["release_max_level_debug"] }
 slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
@@ -40,7 +43,7 @@ human-sort = "0.2"
 address-formatter = "0.2.1"
 navitia-poi-model = "0.3"
 walkdir = "2.3"
-rusqlite = "0.23"
+rusqlite = { version = "0.23", optional = true }
 flate2 = "1.0"
 
 mimir = { path = "libs/mimir" }
