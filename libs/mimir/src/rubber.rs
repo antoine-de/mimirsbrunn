@@ -456,7 +456,7 @@ impl Rubber {
         base_index: &str,
     ) -> Result<BTreeMap<String, Vec<String>>, Error> {
         let res = self
-            .get(&format!("{}*/_aliases", base_index))
+            .get(&format!("{}_*/_aliases", base_index))
             .with_context(|_| format!("Error occurred when getting {}*/_aliases", base_index))?;
         match res.status() {
             StatusCode::OK => {
