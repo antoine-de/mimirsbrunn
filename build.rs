@@ -1,5 +1,3 @@
-use json;
-
 use std::ffi::OsStr;
 use std::fs::{self, File};
 use std::io::{self, BufReader, Error, ErrorKind, Read};
@@ -12,10 +10,9 @@ fn validate_json_files(dir: &Path) -> io::Result<()> {
         if path.is_dir() {
             validate_json_files(&path)?;
         } else if path.extension() == Some(OsStr::new("json")) {
-            println!(
-                "cargo:rerun-if-changed={}",
-                path.to_str().expect("invalid UTF-8 for path")
-            );
+            // Indicate to cargo that the build script must re-run when this JSON file is modified.
+            // See https://doc.rust-lang.org/cargo/reference/build-scripts.html#rerun-if-changed
+            println!("cargo:rerun-if-changed={}", path.display());
 
             let mut reader = BufReader::new(File::open(&path)?);
             let mut content = String::new();
