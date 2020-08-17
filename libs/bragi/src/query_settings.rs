@@ -36,8 +36,8 @@ pub struct StringQuery {
 pub struct Proximity {
     pub weight: f64,
     pub weight_fuzzy: f64,
-    pub decay_distance: f64,
     pub offset_distance: f64,
+    pub decay_distance_ratio: f64,
     pub decay: f64,
 }
 

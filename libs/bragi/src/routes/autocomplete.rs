@@ -72,8 +72,11 @@ pub struct Params {
     offset: u64,
     /// timeout in milliseconds
     timeout: Option<u64>,
+    // Position of the request
     lat: Option<f64>,
     lon: Option<f64>,
+    // Approximate radius of the boost for the request, if lon and lat are defined
+    radius: Option<f64>,
     #[serde(default, rename = "type")]
     types: Vec<Type>,
     #[serde(default, rename = "zone_type")]
@@ -141,6 +144,12 @@ pub fn call_autocomplete(
 ) -> Result<HttpResponse, model::BragiError> {
     let langs = params.langs();
     let rubber = state.get_rubber_for_autocomplete(params.timeout());
+    let mut query_settings = state.get_query_settings().clone();
+
+    if let Some(radius) = params.radius {
+        query_settings.importance_query.proximity.offset_distance = radius;
+    }
+
     let res = query::autocomplete(
         &params.q,
         &params
@@ -164,7 +173,7 @@ pub fn call_autocomplete(
         &langs,
         rubber,
         params.debug.unwrap_or(false),
-        state.get_query_settings(),
+        &query_settings,
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(|v| {
