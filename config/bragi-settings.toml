@@ -46,6 +46,6 @@ global = 1.0
     [importance_query.proximity]
     weight = 0.4
     weight_fuzzy = 0.4
-    offset_distance = 20.0  # This can be overwritten by the parameter `radius`
-    decay_distance_ratio = 6.5 # The decay distance will be offset_distance * decay_ratio
-    decay = 0.4
+    decay_distance = 130.0 # can be overwritten by query parameter
+    offset_distance = 20.0 # can be overwritten by query parameter
+    decay = 0.4 # can be overwritten by query parameter
