@@ -762,8 +762,8 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
 name = "cosmogony"
-version = "0.7.3"
-source = "git+https://github.com/crocme10/cosmogony?branch=update_dependencies#4b251cbe554fa04938f000e43a00315e36054437"
+version = "0.7.4"
+source = "git+https://github.com/osm-without-borders/cosmogony#7a561ce7e74228285fe4d658043595dcc816b477"
 dependencies = [
  "env_logger",
  "failure",
@@ -2047,13 +2047,14 @@ dependencies = [
 
 [[package]]
 name = "navitia-poi-model"
-version = "0.2.2"
-source = "git+https://github.com/crocme10/tartare-tools?branch=update_dependencies#7bd540863dbbf4fd6bcfef02f8bb062d8302ef7d"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f566ab406ac6983209f923799b36c3e8a7a631c87547663f2776a08a8c375885"
 dependencies = [
  "csv",
  "failure",
  "geo 0.14.1",
- "itertools 0.8.2",
+ "itertools 0.9.0",
  "serde",
  "zip",
 ]
@@ -2859,7 +2860,7 @@ dependencies = [
 [[package]]
 name = "rs-es"
 version = "0.12.2"
-source = "git+https://github.com/crocme10/rs-es#95a2b17b504c7eb7f035c6a49de136907e9d37c2"
+source = "git+https://github.com/canaltp/rs-es#f029b406de0788c001a19f91602f83a38b8dc62c"
 dependencies = [
  "geojson",
  "log",

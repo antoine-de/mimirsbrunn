@@ -16,7 +16,7 @@ slog-envlogger = "2.2"
 slog-async = "2.5"
 structopt = "0.3"
 csv = "1.1"
-rs-es = { git = "https://github.com/crocme10/rs-es", features = ["geo"]}
+rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"]}
 regex = "1"
 osmpbfreader = "0.13"
 osm_boundaries_utils = "0.6"
@@ -31,14 +31,14 @@ itertools = "0.9"
 transit_model = "0.20"
 typed_index_collection = "1.1"
 failure = "0.1"
-cosmogony = { git = "https://github.com/crocme10/cosmogony", branch = "update_dependencies" }
+cosmogony = { git = "https://github.com/osm-without-borders/cosmogony" }
 par-map = "0.1.4"
 lazy_static = "1.4"
 num_cpus = "1.13"
 assert_float_eq = "1.1"
 human-sort = "0.2"
 address-formatter = "0.2.1"
-navitia-poi-model = { git = "https://github.com/crocme10/tartare-tools", branch = "update_dependencies" }
+navitia-poi-model = "0.3"
 walkdir = "2.3"
 rusqlite = "0.23"
 flate2 = "1.0"

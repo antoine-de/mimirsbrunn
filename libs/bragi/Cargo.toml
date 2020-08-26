@@ -8,7 +8,7 @@ edition = "2018"
 structopt = "0.3"
 slog = { version = "2.5", features = ["max_level_trace", "release_max_level_info"]}
 slog-scope = "4.3"
-rs-es = { git = "https://github.com/crocme10/rs-es", features = ["geo"]}
+rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"]}
 serde = { version = "1", features = ["rc"]}
 serde_json = "1"
 geojson = { version = "0.19", features = ["geo-types"] }
@@ -18,7 +18,7 @@ prometheus = {version= "0.7", features = ["process"]}
 heck = "0.3"
 failure = "0.1"
 num_cpus = "1.13"
-cosmogony = { git = "https://github.com/crocme10/cosmogony", branch = "update_dependencies" }
+cosmogony = { git = "https://github.com/osm-without-borders/cosmogony" }
 actix-web = "1"
 actix-rt = "0.2"
 actix-cors = "0.1"
