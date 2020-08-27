@@ -72,8 +72,14 @@ pub struct Params {
     offset: u64,
     /// timeout in milliseconds
     timeout: Option<u64>,
+    // Position of the request
     lat: Option<f64>,
     lon: Option<f64>,
+    // If specified, override parameters for the normal decay computed by elasticsearch around the
+    // position: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-query.html#_supported_decay_functions
+    proximity_scale: Option<f64>,
+    proximity_offset: Option<f64>,
+    proximity_decay: Option<f64>,
     #[serde(default, rename = "type")]
     types: Vec<Type>,
     #[serde(default, rename = "zone_type")]
@@ -141,6 +147,20 @@ pub fn call_autocomplete(
 ) -> Result<HttpResponse, model::BragiError> {
     let langs = params.langs();
     let rubber = state.get_rubber_for_autocomplete(params.timeout());
+    let mut query_settings = state.get_query_settings().clone();
+
+    if let Some(scale) = params.proximity_scale {
+        query_settings.importance_query.proximity.gaussian.scale = scale;
+    }
+
+    if let Some(offset) = params.proximity_offset {
+        query_settings.importance_query.proximity.gaussian.offset = offset;
+    }
+
+    if let Some(decay) = params.proximity_decay {
+        query_settings.importance_query.proximity.gaussian.decay = decay;
+    }
+
     let res = query::autocomplete(
         &params.q,
         &params
@@ -164,7 +184,7 @@ pub fn call_autocomplete(
         &langs,
         rubber,
         params.debug.unwrap_or(false),
-        state.get_query_settings(),
+        &query_settings,
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(|v| {

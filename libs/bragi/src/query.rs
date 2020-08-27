@@ -121,13 +121,13 @@ fn build_proximity_with_boost(coord: &Coord, infos: &Proximity, is_fuzzy: bool) 
                 None,
                 DecayOptions::new(
                     rs_u::Location::LatLon(coord.lat(), coord.lon()),
-                    rs_u::Distance::new(infos.decay_distance, rs_u::DistanceUnit::Kilometer),
+                    rs_u::Distance::new(infos.gaussian.scale, rs_u::DistanceUnit::Kilometer),
                 )
                 .with_offset(rs_u::Distance::new(
-                    infos.offset_distance,
+                    infos.gaussian.offset,
                     rs_u::DistanceUnit::Kilometer,
                 ))
-                .with_decay(infos.decay)
+                .with_decay(infos.gaussian.decay)
                 .build("coord")
                 .build_exp(),
                 None,
