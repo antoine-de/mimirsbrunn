@@ -77,9 +77,9 @@ pub struct Params {
     lon: Option<f64>,
     // If specified, override parameters for the normal decay computed by elasticsearch around the
     // position: https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-query.html#_supported_decay_functions
-    focus_decay_distance: Option<f64>,
-    focus_offset_distance: Option<f64>,
-    focus_decay: Option<f64>,
+    proximity_scale: Option<f64>,
+    proximity_offset: Option<f64>,
+    proximity_decay: Option<f64>,
     #[serde(default, rename = "type")]
     types: Vec<Type>,
     #[serde(default, rename = "zone_type")]
@@ -149,16 +149,16 @@ pub fn call_autocomplete(
     let rubber = state.get_rubber_for_autocomplete(params.timeout());
     let mut query_settings = state.get_query_settings().clone();
 
-    if let Some(decay_distance) = params.focus_decay_distance {
-        query_settings.importance_query.proximity.decay_distance = decay_distance;
+    if let Some(scale) = params.proximity_scale {
+        query_settings.importance_query.proximity.gaussian.scale = scale;
     }
 
-    if let Some(offset_distance) = params.focus_offset_distance {
-        query_settings.importance_query.proximity.offset_distance = offset_distance;
+    if let Some(offset) = params.proximity_offset {
+        query_settings.importance_query.proximity.gaussian.offset = offset;
     }
 
-    if let Some(decay) = params.focus_decay {
-        query_settings.importance_query.proximity.decay = decay;
+    if let Some(decay) = params.proximity_decay {
+        query_settings.importance_query.proximity.gaussian.decay = decay;
     }
 
     let res = query::autocomplete(
