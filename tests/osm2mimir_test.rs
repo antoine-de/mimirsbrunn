@@ -72,6 +72,7 @@ pub fn osm2mimir_sample_test_sqlite(es_wrapper: crate::ElasticSearchWrapper<'_>)
             "--import-poi".into(),
             "--level=8".into(),
             "--level=7".into(),
+            #[cfg(feature = "db-storage")]
             "--db-file=test-db.sqlite3".into(),
             "--db-buffer-size=1".into(),
             format!("--connection-string={}", es_wrapper.host()),
