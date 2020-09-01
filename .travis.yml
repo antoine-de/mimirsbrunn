@@ -6,7 +6,7 @@ env:
   - RUN=TEST
 script:
   - cargo test --workspace
-  - cargo test --worspace --features db-storage
+  - cargo test --workspace --features db-storage
 services:
   - docker
 matrix:
