@@ -34,7 +34,7 @@ itertools = "0.9"
 transit_model = "0.20"
 typed_index_collection = "1.1"
 failure = "0.1"
-cosmogony = { git = "https://github.com/osm-without-borders/cosmogony" }
+cosmogony = "0.8"
 par-map = "0.1.4"
 lazy_static = "1.4"
 num_cpus = "1.13"
