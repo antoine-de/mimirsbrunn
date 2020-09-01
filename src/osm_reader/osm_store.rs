@@ -35,7 +35,20 @@
 )]
 use crate::Error;
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
-use slog_scope::{info, warn};
+use slog_scope::info;
+
+#[cfg(not(feature = "db-storage"))]
+use slog_scope::warn;
+
+#[cfg(feature = "db-storage")]
+use slog_scope::error;
+
+#[cfg(feature = "db-storage")]
+use std::fs;
+
+#[cfg(feature = "db-storage")]
+use std::collections::HashMap;
+
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -93,7 +106,7 @@ impl Getter for BTreeMap<OsmId, OsmObj> {
 }
 
 #[cfg(feature = "db-storage")]
-struct DB<'a> {
+pub struct DB<'a> {
     conn: Connection,
     db_file: &'a PathBuf,
     buffer: HashMap<OsmId, OsmObj>,
@@ -305,7 +318,10 @@ pub enum ObjWrapper {
 
 #[cfg(feature = "db-storage")]
 impl<'a> ObjWrapper<'a> {
-    fn new(db_file: &'a Option<PathBuf>, db_buffer_size: usize) -> Result<ObjWrapper<'a>, Error> {
+    pub fn new(
+        db_file: &'a Option<PathBuf>,
+        db_buffer_size: usize,
+    ) -> Result<ObjWrapper<'a>, Error> {
         Ok(if let Some(ref db_file) = db_file {
             info!("Running with DB storage");
             ObjWrapper::DB(DB::new(db_file, db_buffer_size).map_err(failure::err_msg)?)
@@ -316,7 +332,7 @@ impl<'a> ObjWrapper<'a> {
     }
 
     #[allow(dead_code)]
-    fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
+    pub fn for_each<F: FnMut(Cow<OsmObj>)>(&self, mut f: F) {
         match *self {
             ObjWrapper::Map(ref m) => {
                 for value in m.values() {
@@ -327,7 +343,7 @@ impl<'a> ObjWrapper<'a> {
         }
     }
 
-    fn for_each_filter<F: FnMut(Cow<OsmObj>)>(&self, filter: Kind, mut f: F) {
+    pub fn for_each_filter<F: FnMut(Cow<OsmObj>)>(&self, filter: Kind, mut f: F) {
         match *self {
             ObjWrapper::Map(ref m) => {
                 m.values()

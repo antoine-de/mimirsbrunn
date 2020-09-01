@@ -5,7 +5,8 @@ rust:
 env:
   - RUN=TEST
 script:
-  - cargo test --all
+  - cargo test --workspace
+  - cargo test --worspace --features db-storage
 services:
   - docker
 matrix:
