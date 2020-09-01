@@ -90,7 +90,11 @@ struct Args {
     /// Number of replicas for the es index
     #[structopt(long = "nb-poi-replicas", default_value = "1")]
     nb_poi_replicas: usize,
-    /// DB file.
+    /// If you use this option by providing a filename, then we
+    /// will use a SQlite database that will be persisted. You
+    /// can only do that if osm2mimir was compiled with the
+    /// 'db-storage' feature. If you don't provide a value, then
+    /// we will use in memory storage.
     #[structopt(long = "db-file", parse(from_os_str))]
     db_file: Option<PathBuf>,
     /// DB buffer size.

@@ -35,7 +35,7 @@
 )]
 use crate::Error;
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
-use slog_scope::info;
+use slog_scope::{info, warn};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -370,9 +370,17 @@ impl<'a> StoreObjs for ObjWrapper<'a> {
 
 #[cfg(not(feature = "db-storage"))]
 impl ObjWrapper {
-    pub fn new(_db_file: &Option<PathBuf>, _db_buffer_size: usize) -> Result<ObjWrapper, Error> {
-        info!("Running with BTreeMap (RAM) storage");
-        Ok(ObjWrapper::Map(BTreeMap::new()))
+    pub fn new(db_file: &Option<PathBuf>, _db_buffer_size: usize) -> Result<ObjWrapper, Error> {
+        if db_file.is_some() {
+            warn!("You are trying to use DB storage but the program wasn't compiled with the feature 'db-storage'.");
+            warn!("You should either recompile with that feature, or use in memory storage.");
+            Err(failure::format_err!(
+                "Unable to use DB Storage for OSM Store without feature turned on"
+            ))
+        } else {
+            info!("Running with BTreeMap (RAM) storage");
+            Ok(ObjWrapper::Map(BTreeMap::new()))
+        }
     }
 
     #[allow(dead_code)]
