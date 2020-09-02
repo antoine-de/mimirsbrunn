@@ -10,7 +10,7 @@ RUN apt-get update \
 
 COPY . ./
 
-RUN cargo build --release
+RUN cargo build --release --features db-storage
 
 FROM debian:stretch-slim
 
