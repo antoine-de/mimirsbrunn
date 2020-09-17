@@ -39,25 +39,32 @@ pub struct Proximity {
     pub gaussian: Gaussian,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Gaussian {
     pub scale: f64,
     pub offset: f64,
     pub decay: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct BuildWeight {
     pub admin: f64,
     pub factor: f64,
     pub missing: f64,
 }
 
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct BuildWeightWithRadius {
+    #[serde(flatten)]
+    pub weight: BuildWeight,
+    pub radius: f64,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct Weights {
     pub coords_fuzzy: BuildWeight,
-    pub coords: BuildWeight,
-    pub no_coords: BuildWeight,
+    pub max_zoom: BuildWeightWithRadius,
+    pub min_zoom: BuildWeightWithRadius,
     #[serde(flatten)]
     pub types: Types,
 }

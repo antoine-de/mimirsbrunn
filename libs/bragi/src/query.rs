@@ -79,7 +79,7 @@ pub fn make_place(doc_type: String, value: Option<Box<serde_json::Value>>) -> Op
     })
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum MatchType {
     Prefix,
     Fuzzy,
@@ -249,39 +249,53 @@ fn build_query<'a>(
         .with_boost(query_settings.string_query.global)
         .build();
 
-    let mut admin_weight = query_settings.importance_query.weights.coords_fuzzy.admin;
+    let weights = {
+        // Weights for minimal level of zoom
+        let min_weights = query_settings.importance_query.weights.min_zoom.weight;
+
+        // Weights for maximal level of zoom
+        let max_weights = match match_type {
+            MatchType::Prefix => query_settings.importance_query.weights.max_zoom.weight,
+            MatchType::Fuzzy => query_settings.importance_query.weights.coords_fuzzy,
+        };
+
+        // Compute a linear combination of `min_weights` and `max_weights` depending of
+        // the level of zoom.
+        let zoom_ratio = match coord {
+            None => 0.,
+            Some(_) => {
+                let curve = query_settings.importance_query.proximity.gaussian;
+                let max_radius = query_settings.importance_query.weights.max_zoom.radius;
+                let min_radius = query_settings.importance_query.weights.min_zoom.radius;
+                let radius = curve.offset + curve.scale;
+                0f64.max(1f64.min((radius - min_radius) / (max_radius - min_radius)))
+            }
+        };
+
+        let weighted = move |val: &dyn Fn(BuildWeight) -> f64| {
+            zoom_ratio * val(max_weights) + (1. - zoom_ratio) * val(min_weights)
+        };
+
+        BuildWeight {
+            admin: weighted(&|x| x.admin),
+            factor: weighted(&|x| x.factor),
+            missing: weighted(&|x| x.missing),
+        }
+    };
 
     // Priorization by importance
-    let mut importance_queries = if let Some(ref coord) = coord {
-        if let MatchType::Fuzzy = match_type {
-            vec![
-                build_with_weight(
-                    &query_settings.importance_query.weights.coords_fuzzy,
-                    &query_settings.importance_query.weights.types,
-                ),
-                build_proximity_with_boost(coord, &query_settings.importance_query.proximity, true),
-            ]
-        } else {
-            admin_weight = query_settings.importance_query.weights.coords.admin;
-            vec![
-                build_with_weight(
-                    &query_settings.importance_query.weights.coords,
-                    &query_settings.importance_query.weights.types,
-                ),
-                build_proximity_with_boost(
-                    coord,
-                    &query_settings.importance_query.proximity,
-                    false,
-                ),
-            ]
-        }
-    } else {
-        admin_weight = query_settings.importance_query.weights.no_coords.admin;
-        vec![build_with_weight(
-            &query_settings.importance_query.weights.no_coords,
-            &query_settings.importance_query.weights.types,
-        )]
-    };
+    let mut importance_queries = vec![build_with_weight(
+        &weights,
+        &query_settings.importance_query.weights.types,
+    )];
+
+    if let Some(ref coord) = coord {
+        importance_queries.push(build_proximity_with_boost(
+            coord,
+            &query_settings.importance_query.proximity,
+            match_type == MatchType::Fuzzy,
+        ))
+    }
 
     match match_type {
         MatchType::Prefix => {
@@ -299,7 +313,7 @@ fn build_query<'a>(
                     ),
                     FilteredFunction::build_filtered_function(
                         None,
-                        Function::build_weight(admin_weight).build(),
+                        Function::build_weight(weights.admin).build(),
                         None,
                     ),
                 ])

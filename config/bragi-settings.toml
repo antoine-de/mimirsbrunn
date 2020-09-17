@@ -33,12 +33,14 @@ global = 1.0
         factor = 0.15
         missing = 0.0
 
-        [importance_query.weights.coords]
+        [importance_query.weights.max_zoom]
+        radius = 100
         admin = 0.12
         factor = 0.4
         missing = 0.0
 
-        [importance_query.weights.no_coords]
+        [importance_query.weights.min_zoom]
+        radius = 10000
         admin = 0.03
         factor = 0.75
         missing = 0.0
