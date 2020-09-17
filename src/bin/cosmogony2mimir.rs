@@ -176,7 +176,7 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
             Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
             _ => None,
         };
-        cosmogony_id_to_osm_id.insert(z.id.clone(), (z.osm_id.clone(), insee));
+        cosmogony_id_to_osm_id.insert(z.id, (z.osm_id.clone(), insee));
     }
     let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
 

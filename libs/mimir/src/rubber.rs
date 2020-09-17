@@ -361,7 +361,7 @@ impl Rubber {
     ) -> Result<TypedIndex<T>, Error> {
         let index_name = get_date_index_name(&get_main_type_and_dataset_index::<T>(dataset));
         info!("creating index {}", index_name);
-        self.create_index(&index_name.to_string(), index_settings)?;
+        self.create_index(&index_name, index_settings)?;
         Ok(TypedIndex::new(index_name))
     }
 

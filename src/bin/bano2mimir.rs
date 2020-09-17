@@ -163,7 +163,7 @@ impl Bano {
             coord,
             approx_coord: Some(coord.into()),
             weight,
-            zip_codes: vec![self.zip.clone()],
+            zip_codes: vec![self.zip],
             distance: None,
             country_codes,
             context: None,

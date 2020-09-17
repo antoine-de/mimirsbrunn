@@ -158,7 +158,7 @@ pub fn streets(
                     .collect();
                 name_admin_map
                     .entry(StreetKey { name, admins })
-                    .or_insert_with(|| vec![])
+                    .or_insert_with(Vec::new)
                     .push(osmid);
             }
         }
