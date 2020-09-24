@@ -30,12 +30,13 @@
 
 use geo::algorithm::{
     bounding_rect::BoundingRect, contains::Contains, euclidean_distance::EuclideanDistance,
+    intersects::Intersects,
 };
 use geo_types::{MultiPolygon, Point};
 use mimir::Admin;
 use rstar::{Envelope, PointDistance, RTree, RTreeObject, SelectionFunction, AABB};
 use slog_scope::{info, warn};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::sync::Arc;
 
@@ -103,7 +104,7 @@ impl PointDistance for SplitAdmin {
 // Using an id
 pub struct AdminGeoFinder {
     rtree: RTree<SplitAdmin>,
-    admin_by_id: BTreeMap<String, Arc<Admin>>,
+    admin_by_id: HashMap<String, Arc<Admin>>,
 }
 
 impl AdminGeoFinder {
@@ -134,6 +135,60 @@ impl AdminGeoFinder {
         }
     }
 
+    // Get all admins overlapping the given coordinates verifying the condition.
+    //
+    // Each element of the returned array contains a leaf of the admin hierarchy
+    // that overlap input coordinates together with its parents.
+    pub fn get_admins_if(
+        &self,
+        coord: &geo_types::Coordinate<f64>,
+        condition: impl Fn(&Admin) -> bool,
+    ) -> Vec<Vec<Arc<Admin>>> {
+        // Get a list of overlapping admins whose zone_type is less than granularity
+        let mut candidates = self
+            .rtree
+            .locate_with_selection_function(PointInEnvelopeSelectionFunction {
+                point: [coord.x, coord.y],
+            })
+            .filter(|cand| condition(&cand.admin))
+            .collect::<Vec<_>>();
+
+        // Keep track of the admins that have already been visited as a parent. In such
+        // a case we don't need to check if it needs to be returned as it will be part
+        // of the input as parent of another admin.
+        let mut visited_ids = HashSet::new();
+
+        candidates.sort_by_key(|cand| cand.admin.zone_type);
+        candidates
+            .into_iter()
+            .filter_map(move |cand| {
+                let admin = cand.admin.clone();
+                let bound = &cand.boundary;
+
+                if !visited_ids.contains(admin.id.as_str())
+                    && bound.intersects(&geo_types::Point(*coord))
+                {
+                    let mut res = vec![admin];
+
+                    while let Some(parent) = res
+                        .last()
+                        .unwrap()
+                        .parent_id
+                        .as_ref()
+                        .and_then(|parent_id| self.admin_by_id.get(parent_id.as_str()))
+                    {
+                        visited_ids.insert(parent.id.as_str());
+                        res.push(parent.clone());
+                    }
+
+                    Some(res)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     // Get all Admins overlapping the given coordinates.
     // Finding if a point is within a complex boundary, such as a multipolygon, is
     // expensive, compared to finding if it is in the envelope of the boundary.
@@ -157,8 +212,8 @@ impl AdminGeoFinder {
         // We sort them so we can start with the smallest zone_type.
         candidates.sort_by_key(|adm| adm.admin.zone_type);
 
-        let mut tested_hierarchy = BTreeSet::<String>::new();
-        let mut added_zone_types = BTreeSet::new();
+        let mut tested_hierarchy = HashSet::new();
+        let mut added_zone_types = HashSet::new();
         let mut res = vec![];
 
         for candidate in candidates {
@@ -213,7 +268,7 @@ impl Default for AdminGeoFinder {
     fn default() -> Self {
         AdminGeoFinder {
             rtree: RTree::new(),
-            admin_by_id: BTreeMap::new(),
+            admin_by_id: HashMap::new(),
         }
     }
 }

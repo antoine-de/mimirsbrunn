@@ -29,14 +29,14 @@ chrono-tz = "0.5"
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
 bincode = "1.2"
-geo = "0.14"
-geo-types = { version = "0.6", features = [ "rstar" ] }
+geo = "0.15"
+geo-types = { version = "0.6.1", features = [ "rstar" ] }
 rstar = "0.8"
 itertools = "0.9"
 transit_model = "0.31.4"
 typed_index_collection = "1.1"
 failure = "0.1"
-cosmogony = "0.8"
+cosmogony = "0.8.1"
 par-map = "0.1.4"
 lazy_static = "1.4"
 num_cpus = "1.13"
