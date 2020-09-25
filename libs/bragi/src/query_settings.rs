@@ -53,18 +53,12 @@ pub struct BuildWeight {
     pub missing: f64,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize)]
-pub struct BuildWeightWithRadius {
-    #[serde(flatten)]
-    pub weight: BuildWeight,
-    pub radius: f64,
-}
-
 #[derive(Clone, Debug, Deserialize)]
 pub struct Weights {
-    pub coords_fuzzy: BuildWeight,
-    pub max_zoom: BuildWeightWithRadius,
-    pub min_zoom: BuildWeightWithRadius,
+    pub radius_range: (f64, f64),
+    pub min_radius: BuildWeight,
+    pub max_radius_prefix: BuildWeight,
+    pub max_radius_fuzzy: BuildWeight,
     #[serde(flatten)]
     pub types: Types,
 }
