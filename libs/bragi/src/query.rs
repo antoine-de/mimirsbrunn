@@ -268,13 +268,13 @@ fn build_query<'a>(
             Some(_) => {
                 let (min_radius, max_radius) = settings.radius_range;
                 let curve = query_settings.importance_query.proximity.gaussian;
-                let radius = curve.offset + curve.scale;
-                0f64.max(1f64.min((radius - min_radius) / (max_radius - min_radius)))
+                let radius = (curve.offset + curve.scale).min(max_radius).max(min_radius);
+                (radius.ln_1p() - min_radius.ln_1p()) / (max_radius.ln_1p() - min_radius.ln_1p())
             }
         };
 
         let weighted = move |val: &dyn Fn(BuildWeight) -> f64| {
-            zoom_ratio * val(min_weights) + (1. - zoom_ratio) * val(max_weights)
+            (1. - zoom_ratio) * val(min_weights) + zoom_ratio * val(max_weights)
         };
 
         BuildWeight {
