@@ -249,51 +249,49 @@ fn build_query<'a>(
         .with_boost(query_settings.string_query.global)
         .build();
 
-    let weights = {
-        let settings = &query_settings.importance_query.weights;
+    let settings = &query_settings.importance_query.weights;
 
-        // Weights for maximal radius
-        let max_weights = match match_type {
-            MatchType::Prefix => settings.max_radius_prefix,
-            MatchType::Fuzzy => settings.max_radius_fuzzy,
-        };
+    // Weights for maximal radius
+    let max_weights = match match_type {
+        MatchType::Prefix => settings.max_radius_prefix,
+        MatchType::Fuzzy => settings.max_radius_fuzzy,
+    };
 
-        // Weights for minimal radius
-        let min_weights = settings.min_radius;
+    // Weights for minimal radius
+    let min_weights = settings.min_radius;
 
-        // Compute a linear combination of `min_weights` and `max_weights` depending of
-        // the level of zoom.
-        let zoom_ratio = match coord {
-            None => 0.,
-            Some(_) => {
-                let (min_radius, max_radius) = settings.radius_range;
-                let curve = query_settings.importance_query.proximity.gaussian;
-                let radius = (curve.offset + curve.scale).min(max_radius).max(min_radius);
-                (radius.ln_1p() - min_radius.ln_1p()) / (max_radius.ln_1p() - min_radius.ln_1p())
-            }
-        };
-
-        let weighted = move |val: &dyn Fn(BuildWeight) -> f64| {
-            (1. - zoom_ratio) * val(min_weights) + zoom_ratio * val(max_weights)
-        };
-
-        BuildWeight {
-            admin: weighted(&|x| x.admin),
-            factor: weighted(&|x| x.factor),
-            missing: weighted(&|x| x.missing),
+    // Compute a linear combination of `min_weights` and `max_weights` depending of
+    // the level of zoom.
+    let zoom_ratio = match coord {
+        None => 0.,
+        Some(_) => {
+            let (min_radius, max_radius) = settings.radius_range;
+            let curve = query_settings.importance_query.proximity.gaussian;
+            let radius = (curve.offset + curve.scale).min(max_radius).max(min_radius);
+            (radius.ln_1p() - min_radius.ln_1p()) / (max_radius.ln_1p() - min_radius.ln_1p())
         }
     };
 
+    let weighted = move |val: &dyn Fn(BuildWeight) -> f64| {
+        (1. - zoom_ratio) * val(min_weights) + zoom_ratio * val(max_weights)
+    };
+
+    let weights = BuildWeight {
+        admin: weighted(&|x| x.admin),
+        factor: weighted(&|x| x.factor),
+        missing: weighted(&|x| x.missing),
+    };
+
     // Priorization by importance
-    let mut importance_queries = vec![build_with_weight(
-        &weights,
-        &query_settings.importance_query.weights.types,
-    )];
+    let mut importance_queries = vec![build_with_weight(&weights, &settings.types)];
 
     if let Some(ref coord) = coord {
+        let mut weights = query_settings.importance_query.proximity;
+        weights.weight = (1. - zoom_ratio) * weights.weight + zoom_ratio;
+
         importance_queries.push(build_proximity_with_boost(
             coord,
-            &query_settings.importance_query.proximity,
+            &weights,
             match_type == MatchType::Fuzzy,
         ))
     }

@@ -32,7 +32,7 @@ pub struct StringQuery {
     pub boosts: StringQueryBoosts,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Proximity {
     pub weight: f64,
     pub weight_fuzzy: f64,
