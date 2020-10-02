@@ -29,17 +29,17 @@ global = 1.0
     street = 0.5
     radius_range = [100, 10_000]
 
-        [importance_query.weights.max_radius_prefix]
+        [importance_query.weights.min_radius_prefix]
         admin = 0.12
         factor = 0.4
         missing = 0.0
 
-        [importance_query.weights.max_radius_fuzzy]
+        [importance_query.weights.min_radius_fuzzy]
         admin = 0.03
         factor = 0.15
         missing = 0.0
 
-        [importance_query.weights.min_radius]
+        [importance_query.weights.max_radius]
         admin = 0.03
         factor = 0.75
         missing = 0.0

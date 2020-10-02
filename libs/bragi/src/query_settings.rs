@@ -56,9 +56,9 @@ pub struct BuildWeight {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Weights {
     pub radius_range: (f64, f64),
-    pub min_radius: BuildWeight,
-    pub max_radius_prefix: BuildWeight,
-    pub max_radius_fuzzy: BuildWeight,
+    pub max_radius: BuildWeight,
+    pub min_radius_prefix: BuildWeight,
+    pub min_radius_fuzzy: BuildWeight,
     #[serde(flatten)]
     pub types: Types,
 }
