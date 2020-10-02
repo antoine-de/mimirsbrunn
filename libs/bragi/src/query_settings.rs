@@ -32,21 +32,21 @@ pub struct StringQuery {
     pub boosts: StringQueryBoosts,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct Proximity {
     pub weight: f64,
     pub weight_fuzzy: f64,
     pub gaussian: Gaussian,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Gaussian {
     pub scale: f64,
     pub offset: f64,
     pub decay: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct BuildWeight {
     pub admin: f64,
     pub factor: f64,
@@ -55,9 +55,10 @@ pub struct BuildWeight {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Weights {
-    pub coords_fuzzy: BuildWeight,
-    pub coords: BuildWeight,
-    pub no_coords: BuildWeight,
+    pub radius_range: (f64, f64),
+    pub min_radius: BuildWeight,
+    pub max_radius_prefix: BuildWeight,
+    pub max_radius_fuzzy: BuildWeight,
     #[serde(flatten)]
     pub types: Types,
 }

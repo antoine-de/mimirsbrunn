@@ -27,18 +27,19 @@ global = 1.0
     poi = 0.5
     stop = 1.0
     street = 0.5
+    radius_range = [100, 10_000]
 
-        [importance_query.weights.coords_fuzzy]
-        admin = 0.03
-        factor = 0.15
-        missing = 0.0
-
-        [importance_query.weights.coords]
+        [importance_query.weights.max_radius_prefix]
         admin = 0.12
         factor = 0.4
         missing = 0.0
 
-        [importance_query.weights.no_coords]
+        [importance_query.weights.max_radius_fuzzy]
+        admin = 0.03
+        factor = 0.15
+        missing = 0.0
+
+        [importance_query.weights.min_radius]
         admin = 0.03
         factor = 0.75
         missing = 0.0
