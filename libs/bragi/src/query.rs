@@ -286,16 +286,9 @@ fn build_query<'a>(
     let mut importance_queries = vec![build_with_weight(&weights, &settings.types)];
 
     if let Some(ref coord) = coord {
-        let weights = query_settings.importance_query.proximity;
-        let weights = Proximity {
-            weight: (1. - zoom_ratio) * weights.weight,
-            weight_fuzzy: (1. - zoom_ratio) * weights.weight_fuzzy,
-            gaussian: weights.gaussian,
-        };
-
         importance_queries.push(build_proximity_with_boost(
             coord,
-            &weights,
+            &query_settings.importance_query.proximity,
             match_type == MatchType::Fuzzy,
         ))
     }
