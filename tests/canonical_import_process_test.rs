@@ -78,6 +78,7 @@ pub fn canonical_import_process_test(es_wrapper: crate::ElasticSearchWrapper<'_>
         &osm2mimir,
         &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--config-dir=./config".into(),
             "--import-way".into(),
             "--import-poi".into(),
             format!("--connection-string={}", es_wrapper.host()),

@@ -49,6 +49,7 @@ pub fn bragi_filter_types_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &osm2mimir,
         &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--config-dir=./config".into(),
             "--import-way".into(),
             "--import-admin".into(),
             "--import-poi".into(),
