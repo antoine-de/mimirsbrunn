@@ -35,6 +35,7 @@ use mimirsbrunn::osm_reader::admin::read_administrative_regions;
 use mimirsbrunn::osm_reader::make_osm_reader;
 use mimirsbrunn::osm_reader::poi::{add_address, compute_poi_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
+use mimirsbrunn::settings::Settings;
 use slog_scope::{debug, info};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -104,9 +105,23 @@ struct Args {
     /// to handle values that are too high.
     #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
     nb_insert_threads: usize,
+
+    /// Path to the config directory
+    /// osm2mimir will read the default configuration in there, and maybe
+    /// more depending on the settings option.
+    #[structopt(short = "D", long = "config-dir")]
+    config_dir: PathBuf,
+
+    /// Specific configuration, on top of the default ones.
+    /// You should provide the basename of the file, eg kisio, so that
+    /// osm2mimir will use {config-dir}/kisio.toml
+    #[structopt(short = "s", long = "settings")]
+    settings: Option<String>,
 }
 
 fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
+    let settings = Settings::new(&args.config_dir, &args.settings)?;
+
     let levels = args.level.iter().cloned().collect();
     let city_level = args.city_level;
 
@@ -130,6 +145,7 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             &admins_geofinder,
             &args.db_file,
             args.db_buffer_size,
+            &settings,
         )?;
 
         info!("computing street weight");

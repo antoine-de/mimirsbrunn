@@ -32,6 +32,7 @@ usage()
   echo ""
   echo "${APPLICATION} "
   echo "  [ -d ]                Data Directory"
+  echo "  [ -c ]                Configuration File"
   echo "  [ -V ]                Displays version information"
   echo "  [ -q ]                Quiet, doesn't display to stdout or stderr"
   echo "  [ -h ]                Displays this message"
@@ -227,7 +228,7 @@ import_osm() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   [[ -f "${INPUT}" ]] || { log_error "osm2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${OSM2MIMIR}" --import-way --import-poi --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
+  "${OSM2MIMIR}" --import-way --import-poi --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
   [[ $? != 0 ]] && { log_error "Could not import OSM PBF data for ${OSM_REGION} into mimir. Aborting"; return 1; }
   return 0
 }
@@ -303,9 +304,10 @@ download_bano_region_csv() {
 
 ########################### START ############################
 
-while getopts "e:r:d:Vqh" opt; do
+while getopts "d:c:Vqh" opt; do
     case $opt in
         d) DATA_DIR="$OPTARG";;
+        c) CONFIG_FILE="$OPTARG";;
         V) version; exit 0 ;;
         q) QUIET=true ;;
         h) usage; exit 0 ;;

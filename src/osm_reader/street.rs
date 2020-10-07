@@ -36,7 +36,7 @@
 use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, utils, Error};
+use crate::{labels, settings, utils, Error};
 use failure::ResultExt;
 use osmpbfreader::StoreObjs;
 use slog_scope::info;
@@ -62,20 +62,25 @@ pub fn streets(
     admins_geofinder: &AdminGeoFinder,
     db_file: &Option<PathBuf>,
     db_buffer_size: usize,
+    settings: &settings::Settings,
 ) -> Result<StreetsVec, Error> {
-    // This is the list of highway that we don't want to index
-    // See [OSM Key Highway](https://wiki.openstreetmap.org/wiki/Key:highway) for background.
-    const INVALID_HIGHWAY: &[&str] =
-        &["bus_guideway", "escape", "bus_stop", "elevator", "platform"];
+    let invalid_highways = &settings
+        .street
+        .clone()
+        .map(|street| street.exclusion.highways.unwrap_or(Vec::new()))
+        .unwrap_or(Vec::new());
+
+    let is_valid_highway = |tag: &str| -> bool { !invalid_highways.iter().any(|k| k == tag) };
 
     // For the object to be a valid street, it needs to be an osm highway of a valid type,
     // or a relation of type associatedStreet.
-    fn is_valid_obj(obj: &osmpbfreader::OsmObj) -> bool {
+    let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
-                way.tags.get("highway").map_or(false, |v| {
-                    !v.is_empty() && !INVALID_HIGHWAY.iter().any(|&k| k == v)
-                }) && way.tags.get("name").map_or(false, |v| !v.is_empty())
+                way.tags
+                    .get("highway")
+                    .map_or(false, |v| !v.is_empty() && is_valid_highway(v))
+                    && way.tags.get("name").map_or(false, |v| !v.is_empty())
             }
             osmpbfreader::OsmObj::Relation(ref rel) => rel
                 .tags
@@ -83,7 +88,8 @@ pub fn streets(
                 .map_or(false, |v| v == "associatedStreet"),
             _ => false,
         }
-    }
+    };
+
     info!("reading pbf...");
     let mut objs_map = ObjWrapper::new(db_file, db_buffer_size)?;
     pbf.get_objs_and_deps_store(is_valid_obj, &mut objs_map)
