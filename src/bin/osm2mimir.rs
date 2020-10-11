@@ -109,12 +109,15 @@ struct Args {
     /// Path to the config directory
     /// osm2mimir will read the default configuration in there, and maybe
     /// more depending on the settings option.
+    /// If no option is given, we'll just read the ./config/default.toml
+    /// at compile time.
     #[structopt(short = "D", long = "config-dir")]
-    config_dir: PathBuf,
+    config_dir: Option<PathBuf>,
 
     /// Specific configuration, on top of the default ones.
-    /// You should provide the basename of the file, eg kisio, so that
-    /// osm2mimir will use {config-dir}/kisio.toml
+    /// You should provide the basename of the file, eg acme, so that
+    /// osm2mimir will use {config-dir}/acme.toml. (Requires config_dir to
+    /// be set)
     #[structopt(short = "s", long = "settings")]
     settings: Option<String>,
 }
