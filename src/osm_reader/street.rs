@@ -67,7 +67,7 @@ pub fn streets(
     let invalid_highways = &settings
         .street
         .clone()
-        .map(|street| street.exclusion.highways.unwrap_or(Vec::new()))
+        .map(|street| street.exclusion.highways.unwrap_or_else(Vec::new))
         .unwrap_or(Vec::new());
 
     let is_valid_highway = |tag: &str| -> bool { !invalid_highways.iter().any(|k| k == tag) };
