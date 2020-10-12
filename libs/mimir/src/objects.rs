@@ -70,35 +70,25 @@ pub enum Address {
 
 impl Place {
     pub fn is_admin(&self) -> bool {
-        match *self {
-            Place::Admin(_) => true,
-            _ => false,
-        }
+        matches!(self, Place::Admin(_))
     }
+
     pub fn is_street(&self) -> bool {
-        match *self {
-            Place::Street(_) => true,
-            _ => false,
-        }
+        matches!(self, Place::Street(_))
     }
+
     pub fn is_addr(&self) -> bool {
-        match *self {
-            Place::Addr(_) => true,
-            _ => false,
-        }
+        matches!(self, Place::Addr(_))
     }
+
     pub fn is_poi(&self) -> bool {
-        match *self {
-            Place::Poi(_) => true,
-            _ => false,
-        }
+        matches!(self, Place::Poi(_))
     }
+
     pub fn is_stop(&self) -> bool {
-        match *self {
-            Place::Stop(_) => true,
-            _ => false,
-        }
+        matches!(self, Place::Stop(_))
     }
+
     pub fn poi(&self) -> Option<&Poi> {
         match *self {
             Place::Poi(ref poi) => Some(poi),
@@ -579,10 +569,7 @@ pub struct Admin {
 
 impl Admin {
     pub fn is_city(&self) -> bool {
-        match self.zone_type {
-            Some(ZoneType::City) => true,
-            _ => false,
-        }
+        matches!(self.zone_type, Some(ZoneType::City))
     }
 }
 
