@@ -22,7 +22,10 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN mkdir /etc/mimirsbrunn
+
 COPY --from=builder /srv/mimirsbrunn/target/release/osm2mimir /usr/bin/osm2mimir
 COPY --from=builder /srv/mimirsbrunn/target/release/cosmogony2mimir /usr/bin/cosmogony2mimir
 COPY --from=builder /srv/mimirsbrunn/target/release/bano2mimir /usr/bin/bano2mimir
 COPY --from=builder /srv/mimirsbrunn/target/release/openaddresses2mimir /usr/bin/openaddresses2mimir
+COPY --from=builder /srv/mimirsbrunn/config/* /etc/mimirsbrunn/

@@ -12,6 +12,7 @@ edition = "2018"
 db-storage = [ "rusqlite" ]
 
 [dependencies]
+config = "0.10"
 log = { version = "0.4", features = ["release_max_level_debug"] }
 slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
 slog-scope = "4.3"

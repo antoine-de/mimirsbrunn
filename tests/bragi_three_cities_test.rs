@@ -50,6 +50,7 @@ pub fn bragi_three_cities_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &osm2mimir,
         &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
+            "--config-dir=./config".into(),
             "--import-admin".into(),
             "--import-way".into(),
             "--level=8".into(),
