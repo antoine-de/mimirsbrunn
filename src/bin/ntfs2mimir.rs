@@ -116,11 +116,11 @@ fn to_mimir(
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
         .collect();
-    let comments = navitia
-        .comments
-        .iter_from(&stop_area.comment_links)
-        .map(|comment| mimir::Comment {
-            name: comment.name.clone(),
+    let comments = stop_area
+        .comment_links
+        .iter()
+        .map(|com_id| mimir::Comment {
+            name: navitia.comments.get(com_id).unwrap().name.clone(),
         })
         .collect();
     let feed_publishers = navitia
@@ -153,7 +153,12 @@ fn to_mimir(
         physical_modes,
         lines,
         comments,
-        timezone: stop_area.timezone.clone().unwrap_or_else(|| format!("")),
+        timezone: stop_area
+            .timezone
+            .clone()
+            .map(chrono_tz::Tz::name)
+            .map(str::to_owned)
+            .unwrap_or_default(),
         codes: stop_area
             .codes
             .iter()
