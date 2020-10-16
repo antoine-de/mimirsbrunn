@@ -119,8 +119,15 @@ fn to_mimir(
     let comments = stop_area
         .comment_links
         .iter()
-        .map(|com_id| mimir::Comment {
-            name: navitia.comments.get(com_id).unwrap().name.clone(),
+        .filter_map(|comment_id| {
+            let res = navitia.comments.get(comment_id);
+            if res.is_none() {
+                warn!("Could not retrieve comments for id {}", comment_id);
+            }
+            res
+        })
+        .map(|comment| mimir::Comment {
+            name: comment.name.clone(),
         })
         .collect();
     let feed_publishers = navitia
