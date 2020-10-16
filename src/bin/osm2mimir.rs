@@ -161,10 +161,10 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         info!("importing streets into Mimir");
         let nb_streets = rubber
             .public_index(&args.dataset, &street_index_settings, streets.into_iter())
-            .with_context(|_| {
+            .with_context(|err| {
                 format!(
-                    "Error occurred when requesting street number in {}",
-                    args.dataset
+                    "Error occurred when requesting street number in {}: {}",
+                    args.dataset, err
                 )
             })?;
         info!("Nb of indexed street: {}", nb_streets);
@@ -180,10 +180,10 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
                 &admin_index_settings,
                 admins_geofinder.admins(),
             )
-            .with_context(|_| {
+            .with_context(|err| {
                 format!(
-                    "Error occurred when requesting admin number in {}",
-                    args.dataset
+                    "Error occurred when requesting admin number in {}: {}",
+                    args.dataset, err
                 )
             })?;
         info!("Nb of indexed admin: {}", nb_admins);
@@ -193,8 +193,12 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         let matcher = match args.poi_config {
             None => PoiConfig::default(),
             Some(path) => {
-                let r = std::fs::File::open(&path).with_context(|_| {
-                    format!("Error while opening configuration file {:?}", path)
+                let r = std::fs::File::open(&path).with_context(|err| {
+                    format!(
+                        "Error while opening configuration file {}: {}",
+                        path.display(),
+                        err
+                    )
                 })?;
                 PoiConfig::from_reader(r).unwrap()
             }
