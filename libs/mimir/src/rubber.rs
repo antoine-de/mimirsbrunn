@@ -561,12 +561,19 @@ impl Rubber {
 
         let dataset_index = get_main_type_and_dataset_index::<T>(dataset);
         self.alias(&dataset_index, &[index.name], &last_indexes)
-            .with_context(|_| format!("Error occurred when making alias: {}", dataset_index))?;
+            .with_context(|err| {
+                format!(
+                    "Error occurred when making alias {}: {}",
+                    dataset_index, err
+                )
+            })?;
 
         let type_index = get_main_type_index::<T>();
         if let IndexVisibility::Public = visibility {
             self.alias(&type_index, &[dataset_index], &last_indexes)
-                .with_context(|_| format!("Error occurred when making alias: {}", type_index))?;
+                .with_context(|err| {
+                    format!("Error occurred when making alias {}: {}", type_index, err)
+                })?;
         }
 
         if let IndexVisibility::Public = visibility {
@@ -583,7 +590,7 @@ impl Rubber {
 
         for i in last_indexes {
             self.delete_index(&i)
-                .with_context(|_| format!("Error occurred when deleting index: {}", i))?;
+                .with_context(|err| format!("Error occurred when deleting index {}: {}", i, err))?;
         }
         Ok(())
     }
@@ -723,7 +730,7 @@ impl Rubber {
         // TODO better error handling
         let index = self
             .make_index(dataset, index_settings)
-            .with_context(|_| format!("Error occurred when making index: {}", dataset))?;
+            .with_context(|err| format!("Error occurred when making index {}: {}", dataset, err))?;
         let nb_elements = self.bulk_index(&index, iter)?;
         self.publish_index(dataset, index, visibility)?;
         Ok(nb_elements)

@@ -229,10 +229,10 @@ fn run(args: Args) -> Result<(), transit_model::Error> {
         &args.dataset,
         index_settings,
     )
-    .with_context(|_| {
+    .with_context(|err| {
         format!(
-            "Error occurred when importing stops into {} on {}",
-            args.dataset, args.connection_string
+            "Error occurred when importing stops into {} on {}: {}",
+            args.dataset, args.connection_string, err
         )
     })?;
     Ok(())
@@ -256,7 +256,7 @@ fn test_bad_connection_string() {
     assert_eq!(
         causes,
         [
-            "Error occurred when importing stops into bob on http://localhost:1".to_string(),
+            "Error occurred when importing stops into bob on http://localhost:1: Error: HTTP Error while creating template template_addr".to_string(),
             "Error: HTTP Error while creating template template_addr".to_string(),
         ]
     );

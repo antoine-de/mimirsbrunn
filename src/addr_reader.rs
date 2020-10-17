@@ -26,7 +26,7 @@ where
 {
     let addr_index = rubber
         .make_index(dataset, &index_settings)
-        .with_context(|_| format!("Error occurred when making index {}", dataset))?;
+        .with_context(|err| format!("Error occurred when making index {}: {}", dataset, err))?;
 
     info!("Add data in elasticsearch db.");
 
