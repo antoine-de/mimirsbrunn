@@ -552,7 +552,7 @@ dependencies = [
  "docker_wrapper",
  "failure",
  "futures",
- "geo-types 0.6.0",
+ "geo-types",
  "geojson",
  "git-version",
  "heck",
@@ -689,6 +689,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "chrono-tz"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2554a3155fec064362507487171dcc4edc3df60cb10f3a1fb10ed8094822b120"
+dependencies = [
+ "chrono",
+ "parse-zoneinfo",
+ "serde 1.0.114",
+]
+
+[[package]]
 name = "clap"
 version = "2.33.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -786,8 +797,8 @@ dependencies = [
  "failure",
  "failure_derive",
  "flate2",
- "geo 0.14.1",
- "geo-types 0.6.0",
+ "geo",
+ "geo-types",
  "geojson",
  "log",
  "osmpbfreader",
@@ -1289,36 +1300,14 @@ dependencies = [
 
 [[package]]
 name = "geo"
-version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89ce8faa25a6f5ce8ea98faa95247d66377a843408eb4418332ec37de96850b0"
-dependencies = [
- "failure",
- "geo-types 0.4.3",
- "num-traits 0.2.12",
- "rstar 0.2.0",
-]
-
-[[package]]
-name = "geo"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83c9d9fae66201de057478341f4256125db9b08d9813a32e400c1cc575c6c597"
 dependencies = [
- "geo-types 0.6.0",
+ "geo-types",
  "geographiclib-rs",
  "num-traits 0.2.12",
- "rstar 0.8.1",
-]
-
-[[package]]
-name = "geo-types"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "866e8f6dbd2218b05ea8a25daa1bfac32b0515fe7e0a37cb6a7b9ed0ed82a07e"
-dependencies = [
- "num-traits 0.2.12",
- "rstar 0.2.0",
+ "rstar",
 ]
 
 [[package]]
@@ -1329,7 +1318,7 @@ checksum = "407043938de169e80c31cef3c46c99faccd4d002ea8120c637f29a6958820c62"
 dependencies = [
  "approx",
  "num-traits 0.2.12",
- "rstar 0.8.1",
+ "rstar",
 ]
 
 [[package]]
@@ -1347,7 +1336,7 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da98686bca3298df46f3957c78166cfbf0fa399e9efcdac0cb7ff2cfed1fd2ab"
 dependencies = [
- "geo-types 0.6.0",
+ "geo-types",
  "num-traits 0.2.12",
  "serde 1.0.114",
  "serde_json",
@@ -1904,8 +1893,8 @@ dependencies = [
  "chrono",
  "cosmogony",
  "failure",
- "geo 0.14.1",
- "geo-types 0.6.0",
+ "geo",
+ "geo-types",
  "geojson",
  "human-sort",
  "lazy_static",
@@ -1914,7 +1903,7 @@ dependencies = [
  "prometheus",
  "reqwest",
  "rs-es",
- "rstar 0.8.1",
+ "rstar",
  "serde 1.0.114",
  "serde_json",
  "slog",
@@ -1939,14 +1928,15 @@ dependencies = [
  "bincode",
  "bragi",
  "chrono",
+ "chrono-tz",
  "config",
  "cosmogony",
  "csv",
  "docker_wrapper",
  "failure",
  "flate2",
- "geo 0.14.1",
- "geo-types 0.6.0",
+ "geo",
+ "geo-types",
  "human-sort",
  "itertools 0.9.0",
  "json",
@@ -1961,7 +1951,7 @@ dependencies = [
  "regex",
  "reqwest",
  "rs-es",
- "rstar 0.8.1",
+ "rstar",
  "rusqlite",
  "serde 1.0.114",
  "serde_json",
@@ -2094,7 +2084,7 @@ checksum = "f566ab406ac6983209f923799b36c3e8a7a631c87547663f2776a08a8c375885"
 dependencies = [
  "csv",
  "failure",
- "geo 0.14.1",
+ "geo",
  "itertools 0.9.0",
  "serde 1.0.114",
  "zip",
@@ -2223,8 +2213,8 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07dcd9a020f059e9f3c671091e80a6205a9ef24c89468887a7b26b6805f48c3e"
 dependencies = [
- "geo 0.14.1",
- "geo-types 0.6.0",
+ "geo",
+ "geo-types",
  "log",
  "osmpbfreader",
 ]
@@ -2292,6 +2282,15 @@ dependencies = [
  "rustc_version 0.2.3",
  "smallvec 0.6.13",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "parse-zoneinfo"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c705f256449c60da65e11ff6626e0c16a0a0b96aaa348de61376b249bc340f41"
+dependencies = [
+ "regex",
 ]
 
 [[package]]
@@ -2930,17 +2929,6 @@ dependencies = [
  "serde_json",
  "thiserror",
  "url 2.1.1",
-]
-
-[[package]]
-name = "rstar"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "120bfe4837befb82c5a637a5a8c490a27d25524ac19fffec5b4e555ca6e36ee8"
-dependencies = [
- "num-traits 0.2.12",
- "pdqselect",
- "threadpool",
 ]
 
 [[package]]
@@ -3827,16 +3815,16 @@ dependencies = [
 
 [[package]]
 name = "transit_model"
-version = "0.20.4"
+version = "0.31.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fdece3de9fc8c4af9cfb35b4a57764e73e0ba0cfd7e892bf54419f76b9c0b71"
+checksum = "e6f6c4c427a6d15197144edff4cfc9a19b03152778a2b93068f8e27a1e23e918"
 dependencies = [
  "chrono",
+ "chrono-tz",
  "csv",
  "derivative 2.1.1",
  "failure",
- "geo 0.12.2",
- "geo-types 0.4.3",
+ "geo",
  "iso4217",
  "lazy_static",
  "log",
@@ -4204,11 +4192,12 @@ dependencies = [
 
 [[package]]
 name = "wkt"
-version = "0.5.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "816e17904977de6370bf5328ab191ac4a6a417bb91e43defc1f456158da656f8"
+checksum = "cd5f08ce23c6e6a296762b8f4d8beadeae1f58e8184226197818db8885d458e6"
 dependencies = [
- "geo-types 0.4.3",
+ "geo-types",
+ "num-traits 0.2.12",
 ]
 
 [[package]]
