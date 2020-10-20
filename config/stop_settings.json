@@ -16,6 +16,10 @@
                 "synonym_filter": {
                     "type": "synonym",
                     "synonyms": ["hackwillbereplacedatindexcreation,hackwillbereplacedatindexcreation"]
+                },
+                "elision_filter" : {
+                    "type" : "elision",
+                    "articles" : ["l", "d"]
                 }
             },
             "analyzer": {
@@ -25,10 +29,22 @@
                     "filter": [ "lowercase", "asciifolding" ],
                     "char_filter" : [ ]
                 },
+                "word_elision": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "elision_filter", "lowercase", "asciifolding" ],
+                    "char_filter" : [ ]
+                },
                 "prefix": {
                     "type": "custom",
                     "tokenizer": "standard",
                     "filter": [ "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
+                    "char_filter" : [ ]
+                },
+                "prefix_elision": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [ "elision_filter", "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
                     "char_filter" : [ ]
                 },
                 "ngram_with_synonyms": {
@@ -121,11 +137,11 @@
                     "index_options": "docs",
                     "analyzer": "word",
                     "fields": {
-                        "prefix": {
+                        "prefix_elision": {
                             "type": "string",
                             "index_options": "docs",
-                            "analyzer": "prefix",
-                            "search_analyzer": "word",
+                            "analyzer": "prefix_elision",
+                            "search_analyzer": "word_elision",
                             "norms": {
                                 "enabled": false
                             }
