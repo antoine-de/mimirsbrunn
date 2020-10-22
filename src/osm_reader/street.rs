@@ -39,7 +39,7 @@ use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings, utils, Error};
 use cosmogony::ZoneType;
 use failure::ResultExt;
-use osmpbfreader::StoreObjs;
+use osmpbfreader::{OsmId, StoreObjs};
 use slog_scope::info;
 use std::collections::{BTreeMap, HashSet};
 use std::ops::Deref;
@@ -115,9 +115,9 @@ pub fn streets(
             }
         };
 
-    // Return an iterator giving documents that will be inserted for a given street: one for each
-    // hierarchy of admins
-    let pois_with_admin = move |name: String, id, kind, mut admins: Vec<Vec<_>>, coord| {
+    // Return an iterator giving documents that will be inserted for a given
+    // street: one for each hierarchy of admins.
+    let build_streets_for_admins = move |name: String, id, kind, mut admins: Vec<Vec<_>>, coord| {
         admins.sort_unstable(); // sort admins to make id deterministic
         admins.into_iter().enumerate().map(move |(i, admins)| {
             let doc_id = {
@@ -148,9 +148,12 @@ pub fn streets(
 
         // Add osmid of all the relation members in the set.
         // Then, we won't create any street for the ways that belong to this relation.
-        for ref_obj in &rel.refs {
-            street_in_relation.insert(ref_obj.member);
-        }
+        street_in_relation.extend(
+            rel.refs
+                .iter()
+                .map(|ref_obj| ref_obj.member)
+                .filter(OsmId::is_way),
+        );
 
         let rel_street = rel
             .refs
@@ -162,7 +165,7 @@ pub fn streets(
                 let coord = get_way_coord(&objs_map, &way);
                 let name = rel_name.or_else(|| way.tags.get("name"))?;
 
-                Some(pois_with_admin(
+                Some(build_streets_for_admins(
                     name.to_string(),
                     rel.id.0,
                     "relation",
@@ -219,7 +222,7 @@ pub fn streets(
                 let obj = objs_map.get(&min_id)?;
                 let way = obj.way()?;
 
-                Some(pois_with_admin(
+                Some(build_streets_for_admins(
                     way.tags.get("name")?.to_string(),
                     way.id.0,
                     "way",
