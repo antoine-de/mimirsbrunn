@@ -41,7 +41,7 @@ use cosmogony::ZoneType;
 use failure::ResultExt;
 use osmpbfreader::{OsmId, StoreObjs};
 use slog_scope::info;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -117,20 +117,22 @@ pub fn streets(
 
     // Return an iterator giving documents that will be inserted for a given
     // street: one for each hierarchy of admins.
-    let build_streets_for_admins = move |name: String, id, kind, mut admins: Vec<Vec<_>>, coord| {
-        admins.sort_unstable(); // sort admins to make id deterministic
-        admins.into_iter().enumerate().map(move |(i, admins)| {
-            let doc_id = {
-                if admins.len() <= 1 {
-                    format!("street:osm:{}:{}", kind, id)
-                } else {
-                    format!("street:osm:{}:{}-{}", kind, id, i)
-                }
-            };
+    let build_streets_for_admins =
+        move |name: String, id, kind, mut all_admins: Vec<Vec<_>>, coord| {
+            let single_output = all_admins.len() <= 1;
+            all_admins.sort_unstable(); // sort admins to make id deterministic
+            all_admins.into_iter().enumerate().map(move |(i, admins)| {
+                let doc_id = {
+                    if single_output {
+                        format!("street:osm:{}:{}", kind, id)
+                    } else {
+                        format!("street:osm:{}:{}-{}", kind, id, i)
+                    }
+                };
 
-            build_street(doc_id, name.clone(), coord, admins)
-        })
-    };
+                build_street(doc_id, name.clone(), coord, admins)
+            })
+        };
 
     // List of outputed streets
     let mut street_list = Vec::new();
@@ -214,19 +216,30 @@ pub fn streets(
         }
     });
 
-    // Create a street for each way with osmid present in objs_map
+    // For each street, construct the list of admins it will be added in.
+    // This step ensure that documents have distinguishable IDs if they are
+    // added for the same street but different admins.
+    let mut all_admins_for_street = HashMap::new();
+
+    for (_, (min_id, admins)) in name_admin_map {
+        all_admins_for_street
+            .entry(min_id)
+            .or_insert_with(Vec::new)
+            .push(admins);
+    }
+
     street_list.extend(
-        name_admin_map
+        all_admins_for_street
             .into_iter()
-            .filter_map(|(_, (min_id, admins))| {
-                let obj = objs_map.get(&min_id)?;
+            .filter_map(|(id, all_admins)| {
+                let obj = objs_map.get(&id)?;
                 let way = obj.way()?;
 
                 Some(build_streets_for_admins(
                     way.tags.get("name")?.to_string(),
                     way.id.0,
                     "way",
-                    vec![admins],
+                    all_admins,
                     get_way_coord(&objs_map, way),
                 ))
             })
