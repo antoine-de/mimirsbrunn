@@ -687,7 +687,7 @@ impl Rubber {
                             // the log is distracting
                             if let Some(ref error) = action_res.inner.error {
                                 let error = serde_json::to_string(error)
-                                    .unwrap_or(String::from("Could not serialize error"));
+                                    .unwrap_or_else(|_| String::from("Could not serialize error"));
 
                                 warn!(
                                     "An error occured while importing stop '{}': {}",
