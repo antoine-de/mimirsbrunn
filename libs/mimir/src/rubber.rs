@@ -691,7 +691,9 @@ impl Rubber {
 
                                 warn!(
                                     "An error occured while importing {} '{}': {}",
-                                    T::doc_type(), action_res.inner.id, error
+                                    T::doc_type(),
+                                    action_res.inner.id,
+                                    error
                                 );
                             }
                         });
