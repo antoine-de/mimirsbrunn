@@ -2919,8 +2919,8 @@ dependencies = [
 
 [[package]]
 name = "rs-es"
-version = "0.12.2"
-source = "git+https://github.com/canaltp/rs-es#f029b406de0788c001a19f91602f83a38b8dc62c"
+version = "0.12.3"
+source = "git+https://github.com/canaltp/rs-es#ce83c8bb38c44ceb26bcc9255abc1d8d31d13c10"
 dependencies = [
  "geojson",
  "log",

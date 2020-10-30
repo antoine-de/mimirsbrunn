@@ -671,13 +671,33 @@ impl Rubber {
             })
             .with_nb_threads(self.nb_insert_threads)
             .par_map(move |chunk| {
-                client
+                let res = client
                     .clone()
                     .bulk(&chunk)
                     .with_index(&index_name)
                     .with_doc_type(T::doc_type())
                     .send()?;
 
+                if res.errors {
+                    res.items
+                        .iter()
+                        .filter(|action_res| action_res.inner.status != 200)
+                        .for_each(|action_res| {
+                            // We only display a warning if it brings some information, otherwise
+                            // the log is distracting
+                            if let Some(ref error) = action_res.inner.error {
+                                let error = serde_json::to_string(error)
+                                    .unwrap_or_else(|_| String::from("Could not serialize error"));
+
+                                warn!(
+                                    "An error occured while importing {} '{}': {}",
+                                    T::doc_type(),
+                                    action_res.inner.id,
+                                    error
+                                );
+                            }
+                        });
+                }
                 Ok(chunk.len())
             })
             .try_fold(0, |sum, res| res.map(|chunk_len| sum + chunk_len))

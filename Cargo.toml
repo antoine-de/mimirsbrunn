@@ -20,7 +20,7 @@ slog-envlogger = "2.2"
 slog-async = "2.5"
 structopt = "0.3"
 csv = "1.1"
-rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"]}
+rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
 regex = "1"
 osmpbfreader = "0.13"
 osm_boundaries_utils = "0.6"
