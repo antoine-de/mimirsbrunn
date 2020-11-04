@@ -33,7 +33,7 @@
                 "word_elision": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "elision_filter", "lowercase", "asciifolding" ],
+                    "filter": [ "lowercase", "elision_filter", "asciifolding" ],
                     "char_filter" : [ ]
                 },
                 "prefix": {
@@ -45,7 +45,7 @@
                 "prefix_elision": {
                     "type": "custom",
                     "tokenizer": "standard",
-                    "filter": [ "elision_filter", "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
+                    "filter": [ "lowercase", "elision_filter", "asciifolding", "synonym_filter", "prefix_filter" ],
                     "char_filter" : [ ]
                 },
                 "ngram_with_synonyms": {
