@@ -351,11 +351,9 @@ fn build_query<'a>(
         // The field full_label contains all of them and will do the trick.
         // The query must at least match with elision activated, matching without elision will
         // provide extra score bellow.
-        MatchType::Prefix => {
-            Query::build_match("full_label.prefix_elision".to_string(), q.to_string())
-                .with_operator("and")
-                .build()
-        }
+        MatchType::Prefix => Query::build_match("full_label.prefix".to_string(), q.to_string())
+            .with_operator("and")
+            .build(),
         // for fuzzy search we lower our expectation & we accept a certain percentage of token match
         // on full_label.ngram
         // The values defined here are empirical,

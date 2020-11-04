@@ -170,7 +170,7 @@
                     "type": "string",
                     "index": "no",
                     "fields": {
-                        "prefix_elision": {
+                        "prefix": {
                             "type": "string",
                             "index_options": "docs",
                             "analyzer": "prefix_elision",

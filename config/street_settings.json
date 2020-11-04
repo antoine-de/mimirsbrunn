@@ -144,7 +144,7 @@
                     "index_options": "docs",
                     "analyzer": "word",
                     "fields": {
-                        "prefix_elision": {
+                        "prefix": {
                             "type": "string",
                             "index_options": "docs",
                             "analyzer": "prefix_elision",
