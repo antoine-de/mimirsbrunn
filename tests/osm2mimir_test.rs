@@ -88,9 +88,12 @@ pub fn osm2mimir_sample_test_sqlite(es_wrapper: crate::ElasticSearchWrapper<'_>)
 fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     // Test: Import of Admin
     let res: Vec<_> = es_wrapper
-        .search_and_filter("label:Livry-sur-Seine", |_| true)
+        .search_and_filter("label:Livry-sur-Seine", |p| {
+            // Eliminate other cities of the form ".*-sur-Seine"
+            p.label().contains("Livry-sur-Seine")
+        })
         .collect();
-    assert_eq!(res.len(), 5, "{}", test_name);
+    assert_eq!(res.len(), 4, "{}", test_name);
 
     let has_boundary = |res: &Vec<mimir::Place>, is_admin: bool| {
         res.iter()
@@ -236,4 +239,14 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
         .search_and_filter("label:Grand Châtelet", |_| true)
         .collect();
     assert!(res.is_empty(), "{}", test_name);
+
+    // "Rue de Villiers" is at the exact neighborhood between two cities, a
+    // document must be added for both.
+    assert!(["Neuilly-sur-Seine", "Levallois-Perret"]
+        .iter()
+        .all(|city| {
+            es_wrapper
+                .search_and_filter("Rue de Villiers", |_| true)
+                .any(|poi| poi.admins().iter().any(|admin| &admin.name == city))
+        }));
 }

@@ -52,6 +52,7 @@ Rue du Pet au Diable | Vaux le Pénil
 Rue du Port | Vaux le Pénil
 Rue de la Noue | Vaux le Pénil
 Rue des 18 Arpents | Le Coudray-Montceaux
+Rue de Villiers | Neuilly-sur-Seine ; Levallois-Perret
 
 #### POIs
 The OSM file contains the following objects :

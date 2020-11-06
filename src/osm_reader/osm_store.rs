@@ -50,9 +50,8 @@ use std::fs;
 use std::collections::HashMap;
 
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use super::street::Kind;
 
@@ -292,17 +291,6 @@ impl<'a> Drop for DB<'a> {
     fn drop(&mut self) {
         let _ = fs::remove_file(self.db_file); // we ignore any potential error
     }
-}
-
-pub type AdminSet = BTreeSet<Arc<mimir::Admin>>;
-pub type NameAdminMap = BTreeMap<StreetKey, Vec<osmpbfreader::OsmId>>;
-pub type StreetsVec = Vec<mimir::Street>;
-pub type StreetWithRelationSet = BTreeSet<osmpbfreader::OsmId>;
-
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct StreetKey {
-    pub name: String,
-    pub admins: AdminSet,
 }
 
 #[cfg(feature = "db-storage")]
