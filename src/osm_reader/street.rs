@@ -160,7 +160,7 @@ pub fn streets(
         let rel_street = rel
             .refs
             .iter()
-            .filter(|ref_obj| ref_obj.member.is_way() && ref_obj.role == "street")
+            .filter(|ref_obj| ref_obj.member.is_way() && &ref_obj.role == "street")
             .filter_map(|ref_obj| {
                 let obj = objs_map.get(&ref_obj.member)?;
                 let way = obj.way()?;

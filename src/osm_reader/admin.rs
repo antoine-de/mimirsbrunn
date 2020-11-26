@@ -92,7 +92,7 @@ pub fn read_administrative_regions(
                     warn!(
                         "relation/{} ({}): invalid admin_level: {:?}, skipped",
                         relation.id.0,
-                        relation.tags.get("name").map_or("", String::as_str),
+                        relation.tags.get("name").map_or("", |v| v.as_ref()),
                         relation.tags.get("admin_level")
                     );
                     continue;
@@ -115,7 +115,7 @@ pub fn read_administrative_regions(
             let coord_center = relation
                 .refs
                 .iter()
-                .find(|r| r.role == "admin_centre")
+                .find(|r| &r.role == "admin_centre")
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
                 .map(|node| mimir::Coord::new(node.lon(), node.lat()));
@@ -144,7 +144,7 @@ pub fn read_administrative_regions(
                 .get("population")
                 .and_then(|p| p.parse().ok())
                 .or_else(|| {
-                    let rel = relation.refs.iter().find(|r| r.role == "admin_centre")?;
+                    let rel = relation.refs.iter().find(|r| &r.role == "admin_centre")?;
                     objects
                         .get(&rel.member)?
                         .node()?
