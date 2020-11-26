@@ -39,7 +39,7 @@ SHELL=/bin/bash
 	release patch-release minor-release major-release tag check-status check-release \
 	push pre-push do-push post-push
 
-build: pre-build docker-build post-build
+build: pre-build docker-build post-build ## Build one or more docker images
 
 pre-build: fmt lint test
 
