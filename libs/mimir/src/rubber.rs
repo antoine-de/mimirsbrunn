@@ -719,9 +719,10 @@ impl Rubber {
                                     .unwrap_or_else(|_| String::from("Could not serialize error"));
 
                                 warn!(
-                                    "An error occured while importing {} '{}': {}",
+                                    "An error occured while importing {} '{}'. Status {}: {}",
                                     T::doc_type(),
                                     action_res.inner.id,
+                                    action_res.inner.status,
                                     error
                                 );
                             }
