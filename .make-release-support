@@ -1,0 +1,190 @@
+#!/bin/bash
+#
+#   Copyright 2015  Xebia Nederland B.V.
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+#
+readonly SCRIPT_SRC="$(dirname "${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}")"
+readonly SCRIPT_DIR="$(cd "${SCRIPT_SRC}" >/dev/null 2>&1 && pwd)"
+readonly BASE_NAME="$(basename ${SCRIPT_DIR})"
+readonly SCRIPT_NAME=$(basename "$0")
+
+# Uses git status in short format to see if there are outstanding files that
+# have not been commited
+function hasChanges() {
+  test -n "$(git status -s .)"
+}
+
+# This returns the version contained in Cargo.tom l
+function getRelease() {
+  # awk -F= '/^release=/{print $2}' .release
+  cat Cargo.toml | grep '^version' | grep '\([0-9]\+\.\?\)\{3\}' -o
+}
+
+# The tag can have suffixes, like the commit for when the directory is not equal to
+# the tagged content.... This function return the base part of the tag
+function getBaseTag() {
+  # sed -n -e "s/^tag=\(.*\)$(getRelease)\$/\1/p" .release
+  getRelease
+}
+
+# This is the name used to make the base of the docker tag.
+# It is the basename of the directory in which lies the project.
+function getBaseName() {
+  echo ${BASE_NAME}
+}
+
+function getTag() {
+  # FIXME Understand what arguments are provided
+  if [ -z "$1" ] ; then
+    echo "v$(getBaseTag)"
+  else
+    echo "v$1"
+  fi
+}
+
+# This function returns an array of strings,
+# So, if the version returned by getRelease is 1.2.3, it
+# returns "1 1.2 1.2.3"
+function getDockerTags() {
+  local ORIGINAL=$(getRelease)
+  local SEMVER=( ${ORIGINAL//./ } )
+  local MAJOR="${SEMVER[0]}"
+  local MINOR="${SEMVER[1]}"
+  local PATCH="${SEMVER[2]}"
+
+  local VERSION="${MAJOR}.${MINOR}.${PATCH}"
+  echo "${MAJOR} ${MAJOR}.${MINOR} ${MAJOR}.${MINOR}.${PATCH}"
+}
+
+# Updates the version in Cargo.toml
+# $1 Version (must match major.minor.patch)
+function setRelease() {
+  local VERSION="$1"
+  echo "Setting the new release to ${VERSION}"
+  # Check that VERSION is set and non-empty
+  [[ -z "${VERSION+xxx}" ]] &&
+    { echo "The variable \$VERSION is not set. Make sure it is set before using setRelease."; return 1; }
+  [[ -z "${VERSION}" && "${VERSION+xxx}" = "xxx" ]] &&
+    { echo "The variable \$VERSION is set but empty. Make sure it is not empty before using setRelease."; return 1; }
+
+  checkSemanticVersion ${VERSION}
+  [[ $? != 0 ]] &&
+    { echo "${VERSION} is not valid semantic version"; return 1; } ||
+    { sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" Cargo.toml; }
+
+  return 0
+}
+
+# Returns 0 if the version has the form major.minor.patch
+# $1 Version
+# This function works by decomposing the version into its
+# parts (major, minor, patch), ensuring they're not empty,
+# reassemble them into a candidate version,
+# and verify that the original version is the same as the candidate.
+function checkSemanticVersion() {
+  local ORIGINAL="$1"
+  # Check that ORIGINAL is set and non-empty
+  [[ -z "${ORIGINAL+xxx}" ]] &&
+    { echo "The variable \$ORIGINAL is not set. Make sure it is set before using checkSemanticVersion."; return 1; }
+  [[ -z "${ORIGINAL}" && "${ORIGINAL+xxx}" = "xxx" ]] &&
+    { echo "The variable \$ORIGINAL is set but empty. Make sure it is not empty before using checkSemanticVersion."; return 1; }
+
+  local SEMVER=( ${ORIGINAL//./ } )
+  local MAJOR="${SEMVER[0]}"
+  [[ -z "${MAJOR}" && "${MAJOR+xxx}" = "xxx" ]] &&
+    { echo "The variable \$MAJOR is empty."; return 1; }
+  local MINOR="${SEMVER[1]}"
+  [[ -z "${MINOR}" && "${MINOR+xxx}" = "xxx" ]] &&
+    { echo "The variable \$MINOR is empty."; return 1; }
+  local PATCH="${SEMVER[2]}"
+  [[ -z "${PATCH}" && "${PATCH+xxx}" = "xxx" ]] &&
+    { echo "The variable \$PATCH is empty."; return 1; }
+  local VERSION="${MAJOR}.${MINOR}.${PATCH}"
+  [[ ${VERSION} == ${ORIGINAL} ]] && { return 0; } || { return 0; }
+}
+
+# Not used
+function runPreTagCommand() {
+  if [ -n "$1" ] ; then
+    COMMAND=$(sed -n -e "s/@@RELEASE@@/$1/g" -e 's/^pre_tag_command=\(.*\)/\1/p' .release)
+    if [ -n "$COMMAND" ] ; then
+      if ! OUTPUT=$(bash -c "$COMMAND" 2>&1) ; then echo $OUTPUT >&2 && exit 1 ; fi
+    fi
+  else
+    echo "ERROR: missing release version parameter " >&2
+    return 1
+  fi
+}
+
+# This function retrieves the candidate tag from Cargo.toml (with getTag),
+# and make sure it is available with git tag.
+function tagExists() {
+  tag=${1:-$(getTag)}
+  test -n "$tag" && test -n "$(git tag | grep "^$tag\$")"
+}
+
+function differsFromRelease() {
+  tag=$(getTag)
+  ! tagExists $tag || test -n "$(git diff --shortstat -r $tag .)"
+}
+
+# This function retrieves the release, and if the git tag differs from
+# the version in Cargo.toml, add the commit, and also add 'dirty' if the
+# version has outstanding changes.
+function getVersion() {
+  local result=$(getRelease)
+
+  if differsFromRelease; then
+    result="${result}-$(git log -n 1 --format=%h .)"
+  fi
+
+  if hasChanges ; then
+    result="${result}-dirty"
+  fi
+  echo "${result}"
+}
+
+# Returns the nextPatchLevel.
+# It reads the current version from Cargo.toml using the getRelease function
+# FIXME We need to return both the incremented version, and also an error if
+# the original version is not a semantic version.
+function nextPatchLevel() {
+  local ORIGINAL=$(getRelease)
+  local SEMVER=( ${ORIGINAL//./ } )
+  local MAJOR="${SEMVER[0]}"
+  local MINOR="${SEMVER[1]}"
+  local PATCH="${SEMVER[2]}"
+  PATCH=$(($PATCH + 1))
+  local VERSION="${MAJOR}.${MINOR}.${PATCH}"
+  echo "${VERSION}"
+}
+
+function nextMinorLevel() {
+  local ORIGINAL=$(getRelease)
+  local SEMVER=( ${ORIGINAL//./ } )
+  local MAJOR="${SEMVER[0]}"
+  local MINOR="${SEMVER[1]}"
+  MINOR=$(($MINOR + 1))
+  local VERSION="${MAJOR}.${MINOR}.0"
+  echo "${VERSION}"
+}
+
+function nextMajorLevel() {
+  local ORIGINAL=$(getRelease)
+  local SEMVER=( ${ORIGINAL//./ } )
+  local MAJOR="${SEMVER[0]}"
+  MAJOR=$(($MAJOR + 1))
+  local VERSION="${MAJOR}.0.0"
+  echo "${VERSION}"
+}
