@@ -96,6 +96,7 @@ pub struct Rubber {
     pub timeout: Option<time::Duration>,
     pub cnx_string: String,
     pub nb_insert_threads: usize,
+    max_bulk_errors: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -295,7 +296,6 @@ pub fn get_indexes(
             .iter()
             .for_each(|dataset| result.push(format!("munin_poi_{}", dataset)));
     }
-
     result
 }
 
@@ -321,6 +321,7 @@ impl Rubber {
             cnx_string: cnx.to_owned(),
             timeout,
             nb_insert_threads: 1,
+            max_bulk_errors: 0,
         }
     }
 
@@ -329,6 +330,11 @@ impl Rubber {
     /// Elasticsearch may raise an error.
     pub fn with_nb_insert_threads(mut self, value: usize) -> Self {
         self.nb_insert_threads = value;
+        self
+    }
+
+    pub fn with_max_bulk_errors(mut self, value: usize) -> Self {
+        self.max_bulk_errors = value;
         self
     }
 
@@ -643,17 +649,37 @@ impl Rubber {
         }
     }
 
-    pub fn bulk_index<T, I>(
-        &mut self,
-        index: &TypedIndex<T>,
-        iter: I,
-    ) -> Result<usize, rs_es::error::EsError>
+    pub fn bulk_index<T, I>(&mut self, index: &TypedIndex<T>, iter: I) -> Result<usize, Error>
     where
         T: MimirObject + std::marker::Send + 'static,
         I: Iterator<Item = T>,
     {
         use par_map::ParMap;
         use rs_es::operations::bulk::Action;
+
+        struct BulkResultCount {
+            nb_ok: usize,
+            nb_errors: usize,
+        }
+
+        impl BulkResultCount {
+            fn zero() -> Self {
+                BulkResultCount {
+                    nb_ok: 0,
+                    nb_errors: 0,
+                }
+            }
+        }
+
+        impl core::ops::Add for BulkResultCount {
+            type Output = Self;
+            fn add(self, rhs: Self) -> Self {
+                Self {
+                    nb_ok: self.nb_ok + rhs.nb_ok,
+                    nb_errors: self.nb_errors + rhs.nb_errors,
+                }
+            }
+        }
 
         let chunk_size = 1000;
         let index_name = index.name.to_owned();
@@ -678,11 +704,14 @@ impl Rubber {
                     .with_doc_type(T::doc_type())
                     .send()?;
 
+                let mut nb_errors_in_chunk = 0;
+
                 if res.errors {
                     res.items
                         .iter()
                         .filter(|action_res| action_res.inner.status != 200)
                         .for_each(|action_res| {
+                            nb_errors_in_chunk += 1;
                             // We only display a warning if it brings some information, otherwise
                             // the log is distracting
                             if let Some(ref error) = action_res.inner.error {
@@ -690,17 +719,30 @@ impl Rubber {
                                     .unwrap_or_else(|_| String::from("Could not serialize error"));
 
                                 warn!(
-                                    "An error occured while importing {} '{}': {}",
+                                    "An error occured while importing {} '{}'. Status {}: {}",
                                     T::doc_type(),
                                     action_res.inner.id,
+                                    action_res.inner.status,
                                     error
                                 );
                             }
                         });
                 }
-                Ok(chunk.len())
+                Ok(BulkResultCount {
+                    nb_ok: chunk.len() - nb_errors_in_chunk,
+                    nb_errors: nb_errors_in_chunk,
+                })
             })
-            .try_fold(0, |sum, res| res.map(|chunk_len| sum + chunk_len))
+            .try_fold(BulkResultCount::zero(), |sum, res| {
+                let result = res.map(|chunk_len| sum + chunk_len);
+                if let Ok(ref counts) = result {
+                    if counts.nb_errors > self.max_bulk_errors {
+                        return Err(format_err!("too many errors during bulk_index"));
+                    }
+                }
+                result
+            })
+            .map(|counts| counts.nb_ok)
     }
 
     /// Shortcut to `index` for a public index
