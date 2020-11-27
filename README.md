@@ -80,9 +80,13 @@ For more detail about the different ways to import those data sources, check the
 
 ## debian packages
 
-[Kisio Digital](http://www.kisiodigital.com/), the company behind [navitia](https://www.navitia.io/) has some available debian 8 [packages](https://ci.navitia.io/view/mimir/job/mimirsbrunn_release_package/lastSuccessfulBuild/artifact/mimirsbrunn_1.8.0_amd64.deb).
+[Kisio Digital](http://www.kisiodigital.com/), the company behind
+[navitia](https://www.navitia.io/) has some available debian
+8 [packages](https://ci.navitia.io/view/mimir/job/mimirsbrunn_release_package/lastSuccessfulBuild/artifact/mimirsbrunn_1.8.0_amd64.deb).
 
-If you need some packages for a different target, you can use CanalTP's [script](https://github.com/CanalTP/mimirsbrunn/blob/master/build_packages.sh) or [cargo-deb](https://github.com/mmstick/cargo-deb)
+If you need some packages for a different target, you can use CanalTP's
+[script](https://github.com/CanalTP/mimirsbrunn/blob/master/build_packages.sh) or
+[cargo-deb](https://github.com/mmstick/cargo-deb)
 
 ## manually
 
@@ -96,27 +100,52 @@ For a disposable ES, you can run:
 
 ### build
 
-`cargo build --release`
+#### Binaries
+
+If you want to build local binaries, use `cargo build --release`. You may need to adjust the
+version of the rust compiler prior to executing this command (eg `rustup update`).
+
+#### Docker
+
+If you want to build a docker image, you can use the `docker` command, with the following caveat:
+You need to specify the version of debian it will be based on, as well as the version of rust.
+You also want to verify that the version of Debian you specify is supported! Check the content of
+`docker/Dockerfile_bragi` for that. Your `docker` command will look like:
+
+```
+docker build --build-arg DEBIAN_VERSION=buster --build-arg RUST_VERSION=1.47 ...
+```
+
+Alternatively, there is a Makefile that can assist you with several tasks. See `make help` for
+details. For example `make snapshot` will build an image and push it to a repository. The
+repository, as well as the build environments are specified in `deploy.env`.
 
 ### test
 
 `cargo test`
 
-Integration tests are spawning one ElasticSearch docker, so you'll need a recent docker version. Only one docker is spawn, so the ES db is cleaned before each test.
+Integration tests are spawning one ElasticSearch docker, so you'll need a recent docker version.
+Only one docker is spawn, so the ES db is cleaned before each test.
 
 # More documentation
 
-For more precise documentation on use, troubleshooting, development please check the [documentation directory](documentation/readme.md).
+For more precise documentation on use, troubleshooting, development please check the [documentation
+directory](documentation/readme.md).
 
 # Contributing
 
 The project is [Licensed as AGPL 3](https://github.com/CanalTP/mimirsbrunn/blob/master/LICENSE).
 
-We'll be happy to review all you [pull requests](https://help.github.com/en/articles/about-pull-requests).
+We'll be happy to review all you [pull
+requests](https://help.github.com/en/articles/about-pull-requests).
 
-You can also open some issues if you find some bugs, or if you find the geocoder results not to your liking.
+You can also open some issues if you find some bugs, or if you find the geocoder results not to
+your liking.
 
-Another way to contribute to this project (and to lots of others geocoders) is to add some geocoder test on [geocoder-tester](https://github.com/geocoders/geocoder-tester), a great non regression tool used by many geocoder. It's quite easy, you just add some new test cases with some searches and the results that you expect.
+Another way to contribute to this project (and to lots of others geocoders) is to add some geocoder
+test on [geocoder-tester](https://github.com/geocoders/geocoder-tester), a great non regression
+tool used by many geocoder. It's quite easy, you just add some new test cases with some searches
+and the results that you expect.
 
 # presentation of the other alternatives
 * [pelias](https://github.com/pelias/pelias)
@@ -125,6 +154,7 @@ Another way to contribute to this project (and to lots of others geocoders) is t
 
 TODO: add a bit more detail on all the projects
 
-All those projects use quite the same APIs, and you can compare their results using [geocoder-tester](https://github.com/geocoders/geocoder-tester).
+All those projects use quite the same APIs, and you can compare their results using
+[geocoder-tester](https://github.com/geocoders/geocoder-tester).
 
 For a more visual comparison, you can also use [a comparator](https://github.com/CanalTP/autocomplete-comparator).
