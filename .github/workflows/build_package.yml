@@ -20,15 +20,6 @@ jobs:
         sh get_rust.sh -y
         . $HOME/.cargo/env
         rustup update
-    - name: build
-      run: |
-        . $HOME/.cargo/env
-        rustc --version
-        cargo build --release
-    - name: test
-      run: |
-        . $HOME/.cargo/env
-        cargo test --release
     - name: install packaging tool
       run: |
         . $HOME/.cargo/env
