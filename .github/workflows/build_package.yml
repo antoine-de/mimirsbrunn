@@ -22,16 +22,20 @@ jobs:
         rustup update
     - name: build
       run: |
+        . $HOME/.cargo/env
         rustc --version
         cargo build --release
     - name: test
       run: |
+        . $HOME/.cargo/env
         cargo test --release
     - name: install packaging tool
       run: |
+        . $HOME/.cargo/env
         cargo install --force cargo-deb
     - name: create packages
       run: |
+        . $HOME/.cargo/env
         cargo deb
     - name: upload debian packages
       uses: actions/upload-artifact@v1
