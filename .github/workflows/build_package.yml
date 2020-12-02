@@ -29,7 +29,7 @@ jobs:
         . $HOME/.cargo/env
         cargo deb
     - name: upload debian packages
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
-        name: archive.zip
-        path: "target/debian/*.deb"
+        name: archive
+        path: target/debian/*.deb
