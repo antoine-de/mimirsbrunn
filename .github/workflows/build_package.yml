@@ -1,0 +1,37 @@
+name: Build packages 
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: navitia/debian8_dev
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: install rust toolchain
+      run: |
+        apt update && apt install -y curl
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > get_rust.sh
+        sh get_rust.sh -y
+        source $HOME/.cargo/env
+        rustup update
+    - name: build
+      run: |
+        rustc --version
+        cargo build --release
+    - name: test
+      run: |
+        cargo test --release
+    - name: install packaging tool
+      run: |
+        cargo install --force cargo-deb
+    - name: create packages
+      run: |
+        cargo deb
+    - name: upload debian packages
+      uses: actions/upload-artifact@v1
+      with:
+        name: archive.zip
+        path: "target/debian/*.deb"
