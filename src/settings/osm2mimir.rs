@@ -325,12 +325,12 @@ impl Source for Args {
 
         if let Some(nb_way_shards) = self.nb_street_shards {
             m.insert(
-                String::from("elasticsearch.way_shards"),
+                String::from("elasticsearch.streets_shards"),
                 Value::new(
                     None,
                     i64::try_from(nb_way_shards).map_err(|e| {
                         ConfigError::Message(format!(
-                            "Could not convert count of way shards to integer: {}",
+                            "Could not convert count of streets shards to integer: {}",
                             e
                         ))
                     })?,
@@ -340,7 +340,7 @@ impl Source for Args {
 
         if let Some(nb_way_replicas) = self.nb_street_replicas {
             m.insert(
-                String::from("elasticsearch.way_replicas"),
+                String::from("elasticsearch.streets_replicas"),
                 Value::new(
                     None,
                     i64::try_from(nb_way_replicas).map_err(|e| {
@@ -355,7 +355,7 @@ impl Source for Args {
 
         if let Some(nb_poi_shards) = self.nb_poi_shards {
             m.insert(
-                String::from("elasticsearch.poi_shards"),
+                String::from("elasticsearch.pois_shards"),
                 Value::new(
                     None,
                     i64::try_from(nb_poi_shards).map_err(|e| {
@@ -370,7 +370,7 @@ impl Source for Args {
 
         if let Some(nb_poi_replicas) = self.nb_poi_replicas {
             m.insert(
-                String::from("elasticsearch.poi_replicas"),
+                String::from("elasticsearch.pois_replicas"),
                 Value::new(
                     None,
                     i64::try_from(nb_poi_replicas).map_err(|e| {
@@ -385,7 +385,7 @@ impl Source for Args {
 
         if let Some(nb_admin_shards) = self.nb_admin_shards {
             m.insert(
-                String::from("elasticsearch.admin_shards"),
+                String::from("elasticsearch.admins_shards"),
                 Value::new(
                     None,
                     i64::try_from(nb_admin_shards).map_err(|e| {
@@ -400,7 +400,7 @@ impl Source for Args {
 
         if let Some(nb_admin_replicas) = self.nb_admin_replicas {
             m.insert(
-                String::from("elasticsearch.admin_replicas"),
+                String::from("elasticsearch.admins_replicas"),
                 Value::new(
                     None,
                     i64::try_from(nb_admin_replicas).map_err(|e| {

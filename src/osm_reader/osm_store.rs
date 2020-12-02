@@ -41,9 +41,6 @@ use slog_scope::info;
 #[cfg(feature = "db-storage")]
 use crate::settings::osm2mimir::Database;
 
-// #[cfg(not(feature = "db-storage"))]
-// use slog_scope::warn;
-
 #[cfg(feature = "db-storage")]
 use slog_scope::error;
 
