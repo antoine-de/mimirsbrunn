@@ -61,7 +61,7 @@ pub fn streets(
     settings: &settings::osm2mimir::Settings,
 ) -> Result<Vec<mimir::Street>, Error> {
     let invalid_highways = settings
-        .way
+        .street
         .as_ref()
         .and_then(|street| street.exclusion.highways.as_deref())
         .unwrap_or(&[]);

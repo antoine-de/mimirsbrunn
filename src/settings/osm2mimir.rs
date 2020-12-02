@@ -16,7 +16,7 @@ pub struct StreetExclusion {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct Way {
+pub struct Street {
     pub import: bool,
     pub exclusion: StreetExclusion,
 }
@@ -59,7 +59,7 @@ pub struct Settings {
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,
     pub elasticsearch: Elasticsearch,
-    pub way: Option<Way>,
+    pub street: Option<Street>,
     pub poi: Option<Poi>,
     pub admin: Option<Admin>,
 }
@@ -304,7 +304,7 @@ impl Source for Args {
 
         // WAY
         m.insert(
-            String::from("way.import"),
+            String::from("street.import"),
             Value::new(None, self.import_way),
         );
 

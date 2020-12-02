@@ -19,9 +19,9 @@ dataset = "fr"
   city_level = 8
   levels = []
 
-[way]
+[street]
   import = false
-  [way.exclusion]
+  [street.exclusion]
     # See [OSM Key Highway](https://wiki.openstreetmap.org/wiki/Key:highway) for background.
     highways = [
       "bus_guideway",

@@ -211,9 +211,6 @@ fn check_results(es_wrapper: crate::ElasticSearchWrapper<'_>, test_name: &str) {
     assert!(!res.is_empty(), "{}", test_name);
 
     let poi_type_post_office = "poi_type:amenity:post_office";
-    // res.iter().filter_map(|r| r.poi()).for_each(|poi| {
-    //     println!("poi type: {}", poi.poi_type.id);
-    // });
 
     assert!(
         res.iter().any(|r| r.poi().map_or(false, |poi| {

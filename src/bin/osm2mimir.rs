@@ -72,9 +72,9 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
 
     if settings
-        .way
+        .street
         .as_ref()
-        .map(|way| way.import)
+        .map(|street| street.import)
         .unwrap_or_else(|| false)
     {
         info!("Extracting streets from osm");
