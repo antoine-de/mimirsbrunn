@@ -88,6 +88,7 @@ impl OpenAddress {
             &country_codes,
         );
 
+        let zip_codes: Vec<_> = self.postcode.split(';').map(str::to_string).collect();
         let coord = mimir::Coord::new(self.lon, self.lat);
         let street = mimir::Street {
             id: street_id,
@@ -95,7 +96,7 @@ impl OpenAddress {
             label: street_label,
             administrative_regions: admins,
             weight,
-            zip_codes: vec![self.postcode.clone()],
+            zip_codes: zip_codes.clone(),
             coord,
             approx_coord: None,
             distance: None,
@@ -145,7 +146,7 @@ impl OpenAddress {
             coord,
             approx_coord: Some(coord.into()),
             weight,
-            zip_codes: vec![self.postcode],
+            zip_codes,
             distance: None,
             country_codes,
             context: None,
