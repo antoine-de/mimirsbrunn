@@ -19,9 +19,8 @@ jobs:
         apt update
         apt install -y curl
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > get_rust.sh
-        sh get_rust.sh -y
+        sh get_rust.sh -y --profile minimal --default-toolchain 1.47
         . $HOME/.cargo/env
-        rustup update
     - name: install packaging tool
       run: |
         . $HOME/.cargo/env
