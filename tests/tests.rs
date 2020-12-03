@@ -66,7 +66,13 @@ fn launch_and_assert(
     es_wrapper: &ElasticSearchWrapper<'_>,
 ) {
     let status = Command::new(cmd).args(args).status().unwrap();
-    assert!(status.success(), "`{}` failed {}", cmd, &status);
+    assert!(
+        status.success(),
+        "`{}` with args {:?} failed with status {}",
+        cmd,
+        args,
+        &status
+    );
     es_wrapper.refresh();
 }
 
@@ -131,7 +137,10 @@ fn all_tests() {
     // we call all tests here
     bano2mimir_test::bano2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_test::osm2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
+
+    #[cfg(feature = "db-storage")]
     osm2mimir_test::osm2mimir_sample_test_sqlite(ElasticSearchWrapper::new(&docker_wrapper));
+
     stops2mimir_test::stops2mimir_sample_test(ElasticSearchWrapper::new(&docker_wrapper));
     osm2mimir_bano2mimir_test::osm2mimir_bano2mimir_test(ElasticSearchWrapper::new(
         &docker_wrapper,
