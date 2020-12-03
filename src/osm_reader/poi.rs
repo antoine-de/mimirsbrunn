@@ -92,7 +92,7 @@ impl PoiConfig {
             .find(|rule| {
                 rule.osm_tags_filters
                     .iter()
-                    .all(|f| tags.get(&f.key).map_or(false, |v| v == &f.value))
+                    .all(|f| tags.get(f.key.as_str()).map_or(false, |v| v == &f.value))
             })
             .and_then(|rule| {
                 self.poi_types
@@ -158,7 +158,10 @@ fn parse_poi(
         ),
     };
 
-    let name = osmobj.tags().get("name").unwrap_or(&poi_type.name);
+    let name = osmobj
+        .tags()
+        .get("name")
+        .map_or(poi_type.name.as_str(), |v| v.as_ref());
 
     if coord.is_default() {
         info!(
@@ -170,7 +173,7 @@ fn parse_poi(
 
     let adms = admins_geofinder.get(&coord);
     let zip_codes = match osmobj.tags().get("addr:postcode") {
-        Some(val) if !val.is_empty() => vec![val.clone()],
+        Some(val) if !val.is_empty() => vec![val.to_string()],
         _ => utils::get_zip_codes_from_admins(&adms),
     };
     let country_codes = utils::find_country_codes(adms.iter().map(|a| a.deref()));
