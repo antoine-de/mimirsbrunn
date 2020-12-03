@@ -1,6 +1,6 @@
 [package]
 name = "docker_wrapper"
-version = "1.17.0"
+version = "1.18.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 edition = "2018"
 
