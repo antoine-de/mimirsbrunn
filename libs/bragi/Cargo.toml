@@ -1,6 +1,6 @@
 [package]
 name = "bragi"
-version = "1.18.0"
+version = "1.18.1"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 edition = "2018"
 
