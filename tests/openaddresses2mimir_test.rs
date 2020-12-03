@@ -116,4 +116,13 @@ pub fn oa2mimir_simple_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         .search_and_filter("Fake-City", |_| true)
         .collect();
     assert_eq!(res.len(), 0);
+
+    // Check that addresses containing multiple postcodes are read correctly
+    let res: Vec<_> = es_wrapper.search_and_filter("999", |_| true).collect();
+    assert_eq!(res.len(), 1);
+
+    match &res[0] {
+        mimir::objects::Place::Addr(addr) => assert_eq!(addr.zip_codes.len(), 4),
+        _ => panic!("expected an address"),
+    }
 }
