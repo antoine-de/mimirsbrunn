@@ -132,9 +132,7 @@ pub struct JsonParams {
 impl JsonParams {
     fn get_geometry(self) -> Result<Geometry, model::BragiError> {
         match self.shape {
-            GeoJson::Feature(f) => f
-                .geometry
-                .ok_or_else(|| BragiError::InvalidShape("no geometry")),
+            GeoJson::Feature(f) => f.geometry.ok_or(BragiError::InvalidShape("no geometry")),
             _ => Err(BragiError::InvalidShape("only 'feature' is supported")),
         }
     }

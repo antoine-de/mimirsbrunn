@@ -140,7 +140,7 @@ impl TryFrom<&Args> for Context {
                     Some(dt) => t.min(dt),
                     None => t,
                 })
-                .or_else(|| max_es_timeout)
+                .or(max_es_timeout)
         };
 
         let content = match args.weight_config_file {
@@ -168,7 +168,7 @@ impl TryFrom<&Args> for Context {
                     "failed to parse `{}`: {}",
                     args.weight_config_file
                         .as_deref()
-                        .unwrap_or_else(|| "config/bragi-settings.toml"),
+                        .unwrap_or("config/bragi-settings.toml"),
                     err
                 )
             })?,
