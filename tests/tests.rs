@@ -81,7 +81,7 @@ pub fn get_values<'a>(r: &'a [Map<String, Value>], val: &'a str) -> Vec<&'a str>
 }
 
 pub fn get_value<'a>(e: &'a Map<String, Value>, val: &str) -> &'a str {
-    e.get(val).and_then(|l| l.as_str()).unwrap_or_else(|| "")
+    e.get(val).and_then(|l| l.as_str()).unwrap_or("")
 }
 
 pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
@@ -90,7 +90,7 @@ pub fn get_types(r: &[Map<String, Value>]) -> Vec<&str> {
 
 pub fn filter_by(r: &[Map<String, Value>], key: &str, t: &str) -> Vec<Map<String, Value>> {
     r.iter()
-        .filter(|e| e.get(key).and_then(|l| l.as_str()).unwrap_or_else(|| "") == t)
+        .filter(|e| e.get(key).and_then(|l| l.as_str()).unwrap_or("") == t)
         .cloned()
         .collect()
 }
