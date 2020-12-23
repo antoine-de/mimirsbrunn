@@ -63,20 +63,35 @@ pub fn streets(
     let invalid_highways = settings
         .street
         .as_ref()
-        .and_then(|street| street.exclusion.highways.as_deref())
+        .and_then(|street| street.exclusion.highway.as_deref())
         .unwrap_or(&[]);
 
     let is_valid_highway = |tag: &str| -> bool { !invalid_highways.iter().any(|k| k == tag) };
+
+    let invalid_public_transports = settings
+        .street
+        .as_ref()
+        .and_then(|street| street.exclusion.public_transport.as_deref())
+        .unwrap_or(&[]);
+
+    let is_valid_public_transport =
+        |tag: &str| -> bool { !invalid_public_transports.iter().any(|k| k == tag) };
 
     // For the object to be a valid street, it needs to be an osm highway of a valid type,
     // or a relation of type associatedStreet.
     let is_valid_obj = |obj: &osmpbfreader::OsmObj| -> bool {
         match *obj {
             osmpbfreader::OsmObj::Way(ref way) => {
-                way.tags
+                let has_valid_highway_tag = way
+                    .tags
                     .get("highway")
-                    .map_or(false, |v| !v.is_empty() && is_valid_highway(v))
-                    && way.tags.get("name").map_or(false, |v| !v.is_empty())
+                    .map_or(false, |v| !v.is_empty() && is_valid_highway(v));
+                let has_valid_public_transport_tag = way
+                    .tags
+                    .get("public_transport")
+                    .map_or(false, |v| !v.is_empty() && is_valid_public_transport(v));
+                let has_valid_name_tag = way.tags.get("name").map_or(false, |v| !v.is_empty());
+                has_valid_name_tag && (has_valid_highway_tag || has_valid_public_transport_tag)
             }
             osmpbfreader::OsmObj::Relation(ref rel) => rel
                 .tags

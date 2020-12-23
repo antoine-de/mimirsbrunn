@@ -12,7 +12,8 @@ use crate::Error;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct StreetExclusion {
-    pub highways: Option<Vec<String>>,
+    pub highway: Option<Vec<String>>,
+    pub public_transport: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

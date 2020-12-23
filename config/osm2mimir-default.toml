@@ -23,13 +23,8 @@ dataset = "fr"
   import = false
   [street.exclusion]
     # See [OSM Key Highway](https://wiki.openstreetmap.org/wiki/Key:highway) for background.
-    highways = [
-      "bus_guideway",
-      "bus_stop",
-      "elevator",
-      "escape",
-      "platform"
-    ]
+    highway = [ "bus_guideway", "bus_stop", "elevator", "escape", "platform" ]
+    public_transport = [ "platform", "hub" ]
 
 [poi]
   import = false
