@@ -5,6 +5,12 @@ authors = ["Canal TP <dt.ro@canaltp.fr>"]
 build = "build.rs"
 autotests = false
 edition = "2018"
+description = "Set of tools for geocoding with Elasticsearch"
+license = "AGPLv3"
+repository = "https://github.com/CanalTP/mimirsbrunn.git"
+keywords = [ "mimirsbrunn", "elasticsearch", "geocoding" ]
+categories = [ "application" ]
+readme = "README.md"
 
 [workspace]
 
