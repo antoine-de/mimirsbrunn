@@ -1,0 +1,17 @@
+name: Validation
+
+on:
+  push:
+  pull_request:
+
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Checks
+        run: make check

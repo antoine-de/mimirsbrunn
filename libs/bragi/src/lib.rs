@@ -29,9 +29,6 @@
 // www.navitia.io
 
 #[macro_use]
-extern crate git_version;
-
-#[macro_use]
 extern crate prometheus;
 
 use mimir::rubber::Rubber;
