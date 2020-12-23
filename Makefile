@@ -41,6 +41,7 @@ SHELL=/bin/bash
 
 build: pre-build docker-build post-build ## Build one or more docker images
 
+check: pre-build          ## Runs validity checks (fmt, lint, unit tests)
 pre-build: fmt lint test
 
 post-build:

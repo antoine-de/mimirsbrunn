@@ -3,6 +3,12 @@ name = "mimir"
 version = "1.18.1"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 edition = "2018"
+description = "Set of tools for importing geospatial data into Elasticsearch for geocoding"
+license = "AGPLv3"
+repository = "https://github.com/CanalTP/mimirsbrunn.git"
+keywords = [ "mimirsbrunn", "elasticsearch", "geocoding" ]
+categories = [ "application" ]
+readme = "README.md"
 
 [dependencies]
 slog = { version = "2.5", features = ["max_level_trace", "release_max_level_info"]}
