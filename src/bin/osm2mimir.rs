@@ -50,7 +50,6 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     rubber.initialize_templates()?;
 
     let settings = &settings;
-    info!("creating administrative regions");
     let admins = if settings
         .admin
         .as_ref()
@@ -64,8 +63,10 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         let admins = settings.admin.as_ref().unwrap();
         let levels = admins.levels.iter().cloned().collect();
         let city_level = admins.city_level;
+        info!("creating administrative regions from OSM");
         read_administrative_regions(&mut osm_reader, levels, city_level)
     } else {
+        info!("retrieving administrative regions from Elasticsearch");
         rubber.get_all_admins()?
     };
 
