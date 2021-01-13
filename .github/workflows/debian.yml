@@ -18,7 +18,7 @@ jobs:
             rust: 1.44.1
           - version: buster
             packages: pkg-config libssl-dev
-            rust: stable
+            rust: 1.48.0
 
     container: debian:${{matrix.version}}
 
