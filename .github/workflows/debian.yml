@@ -33,7 +33,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: {{ matrix.rust }}
+          toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
       - name: Build package
         run: ./scripts/build_deb.sh ${{ matrix.version }}
