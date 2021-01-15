@@ -190,21 +190,12 @@ pub struct Args {
     /// Import ways.
     #[structopt(short = "w", long = "import-way")]
     import_way: Option<bool>,
-    /// Don't import ways.
-    #[structopt(long = "no-import-way")]
-    no_import_way: Option<bool>,
     /// Import admins.
     #[structopt(short = "a", long = "import-admin")]
     import_admin: Option<bool>,
-    /// Don't import admins.
-    #[structopt(long = "no-import-admin")]
-    no_import_admin: Option<bool>,
     /// Import POIs.
     #[structopt(short = "p", long = "import-poi")]
     import_poi: Option<bool>,
-    /// Don't import POIs.
-    #[structopt(long = "--no-import-poi")]
-    no_import_poi: Option<bool>,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset")]
     pub dataset: Option<String>,
@@ -274,10 +265,8 @@ impl Source for Args {
         }
 
         // ADMIN
-        if self.import_admin.is_some() {
-            m.insert(String::from("admin.import"), Value::new(None, true));
-        } else if self.no_import_admin.is_some() {
-            m.insert(String::from("admin.import"), Value::new(None, false));
+        if let Some(import_admin) = self.import_admin {
+            m.insert(String::from("admin.import"), Value::new(None, import_admin));
         }
 
         if let Some(city_level) = self.city_level {
@@ -314,17 +303,13 @@ impl Source for Args {
         }
 
         // WAY
-        if self.import_way.is_some() {
-            m.insert(String::from("street.import"), Value::new(None, true));
-        } else if self.no_import_way.is_some() {
-            m.insert(String::from("street.import"), Value::new(None, false));
+        if let Some(import_way) = self.import_way {
+            m.insert(String::from("street.import"), Value::new(None, import_way));
         }
 
         // POI
-        if self.import_poi.is_some() {
-            m.insert(String::from("poi.import"), Value::new(None, true));
-        } else if self.no_import_poi.is_some() {
-            m.insert(String::from("poi.import"), Value::new(None, false));
+        if let Some(import_poi) = self.import_poi {
+            m.insert(String::from("poi.import"), Value::new(None, import_poi));
         }
 
         // ELASTICSEARCH SETTINGS
