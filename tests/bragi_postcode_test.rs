@@ -47,8 +47,8 @@ pub fn bragi_postcode_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--config-dir=./config".into(),
-            "--import-admin".into(),
-            "--import-way".into(),
+            "--import-admin=true".into(),
+            "--import-way=true".into(),
             "--level=8".into(),
             "--level=7".into(),
             format!("--connection-string={}", es_wrapper.host()),

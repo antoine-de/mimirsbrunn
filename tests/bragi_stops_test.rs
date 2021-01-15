@@ -51,7 +51,7 @@ pub fn bragi_stops_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--config-dir=./config".into(),
-            "--import-admin".into(),
+            "--import-admin=true".into(),
             "--level=8".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],
