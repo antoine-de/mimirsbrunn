@@ -37,7 +37,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
       - name: Validate Code
-        if: ${{matrix.version}} == 'buster'
+        if: ${{matrix.version == 'buster' }}
         run: make check
       - name: Build package
         run: ./scripts/build_deb.sh ${{ matrix.version }}
