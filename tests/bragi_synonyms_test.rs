@@ -49,9 +49,9 @@ pub fn bragi_synonyms_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--config-dir=./config".into(),
-            "--import-way".into(),
-            "--import-admin".into(),
-            "--import-poi".into(),
+            "--import-way=true".into(),
+            "--import-admin=true".into(),
+            "--import-poi=true".into(),
             "--level=8".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],

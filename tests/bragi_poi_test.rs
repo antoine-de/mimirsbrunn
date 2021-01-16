@@ -70,9 +70,9 @@ pub fn bragi_poi_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         &[
             "--input=./tests/fixtures/osm_fixture.osm.pbf".into(),
             "--config-dir=./config".into(),
-            "--import-admin".into(),
-            "--import-way".into(),
-            "--import-poi".into(),
+            "--import-admin=true".into(),
+            "--import-way=true".into(),
+            "--import-poi=true".into(),
             "--level=8".into(),
             format!("--connection-string={}", es_wrapper.host()),
         ],

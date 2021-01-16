@@ -189,13 +189,13 @@ pub struct Args {
     connection_string: Option<String>,
     /// Import ways.
     #[structopt(short = "w", long = "import-way")]
-    import_way: bool,
+    import_way: Option<bool>,
     /// Import admins.
     #[structopt(short = "a", long = "import-admin")]
-    import_admin: bool,
+    import_admin: Option<bool>,
     /// Import POIs.
     #[structopt(short = "p", long = "import-poi")]
-    import_poi: bool,
+    import_poi: Option<bool>,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset")]
     pub dataset: Option<String>,
@@ -265,10 +265,10 @@ impl Source for Args {
         }
 
         // ADMIN
-        m.insert(
-            String::from("admin.import"),
-            Value::new(None, self.import_admin),
-        );
+        if let Some(import_admin) = self.import_admin {
+            m.insert(String::from("admin.import"), Value::new(None, import_admin));
+        }
+
         if let Some(city_level) = self.city_level {
             m.insert(
                 String::from("admin.city_level"),
@@ -303,16 +303,14 @@ impl Source for Args {
         }
 
         // WAY
-        m.insert(
-            String::from("street.import"),
-            Value::new(None, self.import_way),
-        );
+        if let Some(import_way) = self.import_way {
+            m.insert(String::from("street.import"), Value::new(None, import_way));
+        }
 
         // POI
-        m.insert(
-            String::from("poi.import"),
-            Value::new(None, self.import_poi),
-        );
+        if let Some(import_poi) = self.import_poi {
+            m.insert(String::from("poi.import"), Value::new(None, import_poi));
+        }
 
         // ELASTICSEARCH SETTINGS
 
