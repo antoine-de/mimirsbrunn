@@ -91,8 +91,7 @@ pub fn streets(
                     .get("public_transport")
                     .map_or(true, |v| is_valid_public_transport(v));
                 let has_valid_name_tag = way.tags.get("name").map_or(false, |v| !v.is_empty());
-                has_valid_name_tag
-                    && (has_valid_highway_tag || has_no_excluded_public_transport_tag)
+                has_valid_name_tag && has_valid_highway_tag && has_no_excluded_public_transport_tag
             }
             osmpbfreader::OsmObj::Relation(ref rel) => rel
                 .tags
