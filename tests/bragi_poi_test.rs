@@ -185,6 +185,7 @@ fn poi_admin_address_test(bragi: &mut BragiHandler) {
     assert_eq!(get_value(poi, "type"), Poi::doc_type());
     assert_eq!(get_value(poi, "label"), "Le-Mée-sur-Seine Courtilleraies");
     assert_eq!(get_value(poi, "postcode"), "77350");
+    assert_eq!(get_value(poi, "id"), "poi:osm:node:665668658");
 }
 
 fn poi_admin_test(bragi: &mut BragiHandler) {
@@ -447,6 +448,7 @@ fn poi_filter_dataset_visibility_test(bragi: &mut BragiHandler) {
     let res = bragi.get("/autocomplete?q=Agence Keolis&type[]=poi&poi_dataset[]=keolis");
     let poi = res.first().expect("Expected a POI for Keolis dataset");
     assert_eq!(poi["label"], "Agence Keolis (Livry-sur-Seine)");
+    assert_eq!(poi["id"], "poi:TCL:AGE:516");
 
     let res = bragi.get("/autocomplete?q=Agence Keolis&type[]=poi&poi_dataset[]=effia");
     assert!(res.first().is_none());

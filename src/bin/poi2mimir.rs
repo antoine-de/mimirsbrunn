@@ -88,7 +88,7 @@ fn into_mimir_poi(
         labels::format_poi_label(&poi.name, admins.iter().map(|a| a.deref()), &country_codes);
 
     let poi = Poi {
-        id: poi.id,
+        id: mimir::objects::normalize_id("poi", &poi.id),
         label,
         name: poi.name,
         coord,
