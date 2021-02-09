@@ -6,7 +6,6 @@
 
 SCRIPT_SRC="$(dirname "${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}")"
 SCRIPT_DIR="$(cd "${SCRIPT_SRC}" >/dev/null 2>&1 && pwd)"
-BASE_NAME="$(basename ${SCRIPT_DIR})"
 
 # Some constants for SEMVER regexp
 NAT='0|[1-9][0-9]*'
@@ -28,30 +27,17 @@ function hasChanges() {
 	test -n "$(git status -s .)"
 }
 
-# This returns the version contained in Cargo.tom l
+# This returns the version contained in Cargo.toml
 function getRelease() {
   local rel=$(cat Cargo.toml | grep '^version' | cut -d '=' -f 2 | tr -d \")
   rel="${rel#"${rel%%[![:space:]]*}"}"   # remove leading whitespace characters
   echo "$rel"
 }
 
-# The tag can have suffixes, like the commit for when the directory is not equal to
-# the tagged content.... This function return the base part of the tag
-function getBaseTag() {
-	# sed -n -e "s/^tag=\(.*\)$(getRelease)\$/\1/p" .release
-  getRelease
-}
-
-# This is the name used to make the base of the docker tag.
-# It is the basename of the directory in which lies the project.
-function getBaseName() {
-  echo ${BASE_NAME}
-}
-
 function getTag() {
   # FIXME Understand what arguments are provided
 	if [ -z "$1" ] ; then
-    echo "v$(getBaseTag)"
+    echo "v$(getRelease)"
 	else
 		echo "v$1"
 	fi
@@ -66,7 +52,7 @@ function getLastTag() {
 # To do this, we first get the tag of the last rc0.
 # We use this tag to display the commit message,
 # which is expected to be something like
-# [version] new XXX prerelease.
+# [Versioned] new XXX prerelease.
 # So by splitting at spaces, we just extract the third field.
 # (it brittle)
 function getReleaseMessage() {
@@ -100,6 +86,11 @@ function getDockerTags() {
 
 # Updates the version in Cargo.toml
 # $1 Version (must match semver)
+# This function works in 3 steps:
+# 1. validate the argument
+# 2. validate the version
+# 3. set the version. This part, which is very specific to the project this script is embedded in,
+#    has been extracted in the function `setReleaseProject`.
 function setRelease() {
   local VERSION="$1"
   echo "Setting the new release to ${VERSION}"
@@ -118,7 +109,7 @@ function setRelease() {
 }
 
 # This function assumes the version given as argument has been validated.
-# It needs to be customized for each project. It writes the version ($1) to files.
+# It needs to be customized for each project. It writes the version ($1) to file(s).
 function setReleaseProject() {
   local VERSION="$1"
   sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" Cargo.toml

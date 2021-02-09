@@ -57,14 +57,14 @@ docker-build:
 			ARG_DEB="--build-arg DEBIAN_VERSION=$$DEB"; \
 			ARG_RST="--build-arg RUST_VERSION=$$RST"; \
 			for DOCKER_TAG in $(DOCKER_TAGS); do \
-			  TAGS=$$TAGS" --tag $(DOCKER_REPO)/$$DOCKER:$$DOCKER_TAG-$$DEB"; \
+			  TAGS=$$TAGS" --tag $(DOCKER_REPO)$$DOCKER:$$DOCKER_TAG-$$DEB"; \
 			done; \
 			FIRST_ENV=$$(echo $(BUILD_ENV) | awk '{print $$1;}'); \
 			if [ $$FIRST_ENV = $$ENV ]; then \
 				for DOCKER_TAG in $(DOCKER_TAGS); do \
-				  TAGS=$$TAGS" --tag $(DOCKER_REPO)/$$DOCKER:$$DOCKER_TAG"; \
+				  TAGS=$$TAGS" --tag $(DOCKER_REPO)$$DOCKER:$$DOCKER_TAG"; \
 				done; \
-				TAGS=$$TAGS" --tag $(DOCKER_REPO)/$$DOCKER:latest"; \
+				TAGS=$$TAGS" --tag $(DOCKER_REPO)$$DOCKER:latest"; \
 			fi; \
 			echo "docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/$$DOCKER/Dockerfile ."; \
 			docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/$$DOCKER/Dockerfile . ; \
@@ -81,18 +81,19 @@ do-push:
 			SPL=$${ENV/:/ }; \
 			DEB=$$(echo $$SPL | awk '{print $$1;}'); \
 			for DOCKER_TAG in $(DOCKER_TAGS); do \
-			  docker push $(DOCKER_REPO)/$$DOCKER:$$DOCKER_TAG-$$DEB; \
+			  docker push $(DOCKER_REPO)$$DOCKER:$$DOCKER_TAG-$$DEB; \
 			done; \
 			FIRST_ENV=$$(echo $(BUILD_ENV) | awk '{print $$1;}'); \
 			if [ $$FIRST_ENV = $$ENV ]; then \
 				for DOCKER_TAG in $(DOCKER_TAGS); do \
-				docker push $(DOCKER_REPO)/$$DOCKER:$$DOCKER_TAG; \
+				docker push $(DOCKER_REPO)$$DOCKER:$$DOCKER_TAG; \
 				done; \
-				docker push $(DOCKER_REPO)/$$DOCKER:latest; \
+				docker push $(DOCKER_REPO)$$DOCKER:latest; \
 			fi; \
 		done; \
 	done
 
+snapshot: DOCKER_REPO := $(SNAPSHOT_REPO)/
 snapshot: build push
 
 tag-new-release: VERSION := $(shell . $(RELEASE_SUPPORT); nextRelease)
@@ -115,23 +116,23 @@ tag-major-prerelease: VERSION := $(shell . $(RELEASE_SUPPORT); nextMajorPrerelea
 tag-major-prerelease: MSG := new major prerelease
 tag-major-prerelease: tag
 
-new-release: DOCKER_REPO := $(RELEASE_REPO)
+new-release: DOCKER_REPO := $(RELEASE_REPO)/
 new-release: tag-new-release release ## Drop the prerelease suffix and release
 	@echo $(VERSION)
 
-new-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)
+new-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)/
 new-prerelease: tag-new-prerelease release ## Increment the prerelease count and release
 	@echo "version $(VERSION) released on $(DOCKER_REPO)"
 
-patch-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)
+patch-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)/
 patch-prerelease: tag-patch-prerelease release ## Increment the patch version number and release
 	@echo "version $(VERSION) released on $(DOCKER_REPO)"
 
-minor-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)
+minor-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)/
 minor-prerelease: tag-minor-prerelease release ## Increment the minor version number and release
 	@echo "version $(VERSION) released on $(DOCKER_REPO)"
 
-major-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)
+major-prerelease: DOCKER_REPO := $(PRERELEASE_REPO)/
 major-prerelease: tag-major-prerelease release ## Increment the major version number and release
 	@echo "version $(VERSION) released on $(DOCKER_REPO)"
 
