@@ -1,26 +1,13 @@
-name: Packages
+name: Release_Packages
 
 on:
   push:
-  pull_request:
+    branches:
+      - release
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.48.0
-      - name: Validate Code
-        run: make check
 
   package:
-    needs: check
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -56,5 +43,5 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: debian-package
+          name: debian-package-release
           path: ./scripts/deb-scratch/*
