@@ -1,0 +1,33 @@
+name: Create and publish bargi docker image
+
+on:
+  push:
+    branches:
+      - master
+      - release
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: CanalTP/navitia-docker-compose
+      - name: install httpie dependency
+        run: sudo apt update && sudo apt install -y httpie
+      - name: build navitia_builder docker image
+        working-directory: builder
+        run: docker build --pull --no-cache=true -t navitia_builder .
+
+      - name: Get branch name
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+      - name: create publish ${{ env.BRANCH_NAME }} images
+        run: |
+          make docker-build-bragi-${{ env.BRANCH_NAME }} BUILD_ENV=buster:1.44.1
+          make dockerhub-login DOCKER_USER=${{secrets.docker_user}} DOCKER_PASSWORD=${{secrets.docker_password}}
+          push-bragi-image-${{ env.BRANCH_NAME }}
+
+      - name: Remove all useless images
+        run: make wipe-useless-images

@@ -29,7 +29,7 @@ SHELL=/bin/bash
 .PHONY: \
 	pre-build docker-build post-build build \
 	release patch-prerelease minor-prerelease major-prerelease tag check-status check-release \
-	push pre-push do-push post-push \
+	push pre-push do-push post-push docker-release docker-build-bragi-master \
 	changelog
 
 build: pre-build docker-build post-build ## Build one or more docker images
@@ -70,6 +70,57 @@ docker-build:
 			docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/$$DOCKER/Dockerfile . ; \
 		done; \
 	done
+
+docker-build-bragi-release:
+	@for ENV in $(BUILD_ENV); do \
+        TAGS=""; \
+        SPL=$${ENV/:/ }; \
+        DEB=$$(echo $$SPL | awk '{print $$1;}'); \
+        RST=$$(echo $$SPL | awk '{print $$2;}'); \
+        echo "Building $$DOCKER for debian $$DEB / rust $$RST"; \
+        ARG_DEB="--build-arg DEBIAN_VERSION=$$DEB"; \
+        ARG_RST="--build-arg RUST_VERSION=$$RST"; \
+        TAGS=" --tag navitia/bragi:$(TAG) --tag navitia/bragi:latest --tag navitia/bragi:release"; \
+        FIRST_ENV=$$(echo $(BUILD_ENV) | awk '{print $$1;}'); \
+        echo "docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile ."; \
+        docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile . ; \
+	done
+
+docker-build-bragi-master:
+	@for ENV in $(BUILD_ENV); do \
+        TAGS=""; \
+        SPL=$${ENV/:/ }; \
+        DEB=$$(echo $$SPL | awk '{print $$1;}'); \
+        RST=$$(echo $$SPL | awk '{print $$2;}'); \
+        echo "Building $$DOCKER for debian $$DEB / rust $$RST"; \
+        ARG_DEB="--build-arg DEBIAN_VERSION=$$DEB"; \
+        ARG_RST="--build-arg RUST_VERSION=$$RST"; \
+        TAGS="--tag navitia/bragi:master"; \
+        FIRST_ENV=$$(echo $(BUILD_ENV) | awk '{print $$1;}'); \
+        echo "docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile ."; \
+        docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile . ; \
+	done
+
+dockerhub-login: ## Login Docker hub, DOCKERHUB_USER, DOCKERHUB_PWD, must be provided
+	$(info Login Dockerhub)
+	echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USER} --password-stdin
+
+push-bragi-image-master: ## Push bragi-image to dockerhub
+	$(info Push bragi-image-master to Dockerhub)
+	docker push navitia/bragi:master
+
+push-bragi-image-release: ## Push bragi-image to dockerhub
+	$(info Push bragi-image-release to Dockerhub)
+	docker push navitia/bragi:$(TAG)
+	docker push navitia/bragi:release
+	docker push navitia/bragi:latest
+
+wipe-useless-images: ## Remove all useless images
+	$(info Remove useless images)
+	@dangling_images=`docker images --filter "dangling=true" -q --no-trunc`;
+	@[ "${dangling_images}" ] && docker rmi -f ${dangling_images} || ( echo "No Dangling Images")
+	@bragi_images=`docker images "navitia/bragi*" -q`;
+	@[ "${bragi_images}" ] && docker rmi -f ${bragi_images} || (echo "No bragi Images")
 
 release: check-status check-release build push
 
