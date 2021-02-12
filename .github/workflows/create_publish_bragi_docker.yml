@@ -11,14 +11,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          repository: CanalTP/navitia-docker-compose
-      - name: install httpie dependency
-        run: sudo apt update && sudo apt install -y httpie
-      - name: build navitia_builder docker image
-        working-directory: builder
-        run: docker build --pull --no-cache=true -t navitia_builder .
-
       - name: Get branch name
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
