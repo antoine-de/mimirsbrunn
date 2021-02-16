@@ -73,7 +73,6 @@ docker-build:
 
 docker-build-bragi-release:
 	@for ENV in $(BUILD_ENV); do \
-        TAGS=""; \
         SPL=$${ENV/:/ }; \
         DEB=$$(echo $$SPL | awk '{print $$1;}'); \
         RST=$$(echo $$SPL | awk '{print $$2;}'); \
@@ -81,14 +80,12 @@ docker-build-bragi-release:
         ARG_DEB="--build-arg DEBIAN_VERSION=$$DEB"; \
         ARG_RST="--build-arg RUST_VERSION=$$RST"; \
         TAGS=" --tag navitia/bragi:$(TAG) --tag navitia/bragi:latest --tag navitia/bragi:release"; \
-        FIRST_ENV=$$(echo $(BUILD_ENV) | awk '{print $$1;}'); \
         echo "docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile ."; \
         docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile . ; \
 	done
 
 docker-build-bragi-master:
 	@for ENV in $(BUILD_ENV); do \
-        TAGS=""; \
         SPL=$${ENV/:/ }; \
         DEB=$$(echo $$SPL | awk '{print $$1;}'); \
         RST=$$(echo $$SPL | awk '{print $$2;}'); \
@@ -96,7 +93,6 @@ docker-build-bragi-master:
         ARG_DEB="--build-arg DEBIAN_VERSION=$$DEB"; \
         ARG_RST="--build-arg RUST_VERSION=$$RST"; \
         TAGS="--tag navitia/bragi:master"; \
-        FIRST_ENV=$$(echo $(BUILD_ENV) | awk '{print $$1;}'); \
         echo "docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile ."; \
         docker build $(DOCKER_BUILD_ARGS) $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile . ; \
 	done
