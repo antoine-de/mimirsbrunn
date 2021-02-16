@@ -113,10 +113,8 @@ push-bragi-image-release: ## Push bragi-image to dockerhub
 
 wipe-useless-images: ## Remove all useless images
 	$(info Remove useless images)
-	@dangling_images=`docker images --filter "dangling=true" -q --no-trunc`;
-	@[ "${dangling_images}" ] && docker rmi -f ${dangling_images} || ( echo "No Dangling Images")
-	@bragi_images=`docker images "navitia/bragi*" -q`;
-	@[ "${bragi_images}" ] && docker rmi -f ${bragi_images} || (echo "No bragi Images")
+	docker images -q --filter "dangling=true" --no-trunc | xargs --no-run-if-empty docker rmi -f
+	docker images "navitia/bragi*" -q | xargs --no-run-if-empty docker rmi -f
 
 release: check-status check-release build push
 
