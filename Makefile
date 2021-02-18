@@ -10,23 +10,21 @@ pre-build: fmt lint test
 
 
 docker-build-bragi-release:
-	echo "Building Bragi image $(BRAGI_VERSION) for debian $(DEBIAN_VERSION) / rust $(RUST_VERSION)"; \
+	@echo "Building Bragi image $(BRAGI_VERSION) for debian $(DEBIAN_VERSION) / rust $(RUST_VERSION)"; \
 	ARG_DEB="--build-arg DEBIAN_VERSION=$(DEBIAN_VERSION)"; \
 	ARG_RST="--build-arg RUST_VERSION=$(RUST_VERSION)"; \
-	TAGS=" --tag navitia/bragi:$(BRAGI_VERSION) --tag navitia/bragi:latest --tag navitia/bragi:release"; \
-	echo "docker build $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile ."; \
-	docker build $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile . ; \
+	TAGS="--tag navitia/bragi:$(BRAGI_VERSION) --tag navitia/bragi:latest --tag navitia/bragi:release"; \
+	docker build $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile .; \
 
 docker-build-bragi-master:
-	echo "Building Bragi image $(BRAGI_VERSION) for debian $(DEBIAN_VERSION) / rust $(RUST_VERSION)"; \
+	@echo "Building Bragi image $(BRAGI_VERSION) for debian $(DEBIAN_VERSION) / rust $(RUST_VERSION)"; \
 	ARG_DEB="--build-arg DEBIAN_VERSION=$(DEBIAN_VERSION)"; \
 	ARG_RST="--build-arg RUST_VERSION=$(RUST_VERSION)"; \
 	TAGS="--tag navitia/bragi:master"; \
-	echo "docker build $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile ."; \
-	docker build $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile . ; \
+	docker build $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile .; \
 
 
-dockerhub-login: ## Login Docker hub, DOCKERHUB_USER, DOCKERHUB_PWD, must be provided
+dockerhub-login: ## Login Docker hub, DOCKER_USER, DOCKER_PASSWORD, must be provided
 	$(info Login Dockerhub)
 	echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USER} --password-stdin
 

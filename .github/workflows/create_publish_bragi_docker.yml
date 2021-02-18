@@ -19,7 +19,7 @@ jobs:
         run: |
           make docker-build-bragi-${{ env.BRANCH_NAME }} DEBIAN_VERSION=buster RUST_VERSION=1.44.1
           make dockerhub-login DOCKER_USER=${{secrets.docker_user}} DOCKER_PASSWORD=${{secrets.docker_password}}
-          push-bragi-image-${{ env.BRANCH_NAME }}
+          make push-bragi-image-${{ env.BRANCH_NAME }}
 
       - name: Remove all useless images
         run: make wipe-useless-images
