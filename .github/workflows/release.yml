@@ -45,3 +45,13 @@ jobs:
         with:
           name: debian-package-release
           path: ./scripts/deb-scratch/*
+
+      - name: slack notification (the job has failed)
+        if: failure()
+        run: |
+          echo '{"text":":Warning: Github Actions: build packages for branch release failed  ! (https://github.com/CanalTP/mimirsbrunn/actions/workflows/release.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+
+      - name: slack notification (the job has successed)
+        if: success()
+        run: |
+          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New packages mimir are available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
