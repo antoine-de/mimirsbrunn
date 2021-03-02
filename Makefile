@@ -8,7 +8,6 @@ SHELL=/bin/bash
 check: pre-build ## Runs several tests (alias for pre-build)
 pre-build: fmt lint test
 
-
 docker-build-bragi-release:
 	@echo "Building Bragi image $(BRAGI_VERSION) for debian $(DEBIAN_VERSION) / rust $(RUST_VERSION)"; \
 	ARG_DEB="--build-arg DEBIAN_VERSION=$(DEBIAN_VERSION)"; \
@@ -23,14 +22,13 @@ docker-build-bragi-master:
 	TAGS="--tag navitia/bragi:master"; \
 	docker build $$ARG_DEB $$ARG_RST $$TAGS -f docker/bragi/Dockerfile .; \
 
-
 dockerhub-login: ## Login Docker hub, DOCKER_USER, DOCKER_PASSWORD, must be provided
 	$(info Login Dockerhub)
 	echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USER} --password-stdin
 
 push-bragi-image-master: ## Push bragi-image to dockerhub
 	$(info Push bragi-image-master to Dockerhub)
-	docker push navitia/bragi:$(BRAGI_VERSION)
+	docker push navitia/bragi:master
 
 push-bragi-image-release: ## Push bragi-image to dockerhub
 	$(info Push bragi-image-release to Dockerhub)
