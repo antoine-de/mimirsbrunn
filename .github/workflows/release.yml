@@ -2,8 +2,8 @@ name: Release_Packages
 
 on:
   push:
-    branches:
-      - release
+    tags:
+      - '*'
 
 jobs:
 
@@ -45,3 +45,20 @@ jobs:
         with:
           name: debian-package-release
           path: ./scripts/deb-scratch/*
+
+      - name: slack notification (the job has failed)
+        if: failure()
+        run: |
+          sudo apt install -y httpie
+          echo '{"text":":Warning: Github Actions: build packages for branch release failed  ! (https://github.com/CanalTP/mimirsbrunn/actions/workflows/release.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: package
+    steps:
+      - name: install  dependency
+        run: apt update && apt install -y httpie
+      - name: run publish job & slack notification (the job has successed)
+        run: |
+          http --ignore-stdin -v -f POST https://${{secrets.JENKINS_TOKEN}}@jenkins-core.canaltp.fr/job/publish_autocomplete_packages/
+          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New packages mimir are available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
