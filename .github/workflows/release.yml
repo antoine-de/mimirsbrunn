@@ -60,7 +60,7 @@ jobs:
       - name: install  dependency
         run: |
           apt-get update
-        apt update && apt install -y httpie
+          apt update && apt install -y httpie
 
       - name: run publish job & slack notification (the job has successed)
         run: |

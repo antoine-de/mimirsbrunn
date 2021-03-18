@@ -16,7 +16,7 @@ pipeline {
         stage('Install extra packages') {
             steps {
                 sh '''
-                    pip install git+git://github.com/CanalTP/githubflow_release.git@cc5cc83da7ef4f290cadf46ed6a11601dd15fa9c --force
+                    pip install git+https://github.com/CanalTP/githubflow_release.git@v0.2.0 --force
                 '''
             }
         }
