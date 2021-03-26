@@ -28,9 +28,9 @@ jobs:
         uses: actions/checkout@v2
       - name: Install requirements
         run: |
-          apt-get update
-          apt-get install -y curl wget build-essential
-          apt-get install -y ${{ matrix.packages }}
+          sudo apt-get update
+          sudo apt-get install -y curl wget build-essential
+          sudo apt-get install -y ${{ matrix.packages }}
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
@@ -48,6 +48,6 @@ jobs:
       - name: slack notification (the job has failed)
         if: failure()
         run: |
-          apt-get update
+          sudo apt-get update
           sudo apt install -y httpie
           echo '{"text":":Warning: Github Actions: build packages for branch master failed ! (https://github.com/CanalTP/mimirsbrunn/actions/workflows/master.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
