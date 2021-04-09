@@ -17,7 +17,7 @@ jobs:
 
       - name: install httpie dependency
         run: |
-          apt-get update
+          sudo apt-get update
           sudo apt install -y httpie
 
       - name: create publish ${{ env.BRANCH_NAME }} images
