@@ -622,7 +622,6 @@ pub fn autocomplete(
     query_settings: &QuerySettings,
     request_id: Option<&str>,
 ) -> Result<Vec<mimir::Place>, BragiError> {
-    info!("Request Id: {:?}", request_id);
     // Perform parameters validation.
     if !zone_types.is_empty() && !types.iter().any(|s| *s == "zone") {
         return Err(BragiError::InvalidParam(
