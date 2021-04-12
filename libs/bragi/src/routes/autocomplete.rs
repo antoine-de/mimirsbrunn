@@ -5,7 +5,7 @@ use crate::{model, query, Context};
 use actix_http::http::header::{CacheControl, CacheDirective};
 use actix_web::web::{Data, HttpResponse, Json};
 use geojson::{GeoJson, Geometry};
-use mimir::objects::Coord;
+use mimir::objects::{Coord, PlaceDocType};
 use serde::{Deserialize, Serialize};
 use slog_scope::trace;
 use std::time::Duration;
@@ -27,7 +27,7 @@ enum Type {
 }
 
 impl Type {
-    fn as_str(self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
             Type::City => "city",
             Type::House => "house",
@@ -91,7 +91,7 @@ pub struct Params {
     // The scope is a list of place types on which we apply the shape filter.
     // Places found in this list are restricted to the shape.
     #[serde(default)]
-    shape_scope: Vec<String>,
+    shape_scope: Vec<PlaceDocType>,
     // Forwards a request for explanation to Elastic Search.
     // This parameter is useful to analyze the order in which search results appear.
     // It is prefixed by an underscore to indicate its not a public parameter.
@@ -104,7 +104,7 @@ pub struct Params {
 
 impl Params {
     fn types_as_str(&self) -> Vec<&str> {
-        self.types.iter().map(|t| Type::as_str(*t)).collect()
+        self.types.iter().map(|t| Type::as_str(t)).collect()
     }
     fn zone_types_as_str(&self) -> Vec<&str> {
         self.zone_types.iter().map(|x| x.as_str()).collect()
@@ -191,7 +191,7 @@ pub fn call_autocomplete(
         &params
             .shape_scope
             .iter()
-            .map(String::as_str)
+            .map(PlaceDocType::as_str)
             .collect::<Vec<_>>(),
         &params.types_as_str(),
         &params.zone_types_as_str(),
