@@ -232,6 +232,13 @@ fn simple_bano_shape_filter_test(bragi: &mut BragiHandler) {
         }
         )
     );
+
+    // Searching with an invalid shape_scope parameter... should yield an error.
+    let (status, _) = bragi.raw_post(
+        "/autocomplete?q=18 Rue Hector Malot, (Paris)&shape_scope[]=add",
+        shape,
+    );
+    assert_eq!(status, actix_web::http::StatusCode::BAD_REQUEST);
 }
 
 fn simple_bano_lon_lat_test(bragi: &mut BragiHandler) {
