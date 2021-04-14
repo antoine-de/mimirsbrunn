@@ -5,8 +5,9 @@ use crate::{model, query, Context};
 use actix_http::http::header::{CacheControl, CacheDirective};
 use actix_web::web::{Data, HttpResponse, Json};
 use geojson::{GeoJson, Geometry};
-use mimir::objects::Coord;
+use mimir::objects::{Coord, PlaceDocType};
 use serde::{Deserialize, Serialize};
+use slog_scope::trace;
 use std::time::Duration;
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
@@ -26,7 +27,7 @@ enum Type {
 }
 
 impl Type {
-    fn as_str(self) -> &'static str {
+    fn as_str(&self) -> &'static str {
         match self {
             Type::City => "city",
             Type::House => "house",
@@ -87,16 +88,23 @@ pub struct Params {
     #[serde(default, rename = "poi_type")]
     poi_types: Vec<PoiType>,
     lang: Option<String>,
+    // The scope is a list of place types on which we apply the shape filter.
+    // Places found in this list are restricted to the shape.
+    #[serde(default)]
+    shape_scope: Vec<PlaceDocType>,
     // Forwards a request for explanation to Elastic Search.
     // This parameter is useful to analyze the order in which search results appear.
     // It is prefixed by an underscore to indicate its not a public parameter.
     #[serde(default, rename = "_debug")]
     debug: Option<bool>,
+
+    // Embeds a client id into the request to improve tracing
+    request_id: Option<String>,
 }
 
 impl Params {
     fn types_as_str(&self) -> Vec<&str> {
-        self.types.iter().map(|t| Type::as_str(*t)).collect()
+        self.types.iter().map(|t| Type::as_str(t)).collect()
     }
     fn zone_types_as_str(&self) -> Vec<&str> {
         self.zone_types.iter().map(|x| x.as_str()).collect()
@@ -159,6 +167,10 @@ pub fn call_autocomplete(
         query_settings.importance_query.proximity.gaussian.decay = decay;
     }
 
+    if let Some(id) = &params.request_id {
+        trace!("routes::autocomplete by {} ({})", id, params.q);
+    }
+
     let res = query::autocomplete(
         &params.q,
         &params
@@ -176,6 +188,7 @@ pub fn call_autocomplete(
         params.limit,
         params.coord()?,
         shape,
+        &params.shape_scope,
         &params.types_as_str(),
         &params.zone_types_as_str(),
         &params.poi_types_as_str(),
@@ -183,6 +196,7 @@ pub fn call_autocomplete(
         rubber,
         params.debug.unwrap_or(false),
         &query_settings,
+        params.request_id.as_deref(),
     );
     res.map(|r| Autocomplete::from_with_lang(r, langs.into_iter().next()))
         .map(|v| {

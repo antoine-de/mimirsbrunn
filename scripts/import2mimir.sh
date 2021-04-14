@@ -193,6 +193,16 @@ restart_docker_es() {
   return $?
 }
 
+import_templates() {
+  log_info "Importing templates into ${ES_NAME}"
+  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/addr_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/poi_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/stop_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/admin_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/street_settings.json > /dev/null 2> /dev/null
+  return 0
+}
+
 # Pre requisite: DATA_DIR exists.
 generate_cosmogony() {
   log_info "Generating cosmogony"
@@ -228,7 +238,7 @@ import_osm() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   [[ -f "${INPUT}" ]] || { log_error "osm2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${OSM2MIMIR}" --import-way --import-poi --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
+  "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
   [[ $? != 0 ]] && { log_error "Could not import OSM PBF data for ${OSM_REGION} into mimir. Aborting"; return 1; }
   return 0
 }
@@ -345,6 +355,9 @@ check_environment
 
 restart_docker_es 9200
 [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
+
+import_templates
+[[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
 
 # The order in which the import are done into mimir is important!
 # First we generate the admin regions with cosmogony

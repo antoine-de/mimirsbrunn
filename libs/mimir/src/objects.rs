@@ -179,6 +179,29 @@ impl Place {
     }
 }
 
+// This is a bit of a kludge to a get a string version for the doc_type.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PlaceDocType {
+    Admin,
+    Street,
+    Addr,
+    Poi,
+    Stop,
+}
+
+impl PlaceDocType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PlaceDocType::Admin => "admin",
+            PlaceDocType::Street => "street",
+            PlaceDocType::Addr => "addr",
+            PlaceDocType::Poi => "poi",
+            PlaceDocType::Stop => "stop",
+        }
+    }
+}
+
 pub trait MimirObject: serde::Serialize {
     fn is_geo_data() -> bool;
     fn doc_type() -> &'static str; // provides the elasticsearch type name
@@ -293,7 +316,7 @@ impl MimirObject for Poi {
         true
     }
     fn doc_type() -> &'static str {
-        "poi"
+        PlaceDocType::Poi.as_str()
     }
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
@@ -497,7 +520,7 @@ impl MimirObject for Stop {
         false
     }
     fn doc_type() -> &'static str {
-        "stop"
+        PlaceDocType::Stop.as_str()
     }
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
@@ -677,7 +700,7 @@ impl MimirObject for Admin {
         true
     }
     fn doc_type() -> &'static str {
-        "admin"
+        PlaceDocType::Admin.as_str()
     }
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
@@ -720,7 +743,7 @@ impl MimirObject for Street {
         true
     }
     fn doc_type() -> &'static str {
-        "street"
+        PlaceDocType::Street.as_str()
     }
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
@@ -766,7 +789,7 @@ impl MimirObject for Addr {
         true
     }
     fn doc_type() -> &'static str {
-        "addr"
+        PlaceDocType::Addr.as_str()
     }
     fn es_id(&self) -> Option<String> {
         Some(self.id.clone())
@@ -853,9 +876,9 @@ impl serde::Serialize for Coord {
     }
 }
 
-impl Into<Geometry> for Coord {
-    fn into(self) -> Geometry {
-        Geometry::new(geojson::Value::Point(vec![self.lon(), self.lat()]))
+impl From<Coord> for Geometry {
+    fn from(coord: Coord) -> Geometry {
+        Geometry::new(geojson::Value::Point(vec![coord.lon(), coord.lat()]))
     }
 }
 
@@ -869,7 +892,7 @@ impl<'de> Deserialize<'de> for Coord {
         enum Field {
             Lon,
             Lat,
-        };
+        }
 
         struct CoordVisitor;
 
