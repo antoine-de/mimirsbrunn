@@ -30,7 +30,7 @@
 use super::model::{self, BragiError};
 use crate::query_settings::{BuildWeight, Proximity, QuerySettings, Types};
 use geojson::Geometry;
-use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
+use mimir::objects::{Addr, Admin, Coord, MimirObject, PlaceDocType, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es::error::EsError;
@@ -177,6 +177,7 @@ fn build_query<'a>(
     match_type: MatchType,
     coord: Option<Coord>,
     shape: Option<Geometry>,
+    shape_scope: &[PlaceDocType],
     pt_datasets: &[&str],
     all_data: bool,
     langs: &'a [&'a str],
@@ -381,22 +382,48 @@ fn build_query<'a>(
         filters.push(build_coverage_condition(pt_datasets));
     }
 
-    // We want to limit the search to the geographic shape given in argument,
-    // except for stop areas
+    // If there is a shape, all the places listed in shape_scope are restricted to the shape.
+    // and the places that are not listed are not restricted.
+    // So if shape_scope = {A, B}, we should end up with something like
+    // should {
+    //   must [               => filwer_w_shape
+    //     should [
+    //       term _type = A
+    //       term _type = B
+    //     ]
+    //     geoshape
+    //  ],
+    //  must_not [            => filter_wo_shape
+    //    term _type = A
+    //    term _type = B
+    //  ]
+    //
+
     if let Some(s) = shape {
-        let filter_wo_stop = Query::build_bool()
-            .with_must(vec![
-                Query::build_bool()
-                    .with_must_not(Query::build_term("_type", Stop::doc_type()).build())
-                    .build(),
-                Query::build_geo_shape("approx_coord")
-                    .with_geojson(s)
-                    .build(),
-            ])
+        let filter_w_shape_term = Query::build_bool()
+            .with_should(
+                shape_scope
+                    .iter()
+                    .map(PlaceDocType::as_str)
+                    .map(|x| Query::build_term("_type", x).build())
+                    .collect::<Vec<_>>(),
+            )
             .build();
-        let filter_w_stop = Query::build_term("_type", Stop::doc_type()).build();
+        let filter_w_shape_geo = Query::build_geo_shape("approx_coord")
+            .with_geojson(s)
+            .build();
+        let filter_w_shape = Query::build_bool()
+            .with_must(vec![filter_w_shape_term, filter_w_shape_geo])
+            .build();
+        let filter_wo_shape = shape_scope
+            .iter()
+            .map(PlaceDocType::as_str)
+            .map(|x| Query::build_term("_type", x).build())
+            .collect::<Vec<_>>();
+        let filter_wo_shape = Query::build_bool().with_must_not(filter_wo_shape).build();
+
         let geo_filter = Query::build_bool()
-            .with_should(vec![filter_w_stop, filter_wo_stop])
+            .with_should(vec![filter_wo_shape, filter_w_shape])
             .build();
         filters.push(geo_filter);
     }
@@ -446,6 +473,7 @@ fn query(
     limit: u64,
     coord: Option<Coord>,
     shape: Option<Geometry>,
+    shape_scope: &[PlaceDocType],
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
@@ -464,6 +492,7 @@ fn query(
         match_type,
         coord,
         shape,
+        shape_scope,
         pt_datasets,
         all_data,
         langs,
@@ -613,6 +642,7 @@ pub fn autocomplete(
     limit: u64,
     coord: Option<Coord>,
     shape: Option<Geometry>,
+    shape_scope: &[PlaceDocType],
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
@@ -647,6 +677,7 @@ pub fn autocomplete(
         limit,
         coord,
         shape.clone(),
+        &shape_scope,
         &types,
         &zone_types,
         &poi_types,
@@ -668,6 +699,7 @@ pub fn autocomplete(
             limit,
             coord,
             shape,
+            &shape_scope,
             &types,
             &zone_types,
             &poi_types,
