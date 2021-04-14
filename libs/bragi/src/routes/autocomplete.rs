@@ -188,11 +188,7 @@ pub fn call_autocomplete(
         params.limit,
         params.coord()?,
         shape,
-        &params
-            .shape_scope
-            .iter()
-            .map(PlaceDocType::as_str)
-            .collect::<Vec<_>>(),
+        &params.shape_scope,
         &params.types_as_str(),
         &params.zone_types_as_str(),
         &params.poi_types_as_str(),

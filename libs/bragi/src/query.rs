@@ -30,7 +30,7 @@
 use super::model::{self, BragiError};
 use crate::query_settings::{BuildWeight, Proximity, QuerySettings, Types};
 use geojson::Geometry;
-use mimir::objects::{Addr, Admin, Coord, MimirObject, Poi, Stop, Street};
+use mimir::objects::{Addr, Admin, Coord, MimirObject, PlaceDocType, Poi, Stop, Street};
 use mimir::rubber::{get_indexes, read_places, Rubber};
 use prometheus::{self, exponential_buckets, histogram_opts, register_histogram_vec, HistogramVec};
 use rs_es::error::EsError;
@@ -177,7 +177,7 @@ fn build_query<'a>(
     match_type: MatchType,
     coord: Option<Coord>,
     shape: Option<Geometry>,
-    shape_scope: &[&str],
+    shape_scope: &Vec<PlaceDocType>,
     pt_datasets: &[&str],
     all_data: bool,
     langs: &'a [&'a str],
@@ -398,12 +398,14 @@ fn build_query<'a>(
     //    term _type = B
     //  ]
     //
+
     if let Some(s) = shape {
         let filter_w_shape_term = Query::build_bool()
             .with_should(
                 shape_scope
                     .iter()
-                    .map(|x| Query::build_term("_type", *x).build())
+                    .map(PlaceDocType::as_str)
+                    .map(|x| Query::build_term("_type", x).build())
                     .collect::<Vec<_>>(),
             )
             .build();
@@ -415,7 +417,8 @@ fn build_query<'a>(
             .build();
         let filter_wo_shape = shape_scope
             .iter()
-            .map(|x| Query::build_term("_type", *x).build())
+            .map(PlaceDocType::as_str)
+            .map(|x| Query::build_term("_type", x).build())
             .collect::<Vec<_>>();
         let filter_wo_shape = Query::build_bool().with_must_not(filter_wo_shape).build();
 
@@ -470,7 +473,7 @@ fn query(
     limit: u64,
     coord: Option<Coord>,
     shape: Option<Geometry>,
-    shape_scope: &[&str],
+    shape_scope: &Vec<PlaceDocType>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
@@ -639,7 +642,7 @@ pub fn autocomplete(
     limit: u64,
     coord: Option<Coord>,
     shape: Option<Geometry>,
-    shape_scope: &[&str],
+    shape_scope: &Vec<PlaceDocType>,
     types: &[&str],
     zone_types: &[&str],
     poi_types: &[&str],
