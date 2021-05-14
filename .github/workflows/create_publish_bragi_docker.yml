@@ -40,4 +40,4 @@ jobs:
         if: success() && env.BRANCH_NAME == 'release'
         run: |
           version=$(make version)
-          echo '{"text":":information_source: Github Actions: create_publish_bragi_docker for branch ${{ env.BRANCH_NAME }} succeded - New image Bragi' $VERSION 'is available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+          echo '{"text":":information_source: Github Actions: create_publish_bragi_docker for branch ${{ env.BRANCH_NAME }} succeded - New image Bragi ' $VERSION 'is available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}

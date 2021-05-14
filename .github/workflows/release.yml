@@ -70,4 +70,4 @@ jobs:
         run: |
           http --ignore-stdin -v -f POST https://${{secrets.JENKINS_TOKEN}}@jenkins-core.canaltp.fr/job/publish_autocomplete_packages/
           version=$(make version)
-          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New packages mimir' $VERSION 'is available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New packages mimir ' $VERSION 'is available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
