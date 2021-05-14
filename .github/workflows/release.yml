@@ -56,6 +56,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: package
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
       - name: install  dependency
         run: |
           sudo apt update
@@ -64,4 +69,5 @@ jobs:
       - name: run publish job & slack notification (the job has successed)
         run: |
           http --ignore-stdin -v -f POST https://${{secrets.JENKINS_TOKEN}}@jenkins-core.canaltp.fr/job/publish_autocomplete_packages/
-          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New packages mimir are available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+          version=$(make version)
+          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New image mimir' $VERSION 'is available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
