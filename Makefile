@@ -51,3 +51,7 @@ lint: ## Check quality of the code
 
 test: ## Launch all tests
 	cargo test --all-targets
+
+.PHONY: version
+version: ## display version of bragi
+	@echo $(BRAGI_VERSION)
