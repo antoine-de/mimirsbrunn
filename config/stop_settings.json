@@ -106,7 +106,7 @@
                 "label": {
                     "type": "string",
                     "index_options": "docs",
-                    "analyzer": "word",
+                    "analyzer": "prefix_elision",
                     "copy_to": "full_label",
                     "fields": {
                         "prefix": {
@@ -135,7 +135,7 @@
                 "full_label": {
                     "type": "string",
                     "index_options": "docs",
-                    "analyzer": "word",
+                    "analyzer": "prefix_elision",
                     "fields": {
                         "prefix": {
                             "type": "string",

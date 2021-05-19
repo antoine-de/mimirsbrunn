@@ -48,7 +48,7 @@ pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     );
     // Test: Import of stops
     let res: Vec<_> = es_wrapper.search_and_filter("*", |_| true).collect();
-    assert_eq!(res.len(), 6);
+    assert_eq!(res.len(), 8);
     assert!(res.iter().all(|r| r.is_stop()));
 
     // Test: search for stop area not in ES base
@@ -69,8 +69,24 @@ pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter_on_global_stop_index("*", |_| true)
         .collect();
-    assert_eq!(res.len(), 6);
+    assert_eq!(res.len(), 8);
     assert!(res.iter().all(|r| r.is_stop()));
+
+    // Test: search for "Austerlitz" which should be available because of elision
+    let res: Vec<_> = es_wrapper
+        .search_and_filter_on_global_stop_index("label:austerlitz", |_| true)
+        .collect();
+    assert!(res.len() == 2); // 2 because another stop has the same prefix 'a'
+    assert_eq!(res[0].label(), "Gare d'Austerlitz");
+    assert!(res[0].admins().is_empty());
+
+    // Test: search for "Austerlitz" which should be available because of elision
+    let res: Vec<_> = es_wrapper
+        .search_and_filter_on_global_stop_index("label:est", |_| true)
+        .collect();
+    assert!(res.len() == 1);
+    assert_eq!(res[0].label(), "Gare de l'Est");
+    assert!(res[0].admins().is_empty());
 
     // we then import another stop fixture
     crate::launch_and_assert(
@@ -88,7 +104,7 @@ pub fn stops2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
     let res: Vec<_> = es_wrapper
         .search_and_filter_on_global_stop_index("*", |_| true)
         .collect();
-    assert_eq!(res.len(), 7);
+    assert_eq!(res.len(), 9);
     for s in res {
         match s {
             mimir::Place::Stop(stop) => {
