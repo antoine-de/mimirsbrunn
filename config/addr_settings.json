@@ -120,7 +120,7 @@
                         "prefix": {
                             "type": "string",
                             "index_options": "docs",
-                            "analyzer": "prefix",
+                            "analyzer": "prefix_elision",
                             "search_analyzer": "word",
                             "norms": {
                                 "enabled": false
