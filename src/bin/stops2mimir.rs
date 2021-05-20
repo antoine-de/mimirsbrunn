@@ -203,11 +203,22 @@ fn test_load_stops() {
             "stop_area:SA:station_no_city",
             "stop_area:SA:weight_1_station",
             "stop_area:SA:weight_3_station",
+            "stop_area:SA:with_elision_1",
+            "stop_area:SA:with_elision_2",
         ]
     );
     let weights: Vec<_> = ids.iter().map(|id| nb_stop_points.get(id)).collect();
     assert_eq!(
         weights,
-        vec![None, Some(&1), Some(&1), None, Some(&1), Some(&3)]
+        vec![
+            None,
+            Some(&1),
+            Some(&1),
+            None,
+            Some(&1),
+            Some(&3),
+            None,
+            None
+        ]
     );
 }
