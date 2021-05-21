@@ -31,7 +31,9 @@ mkdir -p "$rootdir"
 
 # build and install mimirsbrunn to a temporary directory
 # It is assumed this script is in a folder under the root of the project.
-cargo install --path=${MIMIRSBRUNN_DIR} --root=$rootdir
+# We use the locked option to make sure the crates in Cargo.lock are used,
+# not updated ones.
+cargo install --locked --path=${MIMIRSBRUNN_DIR} --root=$rootdir
 
 mkdir -p "$pkgdir/DEBIAN"
 
