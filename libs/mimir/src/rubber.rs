@@ -32,6 +32,7 @@ use super::objects::{Admin, Context, Explanation, MimirObject};
 use super::objects::{AliasOperation, AliasOperations, AliasParameter, Coord, Place};
 use failure::{bail, format_err, Error, ResultExt};
 use prometheus::{exponential_buckets, histogram_opts, register_histogram, Histogram};
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, USER_AGENT};
 use reqwest::StatusCode;
 use rs_es::error::EsError;
 use rs_es::operations::search::ScanResult;
@@ -349,7 +350,12 @@ impl Rubber {
         // Note: a bit duplicate on rs_es because some ES operations are not implemented
         debug!("doing a put on {} with {}", path, body);
         let url = self.es_client.full_url(path);
-        let result = self.http_client.put(url).body(body.to_owned()).send()?;
+        let result = self
+            .http_client
+            .put(url)
+            .headers(construct_headers())
+            .body(body.to_owned())
+            .send()?;
         check_response(result)
     }
     fn post(&self, path: &str, body: &str) -> Result<reqwest::blocking::Response, EsError> {
@@ -419,7 +425,7 @@ impl Rubber {
         debug!("creating template");
         self.put(&format!("_template/{}", name), settings)
             .map_err(|e| {
-                info!("Error while creating template {}", name);
+                info!("Error while creating template {}\n{}", name, settings);
                 format_err!("Error: {} while creating template {}", e.to_string(), name)
             })
             .and_then(|res| {
@@ -833,6 +839,13 @@ impl Rubber {
         scan.close(&mut self.es_client)?;
         Ok(result)
     }
+}
+
+fn construct_headers() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(USER_AGENT, HeaderValue::from_static("reqwest"));
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    headers
 }
 
 #[cfg(test)]
