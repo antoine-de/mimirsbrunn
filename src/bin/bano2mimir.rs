@@ -28,156 +28,23 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use failure::ensure;
+use failure::format_err;
 use lazy_static::lazy_static;
-use mimir::objects::Admin;
-use mimir::rubber::{IndexSettings, Rubber};
-use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_streams};
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::labels;
-use serde::{Deserialize, Serialize};
+use mimir::rubber::Rubber;
+use mimir2::{
+    adapters::secondary::elasticsearch::{
+        self, IndexConfiguration, IndexMappings, IndexParameters, IndexSettings,
+    },
+    domain::ports::remote::Remote,
+};
+use mimirsbrunn::bano::Bano;
 use slog_scope::{info, warn};
-use std::collections::BTreeMap;
-use std::fs;
-use std::io::stdin;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use structopt::StructOpt;
 
-type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
-
 lazy_static! {
     static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Bano {
-    pub id: String,
-    pub nb: String,
-    pub street: String,
-    pub zip: String,
-    pub city: String,
-    pub src: String,
-    pub lat: f64,
-    pub lon: f64,
-}
-
-impl Bano {
-    pub fn insee(&self) -> Result<&str, mimirsbrunn::Error> {
-        ensure!(self.id.len() >= 5, "id must be longer than 5 characters");
-        Ok(self.id[..5].trim_start_matches('0'))
-    }
-    pub fn fantoir(&self) -> Result<&str, mimirsbrunn::Error> {
-        ensure!(self.id.len() >= 10, "id must be longer than 10 characters");
-        Ok(&self.id[..10])
-    }
-    pub fn into_addr(
-        self,
-        admins_from_insee: &AdminFromInsee,
-        admins_geofinder: &AdminGeoFinder,
-        use_old_index_format: bool,
-    ) -> Result<mimir::Addr, mimirsbrunn::Error> {
-        let street_id = format!("street:{}", self.fantoir()?.to_string());
-        let mut admins = admins_geofinder.get(&geo::Coordinate {
-            x: self.lon,
-            y: self.lat,
-        });
-
-        // If we have an admin corresponding to the INSEE, we know
-        // that's the good one, thus we remove all the admins of its
-        // level found by the geofinder, and add our admin.
-        if let Some(admin) = admins_from_insee.get(self.insee()?) {
-            admins.retain(|a| a.level != admin.level);
-            admins.push(admin.clone());
-        }
-
-        let country_codes = vec!["fr".to_owned()];
-
-        // to format the label of the addr/street, we use bano's city
-        // even if we already have found a city in the admin_geo_finder
-        let city = build_admin_from_bano_city(&self.city);
-        let zones_for_label_formatting = admins
-            .iter()
-            .filter(|a| a.is_city())
-            .map(|a| a.deref())
-            .chain(std::iter::once(&city));
-
-        let street_label = labels::format_street_label(
-            &self.street,
-            zones_for_label_formatting.clone(),
-            &country_codes,
-        );
-        let (addr_name, addr_label) = labels::format_addr_name_and_label(
-            &self.nb,
-            &self.street,
-            zones_for_label_formatting,
-            &country_codes,
-        );
-
-        let weight = admins
-            .iter()
-            .find(|a| a.level == 8)
-            .map_or(0., |a| a.weight);
-
-        let zip_codes: Vec<_> = self.zip.split(';').map(str::to_string).collect();
-        let coord = mimir::Coord::new(self.lon, self.lat);
-        let street = mimir::Street {
-            id: street_id,
-            name: self.street,
-            label: street_label,
-            administrative_regions: admins,
-            weight,
-            zip_codes: zip_codes.clone(),
-            coord,
-            approx_coord: None,
-            distance: None,
-            country_codes: country_codes.clone(),
-            context: None,
-        };
-        Ok(mimir::Addr {
-            id: format!(
-                "addr:{};{}{}",
-                self.lon,
-                self.lat,
-                if use_old_index_format {
-                    String::new()
-                } else {
-                    format!(
-                        ":{}",
-                        self.nb
-                            .replace(" ", "")
-                            .replace("\t", "")
-                            .replace("\r", "")
-                            .replace("\n", "")
-                            .replace("/", "-")
-                            .replace(".", "-")
-                            .replace(":", "-")
-                            .replace(";", "-")
-                    )
-                }
-            ),
-            name: addr_name,
-            label: addr_label,
-            house_number: self.nb,
-            street,
-            coord,
-            approx_coord: Some(coord.into()),
-            weight,
-            zip_codes,
-            distance: None,
-            country_codes,
-            context: None,
-        })
-    }
-}
-
-fn build_admin_from_bano_city(city: &str) -> Admin {
-    mimir::Admin {
-        name: city.to_string(),
-        zone_type: Some(cosmogony::ZoneType::City),
-        ..Default::default()
-    }
 }
 
 #[derive(StructOpt, Debug)]
@@ -219,23 +86,49 @@ struct Args {
     use_old_index_format: bool,
 }
 
-fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
+async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     info!("importing bano into Mimir");
 
+    let dataset = args.dataset;
+
+    let pool = elasticsearch::connection_pool(&args.connection_string)
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not create elasticsearch connection pool: {}",
+                err.to_string()
+            )
+        })?;
+
+    let client = pool
+        .conn()
+        .await
+        .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
+
+    let config = IndexConfiguration {
+        name: dataset.clone(),
+        parameters: IndexParameters {
+            timeout: String::from("10s"),
+            wait_for_active_shards: String::from("1"), // only the primary shard
+        },
+        settings: IndexSettings {
+            value: String::from(include_str!("../../config/addr/settings.json")),
+        },
+        mappings: IndexMappings {
+            value: String::from(include_str!("../../config/addr/mappings.json")),
+        },
+    };
+
+    // FIXME Need to deal with nb replicas and shards
     let mut rubber =
         Rubber::new(&args.connection_string).with_nb_insert_threads(args.nb_insert_threads);
-
-    let index_settings = IndexSettings {
-        nb_shards: args.nb_shards,
-        nb_replicas: args.nb_replicas,
-    };
 
     // Fetch and index admins for `into_addr`
     let into_addr = {
         let admins = rubber.get_all_admins().unwrap_or_else(|err| {
             warn!(
                 "Administratives regions not found in es db for dataset {}. (error: {})",
-                &args.dataset, err
+                dataset, err
             );
             vec![]
         });
@@ -256,42 +149,14 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     };
 
     if let Some(input_path) = args.input {
-        // Import from file(s)
-        if input_path.is_dir() {
-            let paths: std::fs::ReadDir = fs::read_dir(&input_path)?;
-            import_addresses_from_files(
-                &mut rubber,
-                false,
-                args.nb_threads,
-                index_settings,
-                &args.dataset,
-                paths.map(|p| p.unwrap().path()),
-                into_addr,
-            )
-        } else {
-            import_addresses_from_files(
-                &mut rubber,
-                false,
-                args.nb_threads,
-                index_settings,
-                &args.dataset,
-                std::iter::once(input_path),
-                into_addr,
-            )
-        }
+        mimirsbrunn::addr_reader::import_addresses_from_file(client, config, input_path, into_addr)
+            .await
     } else {
-        // Import from stdin
-        import_addresses_from_streams(
-            &mut rubber,
-            false,
-            args.nb_threads,
-            index_settings,
-            &args.dataset,
-            std::iter::once(stdin()),
-            into_addr,
-        )
+        Ok(())
     }
 }
-fn main() {
-    mimirsbrunn::utils::launch_run(run);
+
+#[tokio::main]
+async fn main() {
+    mimirsbrunn::utils::launch_async(Box::new(run)).await;
 }

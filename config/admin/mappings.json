@@ -1,0 +1,59 @@
+{
+  "properties": {
+    "id": {
+      "type": "text",
+      "index": false
+    },
+    "level": {
+      "type": "long",
+      "index": false
+    },
+    "zip_codes": {
+      "type": "text",
+      "index_options": "docs",
+      "analyzer": "word",
+      "copy_to": "full_label",
+      "fields": {
+        "prefix": {
+          "type": "text",
+          "index_options": "docs",
+          "analyzer": "prefix",
+          "search_analyzer": "word"
+        }
+      }
+    },
+    "coord": {
+      "type": "geo_point"
+    },
+    "approx_coord": {
+      "type": "geo_shape",
+      "precision": "5m"
+    },
+    "full_label": {
+      "type": "text",
+      "index": false,
+      "fields": {
+        "prefix": {
+          "type": "text",
+          "index_options": "docs",
+          "analyzer": "prefix_elision",
+          "search_analyzer": "word_elision",
+          "norms": false
+        },
+        "ngram": {
+          "type": "text",
+          "index_options": "docs",
+          "analyzer": "ngram_with_synonyms",
+          "search_analyzer": "ngram",
+          "norms": false
+        }
+      },
+      "norms": false
+    },
+    "weight": { "type": "double" },
+    "zone_type": {
+      "type": "text",
+      "index": false
+    }
+  }
+}

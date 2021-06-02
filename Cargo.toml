@@ -27,7 +27,9 @@ slog-async = "2.5"
 slog-term = "2.8"
 slog-stdlog = "4.1"
 structopt = "0.3"
+futures = "0.3"
 csv = "1.1"
+csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
 rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
 regex = "1"
 osmpbfreader = "0.14"
@@ -56,9 +58,15 @@ walkdir = "2.3"
 rusqlite = { version = "0.23", optional = true }
 flate2 = "1.0"
 toml = "0.5"
+tokio = { version = "1.6.0", features = [ "sync", "rt-multi-thread", "macros", "process" ] }
 
 mimir = { path = "libs/mimir" }
 bragi = { path = "libs/bragi" }
+mimir2 = { path = "libs/mimir2" }
+
+[lib]
+name = "mimirsbrunn"
+path = "src/lib.rs"
 
 [dev-dependencies]
 reqwest = { version = "0.10", features = [ "blocking", "json" ] }

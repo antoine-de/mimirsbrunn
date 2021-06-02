@@ -30,6 +30,7 @@
 
 pub mod addr_reader;
 pub mod admin_geofinder;
+pub mod bano;
 pub mod labels;
 pub mod osm_reader;
 pub mod settings;

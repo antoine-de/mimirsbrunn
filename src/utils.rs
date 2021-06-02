@@ -29,6 +29,7 @@
 // www.navitia.io
 
 use crate::Error;
+use futures::future::Future;
 use slog_scope::error;
 use std::process::exit;
 use std::sync::Arc;
@@ -68,6 +69,36 @@ pub fn normalize_weight(weight: f64, max_weight: f64) -> f64 {
         1.
     } else {
         w
+    }
+}
+
+pub async fn wrapped_launch_async<O, F, Fut>(run: F) -> Result<(), Error>
+where
+    O: StructOpt,
+    F: FnOnce(O) -> Fut,
+    Fut: Future<Output = Result<(), Error>>,
+{
+    let _guard = mimir::logger_init();
+    if let Err(err) = run(O::from_args()).await {
+        for cause in err.iter_chain() {
+            error!("{}", cause);
+        }
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
+
+pub async fn launch_async<O, F, Fut>(run: F)
+where
+    O: StructOpt,
+    F: FnOnce(O) -> Fut,
+    Fut: Future<Output = Result<(), Error>>,
+{
+    if wrapped_launch_async(run).await.is_err() {
+        // we wrap the real stuff in another method to std::exit after
+        // the destruction of the logger (so we won't loose any messages)
+        exit(1);
     }
 }
 

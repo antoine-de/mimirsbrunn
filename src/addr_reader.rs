@@ -1,100 +1,130 @@
+use crate::bano::Bano;
 use crate::Error;
-use failure::ResultExt;
-use flate2::read::GzDecoder;
-use mimir::rubber::{IndexSettings, IndexVisibility, Rubber};
+use failure::format_err;
+use futures::future;
+use futures::stream::{Stream, StreamExt};
 use mimir::Addr;
-use par_map::ParMap;
-use serde::de::DeserializeOwned;
-use slog_scope::{error, info, warn};
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
+use mimir2::{
+    adapters::secondary::elasticsearch::{ElasticsearchStorage, IndexConfiguration},
+    domain::{
+        model::{configuration::Configuration, document::Document, index::IndexVisibility},
+        usecases::{
+            generate_index::{GenerateIndex, GenerateIndexParameters},
+            UseCase,
+        },
+    },
+};
+use serde::Serialize;
+use slog_scope::warn;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
+use tokio::fs::File;
 
-fn import_addresses<T, F>(
-    rubber: &mut Rubber,
-    nb_threads: usize,
-    index_settings: IndexSettings,
-    dataset: &str,
-    addresses: impl IntoIterator<Item = T>,
+// We use a new type to wrap around Addr and implement the Document trait.
+#[derive(Serialize)]
+struct AddrDoc(Addr);
+
+impl Document for AddrDoc {
+    const IS_GEO_DATA: bool = true;
+    const DOC_TYPE: &'static str = "addr";
+    fn id(&self) -> String {
+        self.0.id.clone()
+    }
+}
+
+async fn import_addresses<S, F>(
+    client: ElasticsearchStorage,
+    config: IndexConfiguration,
+    records: S,
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
-    T: DeserializeOwned + Send + 'static,
+    F: Fn(Bano) -> Result<Addr, Error> + Send + Sync + 'static,
+    S: Stream<Item = Bano> + Send + Sync + Unpin + 'static,
 {
-    let addr_index = rubber
-        .make_index(dataset, &index_settings)
-        .with_context(|err| format!("Error occurred when making index {}: {}", dataset, err))?;
+    // let addr_index = rubber
+    //     .make_index(dataset, &index_settings)
+    //     .with_context(|err| format!("Error occurred when making index {}: {}", dataset, err))?;
 
-    info!("Add data in elasticsearch db.");
+    // info!("Add data in elasticsearch db.");
 
-    let mut country_stats = HashMap::new();
+    // let mut country_stats: Arc<Mutex<HashMap<String, i32>>> = Arc::new(Mutex::new(HashMap::new()));
 
-    let iter = addresses
-        .into_iter()
-        .with_nb_threads(nb_threads)
-        .par_map(into_addr)
-        .filter_map(|ra| match ra {
-            Ok(a) => {
-                if a.street.name.is_empty() {
-                    warn!("Address {} has no street name and has been ignored.", a.id);
-                    None
-                } else {
-                    Some(a)
-                }
-            }
-            Err(err) => {
-                warn!("Address Error ignored: {}", err);
-                None
-            }
-        })
-        .inspect(|addr| {
-            let country_code = addr
-                .country_codes
-                .first()
-                .map(|string| string.as_str())
-                .unwrap_or("other");
-
-            if let Some(count) = country_stats.get_mut(country_code) {
-                *count += 1;
+    let addrs = records.map(into_addr).filter_map(|ra| match ra {
+        Ok(a) => {
+            if a.street.name.is_empty() {
+                warn!("Address {} has no street name and has been ignored.", a.id);
+                future::ready(None)
             } else {
-                country_stats.insert(country_code.to_string(), 1);
+                future::ready(Some(AddrDoc(a)))
             }
-        });
+        }
+        Err(err) => {
+            warn!("Address Error ignored: {}", err);
+            future::ready(None)
+        }
+    });
+    // .inspect(|addr| {
+    //     let country_code = addr
+    //         .0
+    //         .country_codes
+    //         .first()
+    //         .map(|string| string.as_str())
+    //         .unwrap_or("other");
 
-    let nb = rubber
-        .bulk_index(&addr_index, iter)
-        .with_context(|err| format!("failed to bulk insert: {}", err))?;
-    info!("importing addresses: {} addresses added.", nb);
-    rubber
-        .publish_index(dataset, addr_index, IndexVisibility::Public)
-        .context("Error while publishing the index")?;
+    //     let mut z = country_stats.lock().unwrap();
+    //     if let Some(count) = z.get_mut(country_code) {
+    //         *count += 1;
+    //     } else {
+    //         country_stats
+    //             .lock()
+    //             .unwrap()
+    //             .insert(country_code.to_string(), 1);
+    //     }
+    // });
 
-    info!("Addresses imported per country:");
-    let mut country_stats: Vec<_> = country_stats.into_iter().collect();
-    country_stats.sort_unstable_by_key(|(_, count)| *count);
+    let config = serde_json::to_string(&config).map_err(|err| {
+        format_err!(
+            "could not serialize index configuration: {}",
+            err.to_string()
+        )
+    })?;
+    let generate_index = GenerateIndex::new(Box::new(client));
+    let parameters = GenerateIndexParameters {
+        config: Configuration { value: config },
+        documents: Box::new(addrs),
+        visibility: IndexVisibility::Public,
+    };
+    generate_index
+        .execute(parameters)
+        .await
+        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
 
-    for (country, count) in country_stats.into_iter().rev() {
-        info!("{:>10} {}", country, count);
-    }
+    // info!("Addresses imported per country:");
+    // let z = country_stats.lock().unwrap();
+    // let mut country_stats: Vec<_> = z.iter().collect();
+    // country_stats.sort_unstable_by_key(|(_, count)| *count);
+
+    // for (country, count) in country_stats.into_iter().rev() {
+    //     info!("{:>10} {}", country, count);
+    // }
 
     Ok(())
 }
 
-pub fn import_addresses_from_streams<T, F>(
+/* pub async fn import_addresses_from_stream<S, T, F>(
+    client: ElasticsearchStorage,
+    config: IndexConfiguration,
     rubber: &mut Rubber,
     has_headers: bool,
     nb_threads: usize,
-    index_settings: IndexSettings,
-    dataset: &str,
     streams: impl IntoIterator<Item = impl Read>,
     into_addr: F,
 ) -> Result<(), Error>
 where
     F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + 'static,
+    S: Stream<Item = > + Send + Sync + 'static,
 {
     let iter = streams
         .into_iter()
@@ -109,15 +139,15 @@ where
                 .ok()
         });
 
-    import_addresses(rubber, nb_threads, index_settings, dataset, iter, into_addr)
+    import_addresses(client, config, rubber, nb_threads, iter, into_addr).await
 }
 
-pub fn import_addresses_from_files<T, F>(
+pub async fn import_addresses_from_files<T, F>(
+    client: ElasticsearchStorage,
+    config: IndexConfiguration,
     rubber: &mut Rubber,
     has_headers: bool,
     nb_threads: usize,
-    index_settings: IndexSettings,
-    dataset: &str,
     files: impl IntoIterator<Item = PathBuf>,
     into_addr: F,
 ) -> Result<(), Error>
@@ -125,7 +155,7 @@ where
     F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + 'static,
 {
-    let streams = files.into_iter().filter_map(|path| {
+    let stream = futures::stream::iter(files.into_iter()).filter_map(|path| {
         info!("importing {:?}...", &path);
 
         let with_gzip = path
@@ -148,12 +178,30 @@ where
     });
 
     import_addresses_from_streams(
+        client,
+        config,
         rubber,
         has_headers,
         nb_threads,
-        index_settings,
-        dataset,
-        streams,
+        stream,
         into_addr,
     )
+    .await
+} */
+
+pub async fn import_addresses_from_file<F>(
+    client: ElasticsearchStorage,
+    config: IndexConfiguration,
+    file: PathBuf,
+    into_addr: F,
+) -> Result<(), Error>
+where
+    F: Fn(Bano) -> Result<Addr, Error> + Send + Sync + 'static,
+{
+    let reader = csv_async::AsyncReaderBuilder::new().create_deserializer(File::open(file).await?);
+    let records = reader
+        .into_deserialize::<Bano>()
+        .filter_map(|rec| future::ready(rec.ok()));
+
+    import_addresses(client, config, records, into_addr).await
 }

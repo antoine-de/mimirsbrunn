@@ -1,0 +1,72 @@
+{
+  "properties": {
+    "id": {
+      "type": "text",
+      "index": false
+    },
+    "house_number": {
+      "type": "text",
+      "analyzer": "word"
+    },
+    "zip_codes": {
+      "type": "text",
+      "index_options": "docs",
+      "analyzer": "word",
+      "copy_to": "full_label",
+      "fields": {
+        "prefix": {
+          "type": "text",
+          "index_options": "docs",
+          "analyzer": "prefix",
+          "search_analyzer": "word"
+        }
+      }
+    },
+    "coord": {
+      "type": "geo_point"
+    },
+    "approx_coord": {
+      "type": "geo_shape",
+      "precision": "5m"
+    },
+    "name": {
+      "type": "text",
+      "index_options": "docs",
+      "analyzer": "word",
+      "fields": {
+        "prefix": {
+          "type": "text",
+          "index_options": "docs",
+          "analyzer": "prefix",
+          "search_analyzer": "word"
+        }
+      }
+    },
+    "label": {
+      "type": "text",
+      "index_options": "docs",
+      "analyzer": "word",
+      "copy_to": "full_label",
+      "fields": {
+        "prefix": {
+          "type": "text",
+          "index_options": "docs",
+          "analyzer": "prefix",
+          "search_analyzer": "word",
+          "norms": false
+        },
+        "ngram": {
+          "type": "text",
+          "index_options": "docs",
+          "analyzer": "ngram_with_synonyms",
+          "search_analyzer": "ngram",
+          "norms": false
+        }
+      },
+      "norms": false
+    },
+    "weight": {
+      "type": "double"
+    }
+  }
+}
