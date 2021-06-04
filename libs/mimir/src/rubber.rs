@@ -423,7 +423,7 @@ impl Rubber {
 
     pub fn create_template(&self, name: &str, settings: &str) -> Result<(), Error> {
         debug!("creating template");
-        self.put(&format!("_template/{}", name), settings)
+        self.put(&format!("_index_template/{}", name), settings)
             .map_err(|e| {
                 info!("Error while creating template {}\n{}", name, settings);
                 format_err!("Error: {} while creating template {}", e.to_string(), name)

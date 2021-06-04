@@ -29,12 +29,27 @@
 // www.navitia.io
 
 use cosmogony::{Zone, ZoneIndex};
-use failure::Error;
+use failure::{format_err, Error};
+use futures::stream::{Stream, StreamExt};
 use mimir::objects::Admin;
-use mimir::rubber::{IndexSettings, Rubber};
+use mimir2::{
+    adapters::secondary::elasticsearch::{
+        self, ElasticsearchStorage, IndexConfiguration, IndexMappings, IndexParameters,
+        IndexSettings,
+    },
+    domain::{
+        model::{configuration::Configuration, document::Document, index::IndexVisibility},
+        ports::remote::Remote,
+        usecases::{
+            generate_index::{GenerateIndex, GenerateIndexParameters},
+            UseCase,
+        },
+    },
+};
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
+use serde::Serialize;
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -50,6 +65,47 @@ trait IntoAdmin {
         max_weight: f64,
         all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin;
+}
+
+// We use a new type to wrap around Addr and implement the Document trait.
+#[derive(Serialize)]
+struct AdminDoc(Admin);
+
+impl Document for AdminDoc {
+    const IS_GEO_DATA: bool = true;
+    const DOC_TYPE: &'static str = "admin";
+    fn id(&self) -> String {
+        self.0.id.clone()
+    }
+}
+
+async fn import_admins<S>(
+    client: ElasticsearchStorage,
+    config: IndexConfiguration,
+    admins: S,
+) -> Result<(), Error>
+where
+    S: Stream<Item = Admin> + Send + Sync + Unpin + 'static,
+{
+    let config = serde_json::to_string(&config).map_err(|err| {
+        format_err!(
+            "could not serialize index configuration: {}",
+            err.to_string()
+        )
+    })?;
+    let admins = admins.map(|admin| AdminDoc(admin));
+    let generate_index = GenerateIndex::new(Box::new(client));
+    let parameters = GenerateIndexParameters {
+        config: Configuration { value: config },
+        documents: Box::new(admins),
+        visibility: IndexVisibility::Public,
+    };
+    generate_index
+        .execute(parameters)
+        .await
+        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
+
+    Ok(())
 }
 
 fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f64 {
@@ -147,44 +203,70 @@ impl IntoAdmin for Zone {
     }
 }
 
-fn send_to_es(
-    admins: impl Iterator<Item = Admin>,
-    cnx_string: &str,
-    dataset: &str,
-    index_settings: IndexSettings,
-) -> Result<(), Error> {
-    let mut rubber = Rubber::new(cnx_string);
-    rubber.initialize_templates()?;
-    let nb_admins = rubber.public_index(dataset, &index_settings, admins)?;
-    info!("{} admins added.", nb_admins);
-    Ok(())
+// Its difficult to get a stream from cosmogony. Also, since we use that function a few times,
+// might as well save the result once and for all.
+fn read_zones(input: &str) -> Result<Vec<Zone>, Error> {
+    let zones = cosmogony::read_zones_from_file(input)?;
+    let zones = zones
+        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok())
+        .collect::<Vec<_>>();
+    Ok(zones)
 }
 
-fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
-    Ok(cosmogony::read_zones_from_file(input)?
-        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok()))
-}
+async fn index_cosmogony(args: Args) -> Result<(), Error> {
+    let dataset = args.dataset.clone();
 
-fn index_cosmogony(args: Args) -> Result<(), Error> {
+    let pool = elasticsearch::connection_pool(&args.connection_string)
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not create elasticsearch connection pool: {}",
+                err.to_string()
+            )
+        })?;
+
+    let client = pool
+        .conn()
+        .await
+        .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
+
+    let config = IndexConfiguration {
+        name: dataset.clone(),
+        parameters: IndexParameters {
+            timeout: String::from("10s"),
+            wait_for_active_shards: String::from("1"), // only the primary shard
+        },
+        settings: IndexSettings {
+            value: String::from(include_str!("../../config/admin/settings.json")),
+        },
+        mappings: IndexMappings {
+            value: String::from(include_str!("../../config/admin/mappings.json")),
+        },
+    };
+
+    let zones = read_zones(&args.input)?;
+
     info!("building maps");
     use cosmogony::ZoneType::City;
 
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     let max_weight = utils::ADMIN_MAX_WEIGHT;
-    for z in read_zones(&args.input)? {
+    zones.iter().for_each(|z| {
         let insee = match z.zone_type {
             Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
             _ => None,
         };
         cosmogony_id_to_osm_id.insert(z.id, (z.osm_id.clone(), insee));
-    }
+    });
     let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
 
     info!("building admins hierarchy");
-    let admins_without_boundaries = read_zones(&args.input)?
-        .map(|mut z| {
-            z.boundary = None;
-            let admin = z.into_admin(
+    let admins_without_boundaries = zones
+        .iter()
+        .map(|zone| {
+            let mut zone = zone.clone();
+            zone.boundary = None;
+            let admin = zone.into_admin(
                 &cosmogony_id_to_osm_id,
                 &args.langs,
                 args.french_id_retrocompatibility,
@@ -197,28 +279,20 @@ fn index_cosmogony(args: Args) -> Result<(), Error> {
 
     info!("importing cosmogony into Mimir");
 
-    let admins = read_zones(&args.input)?.map(|z| {
-        z.into_admin(
-            &cosmogony_id_to_osm_id,
-            &args.langs,
-            args.french_id_retrocompatibility,
-            max_weight,
-            Some(&admins_without_boundaries),
-        )
-    });
+    let admins = zones
+        .into_iter()
+        .map(|zone| {
+            zone.into_admin(
+                &cosmogony_id_to_osm_id,
+                &args.langs,
+                args.french_id_retrocompatibility,
+                max_weight,
+                Some(&admins_without_boundaries),
+            )
+        })
+        .collect::<Vec<_>>();
 
-    let index_settings = IndexSettings {
-        nb_shards: args.nb_shards,
-        nb_replicas: args.nb_replicas,
-    };
-    send_to_es(
-        admins,
-        &args.connection_string,
-        &args.dataset,
-        index_settings,
-    )?;
-
-    Ok(())
+    import_admins(client, config, futures::stream::iter(admins)).await
 }
 
 #[derive(StructOpt, Debug)]
@@ -252,6 +326,7 @@ struct Args {
     french_id_retrocompatibility: bool,
 }
 
-fn main() {
-    mimirsbrunn::utils::launch_run(index_cosmogony);
+#[tokio::main]
+async fn main() {
+    mimirsbrunn::utils::launch_async(index_cosmogony).await;
 }
