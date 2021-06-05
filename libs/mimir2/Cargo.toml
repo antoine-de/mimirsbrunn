@@ -1,0 +1,34 @@
+[package]
+name = "mimir2"
+version = "0.1.0"
+authors = ["crocme10 <matt@area403.org>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.50"
+chrono = { version = "0.4", features = [ "serde" ] }
+elasticsearch = "7.12.0-alpha.1"
+erased-serde = "0.3.13"
+futures = "0.3"
+lazy_static = "1.4"
+regex = "1.5.4"
+serde = { version = "1.0", features = [ "derive", "rc" ] }
+serde_json = "1.0"
+snafu = { version = "0.6.10", features = [ "futures" ] }
+tokio = { version = "1.6.0", features = [ "sync", "rt-multi-thread", "macros", "process" ] }
+url = "2.2"
+
+[dev-dependencies]
+mockall = "0.9.1"
+# bollard = { path = "../../ext/bollard" }
+
+[lib]
+name = "mimir2"
+path = "src/lib.rs"
+
+[[bin]]
+name = "service"
+path = "src/main.rs"
+
