@@ -5,10 +5,11 @@ use elasticsearch::indices::{
     IndicesPutAliasParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
-use elasticsearch::{BulkOperation, BulkParts, Elasticsearch};
-use futures::stream::{Stream, StreamExt};
+use elasticsearch::{BulkOperation, BulkParts, Elasticsearch, OpenPointInTimeParts, SearchParts};
+use futures::stream::{self, Stream, StreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
@@ -804,14 +805,202 @@ impl ElasticsearchStorage {
         }
     }
 
-    // This implementation uses the scroll API, which is not recommended anymore for deep
-    // pagination.
-    pub(super) async fn retrieve_all_documents<S, D>(&self, _index: String) -> Result<S, Error>
+    // Uses search after
+    // pub(super) fn retrieve_all_documents<D>(
+    pub fn retrieve_all_documents<D>(
+        &self,
+        index: String,
+    ) -> Result<impl Stream<Item = D> + 'static, Error>
     where
-        D: Serialize + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+        D: DeserializeOwned + 'static,
     {
-        unimplemented!();
+        let client = self.0.clone();
+        let stream = stream::unfold(State::Start, move |state| {
+            let client = client.clone();
+            let index = index.clone();
+            async move {
+                match state {
+                    State::Start => {
+                        // We're starting, so we get a pit, and make a first requestj
+                        let response = client
+                            .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
+                            .keep_alive("1m")
+                            .send()
+                            .await
+                            .unwrap();
+                        let response_body = response.json::<Value>().await.unwrap();
+                        let pit = response_body
+                            .get("id")
+                            .expect("response has id")
+                            .as_str()
+                            .unwrap();
+
+                        let body_str = format!(
+                            r#"{{
+                        "query": {{"match_all": {{ }} }},
+                        "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
+                        "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ]
+                    }}"#,
+                            pit = pit
+                        );
+                        let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
+
+                        let response = client
+                            .search(SearchParts::None)
+                            .body(body)
+                            .send()
+                            .await
+                            .context(ElasticsearchError {
+                                details: format!("cannot refresh index {}", index),
+                            })
+                            .unwrap();
+
+                        let response_body = response.json::<Value>().await.unwrap();
+
+                        let pit = response_body
+                            .get("pit_id")
+                            .expect("response has pit_id")
+                            .as_str()
+                            .unwrap();
+
+                        let hits = response_body
+                            .get("hits")
+                            .expect("response has hits")
+                            .as_object()
+                            .unwrap()["hits"]
+                            .as_array()
+                            .unwrap();
+
+                        if hits.is_empty() {
+                            Some((stream::iter(vec![]), State::End(String::from(pit))))
+                        } else {
+                            let last_hit = hits.last().unwrap();
+
+                            let sort = last_hit
+                                .as_object()
+                                .unwrap()
+                                .get("sort")
+                                .expect("hit has sort")
+                                .as_array()
+                                .unwrap();
+
+                            let timestamp = sort[0].as_u64().unwrap();
+                            let tiebreaker = sort[1].as_u64().unwrap();
+
+                            let continuation_token = ContinuationToken {
+                                pit: String::from(pit),
+                                timestamp,
+                                tiebreaker,
+                            };
+
+                            Some((
+                                stream::iter(
+                                    hits.to_owned()
+                                        .into_iter()
+                                        .map(|i| {
+                                            let source = i
+                                                .as_object()
+                                                .unwrap()
+                                                .get("_source")
+                                                .expect("object has source")
+                                                .to_owned();
+                                            serde_json::from_value::<D>(source).unwrap()
+                                        })
+                                        .collect::<Vec<_>>(),
+                                ),
+                                State::Next(continuation_token),
+                            ))
+                        }
+                    }
+                    State::Next(continuation_token) => {
+                        let body_str = format!(
+                            r#"{{
+                        "query": {{"match_all": {{ }} }},
+                        "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
+                        "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ],
+                        "search_after": [
+                          {timestamp},
+                          {tiebreaker}
+                        ]
+                    }}"#,
+                            pit = continuation_token.pit,
+                            timestamp = continuation_token.timestamp,
+                            tiebreaker = continuation_token.tiebreaker
+                        );
+                        let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
+
+                        let response = client
+                            .search(SearchParts::None)
+                            .body(body)
+                            .send()
+                            .await
+                            .context(ElasticsearchError {
+                                details: format!("cannot refresh index {}", index),
+                            })
+                            .unwrap();
+
+                        let response_body = response.json::<Value>().await.unwrap();
+                        let pit = response_body["pit_id"].as_str().unwrap();
+
+                        let hits = response_body["hits"].as_object().unwrap()["hits"]
+                            .as_array()
+                            .unwrap();
+
+                        if hits.is_empty() {
+                            Some((stream::iter(vec![]), State::End(String::from(pit))))
+                        } else {
+                            let last_hit = hits.last().unwrap();
+
+                            let sort = last_hit.as_object().unwrap()["sort"].as_array().unwrap();
+
+                            let timestamp = sort[0].as_u64().unwrap();
+                            let tiebreaker = sort[1].as_u64().unwrap();
+
+                            let continuation_token = ContinuationToken {
+                                pit: String::from(pit),
+                                timestamp,
+                                tiebreaker,
+                            };
+                            Some((
+                                stream::iter(
+                                    hits.to_owned()
+                                        .into_iter()
+                                        .map(|i| {
+                                            let source = i
+                                                .as_object()
+                                                .unwrap()
+                                                .get("_source")
+                                                .expect("object has source")
+                                                .to_owned();
+                                            serde_json::from_value::<D>(source).unwrap()
+                                        })
+                                        .collect::<Vec<_>>(),
+                                ),
+                                State::Next(continuation_token),
+                            ))
+                        }
+                    }
+                    State::End(pit) => {
+                        let body_str = format!(r#"{{ "id": "{pit}" }}"#, pit = pit,);
+                        let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
+
+                        let response = client
+                            .close_point_in_time()
+                            .body(body)
+                            .send()
+                            .await
+                            .unwrap();
+
+                        let response_body = response.json::<Value>().await.unwrap();
+
+                        None
+                    }
+                }
+            }
+        })
+        .flatten();
+
+        Ok(stream)
     }
 }
 
@@ -876,180 +1065,14 @@ impl From<String> for IndexStatus {
     }
 }
 
-/*
-#[derive(Deserialize)]
-struct ItemResponse {
-    items: Vec<Items>,
-    scroll_id: Option<String>,
+struct ContinuationToken {
+    pit: String,
+    timestamp: u64,
+    tiebreaker: u64,
 }
 
 enum State {
-    Start(Option<String>),
-    Next(String),
-    End,
+    Start,
+    Next(ContinuationToken),
+    End(String),
 }
-
-
-pub(super) async fn retrieve_all_documents<S, D>(&self, index: String, after: Option<String>) -> Result<S, Error>
-    where
-        D: Serialize + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
-{
-    // (definition of State enum can go here)
-
-    let s = stream::unfold(
-        State::Start(after), move |state| {
-            let scroll_id = match state {
-                State::Start(opt_ct) => opt_ct,
-                State::Next(ct) => Some(ct),
-                State::End => return None,
-            };
-            let scroll = match scroll_id {
-                Some(ct) => self
-                    .0
-                    .scroll(ScrollParts::None)
-                    .body(serde_json::json!({
-                        "scroll": scroll,
-                        "scroll_id": scroll_id
-                    })),
-                None => self
-                .0
-                .search(SearchParts::Index(&[index]))
-                .scroll(scroll)
-                .body(serde_json::json!({
-                    "query": {
-                        "match_all": { }
-                    }
-                }))
-            };
-
-            let response = scroll.send().await?
-                .context(ElasticsearchError {
-                    details: format!("cannot refresh index {}", index),
-                })?;
-
-            let response_body = response.json::<Value>().await?;
-            let scroll_id = response_body["_scroll_id"].as_str().unwrap();
-            let hits = response_body["hits"]["hits"].as_array().unwrap();
-
-        let req = Request::new(Method::Get, url.parse().unwrap());
-        Some(client.request(req).from_err().and_then(move |resp| {
-            let status = resp.status();
-            resp.body().concat2().from_err().and_then(move |body| {
-                if status.is_success() {
-                    serde_json::from_slice::<ItemsResponse>(&body)
-                        .map_err(Box::<Error>::from)
-                } else {
-                    Err(format!("HTTP status: {}", status).into())
-                }
-            })
-            .map(move |items_resp| {
-                let next_state = match items_resp.continuation_token {
-                    Some(ct) => State::Next(ct),
-                    None => State::End,
-                };
-                (stream::iter_ok(items_resp.items), next_state)
-            })
-        }))
-    })
-    .flatten())
-}
-let scroll = "1m"; // How long Elasticsearch should retain the search context for the request.
-        let mut response = self
-            .0
-            .search(SearchParts::Index(&[index]))
-            .scroll(scroll)
-            .body(serde_json::json!({
-                "query": {
-                    "match_all": { }
-                }
-            }))
-            .send()
-            .await
-            .context(ElasticsearchError {
-                details: format!("cannot refresh index {}", index),
-            })?;
-
-        if !response.status_code().is_success() {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    return Err(err);
-                }
-                None => return Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                });
-            }
-        }
-
-        let json = response
-            .json::<Value>()
-            .await
-            .context(JsonDeserializationError)?;
-
-        let scroll_id = json
-            .as_object()
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected JSON object"),
-            })?
-            .get("_scroll_id")
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected '_scroll_id'"),
-            })?
-            .as_str()
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected JSON string"),
-            })?;
-
-        let hits = json
-            .as_object()
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected JSON object"),
-            })?
-            .get("hits")
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected 'hits'"),
-            })?
-            .as_object()
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected JSON object"),
-            })?
-            .get("hits")
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected 'hits'"),
-            })?
-            .as_array()
-            .ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected JSON array"),
-            })?;
-
-        while hits.len() > 0 {
-            response = self
-                .0
-                .scroll(ScrollParts::None)
-                .body(serde_json::json!({
-                    "scroll": scroll,
-                    "scroll_id": scroll_id
-                }))
-                .send()
-                .await?
-                .context(ElasticsearchError {
-                    details: format!("cannot refresh index {}", index),
-                })?;
-
-            response_body = response.json::<Value>().await?;
-            scroll_id = response_body["_scroll_id"].as_str().unwrap();
-            hits = response_body["hits"]["hits"].as_array().unwrap();
-            print_hits(hits);
-        }
-
-        response = client
-            .clear_scroll(ClearScrollParts::None)
-            .body(json!({ "scroll_id": scroll_id }))
-            .send()
-            .await?;
-    }
-
-*/
