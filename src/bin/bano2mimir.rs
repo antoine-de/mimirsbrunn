@@ -33,7 +33,8 @@ use lazy_static::lazy_static;
 use mimir::rubber::Rubber;
 use mimir2::{
     adapters::secondary::elasticsearch::{
-        self, IndexConfiguration, IndexMappings, IndexParameters, IndexSettings,
+        self,
+        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
     domain::ports::remote::Remote,
 };
@@ -91,7 +92,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     let dataset = args.dataset;
 
-    let pool = elasticsearch::connection_pool(&args.connection_string)
+    let pool = elasticsearch::remote::connection_pool(&args.connection_string)
         .await
         .map_err(|err| {
             format_err!(

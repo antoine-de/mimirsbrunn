@@ -4,7 +4,8 @@ use elasticsearch::indices::{
     IndicesCreateParts, IndicesDeleteAliasParts, IndicesDeleteParts, IndicesGetAliasParts,
     IndicesPutAliasParts, IndicesRefreshParts,
 };
-use elasticsearch::{BulkOperation, BulkParts, Elasticsearch, IndexParts};
+use elasticsearch::ingest::IngestPutPipelineParts;
+use elasticsearch::{BulkOperation, BulkParts, Elasticsearch};
 use futures::stream::{Stream, StreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -364,6 +365,7 @@ impl ElasticsearchStorage {
         }
     }
 
+    /* Commented out because it is not used
     pub(super) async fn insert_document<D>(
         &self,
         index: String,
@@ -436,7 +438,9 @@ impl ElasticsearchStorage {
             }
         }
     }
+    */
 
+    // Changed the name to avoid recursive calls int storage::insert_documents
     pub(super) async fn insert_documents_in_index<S, D>(
         &self,
         index: String,
@@ -699,6 +703,67 @@ impl ElasticsearchStorage {
         }
     }
 
+    pub(super) async fn add_pipeline(&self, pipeline: String, name: String) -> Result<(), Error> {
+        let pipeline: serde_json::Value =
+            serde_json::from_str(&pipeline).context(Json2DeserializationError {
+                details: format!("Could not deserialize pipeline {}", name),
+            })?;
+        let response = self
+            .0
+            .ingest()
+            .put_pipeline(IngestPutPipelineParts::Id(&name))
+            .body(pipeline)
+            .send()
+            .await
+            .context(ElasticsearchError {
+                details: format!("cannot add pipeline '{}'", name,),
+            })?;
+
+        if response.status_code().is_success() {
+            // Response similar to:
+            // Object({"acknowledged": Bool(true)})
+            // We verify that acknowledge is true, then add the cat indices API to get the full index.
+            let json = response
+                .json::<Value>()
+                .await
+                .context(JsonDeserializationError)?;
+
+            let acknowledged = json
+                .as_object()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected JSON object"),
+                })?
+                .get("acknowledged")
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected 'acknowledged'"),
+                })?
+                .as_bool()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected JSON boolean"),
+                })?;
+
+            if acknowledged {
+                Ok(())
+            } else {
+                Err(Error::NotAcknowledged {
+                    details: format!("pipeline {} creation", name),
+                })
+            }
+        } else {
+            let exception = response.exception().await.ok().unwrap();
+
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
+    }
+
     pub(super) async fn get_previous_indices(&self, index: &Index) -> Result<Vec<String>, Error> {
         let base_index = configuration::root_doctype_dataset(&index.doc_type, &index.dataset);
         // FIXME When available, we can use aliases.into_keys
@@ -737,6 +802,16 @@ impl ElasticsearchStorage {
         } else {
             Ok(())
         }
+    }
+
+    // This implementation uses the scroll API, which is not recommended anymore for deep
+    // pagination.
+    pub(super) async fn retrieve_all_documents<S, D>(&self, _index: String) -> Result<S, Error>
+    where
+        D: Serialize + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+    {
+        unimplemented!();
     }
 }
 
@@ -800,3 +875,181 @@ impl From<String> for IndexStatus {
         }
     }
 }
+
+/*
+#[derive(Deserialize)]
+struct ItemResponse {
+    items: Vec<Items>,
+    scroll_id: Option<String>,
+}
+
+enum State {
+    Start(Option<String>),
+    Next(String),
+    End,
+}
+
+
+pub(super) async fn retrieve_all_documents<S, D>(&self, index: String, after: Option<String>) -> Result<S, Error>
+    where
+        D: Serialize + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+{
+    // (definition of State enum can go here)
+
+    let s = stream::unfold(
+        State::Start(after), move |state| {
+            let scroll_id = match state {
+                State::Start(opt_ct) => opt_ct,
+                State::Next(ct) => Some(ct),
+                State::End => return None,
+            };
+            let scroll = match scroll_id {
+                Some(ct) => self
+                    .0
+                    .scroll(ScrollParts::None)
+                    .body(serde_json::json!({
+                        "scroll": scroll,
+                        "scroll_id": scroll_id
+                    })),
+                None => self
+                .0
+                .search(SearchParts::Index(&[index]))
+                .scroll(scroll)
+                .body(serde_json::json!({
+                    "query": {
+                        "match_all": { }
+                    }
+                }))
+            };
+
+            let response = scroll.send().await?
+                .context(ElasticsearchError {
+                    details: format!("cannot refresh index {}", index),
+                })?;
+
+            let response_body = response.json::<Value>().await?;
+            let scroll_id = response_body["_scroll_id"].as_str().unwrap();
+            let hits = response_body["hits"]["hits"].as_array().unwrap();
+
+        let req = Request::new(Method::Get, url.parse().unwrap());
+        Some(client.request(req).from_err().and_then(move |resp| {
+            let status = resp.status();
+            resp.body().concat2().from_err().and_then(move |body| {
+                if status.is_success() {
+                    serde_json::from_slice::<ItemsResponse>(&body)
+                        .map_err(Box::<Error>::from)
+                } else {
+                    Err(format!("HTTP status: {}", status).into())
+                }
+            })
+            .map(move |items_resp| {
+                let next_state = match items_resp.continuation_token {
+                    Some(ct) => State::Next(ct),
+                    None => State::End,
+                };
+                (stream::iter_ok(items_resp.items), next_state)
+            })
+        }))
+    })
+    .flatten())
+}
+let scroll = "1m"; // How long Elasticsearch should retain the search context for the request.
+        let mut response = self
+            .0
+            .search(SearchParts::Index(&[index]))
+            .scroll(scroll)
+            .body(serde_json::json!({
+                "query": {
+                    "match_all": { }
+                }
+            }))
+            .send()
+            .await
+            .context(ElasticsearchError {
+                details: format!("cannot refresh index {}", index),
+            })?;
+
+        if !response.status_code().is_success() {
+            let exception = response.exception().await.ok().unwrap();
+
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    return Err(err);
+                }
+                None => return Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                });
+            }
+        }
+
+        let json = response
+            .json::<Value>()
+            .await
+            .context(JsonDeserializationError)?;
+
+        let scroll_id = json
+            .as_object()
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected JSON object"),
+            })?
+            .get("_scroll_id")
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected '_scroll_id'"),
+            })?
+            .as_str()
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected JSON string"),
+            })?;
+
+        let hits = json
+            .as_object()
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected JSON object"),
+            })?
+            .get("hits")
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected 'hits'"),
+            })?
+            .as_object()
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected JSON object"),
+            })?
+            .get("hits")
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected 'hits'"),
+            })?
+            .as_array()
+            .ok_or(Error::JsonDeserializationInvalid {
+                details: String::from("expected JSON array"),
+            })?;
+
+        while hits.len() > 0 {
+            response = self
+                .0
+                .scroll(ScrollParts::None)
+                .body(serde_json::json!({
+                    "scroll": scroll,
+                    "scroll_id": scroll_id
+                }))
+                .send()
+                .await?
+                .context(ElasticsearchError {
+                    details: format!("cannot refresh index {}", index),
+                })?;
+
+            response_body = response.json::<Value>().await?;
+            scroll_id = response_body["_scroll_id"].as_str().unwrap();
+            hits = response_body["hits"]["hits"].as_array().unwrap();
+            print_hits(hits);
+        }
+
+        response = client
+            .clear_scroll(ClearScrollParts::None)
+            .body(json!({ "scroll_id": scroll_id }))
+            .send()
+            .await?;
+    }
+
+*/

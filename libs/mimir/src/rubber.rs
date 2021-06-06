@@ -446,10 +446,10 @@ impl Rubber {
         //     &"template_stop",
         //     include_str!("../../../config/stop_settings.json"),
         // )?;
-        self.create_template(
-            &"template_admin",
-            include_str!("../../../config/admin_settings.json"),
-        )?;
+        // self.create_template(
+        //     &"template_admin",
+        //     include_str!("../../../config/admin_settings.json"),
+        // )?;
         // self.create_template(
         //     &"template_street",
         //     include_str!("../../../config/street_settings.json"),

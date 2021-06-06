@@ -34,8 +34,9 @@ use futures::stream::{Stream, StreamExt};
 use mimir::objects::Admin;
 use mimir2::{
     adapters::secondary::elasticsearch::{
-        self, ElasticsearchStorage, IndexConfiguration, IndexMappings, IndexParameters,
-        IndexSettings,
+        self,
+        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
+        ElasticsearchStorage,
     },
     domain::{
         model::{configuration::Configuration, document::Document, index::IndexVisibility},
@@ -216,7 +217,7 @@ fn read_zones(input: &str) -> Result<Vec<Zone>, Error> {
 async fn index_cosmogony(args: Args) -> Result<(), Error> {
     let dataset = args.dataset.clone();
 
-    let pool = elasticsearch::connection_pool(&args.connection_string)
+    let pool = elasticsearch::remote::connection_pool(&args.connection_string)
         .await
         .map_err(|err| {
             format_err!(

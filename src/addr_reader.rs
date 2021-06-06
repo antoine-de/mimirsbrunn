@@ -5,7 +5,7 @@ use futures::future;
 use futures::stream::{Stream, StreamExt};
 use mimir::Addr;
 use mimir2::{
-    adapters::secondary::elasticsearch::{ElasticsearchStorage, IndexConfiguration},
+    adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
     domain::{
         model::{configuration::Configuration, document::Document, index::IndexVisibility},
         usecases::{

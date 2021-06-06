@@ -63,9 +63,23 @@ impl Storage for ElasticsearchStorage {
         D: Serialize + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
+        self.add_pipeline(
+            String::from(include_str!(
+                "../../../../../../config/pipeline/indexed_at.json"
+            )),
+            String::from("indexed_at"),
+        )
+        .await
+        .map_err(|err| StorageError::DocumentInsertionError {
+            details: format!(
+                "could not create {} pipeline: {}",
+                "indexed_at",
+                err.to_string()
+            ),
+        })?;
         self.insert_documents_in_index(index, documents)
             .await
-            .map_err(|err| StorageError::ContainerSearchError {
+            .map_err(|err| StorageError::DocumentInsertionError {
                 details: format!("could not insert documents: {}", err.to_string()),
             })
     }
