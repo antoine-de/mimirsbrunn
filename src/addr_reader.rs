@@ -42,14 +42,6 @@ where
     F: Fn(Bano) -> Result<Addr, Error> + Send + Sync + 'static,
     S: Stream<Item = Bano> + Send + Sync + Unpin + 'static,
 {
-    // let addr_index = rubber
-    //     .make_index(dataset, &index_settings)
-    //     .with_context(|err| format!("Error occurred when making index {}: {}", dataset, err))?;
-
-    // info!("Add data in elasticsearch db.");
-
-    // let mut country_stats: Arc<Mutex<HashMap<String, i32>>> = Arc::new(Mutex::new(HashMap::new()));
-
     let addrs = records.map(into_addr).filter_map(|ra| match ra {
         Ok(a) => {
             if a.street.name.is_empty() {
@@ -64,24 +56,6 @@ where
             future::ready(None)
         }
     });
-    // .inspect(|addr| {
-    //     let country_code = addr
-    //         .0
-    //         .country_codes
-    //         .first()
-    //         .map(|string| string.as_str())
-    //         .unwrap_or("other");
-
-    //     let mut z = country_stats.lock().unwrap();
-    //     if let Some(count) = z.get_mut(country_code) {
-    //         *count += 1;
-    //     } else {
-    //         country_stats
-    //             .lock()
-    //             .unwrap()
-    //             .insert(country_code.to_string(), 1);
-    //     }
-    // });
 
     let config = serde_json::to_string(&config).map_err(|err| {
         format_err!(
@@ -99,15 +73,6 @@ where
         .execute(parameters)
         .await
         .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
-
-    // info!("Addresses imported per country:");
-    // let z = country_stats.lock().unwrap();
-    // let mut country_stats: Vec<_> = z.iter().collect();
-    // country_stats.sort_unstable_by_key(|(_, count)| *count);
-
-    // for (country, count) in country_stats.into_iter().rev() {
-    //     info!("{:>10} {}", country, count);
-    // }
 
     Ok(())
 }
@@ -198,10 +163,29 @@ pub async fn import_addresses_from_file<F>(
 where
     F: Fn(Bano) -> Result<Addr, Error> + Send + Sync + 'static,
 {
-    let reader = csv_async::AsyncReaderBuilder::new().create_deserializer(File::open(file).await?);
-    let records = reader
+    let reader = File::open(file).await.expect("file open");
+    let csv_reader = csv_async::AsyncReaderBuilder::new()
+        .has_headers(false)
+        .create_deserializer(reader);
+    let records = csv_reader
         .into_deserialize::<Bano>()
         .filter_map(|rec| future::ready(rec.ok()));
 
     import_addresses(client, config, records, into_addr).await
+}
+
+pub async fn count_records(file: PathBuf) -> Result<(), Error> {
+    let reader = csv_async::AsyncReaderBuilder::new()
+        .has_headers(false)
+        .create_deserializer(File::open(file).await?);
+    let records = reader
+        .into_deserialize::<Bano>()
+        .inspect(|rec| match rec {
+            Err(err) => println!("err: {:?}", err),
+            Ok(bano) => println!("ok: {}", bano.street),
+        })
+        .filter_map(|rec| future::ready(rec.ok()));
+    let records = records.collect::<Vec<_>>().await;
+    println!("{} records", records.len());
+    Ok(())
 }

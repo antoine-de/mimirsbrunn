@@ -8,6 +8,7 @@ use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, Elasticsearch, OpenPointInTimeParts, SearchParts};
 use futures::stream::{self, Stream, StreamExt};
 use lazy_static::lazy_static;
+use pin_utils::pin_mut;
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -455,7 +456,7 @@ impl ElasticsearchStorage {
 
         documents
             .chunks(CHUNK_SIZE) // FIXME chunck size should be a variable.
-            .for_each(|chunk| {
+            .for_each_concurrent(8, |chunk| {
                 let counter_created = counter_created.clone();
                 let index = index.clone();
                 async move {

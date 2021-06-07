@@ -1,11 +1,15 @@
+use futures::stream::StreamExt;
 use serde::Serialize;
 
+use mimir::objects::Admin;
 use mimir2::adapters::secondary::elasticsearch;
 use mimir2::adapters::secondary::elasticsearch::internal::{
     IndexConfiguration, IndexMappings, IndexParameters, IndexSettings,
 };
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir2::domain::model::configuration::Configuration;
 use mimir2::domain::model::document::Document;
+use mimir2::domain::ports::query::Query;
 use mimir2::domain::ports::remote::Remote;
 use mimir2::domain::ports::storage::Storage;
 
@@ -23,35 +27,47 @@ impl Document for TestObj {
     }
 }
 
+const INDEX: &str = "mimir";
+
 #[tokio::main]
 async fn main() {
     let pool = elasticsearch::remote::connection_pool("http://localhost:9200")
         .await
         .expect("connection pool");
     let client = pool.conn().await.expect("client connection");
-    let config = IndexConfiguration {
-        name: String::from("test-index"),
-        parameters: IndexParameters {
-            timeout: String::from("10s"),
-            wait_for_active_shards: String::from("1"), // only the primary shard
-        },
-        settings: IndexSettings {
-            value: String::from(include_str!("../../../config/admin/settings.json")), // <<=== Invalid Settings
-        },
-        mappings: IndexMappings {
-            value: String::from(include_str!("../../../config/admin/mappings.json")),
-        },
-    };
-    let root_config = Configuration {
-        value: serde_json::to_string(&config).expect("config"),
-    };
-    let config = root_config
-        .clone()
-        .normalize_index_name(TestObj::DOC_TYPE)
-        .expect("normalize index name");
-    println!("config: {:?}", config);
-    let res = client.create_container(config.clone()).await.unwrap();
-    println!("res: {:?}", res);
+
+    let stream = client
+        .retrieve_all_documents(String::from(INDEX))
+        .unwrap()
+        .for_each(|t| {
+            println!("t: {:?}", t);
+            futures::future::ready(())
+        })
+        .await;
+
+    // let config = IndexConfiguration {
+    //     name: String::from("test-index"),
+    //     parameters: IndexParameters {
+    //         timeout: String::from("10s"),
+    //         wait_for_active_shards: String::from("1"), // only the primary shard
+    //     },
+    //     settings: IndexSettings {
+    //         value: String::from(include_str!("../../../config/admin/settings.json")), // <<=== Invalid Settings
+    //     },
+    //     mappings: IndexMappings {
+    //         value: String::from(include_str!("../../../config/admin/mappings.json")),
+    //     },
+    // };
+    // let root_config = Configuration {
+    //     value: serde_json::to_string(&config).expect("config"),
+    // };
+    // let config = root_config
+    //     .clone()
+    //     .normalize_index_name(TestObj::DOC_TYPE)
+    //     .expect("normalize index name");
+    // println!("config: {:?}", config);
+    // let res = client.create_container(config.clone()).await.unwrap();
+    // println!("res: {:?}", res);
     // let alias = configuration::root_doctype_dataset(TestObj::DOC_TYPE, "test-index");
     // let _ = client.create_alias(res.name.clone(), alias).await.unwrap();
     // let alias = configuration::root_doctype(TestObj::DOC_TYPE);

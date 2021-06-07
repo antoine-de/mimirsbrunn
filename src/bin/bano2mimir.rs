@@ -29,13 +29,15 @@
 // www.navitia.io
 
 use failure::format_err;
+use futures::stream::StreamExt;
 use lazy_static::lazy_static;
-use mimir::rubber::Rubber;
+use mimir::objects::Admin;
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
+    domain::ports::query::Query,
     domain::ports::remote::Remote,
 };
 use mimirsbrunn::bano::Bano;
@@ -120,19 +122,13 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         },
     };
 
-    // FIXME Need to deal with nb replicas and shards
-    let mut rubber =
-        Rubber::new(&args.connection_string).with_nb_insert_threads(args.nb_insert_threads);
-
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let admins = rubber.get_all_admins().unwrap_or_else(|err| {
-            warn!(
-                "Administratives regions not found in es db for dataset {}. (error: {})",
-                dataset, err
-            );
-            vec![]
-        });
+        let admins_stream = client
+            .retrieve_all_documents(String::from("munin_admin"))
+            .map_err(|err| format_err!("could not retrieve all admins: {}", err.to_string()))?;
+
+        let admins = admins_stream.collect::<Vec<Admin>>().await;
 
         let admins_geofinder = admins.iter().cloned().collect();
 
@@ -150,6 +146,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     };
 
     if let Some(input_path) = args.input {
+        // mimirsbrunn::addr_reader::count_records(input_path.clone()).await?;
         mimirsbrunn::addr_reader::import_addresses_from_file(client, config, input_path, into_addr)
             .await
     } else {
