@@ -12,6 +12,7 @@ pub mod tests {
 
     use serde::Serialize;
     use std::convert::TryFrom;
+    use std::sync::Arc;
 
     use super::*;
 
@@ -44,6 +45,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn should_connect_to_elasticsearch() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let _guard = mtx.lock().unwrap();
         docker::initialize().await.expect("initialization");
         let pool = remote::connection_test_pool()
             .await
@@ -56,6 +59,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn should_create_index_with_valid_configuration() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
         docker::initialize().await.expect("initialization");
         let pool = remote::connection_test_pool()
             .await
@@ -81,11 +86,14 @@ pub mod tests {
             value: serde_json::to_string(&config).expect("config"),
         };
         let res = client.create_container(config).await;
+        drop(guard);
         assert!(res.is_ok());
     }
 
     #[tokio::test]
     async fn should_correctly_report_duplicate_index_when_creating_twice_the_same_index() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
         docker::initialize().await.expect("initialization");
         let pool = remote::connection_test_pool()
             .await
@@ -110,9 +118,12 @@ pub mod tests {
         let config = Configuration {
             value: serde_json::to_string(&config).expect("config"),
         };
-        let res = client.create_container(config.clone()).await;
-        assert!(res.is_ok());
+        client
+            .create_container(config.clone())
+            .await
+            .expect("container creation");
         let res = client.create_container(config).await;
+        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -121,6 +132,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn should_correctly_report_invalid_configuration() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
         docker::initialize().await.expect("initialization");
         let pool = remote::connection_test_pool()
             .await
@@ -146,6 +159,7 @@ pub mod tests {
             value: serde_json::to_string(&config).expect("config"),
         };
         let res = client.create_container(config).await;
+        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -168,6 +182,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn should_correctly_insert_multiple_documents() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
         docker::initialize().await.expect("initialization");
         let pool = remote::connection_test_pool()
             .await
@@ -192,7 +208,10 @@ pub mod tests {
         let config = Configuration {
             value: serde_json::to_string(&config).expect("config"),
         };
-        let _res = client.create_container(config).await.unwrap();
+        client
+            .create_container(config)
+            .await
+            .expect("container creation");
         let documents = vec![
             TestObj {
                 value: String::from("obj1"),
@@ -220,9 +239,9 @@ pub mod tests {
                 String::from("root_obj_dataset_test-index-bulk-insert"),
                 documents,
             )
-            .await
-            .unwrap();
+            .await;
+        drop(guard);
 
-        assert_eq!(res, 6);
+        assert_eq!(res.expect("document count"), 6);
     }
 }

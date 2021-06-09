@@ -1,3 +1,4 @@
+use bollard::service::{HostConfig, PortBinding};
 use bollard::{
     container::{Config, CreateContainerOptions, ListContainersOptions, StartContainerOptions},
     errors::Error as BollardError,
@@ -13,18 +14,19 @@ use elasticsearch::{
 use lazy_static::lazy_static;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::time::{sleep, Duration};
 use url::Url;
 
 lazy_static! {
-    static ref AVAILABLE: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
+    pub static ref AVAILABLE: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
+// pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
 pub async fn initialize() -> Result<(), Error> {
-    let mtx = Arc::clone(&AVAILABLE);
-    let _guard = mtx.lock().unwrap();
+    // let mtx = Arc::clone(&AVAILABLE);
     let mut docker = DockerWrapper::new();
+    // let guard = AVAILABLE.lock().unwrap();
     let is_available = docker.is_container_available().await?;
     if !is_available {
         docker.create_container().await
@@ -55,7 +57,7 @@ pub enum Error {
 }
 
 pub struct DockerWrapper {
-    ports: Vec<Vec<u32>>, // FIXME Should HashMap
+    ports: Vec<(u32, u32)>, // list of ports to publish (host port, container port)
     docker_image: String,
     container_name: String, // ip: String,
 }
@@ -63,16 +65,15 @@ pub struct DockerWrapper {
 impl DockerWrapper {
     pub fn new() -> DockerWrapper {
         DockerWrapper {
-            ports: vec![vec![9200, 9200], vec![9300, 9300]],
+            ports: vec![(9201, 9200), (9301, 9300)],
             docker_image: String::from("docker.elastic.co/elasticsearch/elasticsearch:7.13.0"),
-            container_name: String::from("mte"),
+            container_name: String::from("mimir-test-elasticsearch"),
         }
     }
 
     // Returns true if the container self.container_name is running
     // TODO Probably should run a check on Elasticsearch status
     pub async fn is_container_available(&mut self) -> Result<bool, Error> {
-        println!("testing docker container available");
         let docker = Docker::connect_with_unix(
             "unix:///var/run/docker.sock",
             120,
@@ -130,20 +131,39 @@ impl DockerWrapper {
         let containers = docker.list_containers(options).await.context(DockerError)?;
 
         if containers.is_empty() {
-            println!("creating container");
             let options = CreateContainerOptions {
                 name: &self.container_name,
             };
 
+            let mut port_bindings = HashMap::new();
+            for (host_port, container_port) in self.ports.iter() {
+                port_bindings.insert(
+                    format!("{}/tcp", &container_port),
+                    Some(vec![PortBinding {
+                        host_ip: Some(String::from("0.0.0.0")),
+                        host_port: Some(host_port.to_string()),
+                    }]),
+                );
+            }
+
+            let host_config = HostConfig {
+                port_bindings: Some(port_bindings),
+                ..Default::default()
+            };
+
             let mut exposed_ports = HashMap::new();
-            self.ports.iter().for_each(|ps| {
+            self.ports.iter().for_each(|(_, container)| {
                 let v: HashMap<(), ()> = HashMap::new();
-                exposed_ports.insert(format!("{}/tcp", ps[0]), v);
+                exposed_ports.insert(format!("{}/tcp", container), v);
             });
+
+            let env_vars = vec![String::from("discovery.type=single-node")];
 
             let config = Config {
                 image: Some(String::from(self.docker_image.clone())),
                 exposed_ports: Some(exposed_ports),
+                host_config: Some(host_config),
+                env: Some(env_vars),
                 ..Default::default()
             };
 
@@ -152,26 +172,22 @@ impl DockerWrapper {
                 .await
                 .context(DockerError)?;
 
-            println!("waiting after container creation");
             sleep(Duration::from_secs(5)).await;
         }
-        println!("starting container");
         let _ = docker
             .start_container(&self.container_name, None::<StartContainerOptions<String>>)
             .await
             .context(DockerError)?;
 
-        println!("waiting for 5sec");
-        sleep(Duration::from_secs(5)).await;
+        sleep(Duration::from_secs(15)).await;
 
         Ok(())
     }
 
     async fn cleanup(&mut self) -> Result<(), Error> {
-        println!("cleaning up docker container");
-        // remove all indices (and templates?)
+        let port = self.ports[0].0;
         // FIXME Hardcoded URL, need to extract it from self.
-        let url = Url::parse("https://localhost:9200").context(UrlParse)?;
+        let url = Url::parse(&format!("http://localhost:{}", port)).context(UrlParse)?;
         let conn_pool = SingleNodeConnectionPool::new(url);
         let transport = TransportBuilder::new(conn_pool)
             .disable_proxy()
@@ -200,6 +216,8 @@ impl DockerWrapper {
             .await
             .context(ElasticsearchClient)?;
 
+        println!("done with cleanup");
+        sleep(Duration::from_secs(1)).await;
         Ok(())
     }
 
