@@ -13,6 +13,7 @@ elasticsearch = "7.12.0-alpha.1"
 erased-serde = "0.3.13"
 futures = "0.3"
 lazy_static = "1.4"
+log = "0.4"
 pin-utils = "0.1"
 regex = "1.5.4"
 serde = { version = "1.0", features = [ "derive", "rc" ] }
@@ -23,13 +24,17 @@ url = "2.2"
 
 [dev-dependencies]
 mockall = "0.9.1"
-# bollard = { path = "../../ext/bollard" }
+bollard = "0.10.1"
+cucumber = { package = "cucumber_rust", version = "0.8.3" }
 
 [lib]
 name = "mimir2"
 path = "src/lib.rs"
 
-[[bin]]
-name = "service"
-path = "src/main.rs"
+[[test]]
+name = "cucumber"
+harness = false # Allows Cucumber to print output instead of libtest
 
+[[bin]]
+name = "conn"
+path = "src/main.rs"

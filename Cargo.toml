@@ -13,6 +13,11 @@ categories = [ "application" ]
 readme = "README.md"
 
 [workspace]
+members = [
+  "libs/mimir",
+  "libs/mimir2",
+  "libs/bragi"
+]
 
 [features]
 db-storage = [ "rusqlite" ]

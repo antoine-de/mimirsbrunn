@@ -94,7 +94,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     let dataset = args.dataset;
 
-    let pool = elasticsearch::remote::connection_pool(&args.connection_string)
+    let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
         .map_err(|err| {
             format_err!(

@@ -1,0 +1,11 @@
+{
+  "description": "Adds indexed_at timestamp to documents",
+  "processors": [
+    {
+      "set": {
+        "field": "_source.indexed_at",
+        "value": "{{_ingest.timestamp}}"
+      }
+    }
+  ]
+}

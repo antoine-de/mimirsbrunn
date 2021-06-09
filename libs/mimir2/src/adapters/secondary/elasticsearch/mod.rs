@@ -19,25 +19,33 @@ pub mod tests {
     use crate::domain::model::document::Document;
     use crate::domain::ports::remote::Remote;
     use crate::domain::ports::storage::Storage;
+    use crate::utils::docker;
 
     #[test]
-    #[should_panic(expected = "could not deserialize index configuration")]
     fn should_return_invalid_configuration() {
         let config = Configuration {
             value: String::from("invalid"),
         };
-        let _config = internal::IndexConfiguration::try_from(config).unwrap();
+        let res = internal::IndexConfiguration::try_from(config);
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .starts_with("Invalid Elasticsearch Index Configuration"));
     }
 
     #[tokio::test]
-    #[should_panic(expected = "could not parse Elasticsearch URL")]
     async fn should_return_invalid_url() {
-        let _pool = remote::connection_pool("foobar").await.unwrap();
+        let res = remote::connection_pool_url("foobar").await;
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .starts_with("Invalid Elasticsearch URL"));
     }
 
     #[tokio::test]
     async fn should_connect_to_elasticsearch() {
-        let pool = remote::connection_pool("http://localhost:9200")
+        docker::initialize().await.expect("initialization");
+        let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
         let _client = pool
@@ -48,7 +56,8 @@ pub mod tests {
 
     #[tokio::test]
     async fn should_create_index_with_valid_configuration() {
-        let pool = remote::connection_pool("http://localhost:9200")
+        docker::initialize().await.expect("initialization");
+        let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
@@ -76,11 +85,9 @@ pub mod tests {
     }
 
     #[tokio::test]
-    #[should_panic(
-        expected = "Elasticsearch Duplicate Index: root_obj_dataset_test-index-duplicate"
-    )]
     async fn should_correctly_report_duplicate_index_when_creating_twice_the_same_index() {
-        let pool = remote::connection_pool("http://localhost:9200")
+        docker::initialize().await.expect("initialization");
+        let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
@@ -105,13 +112,17 @@ pub mod tests {
         };
         let res = client.create_container(config.clone()).await;
         assert!(res.is_ok());
-        let _res = client.create_container(config).await.unwrap();
+        let res = client.create_container(config).await;
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Elasticsearch Duplicate Index"));
     }
 
     #[tokio::test]
-    #[should_panic(expected = "could not deserialize index configuration")]
     async fn should_correctly_report_invalid_configuration() {
-        let pool = remote::connection_pool("http://localhost:9200")
+        docker::initialize().await.expect("initialization");
+        let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
@@ -134,7 +145,11 @@ pub mod tests {
         let config = Configuration {
             value: serde_json::to_string(&config).expect("config"),
         };
-        let _res = client.create_container(config).await.unwrap();
+        let res = client.create_container(config).await;
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .starts_with("Container Creation Error"));
     }
 
     #[derive(Serialize)]
@@ -152,48 +167,9 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn should_correctly_insert_document() {
-        let pool = remote::connection_pool("http://localhost:9200")
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
-            .conn()
-            .await
-            .expect("Elasticsearch Connection Established");
-        let config = internal::IndexConfiguration {
-            name: String::from("root_obj_dataset_test-index-insert"),
-            parameters: internal::IndexParameters {
-                timeout: String::from("10s"),
-                wait_for_active_shards: String::from("1"), // only the primary shard
-            },
-            settings: internal::IndexSettings {
-                value: String::from(r#"{ "index": { "number_of_shards": 1 } }"#), // <<=== Invalid Settings
-            },
-            mappings: internal::IndexMappings {
-                value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
-            },
-        };
-        let config = Configuration {
-            value: serde_json::to_string(&config).expect("config"),
-        };
-        let _res = client.create_container(config).await.unwrap();
-        let document = TestObj {
-            value: String::from("value"),
-        };
-
-        let _res = client
-            .insert_document(
-                String::from("test-index-insert"),
-                String::from("1"),
-                document,
-            )
-            .await
-            .unwrap();
-    }
-
-    #[tokio::test]
-    async fn should_correctly_insert_bulk_documents() {
-        let pool = remote::connection_pool("http://localhost:9200")
+    async fn should_correctly_insert_multiple_documents() {
+        docker::initialize().await.expect("initialization");
+        let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool

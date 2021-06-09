@@ -217,7 +217,7 @@ fn read_zones(input: &str) -> Result<Vec<Zone>, Error> {
 async fn index_cosmogony(args: Args) -> Result<(), Error> {
     let dataset = args.dataset.clone();
 
-    let pool = elasticsearch::remote::connection_pool(&args.connection_string)
+    let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
         .map_err(|err| {
             format_err!(

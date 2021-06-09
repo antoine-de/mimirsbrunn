@@ -115,7 +115,7 @@ pub mod tests {
     use super::{GenerateIndex, GenerateIndexParameters};
     use crate::domain::model::configuration::Configuration;
     use crate::domain::model::document::Document;
-    use crate::domain::model::index::{Index, IndexStatus};
+    use crate::domain::model::index::{Index, IndexStatus, IndexVisibility};
     use crate::domain::ports::storage::MockErasedStorage;
     use crate::domain::usecases::UseCase;
 
@@ -159,7 +159,7 @@ pub mod tests {
         storage
             .expect_erased_publish_index()
             .times(1)
-            .return_once(move |_| Ok(()));
+            .return_once(move |_, _| Ok(()));
         let usecase = GenerateIndex::new(Box::new(storage));
 
         let config = Configuration {
@@ -175,6 +175,7 @@ pub mod tests {
         let param = GenerateIndexParameters {
             config,
             documents: Box::new(stream),
+            visibility: IndexVisibility::Public,
         };
 
         let result = usecase.execute(param).await;

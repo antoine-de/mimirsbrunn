@@ -8,7 +8,6 @@ use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, Elasticsearch, OpenPointInTimeParts, SearchParts};
 use futures::stream::{self, Stream, StreamExt};
 use lazy_static::lazy_static;
-use pin_utils::pin_mut;
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -27,7 +26,7 @@ static CHUNK_SIZE: usize = 10;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
-    #[snafu(display("Invalid Index Configuration: {}", details))]
+    #[snafu(display("Invalid Elasticsearch Index Configuration: {}", details))]
     InvalidConfiguration { details: String },
 
     /// Elasticsearch Error
@@ -992,7 +991,7 @@ impl ElasticsearchStorage {
                             .await
                             .unwrap();
 
-                        let response_body = response.json::<Value>().await.unwrap();
+                        let _response_body = response.json::<Value>().await.unwrap();
 
                         None
                     }

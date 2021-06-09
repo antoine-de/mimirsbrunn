@@ -9,7 +9,7 @@ use crate::domain::ports::query::{Error as QueryError, Query};
 impl Query for ElasticsearchStorage {
     fn retrieve_documents<D>(
         &self,
-        index: String,
+        _index: String,
     ) -> Result<Box<dyn Stream<Item = D> + Unpin + 'static>, QueryError>
     where
         D: DeserializeOwned + 'static,
