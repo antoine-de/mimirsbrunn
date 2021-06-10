@@ -24,8 +24,11 @@ url = "2.2"
 
 [dev-dependencies]
 mockall = "0.9.1"
+criterion = { version = "0.3", features = [ "async_tokio" ] }
 bollard = "0.10.1"
 cucumber = { package = "cucumber_rust", version = "0.8.3" }
+uuid = { version = "0.8", features = [ "serde", "v4" ] }
+rand = "0.8"
 
 [lib]
 name = "mimir2"
@@ -38,3 +41,7 @@ harness = false # Allows Cucumber to print output instead of libtest
 [[bin]]
 name = "conn"
 path = "src/main.rs"
+
+[[bench]]
+name = "benchmark"
+harness = false
