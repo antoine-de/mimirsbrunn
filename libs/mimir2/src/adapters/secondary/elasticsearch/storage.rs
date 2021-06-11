@@ -17,7 +17,7 @@ impl Storage for ElasticsearchStorage {
     async fn create_container(&self, config: Configuration) -> Result<Index, StorageError> {
         let config = internal::IndexConfiguration::try_from(config).map_err(|err| {
             StorageError::ContainerCreationError {
-                details: format!("could not convert index configuration: {}", err.to_string()),
+                source: Box::new(err),
             }
         })?;
         let name = config.name.clone();
@@ -31,7 +31,7 @@ impl Storage for ElasticsearchStorage {
             })
             .await
             .map_err(|err| StorageError::ContainerCreationError {
-                details: format!("Could not create index: {}", err.to_string()),
+                source: Box::new(err),
             })
     }
 
@@ -40,7 +40,7 @@ impl Storage for ElasticsearchStorage {
         self.delete_index(index.clone())
             .await
             .map_err(|err| StorageError::ContainerDeletionError {
-                details: format!("could not delete index {}: {}", index, err.to_string()),
+                source: Box::new(err),
             })
     }
 
@@ -49,7 +49,7 @@ impl Storage for ElasticsearchStorage {
         self.find_index(index)
             .await
             .map_err(|err| StorageError::ContainerSearchError {
-                details: format!("could not find index: {}", err.to_string()),
+                source: Box::new(err),
             })
     }
 
@@ -71,16 +71,12 @@ impl Storage for ElasticsearchStorage {
         )
         .await
         .map_err(|err| StorageError::DocumentInsertionError {
-            details: format!(
-                "could not create {} pipeline: {}",
-                "indexed_at",
-                err.to_string()
-            ),
+            source: Box::new(err),
         })?;
         self.insert_documents_in_index(index, documents)
             .await
             .map_err(|err| StorageError::DocumentInsertionError {
-                details: format!("could not insert documents: {}", err.to_string()),
+                source: Box::new(err),
             })
     }
 
@@ -93,12 +89,12 @@ impl Storage for ElasticsearchStorage {
         self.refresh_index(index.name.clone())
             .await
             .map_err(|err| StorageError::IndexPublicationError {
-                details: format!("could not refresh index: {}", err.to_string()),
+                source: Box::new(err),
             })?;
 
         let previous_indices = self.get_previous_indices(&index).await.map_err(|err| {
             StorageError::IndexPublicationError {
-                details: format!("could not retrieve previous indices: {}", err.to_string()),
+                source: Box::new(err),
             }
         })?;
 
@@ -108,23 +104,13 @@ impl Storage for ElasticsearchStorage {
             self.remove_alias(previous_indices.clone(), base_index.clone())
                 .await
                 .map_err(|err| StorageError::IndexPublicationError {
-                    details: format!(
-                        "could not remove old aliases, from {} to {}: {}",
-                        base_index,
-                        previous_indices.join(" / "),
-                        err.to_string()
-                    ),
+                    source: Box::new(err),
                 })?;
         }
         self.add_alias(vec![index.name.clone()], base_index.clone())
             .await
             .map_err(|err| StorageError::IndexPublicationError {
-                details: format!(
-                    "could not add alias, from {} to {}: {}",
-                    base_index,
-                    index.name,
-                    err.to_string()
-                ),
+                source: Box::new(err),
             })?;
 
         if visibility == IndexVisibility::Public {
@@ -133,23 +119,13 @@ impl Storage for ElasticsearchStorage {
                 self.remove_alias(previous_indices.clone(), base_index.clone())
                     .await
                     .map_err(|err| StorageError::IndexPublicationError {
-                        details: format!(
-                            "could not remove old aliases, from {} to {}: {}",
-                            base_index,
-                            previous_indices.join(" / "),
-                            err.to_string()
-                        ),
+                        source: Box::new(err),
                     })?;
             }
             self.add_alias(vec![index.name.clone()], base_index.clone())
                 .await
                 .map_err(|err| StorageError::IndexPublicationError {
-                    details: format!(
-                        "could not add alias from {} to {}: {}",
-                        base_index,
-                        index.name,
-                        err.to_string()
-                    ),
+                    source: Box::new(err),
                 })?;
         }
 

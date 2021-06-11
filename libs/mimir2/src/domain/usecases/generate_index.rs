@@ -67,12 +67,12 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
             config
                 .normalize_index_name(T::DOC_TYPE)
                 .map_err(|err| ImportError::IndexCreation {
-                    details: format!("Could not normalize index name: {}", err.to_string()),
+                    source: Box::new(err),
                 })?;
 
         let index = self.storage.create_container(config).await.map_err(|err| {
             ImportError::IndexCreation {
-                details: format!("Could not create container: {}", err.to_string()),
+                source: Box::new(err),
             }
         })?;
 
@@ -80,30 +80,25 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
             .insert_documents(index.name.clone(), documents)
             .await
             .map_err(|err| ImportError::DocumentStreamInsertion {
-                details: format!("could not insert document stream: {}", err.to_string()),
+                source: Box::new(err),
             })?;
 
         self.storage
             .publish_index(index.clone(), visibility)
             .await
             .map_err(|err| ImportError::IndexPublication {
-                details: format!("could not publish index: {}", err.to_string()),
+                source: Box::new(err),
             })?;
 
-        let res_index = self
-            .storage
+        self.storage
             .find_container(index.name.clone())
             .await
             .map_err(|err| ImportError::DocumentStreamInsertion {
-                details: format!("could not insert document stream: {}", err.to_string()),
-            })?;
-
-        match res_index {
-            Some(index) => Ok(index),
-            None => Err(ImportError::IndexPublication {
-                details: format!("lost the index {}", index.name),
-            }),
-        }
+                source: Box::new(err),
+            })?
+            .ok_or(ImportError::ExpectedIndex {
+                index: index.name.clone(),
+            })
     }
 }
 

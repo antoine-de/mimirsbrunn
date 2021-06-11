@@ -3,8 +3,8 @@ use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Connection Error: {}", details))]
-    Connection { details: String },
+    #[snafu(display("Connection Error: {}", source))]
+    Connection { source: Box<dyn std::error::Error> },
 }
 
 #[async_trait]

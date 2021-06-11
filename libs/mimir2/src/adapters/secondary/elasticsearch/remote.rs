@@ -42,7 +42,7 @@ impl Remote for SingleNodeConnectionPool {
             .build()
             .context(ElasticsearchConnectionError)
             .map_err(|err| RemoteError::Connection {
-                details: err.to_string(),
+                source: Box::new(err),
             })?;
         let client = Elasticsearch::new(transport);
         Ok(ElasticsearchStorage::new(client))

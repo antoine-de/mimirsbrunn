@@ -11,21 +11,24 @@ use crate::domain::model::index::{Index, IndexVisibility};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Index Creation Error: {}", details))]
-    #[snafu(visibility(pub))]
-    IndexCreation { details: String },
+    #[snafu(display("Index Creation Error: {}", source))]
+    // #[snafu(visibility(pub))]
+    IndexCreation { source: Box<dyn std::error::Error> },
 
-    #[snafu(display("Index Publication Error: {}", details))]
-    #[snafu(visibility(pub))]
-    IndexPublication { details: String },
+    #[snafu(display("Index Publication Error: {}", source))]
+    // #[snafu(visibility(pub))]
+    IndexPublication { source: Box<dyn std::error::Error> },
 
-    #[snafu(display("Storage Connection Error: {}", details))]
-    #[snafu(visibility(pub))]
-    StorageConnection { details: String },
+    #[snafu(display("Storage Connection Error: {}", source))]
+    // #[snafu(visibility(pub))]
+    StorageConnection { source: Box<dyn std::error::Error> },
 
-    #[snafu(display("Document Stream Insertion Error: {}", details))]
-    #[snafu(visibility(pub))]
-    DocumentStreamInsertion { details: String },
+    #[snafu(display("Document Stream Insertion Error: {}", source))]
+    // #[snafu(visibility(pub))]
+    DocumentStreamInsertion { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Expected Index: {}", index))]
+    ExpectedIndex { index: String },
 }
 
 /// Create index and stores documents in them.

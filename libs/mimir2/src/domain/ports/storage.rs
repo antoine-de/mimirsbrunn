@@ -9,20 +9,20 @@ use crate::domain::model::index::{Index, IndexVisibility};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Container Creation Error: {}", details))]
-    ContainerCreationError { details: String },
+    #[snafu(display("Container Creation Error: {}", source))]
+    ContainerCreationError { source: Box<dyn std::error::Error> },
 
-    #[snafu(display("Container Deletion Error: {}", details))]
-    ContainerDeletionError { details: String },
+    #[snafu(display("Container Deletion Error: {}", source))]
+    ContainerDeletionError { source: Box<dyn std::error::Error> },
 
-    #[snafu(display("Container Search Error: {}", details))]
-    ContainerSearchError { details: String },
+    #[snafu(display("Container Search Error: {}", source))]
+    ContainerSearchError { source: Box<dyn std::error::Error> },
 
-    #[snafu(display("Document Insertion Error: {}", details))]
-    DocumentInsertionError { details: String },
+    #[snafu(display("Document Insertion Error: {}", source))]
+    DocumentInsertionError { source: Box<dyn std::error::Error> },
 
-    #[snafu(display("Index Refresh Error: {}", details))]
-    IndexPublicationError { details: String },
+    #[snafu(display("Index Refresh Error: {}", source))]
+    IndexPublicationError { source: Box<dyn std::error::Error> },
 }
 
 #[cfg_attr(test, mockall::automock)]
