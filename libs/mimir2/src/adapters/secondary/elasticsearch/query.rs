@@ -1,19 +1,21 @@
-use async_trait::async_trait;
 use futures::stream::Stream;
 use serde::de::DeserializeOwned;
 
 use super::ElasticsearchStorage;
-use crate::domain::ports::query::{Error as QueryError, Query};
+use crate::domain::model::query_parameters::QueryParameters;
+use crate::domain::ports::export::{Error as ExportError, Export};
 
-#[async_trait]
-impl Query for ElasticsearchStorage {
-    fn retrieve_documents<D>(
+impl Export for ElasticsearchStorage {
+    type Doc = String;
+    fn search_documents(
         &self,
-        _index: String,
-    ) -> Result<Box<dyn Stream<Item = D> + Unpin + 'static>, QueryError>
-    where
-        D: DeserializeOwned + 'static,
-    {
-        unimplemented!()
+        query_parameters: QueryParameters,
+    ) -> Result<Box<dyn Stream<Item = Self::Doc> + Send + Sync + 'static>, ExportError> {
+        let stream = self
+            .retrieve_documents(query_parameters.containers, query_parameters.dsl)
+            .map_err(|err| ExportError::DocumentRetrievalError {
+                source: Box::new(err),
+            })?;
+        Ok(Box::new(stream))
     }
 }

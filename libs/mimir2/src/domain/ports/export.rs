@@ -10,10 +10,10 @@ pub enum Error {
     DocumentRetrievalError { source: Box<dyn std::error::Error> },
 }
 
-pub trait Query {
+pub trait Export {
     type Doc: DeserializeOwned + Send + Sync + 'static;
     fn search_documents(
         &self,
-        parameters: QueryParameters,
+        query_parameters: QueryParameters,
     ) -> Result<Box<dyn Stream<Item = Self::Doc> + Send + Sync + 'static>, Error>;
 }

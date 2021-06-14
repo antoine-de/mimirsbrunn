@@ -3,9 +3,9 @@
 ## Testing and Docker
 
 Some tests depend on the presence of an actual Elasticsearch, which can be easily obtained by installing the
-corresponding docker container. Test execution should be idempotent. For example, if you run a test which create an
+corresponding docker container. Test execution should be idempotent. For example, if you run a test which creates an
 index, and you try to run it twice without cleaning the index in between, you might fail the second time because an
-index with the same name already exists. We have, at least known to me, to means of achieving this goal:
+index with the same name already exists. We have, at least known to me, two means of achieving this goal:
 
 - `setup` and `teardown` functions
 - using `Drop` trait

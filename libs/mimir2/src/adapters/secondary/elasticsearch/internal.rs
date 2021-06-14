@@ -367,77 +367,77 @@ impl ElasticsearchStorage {
     }
 
     /* Commented out because it is not used
-    pub(super) async fn insert_document<D>(
-        &self,
-        index: String,
-        id: String,
-        document: D,
-    ) -> Result<(), Error>
-    where
-        D: Serialize + Send + Sync + 'static,
-    {
-        let response = self
-            .0
-            .index(IndexParts::IndexId(&index, &id))
-            .body(document)
-            .send()
-            .await
-            .context(ElasticsearchError {
-                details: format!("cannot index document '{}'", id),
-            })?;
+           pub(super) async fn insert_document<D>(
+           &self,
+           index: String,
+           id: String,
+           document: D,
+           ) -> Result<(), Error>
+           where
+           D: Serialize + Send + Sync + 'static,
+           {
+           let response = self
+           .0
+           .index(IndexParts::IndexId(&index, &id))
+           .body(document)
+           .send()
+           .await
+           .context(ElasticsearchError {
+           details: format!("cannot index document '{}'", id),
+           })?;
 
-        if response.status_code().is_success() {
-            // Response similar to:
-            // {
-            //   "_id": "AvypLXkBazLmtM_qtw9a",
-            //   "_index": "munin_book_books_20210502_151927_673737330",
-            //   "_primary_term": 1, "_seq_no": 0,
-            //   "_shards": {
-            //     "failed": 0, "successful": 1, "total": 2
-            //   },
-            //   "_type": "_doc",
-            //   "_version": 1,
-            //   "result": "created"
-            // }
-            // We verify that result is "created"
-            let json = response
-                .json::<Value>()
-                .await
-                .context(JsonDeserializationError)?;
+           if response.status_code().is_success() {
+        // Response similar to:
+        // {
+        //   "_id": "AvypLXkBazLmtM_qtw9a",
+        //   "_index": "munin_book_books_20210502_151927_673737330",
+        //   "_primary_term": 1, "_seq_no": 0,
+        //   "_shards": {
+        //     "failed": 0, "successful": 1, "total": 2
+        //   },
+        //   "_type": "_doc",
+        //   "_version": 1,
+        //   "result": "created"
+        // }
+        // We verify that result is "created"
+        let json = response
+        .json::<Value>()
+        .await
+        .context(JsonDeserializationError)?;
 
-            let result = json
-                .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
-                    details: String::from("expected JSON object"),
-                })?
-                .get("result")
-                .ok_or(Error::JsonDeserializationInvalid {
-                    details: String::from("expected 'result'"),
-                })?
-                .as_str()
-                .ok_or(Error::JsonDeserializationInvalid {
-                    details: String::from("expected JSON string"),
-                })?;
-            if result == "created" {
-                Ok(())
-            } else {
-                Err(Error::NotCreated {
-                    details: format!("document creation {}", id),
-                })
-            }
+        let result = json
+        .as_object()
+        .ok_or(Error::JsonDeserializationInvalid {
+        details: String::from("expected JSON object"),
+        })?
+        .get("result")
+        .ok_or(Error::JsonDeserializationInvalid {
+        details: String::from("expected 'result'"),
+        })?
+        .as_str()
+        .ok_or(Error::JsonDeserializationInvalid {
+        details: String::from("expected JSON string"),
+        })?;
+        if result == "created" {
+        Ok(())
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+        Err(Error::NotCreated {
+        details: format!("document creation {}", id),
+        })
         }
+        } else {
+        let exception = response.exception().await.ok().unwrap();
+
+        match exception {
+        Some(exception) => {
+        let err = Error::from(exception);
+        Err(err)
+        }
+        None => Err(Error::ElasticsearchFailureWithoutException {
+        details: String::from("Fail status without exception"),
+        }),
+        }
+    }
     }
     */
 
@@ -807,9 +807,10 @@ impl ElasticsearchStorage {
 
     // Uses search after
     // pub(super) fn retrieve_all_documents<D>(
-    pub fn retrieve_all_documents<D>(
+    pub fn retrieve_documents<D>(
         &self,
-        index: String,
+        indices: Vec<String>,
+        dsl: String,
     ) -> Result<impl Stream<Item = D> + 'static, Error>
     where
         D: DeserializeOwned + 'static,
@@ -817,13 +818,15 @@ impl ElasticsearchStorage {
         let client = self.0.clone();
         let stream = stream::unfold(State::Start, move |state| {
             let client = client.clone();
-            let index = index.clone();
+            let dsl = dsl.clone();
+            let indices: Vec<String> = indices.iter().cloned().collect();
             async move {
+                let is: Vec<&str> = indices.iter().map(String::as_str).collect();
                 match state {
                     State::Start => {
                         // We're starting, so we get a pit, and make a first requestj
                         let response = client
-                            .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
+                            .open_point_in_time(OpenPointInTimeParts::Index(&is))
                             .keep_alive("1m")
                             .send()
                             .await
@@ -837,10 +840,11 @@ impl ElasticsearchStorage {
 
                         let body_str = format!(
                             r#"{{
-                        "query": {{"match_all": {{ }} }},
+                        "query": {query},
                         "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
                         "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ]
                     }}"#,
+                            query = dsl,
                             pit = pit
                         );
                         let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
@@ -851,7 +855,7 @@ impl ElasticsearchStorage {
                             .send()
                             .await
                             .context(ElasticsearchError {
-                                details: format!("cannot refresh index {}", index),
+                                details: format!("cannot refresh indices {}", is.join(", ")),
                             })
                             .unwrap();
 
@@ -915,7 +919,7 @@ impl ElasticsearchStorage {
                     State::Next(continuation_token) => {
                         let body_str = format!(
                             r#"{{
-                        "query": {{"match_all": {{ }} }},
+                        "query": {query},
                         "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
                         "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ],
                         "search_after": [
@@ -923,6 +927,7 @@ impl ElasticsearchStorage {
                           {tiebreaker}
                         ]
                     }}"#,
+                            query = dsl,
                             pit = continuation_token.pit,
                             timestamp = continuation_token.timestamp,
                             tiebreaker = continuation_token.tiebreaker
@@ -935,7 +940,7 @@ impl ElasticsearchStorage {
                             .send()
                             .await
                             .context(ElasticsearchError {
-                                details: format!("cannot refresh index {}", index),
+                                details: format!("cannot refresh index {}", is.join(", ")),
                             })
                             .unwrap();
 

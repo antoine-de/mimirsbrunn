@@ -17,3 +17,4 @@ pub trait UseCase {
 }
 
 pub mod generate_index;
+pub mod search_documents;
