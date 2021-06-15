@@ -15,5 +15,5 @@ pub trait Export {
     fn search_documents(
         &self,
         query_parameters: QueryParameters,
-    ) -> Result<Box<dyn Stream<Item = Self::Doc> + Send + Sync + 'static>, Error>;
+    ) -> Result<Box<dyn Stream<Item = Self::Doc> + 'static>, Error>;
 }

@@ -23,7 +23,7 @@ pub struct SearchDocumentsParameters {
 
 #[async_trait]
 impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for SearchDocuments<D> {
-    type Res = Box<dyn Stream<Item = D> + Send + Sync + 'static>;
+    type Res = Box<dyn Stream<Item = D> + 'static>;
     type Param = SearchDocumentsParameters;
 
     async fn execute(&self, param: Self::Param) -> Result<Self::Res, UseCaseError> {
@@ -40,7 +40,7 @@ impl<D: DeserializeOwned + Send + Sync + 'static> Export for SearchDocuments<D> 
     fn search_documents(
         &self,
         query_parameters: QueryParameters,
-    ) -> Result<Box<dyn Stream<Item = Self::Doc> + Send + Sync + 'static>, ExportError> {
+    ) -> Result<Box<dyn Stream<Item = Self::Doc> + 'static>, ExportError> {
         self.query
             .search_documents(query_parameters)
             .map_err(|err| ExportError::DocumentRetrievalError {

@@ -151,9 +151,15 @@ impl From<Exception> for Error {
     fn from(exception: Exception) -> Error {
         let root_cause = exception.error().root_cause();
         if root_cause.is_empty() {
-            // TODO If we can't find a root cause, not sure how to handle that.
-            Error::ElasticsearchUnhandledException {
-                details: String::from("Unspecified root cause"),
+            // If there is no root cause, there maybe a reason
+            if let Some(reason) = exception.error().reason() {
+                Error::ElasticsearchUnhandledException {
+                    details: String::from(reason),
+                }
+            } else {
+                Error::ElasticsearchUnhandledException {
+                    details: String::from("Unspecified root cause or reason"),
+                }
             }
         } else {
             lazy_static! {
@@ -813,7 +819,7 @@ impl ElasticsearchStorage {
         dsl: String,
     ) -> Result<impl Stream<Item = D> + 'static, Error>
     where
-        D: DeserializeOwned + 'static,
+        D: DeserializeOwned + Send + Sync + 'static,
     {
         let client = self.0.clone();
         let stream = stream::unfold(State::Start, move |state| {

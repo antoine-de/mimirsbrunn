@@ -7,10 +7,13 @@ readonly SCRIPT_SRC="$(dirname "${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}")"
 readonly SCRIPT_DIR="$(cd "${SCRIPT_SRC}" >/dev/null 2>&1 && pwd)"
 readonly SCRIPT_NAME=$(basename "$0")
 
+
+DATA_DIR="${SCRIPT_DIR}/data"
+LOGS_DIR="${SCRIPT_DIR}/logs"
 APPLICATION="${SCRIPT_NAME%.*}"
 VERSION=0.0.1
 EXECUTION_DATE=`date '+%Y%m%d'`
-LOG_FILE="${APPLICATION}-${EXECUTION_DATE}.log"
+LOG_FILE="${LOGS_DIR}/${APPLICATION}-${EXECUTION_DATE}.log"
 CONFIG_FILE="${APPLICATION}.rc"
 QUIET=false
 DEFAULT_TASK="none"
@@ -225,7 +228,7 @@ import_cosmogony() {
   local INPUT="${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz"
   [[ -f "${INPUT}" ]] || { log_error "cosmogony2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${COSMOGONY2MIMIR}" --connection-string "http://localhost:${ES_PORT}/${ES_INDEX}" --input "${INPUT}" > /dev/null 2> /dev/null
+  "${COSMOGONY2MIMIR}" --connection-string "http://localhost:${ES_PORT}" --input "${INPUT}"
   [[ $? != 0 ]] && { log_error "Could not import cosmogony data from ${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz into mimir. Aborting"; return 1; }
   return 0
 }
@@ -283,8 +286,22 @@ import_bano() {
   log_info "Importing bano into mimir"
   local BANO2MIMIR="${MIMIR_DIR}/target/release/bano2mimir"
   command -v "${BANO2MIMIR}" > /dev/null 2>&1  || { log_error "bano2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  "${BANO2MIMIR}" --connection-string "http://localhost:${ES_PORT}/${ES_INDEX}" --input "${DATA_DIR}/bano" > /dev/null 2> /dev/null
-  [[ $? != 0 ]] && { log_error "Could not import bano from ${DATA_DIR}/bano into mimir. Aborting"; return 1; }
+  for REGION in "${BANO_REGION}"
+  do
+    import_bano_region "${DATA_DIR}/bano/bano-${REGION}.csv"
+    [[ $? != 0 ]] && { log_error "Could not import bano from ${DATA_DIR}/bano/bano-${REGION}.csv into mimir. Aborting"; return 1; }
+  done
+  return 0
+}
+
+# Pre requisite: DATA_DIR exists.
+# BANO2MIMIR exists
+# $1: bano csv file for one region
+import_bano_region() {
+  local BANO_FILE="${1}"
+  log_info "Importing ${BANO_FILE} into mimir"
+  "${BANO2MIMIR}" --connection-string "http://localhost:${ES_PORT}" --input "${BANO_FILE}"
+  [[ $? != 0 ]] && { log_error "Could not import bano from ${BANO_FILE} into mimir. Aborting"; return 1; }
   return 0
 }
 
@@ -347,33 +364,33 @@ fi
 check_arguments
 [[ $? != 0 ]] && { log_error "Invalid arguments. Aborting"; exit 1; }
 
-check_requirements
-[[ $? != 0 ]] && { log_error "Invalid requirements. Aborting"; exit 1; }
+# check_requirements
+# [[ $? != 0 ]] && { log_error "Invalid requirements. Aborting"; exit 1; }
+# 
+# check_environment
+# [[ $? != 0 ]] && { log_error "Invalid environment. Aborting"; exit 1; }
 
-check_environment
-[[ $? != 0 ]] && { log_error "Invalid environment. Aborting"; exit 1; }
-
-restart_docker_es 9200
-[[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
-
-import_templates
-[[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
+# restart_docker_es 9200
+# [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
+# 
+# import_templates
+# [[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
 
 # The order in which the import are done into mimir is important!
 # First we generate the admin regions with cosmogony
 # Second we import the addresses with bano
 
-download_osm
-[[ $? != 0 ]] && { log_error "Could not download osm. Aborting"; exit 1; }
-
-download_bano
-[[ $? != 0 ]] && { log_error "Could not download bano. Aborting"; exit 1; }
-
-download_ntfs
-[[ $? != 0 ]] && { log_error "Could not download ntfs. Aborting"; exit 1; }
-
-generate_cosmogony
-[[ $? != 0 ]] && { log_error "Could not generate cosmogony. Aborting"; exit 1; }
+# download_osm
+# [[ $? != 0 ]] && { log_error "Could not download osm. Aborting"; exit 1; }
+# 
+# download_bano
+# [[ $? != 0 ]] && { log_error "Could not download bano. Aborting"; exit 1; }
+# 
+# download_ntfs
+# [[ $? != 0 ]] && { log_error "Could not download ntfs. Aborting"; exit 1; }
+# 
+# generate_cosmogony
+# [[ $? != 0 ]] && { log_error "Could not generate cosmogony. Aborting"; exit 1; }
 
 import_cosmogony
 [[ $? != 0 ]] && { log_error "Could not import cosmogony into mimir. Aborting"; exit 1; }
@@ -381,8 +398,8 @@ import_cosmogony
 import_bano
 [[ $? != 0 ]] && { log_error "Could not import bano into mimir. Aborting"; exit 1; }
 
-import_osm
-[[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
-
-import_ntfs
-[[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }
+# import_osm
+# [[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
+# 
+# import_ntfs
+# [[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }

@@ -1,3 +1,3 @@
 #!/usr/bin/bash
 
-curl 'http://localhost:9201/_cat/indices'
+curl 'http://localhost:9200/_cat/indices'

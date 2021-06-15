@@ -1,5 +1,4 @@
 use futures::stream::Stream;
-use serde::de::DeserializeOwned;
 
 use super::ElasticsearchStorage;
 use crate::domain::model::query_parameters::QueryParameters;
@@ -10,7 +9,7 @@ impl Export for ElasticsearchStorage {
     fn search_documents(
         &self,
         query_parameters: QueryParameters,
-    ) -> Result<Box<dyn Stream<Item = Self::Doc> + Send + Sync + 'static>, ExportError> {
+    ) -> Result<Box<dyn Stream<Item = Self::Doc> + 'static>, ExportError> {
         let stream = self
             .retrieve_documents(query_parameters.containers, query_parameters.dsl)
             .map_err(|err| ExportError::DocumentRetrievalError {
