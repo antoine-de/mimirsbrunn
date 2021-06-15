@@ -37,8 +37,10 @@ use mimir2::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::ports::query::Query,
+    domain::model::query_parameters::QueryParameters,
     domain::ports::remote::Remote,
+    domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
+    domain::usecases::UseCase,
 };
 use mimirsbrunn::bano::Bano;
 use slog_scope::{info, warn};
@@ -122,13 +124,31 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         },
     };
 
+    // TODO There might be an opportunity for optimization here:
+    // Lets say we're indexing a bano department.... we don't need to retrieve
+    // the admins for other regions!
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let admins_stream = client
-            .retrieve_all_documents(String::from("munin_admin"))
-            .map_err(|err| format_err!("could not retrieve all admins: {}", err.to_string()))?;
+        let search_documents = SearchDocuments::new(Box::new(client));
+        let parameters = SearchDocumentsParameters {
+            query_parameters: QueryParameters {
+                containers: vec![String::from("munin_admin")],
+                dsl: String::from(r#"{ "match_all": {} }"#),
+            },
+        };
+        let admin_stream = search_documents
+            .execute(parameters)
+            .await
+            .map_err(|err| format_err!("could not retrieve admins: {}", err.to_string()))?;
 
-        let admins = admins_stream.collect::<Vec<Admin>>().await;
+        //let admins_stream = client
+        //    .retrieve_documents(
+        //        vec![String::from("munin_admin")],
+        //        String::from(r#"{ "match_all": {} }"#),
+        //    )
+        //    .map_err(|err| format_err!("could not retrieve all admins: {}", err.to_string()))?;
+
+        let admins = admin_stream.collect::<Vec<Admin>>().await;
 
         let admins_geofinder = admins.iter().cloned().collect();
 
