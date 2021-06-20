@@ -15,6 +15,7 @@ use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use super::ElasticsearchStorage;
@@ -812,12 +813,12 @@ impl ElasticsearchStorage {
     }
 
     // Uses search after
-    // pub(super) fn retrieve_all_documents<D>(
+    // pub(super) fn kjjjkkve_all_documents<D>(
     pub fn retrieve_documents<D>(
         &self,
         indices: Vec<String>,
         dsl: String,
-    ) -> Result<impl Stream<Item = D> + 'static, Error>
+    ) -> Result<Pin<Box<dyn Stream<Item = D>>>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
@@ -1011,7 +1012,7 @@ impl ElasticsearchStorage {
         })
         .flatten();
 
-        Ok(stream)
+        Ok(stream.boxed())
     }
 }
 

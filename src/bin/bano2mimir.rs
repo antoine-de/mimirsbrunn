@@ -129,7 +129,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     // the admins for other regions!
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let search_documents = SearchDocuments::new(Box::new(client));
+        let search_documents = SearchDocuments::new(Box::new(client.clone()));
         let parameters = SearchDocumentsParameters {
             query_parameters: QueryParameters {
                 containers: vec![String::from("munin_admin")],
@@ -141,14 +141,10 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             .await
             .map_err(|err| format_err!("could not retrieve admins: {}", err.to_string()))?;
 
-        //let admins_stream = client
-        //    .retrieve_documents(
-        //        vec![String::from("munin_admin")],
-        //        String::from(r#"{ "match_all": {} }"#),
-        //    )
-        //    .map_err(|err| format_err!("could not retrieve all admins: {}", err.to_string()))?;
-
-        let admins = admin_stream.collect::<Vec<Admin>>().await;
+        let admins = admin_stream
+            .map(|v| serde_json::from_value(v).expect("cannot deserialize admin"))
+            .collect::<Vec<Admin>>()
+            .await;
 
         let admins_geofinder = admins.iter().cloned().collect();
 

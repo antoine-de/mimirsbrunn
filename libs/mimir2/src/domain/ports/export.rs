@@ -1,6 +1,7 @@
 use futures::stream::Stream;
 use serde::de::DeserializeOwned;
 use snafu::Snafu;
+use std::pin::Pin;
 
 use crate::domain::model::query_parameters::QueryParameters;
 
@@ -15,5 +16,5 @@ pub trait Export {
     fn search_documents(
         &self,
         query_parameters: QueryParameters,
-    ) -> Result<Box<dyn Stream<Item = Self::Doc> + 'static>, Error>;
+    ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + 'static>>, Error>;
 }
