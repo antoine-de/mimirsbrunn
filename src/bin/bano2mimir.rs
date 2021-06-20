@@ -43,7 +43,7 @@ use mimir2::{
     domain::usecases::UseCase,
 };
 use mimirsbrunn::bano::Bano;
-use slog_scope::{info, warn};
+use slog_scope::info;
 use std::path::PathBuf;
 use std::sync::Arc;
 use structopt::StructOpt;

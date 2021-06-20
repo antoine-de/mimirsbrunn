@@ -89,8 +89,8 @@ pub enum Error {
     },
 
     /// Invalid JSON Value
-    #[snafu(display("JSON Deserialization Invalid: {}", details))]
-    JsonDeserializationInvalid { details: String },
+    #[snafu(display("JSON Deserialization Invalid: {} {:?}", details, json))]
+    JsonDeserializationInvalid { details: String, json: Value },
 }
 
 /// The indices create index API has 4 components, which are
@@ -246,14 +246,17 @@ impl ElasticsearchStorage {
                 .as_object()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON object"),
+                    json: json.clone(),
                 })?
                 .get("acknowledged")
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected 'acknowledged'"),
+                    json: json.clone(),
                 })?
                 .as_bool()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON bool"),
+                    json: json.clone(),
                 })?;
             if acknowledged {
                 Ok(())
@@ -300,14 +303,17 @@ impl ElasticsearchStorage {
                 .as_object()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON object"),
+                    json: json.clone(),
                 })?
                 .get("acknowledged")
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected 'acknowledged'"),
+                    json: json.clone(),
                 })?
                 .as_bool()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON bool"),
+                    json: json.clone(),
                 })?;
 
             if acknowledged {
@@ -458,65 +464,135 @@ impl ElasticsearchStorage {
         D: Serialize + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
-        let counter_created = Arc::new(Mutex::new(0_usize));
+        let counter = Arc::new(Mutex::new(0_usize));
 
         documents
             .chunks(CHUNK_SIZE) // FIXME chunck size should be a variable.
             .for_each_concurrent(8, |chunk| {
-                let counter_created = counter_created.clone();
+                // FIXME 8 automagick!!??
+                let counter = counter.clone();
                 let index = index.clone();
                 async move {
-                    let mut ops: Vec<BulkOperation<Value>> = Vec::with_capacity(CHUNK_SIZE);
-                    chunk.iter().for_each(|doc| {
-                        let value = serde_json::to_value(doc).expect("to json value");
-                        ops.push(BulkOperation::index(value).into());
-                    });
-                    // FIXME Missing Error Handling
-                    let resp = self
-                        .0
-                        .bulk(BulkParts::Index(index.as_str()))
-                        .body(ops)
-                        .send()
-                        .await
-                        .expect("send bulk");
-
-                    if resp.status_code().is_success() {
-                        if let Ok(json) = resp.json::<Value>().await {
-                            let items = json.as_object().expect("response is a json object")
-                                ["items"]
-                                .as_array()
-                                .expect("Array of items");
-                            items.iter().for_each(|item| {
-                                let result = item.as_object().expect("item is a json object")
-                                    ["index"]
-                                    .as_object()
-                                    .expect("index object")["result"]
-                                    .as_str()
-                                    .expect("result is a string");
-                                if result == "created" {
-                                    let mut count_guard = (*counter_created).lock().unwrap();
-                                    *count_guard += 1;
-                                }
-                            })
-                        }
-                    } else {
-                        let exception = resp.exception().await.unwrap();
-
-                        match exception {
-                            Some(exception) => {
-                                let err = Error::from(exception);
-                                println!("es exception: {}", err);
-                            }
-                            None => {
-                                println!("no exception in bulk insertion");
-                            }
-                        }
+                    if let Err(err) = self.insert_chunk_in_index(index, chunk, counter).await {
+                        println!("Error inserting chunk: {}", err.to_string());
                     }
-                }
+                } // res
             })
             .await;
-        let count = *counter_created.lock().unwrap();
+        let count = *counter.lock().unwrap();
         Ok(count)
+    }
+
+    // Changed the name to avoid recursive calls int storage::insert_documents
+    pub(super) async fn insert_chunk_in_index<D>(
+        &self,
+        index: String,
+        chunk: Vec<D>,
+        counter: Arc<Mutex<usize>>,
+    ) -> Result<(), Error>
+    where
+        D: Serialize + Send + Sync + 'static,
+    {
+        // We try to insert the chunk using bulk insertion.
+        // We then analyze the result, which contains an array of 'items'.
+        // Each item must contain the string 'created'. So we iterate through these items,
+        // and build a Result<(), Error>, and skip while it `is_ok()`. If we have an
+        // error, we report it.
+        let mut ops: Vec<BulkOperation<Value>> = Vec::with_capacity(CHUNK_SIZE);
+        chunk.iter().for_each(|doc| {
+            let value = serde_json::to_value(doc).expect("to json value");
+            ops.push(BulkOperation::index(value).into());
+        });
+        // FIXME Missing Error Handling
+        let resp = self
+            .0
+            .bulk(BulkParts::Index(index.as_str()))
+            .body(ops)
+            .send()
+            .await
+            .expect("send bulk");
+
+        if resp.status_code().is_success() {
+            let json = resp
+                .json::<Value>()
+                .await
+                .context(JsonDeserializationError)?;
+
+            let items = json
+                .as_object()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected JSON object"),
+                    json: json.clone(),
+                })?
+                .get("items")
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected 'items'"),
+                    json: json.clone(),
+                })?
+                .as_array()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected 'items' to be an array"),
+                    json: json.clone(),
+                })?;
+
+            let mut res = items
+                .iter()
+                .map(|item| {
+                    let result = item
+                        .as_object()
+                        .ok_or(Error::JsonDeserializationInvalid {
+                            details: String::from("expected JSON object"),
+                            json: item.clone(),
+                        })?
+                        .get("index")
+                        .ok_or(Error::JsonDeserializationInvalid {
+                            details: String::from("expected 'index'"),
+                            json: item.clone(),
+                        })?
+                        .as_object()
+                        .ok_or(Error::JsonDeserializationInvalid {
+                            details: String::from("expected JSON 'index' to be an object"),
+                            json: item.clone(),
+                        })?
+                        .get("result")
+                        .ok_or(Error::JsonDeserializationInvalid {
+                            details: String::from("expected 'result'"),
+                            json: item.clone(),
+                        })?
+                        .as_str()
+                        .ok_or(Error::JsonDeserializationInvalid {
+                            details: String::from("expected 'result' to be a string"),
+                            json: item.clone(),
+                        })?;
+
+                    if result == "created" {
+                        let mut count_guard = (*counter).lock().unwrap();
+                        *count_guard += 1;
+                        Ok(())
+                    } else {
+                        Err(Error::NotCreated {
+                            details: String::from("not created"),
+                        })
+                    }
+                })
+                .skip_while(|x| x.is_ok());
+
+            match res.next() {
+                None => Ok(()),
+                Some(err) => Err(err.unwrap_err()),
+            }
+        } else {
+            let exception = resp.exception().await.ok().unwrap();
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
     }
 
     pub(super) async fn add_alias(&self, indices: Vec<String>, alias: String) -> Result<(), Error> {
@@ -548,14 +624,17 @@ impl ElasticsearchStorage {
                 .as_object()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON object"),
+                    json: json.clone(),
                 })?
                 .get("acknowledged")
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected 'acknowledged'"),
+                    json: json.clone(),
                 })?
                 .as_bool()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON boolean"),
+                    json: json.clone(),
                 })?;
 
             if acknowledged {
@@ -613,14 +692,17 @@ impl ElasticsearchStorage {
                 .as_object()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON object"),
+                    json: json.clone(),
                 })?
                 .get("acknowledged")
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected 'acknowledged'"),
+                    json: json.clone(),
                 })?
                 .as_bool()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON boolean"),
+                    json: json.clone(),
                 })?;
 
             if acknowledged {
@@ -685,6 +767,7 @@ impl ElasticsearchStorage {
 
             let obj = json.as_object().ok_or(Error::JsonDeserializationInvalid {
                 details: String::from("expected JSON object"),
+                json: json.clone(),
             })?;
 
             let mut aliases = BTreeMap::new();
@@ -740,14 +823,17 @@ impl ElasticsearchStorage {
                 .as_object()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON object"),
+                    json: json.clone(),
                 })?
                 .get("acknowledged")
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected 'acknowledged'"),
+                    json: json.clone(),
                 })?
                 .as_bool()
                 .ok_or(Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON boolean"),
+                    json: json.clone(),
                 })?;
 
             if acknowledged {
