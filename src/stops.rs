@@ -32,7 +32,26 @@ use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils};
 use failure::format_err;
 use failure::{Error, ResultExt};
-use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
+use futures::stream::StreamExt;
+use serde::Serialize;
+// use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
+use mimir::objects::{Admin, Stop};
+use mimir2::{
+    adapters::secondary::elasticsearch::{
+        self,
+        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
+    },
+    domain::model::{
+        configuration::Configuration, document::Document, index::IndexVisibility,
+        query_parameters::QueryParameters,
+    },
+    domain::ports::remote::Remote,
+    domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
+    domain::usecases::{
+        generate_index::{GenerateIndex, GenerateIndexParameters},
+        UseCase,
+    },
+};
 use slog_scope::{info, warn};
 use std::collections::HashMap;
 use std::mem::replace;
@@ -57,18 +76,14 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     }
 }
 
-pub fn import_stops(
+pub async fn import_stops(
     mut stops: Vec<mimir::Stop>,
     connection_string: &str,
     dataset: &str,
-    index_settings: IndexSettings,
 ) -> Result<(), Error> {
-    info!("creation of indexes");
-    let mut rubber = Rubber::new(connection_string);
-    rubber.initialize_templates()?;
+    attach_stops_to_admins(stops.iter_mut(), connection_string).await?;
 
-    attach_stops_to_admins(stops.iter_mut(), &mut rubber);
-
+    // FIXME Should be done concurrently (for_each_concurrent....)
     for stop in &mut stops {
         stop.coverages.push(dataset.to_string());
         let mut admin_weight = stop
@@ -87,15 +102,62 @@ pub fn import_stops(
         stop.weight = (stop.weight + admin_weight) / 2.0;
     }
 
-    let global_index =
-        update_global_stop_index(&mut rubber, stops.iter(), dataset, &index_settings)?;
+    let stops = futures::stream::iter(stops).map(StopDoc::from);
 
-    info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.public_index(dataset, &index_settings, stops.into_iter())?;
-    info!("Nb of indexed stops: {}", nb_stops);
+    let pool = elasticsearch::remote::connection_pool_url(&connection_string)
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not create elasticsearch connection pool: {}",
+                err.to_string()
+            )
+        })?;
 
-    publish_global_index(&mut rubber, &global_index)
-        .context("Error while publishing global index")?;
+    let client = pool
+        .conn()
+        .await
+        .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
+
+    let config = IndexConfiguration {
+        name: String::from(dataset),
+        parameters: IndexParameters {
+            timeout: String::from("10s"),
+            wait_for_active_shards: String::from("1"), // only the primary shard
+        },
+        settings: IndexSettings {
+            value: String::from(include_str!("../config/stop/settings.json")),
+        },
+        mappings: IndexMappings {
+            value: String::from(include_str!("../config/stop/mappings.json")),
+        },
+    };
+
+    let config = serde_json::to_string(&config).map_err(|err| {
+        format_err!(
+            "could not serialize index configuration: {}",
+            err.to_string()
+        )
+    })?;
+    let generate_index = GenerateIndex::new(Box::new(client));
+    let parameters = GenerateIndexParameters {
+        config: Configuration { value: config },
+        documents: Box::new(stops),
+        visibility: IndexVisibility::Public,
+    };
+    generate_index
+        .execute(parameters)
+        .await
+        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
+
+    // let global_index =
+    //     update_global_stop_index(&mut rubber, stops.iter(), dataset, &index_settings)?;
+
+    // info!("Importing {} stops into Mimir", stops.len());
+    // let nb_stops = rubber.public_index(dataset, &index_settings, stops.into_iter())?;
+    // info!("Nb of indexed stops: {}", nb_stops);
+
+    // publish_global_index(&mut rubber, &global_index)
+    //     .context("Error while publishing global index")?;
     Ok(())
 }
 
@@ -115,21 +177,48 @@ fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Arc<mimir::Admin>>) {
 /// The admins are loaded from Elasticsearch and stored in a quadtree
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
-fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
+/// FIXME Use Stream instead of Iterator.
+async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
     stops: It,
-    rubber: &mut Rubber,
-) {
-    let admins = rubber.get_all_admins().unwrap_or_else(|_| {
-        warn!("Administratives regions not found in elasticsearch db");
-        vec![]
-    });
+    connection_string: &str,
+) -> Result<u32, crate::Error> {
+    let pool = elasticsearch::remote::connection_pool_url(&connection_string)
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not create elasticsearch connection pool: {}",
+                err.to_string()
+            )
+        })?;
 
-    info!("{} administrative regions loaded from mimir", admins.len());
+    let client = pool
+        .conn()
+        .await
+        .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
+
+    let search_documents = SearchDocuments::new(Box::new(client.clone()));
+
+    let parameters = SearchDocumentsParameters {
+        query_parameters: QueryParameters {
+            containers: vec![String::from("munin_admin")],
+            dsl: String::from(r#"{ "match_all": {} }"#),
+        },
+    };
+    let admin_stream = search_documents
+        .execute(parameters)
+        .await
+        .map_err(|err| format_err!("could not retrieve admins: {}", err.to_string()))?;
+
+    let admins = admin_stream
+        .map(|v| serde_json::from_value(v).expect("cannot deserialize admin"))
+        .collect::<Vec<Admin>>()
+        .await;
 
     let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
 
     let mut nb_unmatched = 0u32;
     let mut nb_matched = 0u32;
+    // FIXME Opportunity for concurrent work
     for mut stop in stops {
         let admins = admins_geofinder.get(&stop.coord);
 
@@ -142,12 +231,14 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
         attach_stop(&mut stop, admins);
     }
 
-    info!(
-        "there are {}/{} stops without any admin",
-        nb_unmatched,
-        nb_matched + nb_unmatched
-    );
+    Ok(nb_matched)
+    // info!(
+    //     "there are {}/{} stops without any admin",
+    //     nb_unmatched,
+    //     nb_matched + nb_unmatched
+    // );
 }
+
 fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
     use std::collections::BTreeSet;
     let tmp = replace(target, vec![]);
@@ -186,62 +277,80 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     stops_by_id.into_iter().map(|(_, v)| v)
 }
 
-fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, Error> {
-    rubber
-        .get_all_objects_from_index(&index)
-        .map_err(|e| format_err!("Getting all stops {}", e.to_string()))
-}
+// fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, Error> {
+//     rubber
+//         .get_all_objects_from_index(&index)
+//         .map_err(|e| format_err!("Getting all stops {}", e.to_string()))
+// }
 
-fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
-    rubber: &mut Rubber,
-    stops: It,
-    dataset: &str,
-    index_settings: &IndexSettings,
-) -> Result<String, Error> {
-    let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
-    let stops_indexes = rubber
-        .get_all_aliased_index(&mimir::rubber::get_main_type_index::<mimir::Stop>())?
-        .into_iter()
-        .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
-        .map(|(index, _)| index);
-
-    let all_es_stops = stops_indexes
-        .map(|index| get_all_stops(rubber, index))
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .flat_map(|stops| stops.into_iter())
-        .chain(stops.cloned());
-
-    let all_merged_stops = merge_stops(all_es_stops);
-    let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
-
-    rubber.create_index(&es_index_name, &index_settings)?;
-    let typed_index = TypedIndex::new(es_index_name.clone());
-
-    let nb_stops_added = rubber.bulk_index(&typed_index, all_merged_stops)?;
-    info!("{} stops added in the global index", nb_stops_added);
-    // create global index
-    // fill structure for each stop indexes
-    Ok(es_index_name)
-}
-
+// fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
+//     rubber: &mut Rubber,
+//     stops: It,
+//     dataset: &str,
+//     index_settings: &IndexSettings,
+// ) -> Result<String, Error> {
+//     let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
+//     let stops_indexes = rubber
+//         .get_all_aliased_index(&mimir::rubber::get_main_type_index::<mimir::Stop>())?
+//         .into_iter()
+//         .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
+//         .map(|(index, _)| index);
+//
+//     let all_es_stops = stops_indexes
+//         .map(|index| get_all_stops(rubber, index))
+//         .collect::<Result<Vec<_>, _>>()?
+//         .into_iter()
+//         .flat_map(|stops| stops.into_iter())
+//         .chain(stops.cloned());
+//
+//     let all_merged_stops = merge_stops(all_es_stops);
+//     let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
+//
+//     rubber.create_index(&es_index_name, &index_settings)?;
+//     let typed_index = TypedIndex::new(es_index_name.clone());
+//
+//     let nb_stops_added = rubber.bulk_index(&typed_index, all_merged_stops)?;
+//     info!("{} stops added in the global index", nb_stops_added);
+//     // create global index
+//     // fill structure for each stop indexes
+//     Ok(es_index_name)
+// }
+//
 // publish the global stop index
 // alias the new index to the global stop alias, and remove the old index
-fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(), Error> {
-    let last_global_indexes: Vec<_> = rubber
-        .get_all_aliased_index(GLOBAL_STOP_INDEX_NAME)?
-        .into_iter()
-        .map(|(k, _)| k)
-        .filter(|k| k != new_global_index)
-        .collect();
-    rubber.alias(
-        GLOBAL_STOP_INDEX_NAME,
-        &[new_global_index.to_string()],
-        &last_global_indexes,
-    )?;
+// fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(), Error> {
+//     let last_global_indexes: Vec<_> = rubber
+//         .get_all_aliased_index(GLOBAL_STOP_INDEX_NAME)?
+//         .into_iter()
+//         .map(|(k, _)| k)
+//         .filter(|k| k != new_global_index)
+//         .collect();
+//     rubber.alias(
+//         GLOBAL_STOP_INDEX_NAME,
+//         &[new_global_index.to_string()],
+//         &last_global_indexes,
+//     )?;
+//
+//     for index in last_global_indexes {
+//         rubber.delete_index(&index)?;
+//     }
+//     Ok(())
+// }
 
-    for index in last_global_indexes {
-        rubber.delete_index(&index)?;
+// We use a new type to wrap around Stop and implement the Document trait.
+#[derive(Serialize)]
+pub struct StopDoc(Stop);
+
+impl Document for StopDoc {
+    const IS_GEO_DATA: bool = true;
+    const DOC_TYPE: &'static str = "stop";
+    fn id(&self) -> String {
+        self.0.id.clone()
     }
-    Ok(())
+}
+
+impl From<Stop> for StopDoc {
+    fn from(stop: Stop) -> Self {
+        StopDoc(stop)
+    }
 }
