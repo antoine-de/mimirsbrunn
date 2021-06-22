@@ -30,7 +30,7 @@ impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for SearchDocuments<D>
     async fn execute(&self, param: Self::Param) -> Result<Self::Res, UseCaseError> {
         self.search_documents(param.query_parameters)
             .map_err(|err| UseCaseError::Execution {
-                details: format!("Could not search documents: {}", err.to_string()),
+                source: Box::new(err),
             })
     }
 }

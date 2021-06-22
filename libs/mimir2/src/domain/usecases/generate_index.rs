@@ -39,7 +39,7 @@ impl<T: Document + Send + Sync + 'static> UseCase for GenerateIndex<T> {
         self.generate_index(param.documents, param.config, param.visibility)
             .await
             .map_err(|err| UseCaseError::Execution {
-                details: format!("Could not create container: {}", err.to_string()),
+                source: Box::new(err),
             })
     }
 }

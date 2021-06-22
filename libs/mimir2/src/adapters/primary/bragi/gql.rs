@@ -1,67 +1,140 @@
 use async_graphql::extensions::Tracing;
 use async_graphql::*;
 use async_graphql::{ErrorExtensions, FieldError};
-use futures::stream;
+use futures::stream::StreamExt;
+// use places::coord::Coord;
+use futures::pin_mut;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use tokio::io::AsyncReadExt;
 use tracing::debug;
 
-use crate::domain::model::configuration::Configuration as ModelConfiguration;
-use crate::domain::model::document::Document;
-use crate::domain::model::index::Index as ModelIndex;
-use crate::domain::ports::index::Error as IndexServiceError;
-use crate::domain::usecases::generate_index::GenerateIndexParam;
-use crate::domain::usecases::UseCase;
-use crate::obj::Obj;
+use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters};
+use crate::adapters::primary::bragi::settings::QuerySettings;
+use crate::domain::model::query_parameters::QueryParameters;
+use crate::domain::ports::export::{Error as ExportError, Export};
+use crate::domain::usecases::search_documents::SearchDocuments;
 
-impl ErrorExtensions for IndexServiceError {
+impl ErrorExtensions for ExportError {
     // lets define our base extensions
     fn extend(&self) -> FieldError {
         self.extend_with(|err, e| match err {
-            IndexServiceError::IndexCreation { .. } => e.set("reason", "Cannot create index"),
-            IndexServiceError::IndexPublication { .. } => e.set("reason", "Cannot publish index"),
-            IndexServiceError::StorageConnection { .. } => {
-                e.set("reason", "Cannot connect to storage")
-            }
-            IndexServiceError::DocumentStreamInsertion { .. } => {
-                e.set("reason", "Cannot insert documents")
-            }
+            &ExportError::DocumentRetrievalError { source } => e.set("reason", source.to_string()),
         })
     }
 }
 
+/*
+ * The following is an attempt at turning coord into an async_graphql input type,
+ * but, in the interest of time, i leave the end for later
+#[derive(Debug, Serialize, Deserialize)]
+struct InputCoord(Coord);
+
+impl Display for InputCoord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(lat: {}, lon: {})", self.0.lat(), self.0.lon())
+    }
+}
+
+impl Type for InputCoord {
+}
+impl InputType for InputCoord {
+    fn parse(value: GraphqlValue) -> InputValueResult<Self> {
+        match &value {
+            GraphqlValue::Object(o) => {
+                let lat = o.get("lat").ok_or(InputValueError::custom("missing lat"))?;
+                let lat = lat
+                    .into_json()
+                    .unwrap()
+                    .as_f64()
+                    .ok_or(InputValueError::custom("lat is not f64"))?;
+                let lon: f64 = o.get("lon").ok_or(InputValueError::custom("missing lon"));
+                let lon = lon
+                    .into_json()
+                    .unwrap()
+                    .as_f64()
+                    .ok_or(InputValueError::custom("lat is not f64"))?;
+                Ok(InputCoord(Coord::new(lon, lat)))
+            }
+            _ => Err(InputValueError::expected_type(value)),
+        }
+    }
+
+    fn to_value(&self) -> GraphqlValue {
+        let v = serde_json::to_value(self.0).expect("no pb").clone();
+        GraphqlValue::from(v)
+    }
+}
+*/
+
+#[derive(Debug, Serialize, Deserialize, InputObject)]
+#[serde(rename_all = "camelCase")]
+struct InputFilters {
+    lat: Option<f32>,
+    lon: Option<f32>,
+    shape: Option<String>,
+    shape_scope: Option<Vec<String>>, // Here I merge shape and shape_scope together, (and I use str)
+    datasets: Option<Vec<String>>,
+    zone_types: Option<Vec<String>>,
+    poi_types: Option<Vec<String>>,
+}
+
+impl From<InputFilters> for Filters<'static> {
+    fn from(input: InputFilters) -> Self {
+        Filters {
+            // When option_zip_option becomes available: coord: input.lat.zip_with(input.lon, Coord::new),
+            coord: match (input.lat, input.lon) {
+                (Some(lat), Some(lon)) => Some(Coord::new(lat, lon)),
+                _ => None,
+            },
+            shape: match (input.shape, input.shape_scope) {
+                (Some(shape), Some(shape_scope)) => {
+                    let z: &[&str] = &shape_scope.iter().map(String::as_ref).collect::<Vec<_>>();
+                    Some((&shape, z))
+                }
+                _ => None,
+            },
+            datasets: input.datasets.map(|d| {
+                let z: &[&str] = &d.iter().map(String::as_ref).collect::<Vec<_>>();
+                z
+            }),
+            zone_types: input.zone_types.map(|d| {
+                let z: &[&str] = &d.iter().map(String::as_ref).collect::<Vec<_>>();
+                z
+            }),
+            poi_types: input.poi_types.map(|d| {
+                let z: &[&str] = &d.iter().map(String::as_ref).collect::<Vec<_>>();
+                z
+            }),
+        }
+    }
+}
+// I'm about here.... and it's late
+// I need to identify the output type, and put it there instead of Index
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Index {
-    pub name: String,
-    pub status: String,
-    pub docs_count: i32,
+struct SearchResponseBody {
+    pub docs: Vec<JsonValue>,
+    pub docs_count: usize,
 }
 
 #[Object]
-impl Index {
-    async fn name(&self) -> &String {
-        &self.name
+impl SearchResponseBody {
+    async fn docs(&self) -> &Vec<JsonValue> {
+        &self.docs
     }
 
-    async fn status(&self) -> &String {
-        &self.status
-    }
-
-    async fn docs_count(&self) -> &i32 {
+    async fn docs_count(&self) -> &usize {
         &self.docs_count
     }
 }
 
-// FIXME The model index does not carry enough information.
-impl From<ModelIndex> for Index {
-    fn from(index: ModelIndex) -> Self {
-        let ModelIndex { name, .. } = index;
-
-        Index {
-            name,
-            status: String::from("All good"),
-            docs_count: 0,
+impl From<Vec<JsonValue>> for SearchResponseBody {
+    fn from(values: Vec<JsonValue>) -> Self {
+        SearchResponseBody {
+            docs_count: values.len(),
+            docs: values,
         }
     }
 }
@@ -74,50 +147,60 @@ impl Query {
         &self,
         context: &Context<'_>,
         q: String,
-    ) -> FieldResult<Option<Index>> {
-        Ok(None)
+        filters: InputFilters,
+        settings: Upload,
+    ) -> FieldResult<SearchResponseBody> {
+        let usecase = get_usecase_from_context(context)?;
+
+        // Read settings from uploaded file
+        let settings = settings
+            .value(context)
+            .map_err(|err| to_err("extract settings from upload", "graphql", err.to_string()))?;
+
+        let mut settings_content = String::new();
+        let mut settings_file = tokio::fs::File::from_std(settings.content);
+        settings_file
+            .read_to_string(&mut settings_content)
+            .await
+            .map_err(|err| to_err("read settings from content", "graphql", err.to_string()))?;
+        let settings = QuerySettings::new(&settings_content)
+            .map_err(|err| to_err("invalid settings", "graphql", err.to_string()))?;
+
+        let filters = Filters::from(filters);
+        let query = build_query(&q, filters, &["fr"], &settings);
+
+        let query_parameters = QueryParameters {
+            dsl: query,
+            containers: vec![String::from("munin")],
+        };
+
+        let stream = usecase.search_documents(query_parameters)?;
+
+        pin_mut!(stream);
+
+        let res = stream.collect::<Vec<JsonValue>>().await;
+        let resp = SearchResponseBody::from(res);
+
+        Ok(resp)
     }
 }
 
-pub type IndexSchema = Schema<Query, EmptyMutation, EmptySubscription>;
+pub type BragiSchema = Schema<Query, EmptyMutation, EmptySubscription>;
 
-pub fn schema<T: Document + 'static>(
-    usecase: Box<dyn UseCase<Res = ModelIndex, Param = GenerateIndexParam<T>> + Send + Sync>,
-    doc_type: String,
-) -> IndexSchema {
-    Schema::build(Query, Mutation, EmptySubscription)
+pub fn bragi_schema<D: 'static>(usecase: SearchDocuments<D>) -> BragiSchema {
+    Schema::build(Query, EmptyMutation, EmptySubscription)
         .extension(Tracing)
         .data(usecase)
-        .data(doc_type)
         .finish()
 }
 
 #[allow(clippy::borrowed_box)]
-pub fn get_usecase_from_context<'ctx, T: Document>(
+pub fn get_usecase_from_context<'ctx, D: 'static>(
     context: &'ctx Context,
-) -> Result<
-    &'ctx Box<dyn UseCase<Res = ModelIndex, Param = GenerateIndexParam<T>> + Send + Sync>,
-    async_graphql::Error,
->
+) -> Result<&'ctx SearchDocuments<D>, async_graphql::Error>
 where
 {
-    context
-        .data::<Box<dyn UseCase<Res = ModelIndex, Param = GenerateIndexParam<T>> + Send + Sync>>()
-}
-
-#[allow(clippy::borrowed_box)]
-pub fn get_doc_type_from_context<'ctx, T: Document + 'static>(
-    context: &'ctx Context,
-) -> Result<&'ctx String, async_graphql::Error>
-where
-{
-    context.data::<String>()
-}
-
-#[derive(Debug, Serialize, Deserialize, InputObject)]
-pub struct IndexParameters {
-    pub timeout: String,
-    pub wait_for_active_shards: String,
+    context.data::<SearchDocuments<D>>()
 }
 
 // #[cfg(test)]

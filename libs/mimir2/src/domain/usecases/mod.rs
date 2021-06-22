@@ -3,9 +3,9 @@ use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Use Case Execution Error: {}", details))]
+    #[snafu(display("Use Case Execution Error: {}", source))]
     #[snafu(visibility(pub))]
-    Execution { details: String },
+    Execution { source: Box<dyn std::error::Error> },
 }
 
 #[async_trait]
