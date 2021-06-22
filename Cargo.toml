@@ -65,6 +65,18 @@ rusqlite = { version = "0.23", optional = true }
 flate2 = "1.0"
 toml = "0.5"
 tokio = { version = "1.6.0", features = [ "sync", "rt-multi-thread", "macros", "process" ] }
+async-graphql = { version = "2.8", features = [ "chrono", "tracing" ] }
+async-graphql-warp = "2.8"
+snafu = { version = "0.6.10", features = [ "futures" ] }
+clap = "2.33.1"
+tracing = "0.1.26"
+tracing-appender = "0.1.2"
+tracing-futures = "0.2.5"
+tracing-subscriber = "0.2.17"
+tracing-bunyan-formatter = "0.1.7"
+tracing-log = "0.1.2"
+http = "0.2"
+warp = { version = "0.3.1" }
 
 mimir = { path = "libs/mimir" }
 bragi = { path = "libs/bragi" }
@@ -85,6 +97,10 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [build-dependencies]
 json = "0.12"
+
+[[bin]]
+name = "b2"
+path = "src/b2/main.rs"
 
 # we just call one test method: cf. tests::all_tests()
 [[test]]

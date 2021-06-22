@@ -54,6 +54,7 @@
     "zone_type": {
       "type": "text",
       "index": false
-    }
+    },
+    "indexed_at": { "type": "date" }
   }
 }

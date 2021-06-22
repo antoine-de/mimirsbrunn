@@ -63,6 +63,7 @@
       },
       "norms": false
     },
-    "weight": { "type": "double" }
+    "weight": { "type": "double" },
+    "indexed_at": { "type": "date" }
   }
 }

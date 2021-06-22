@@ -67,6 +67,9 @@
     },
     "weight": {
       "type": "double"
+    },
+    "indexed_at": {
+      "type": "date"
     }
   }
 }

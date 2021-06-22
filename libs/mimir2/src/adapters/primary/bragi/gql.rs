@@ -79,7 +79,7 @@ struct InputFilters {
     poi_types: Option<Vec<String>>,
 }
 
-impl From<InputFilters> for Filters<'static> {
+impl From<InputFilters> for Filters {
     fn from(input: InputFilters) -> Self {
         Filters {
             // When option_zip_option becomes available: coord: input.lat.zip_with(input.lon, Coord::new),
@@ -88,24 +88,12 @@ impl From<InputFilters> for Filters<'static> {
                 _ => None,
             },
             shape: match (input.shape, input.shape_scope) {
-                (Some(shape), Some(shape_scope)) => {
-                    let z: &[&str] = &shape_scope.iter().map(String::as_ref).collect::<Vec<_>>();
-                    Some((&shape, z))
-                }
+                (Some(shape), Some(shape_scope)) => Some((shape, shape_scope)),
                 _ => None,
             },
-            datasets: input.datasets.map(|d| {
-                let z: &[&str] = &d.iter().map(String::as_ref).collect::<Vec<_>>();
-                z
-            }),
-            zone_types: input.zone_types.map(|d| {
-                let z: &[&str] = &d.iter().map(String::as_ref).collect::<Vec<_>>();
-                z
-            }),
-            poi_types: input.poi_types.map(|d| {
-                let z: &[&str] = &d.iter().map(String::as_ref).collect::<Vec<_>>();
-                z
-            }),
+            datasets: input.datasets,
+            zone_types: input.zone_types,
+            poi_types: input.poi_types,
         }
     }
 }
@@ -143,6 +131,16 @@ pub struct Query;
 
 #[Object]
 impl Query {
+    // FIXME We need a query, even if it does nothing
+    async fn no_op(&self, _context: &Context<'_>) -> FieldResult<Option<i32>> {
+        Ok(None)
+    }
+}
+
+pub struct Mutation;
+
+#[Object]
+impl Mutation {
     async fn forward_geocoder(
         &self,
         context: &Context<'_>,
@@ -171,7 +169,7 @@ impl Query {
 
         let query_parameters = QueryParameters {
             dsl: query,
-            containers: vec![String::from("munin")],
+            containers: vec![String::from("munin_street")],
         };
 
         let stream = usecase.search_documents(query_parameters)?;
@@ -185,10 +183,10 @@ impl Query {
     }
 }
 
-pub type BragiSchema = Schema<Query, EmptyMutation, EmptySubscription>;
+pub type BragiSchema = Schema<Query, Mutation, EmptySubscription>;
 
 pub fn bragi_schema<D: 'static>(usecase: SearchDocuments<D>) -> BragiSchema {
-    Schema::build(Query, EmptyMutation, EmptySubscription)
+    Schema::build(Query, Mutation, EmptySubscription)
         .extension(Tracing)
         .data(usecase)
         .finish()

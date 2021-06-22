@@ -11,7 +11,7 @@ impl Query for ElasticsearchStorage {
     fn search_documents(
         &self,
         query_parameters: QueryParameters,
-    ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + 'static>>, QueryError> {
+    ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, QueryError> {
         self.retrieve_documents(query_parameters.containers, query_parameters.dsl)
             .map_err(|err| QueryError::DocumentRetrievalError {
                 source: Box::new(err),

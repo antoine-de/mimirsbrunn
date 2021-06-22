@@ -81,6 +81,7 @@
           }
         }
       }
-    }
+    },
+    "indexed_at": { "type": "date" }
   }
 }

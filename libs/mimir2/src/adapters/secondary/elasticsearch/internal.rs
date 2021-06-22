@@ -904,7 +904,7 @@ impl ElasticsearchStorage {
         &self,
         indices: Vec<String>,
         dsl: String,
-    ) -> Result<Pin<Box<dyn Stream<Item = D>>>, Error>
+    ) -> Result<Pin<Box<dyn Stream<Item = D> + Send>>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {

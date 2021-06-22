@@ -64,5 +64,6 @@
         "token_chars": [ "letter", "digit" ]
       }
     }
-  }
+  },
+  "index.default_pipeline": "indexed_at"
 }

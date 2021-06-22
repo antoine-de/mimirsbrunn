@@ -66,5 +66,5 @@
       }
     }
   },
-  "default_pipeline": "indexed_at"
+  "index.default_pipeline": "indexed_at"
 }

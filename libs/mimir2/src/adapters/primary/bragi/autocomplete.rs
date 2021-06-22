@@ -26,12 +26,12 @@ use super::settings::QuerySettings;
 // }
 //
 /* How to restrict the range of the query... */
-pub struct Filters<'a> {
-    coord: Option<Coord>,
-    shape: Option<(&'a str, &'a [&'a str])>, // Here I merge shape and shape_scope together, (and I use str)
-    datasets: Option<&'a [&'a str]>,
-    zone_types: Option<&'a [&'a str]>,
-    poi_types: Option<&'a [&'a str]>,
+pub struct Filters {
+    pub coord: Option<Coord>,
+    pub shape: Option<(String, Vec<String>)>,
+    pub datasets: Option<Vec<String>>,
+    pub zone_types: Option<Vec<String>>,
+    pub poi_types: Option<Vec<String>>,
 }
 
 pub fn build_query(q: &str, filters: Filters, langs: &[&str], settings: &QuerySettings) -> String {
@@ -42,15 +42,15 @@ fn build_query_multi_match(q: &str, settings: &QuerySettings) -> String {
     format!(
         r#"{{
             "multi_match": {{
-                "query": {query},
+                "query": "{query}",
                 "type": "bool_prefix",
                 "fields": [
                   "label",
                   "label._2gram",
                   "label._3gram"
                 ],
-                fuzziness = "auto",
-                boost = {boost}
+                "fuzziness": "auto",
+                "boost": {boost}
             }}
         }}"#,
         query = q,
