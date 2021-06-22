@@ -16,7 +16,8 @@ readme = "README.md"
 members = [
   "libs/mimir",
   "libs/mimir2",
-  "libs/bragi"
+  "libs/bragi",
+  "libs/places"
 ]
 
 [features]
@@ -79,6 +80,8 @@ approx = "0.3"
 actix-web = "1"
 tools = { path = "libs/tools" }
 docker_wrapper = { path = "libs/docker_wrapper" }
+cucumber = { package = "cucumber_rust", version = "0.8.4", features = ["macros"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [build-dependencies]
 json = "0.12"
@@ -86,3 +89,7 @@ json = "0.12"
 # we just call one test method: cf. tests::all_tests()
 [[test]]
 name = "tests"
+
+[[test]]
+name = "cucumber"
+harness = false # Allows Cucumber to print output instead of libtest
