@@ -35,7 +35,13 @@ pub struct Filters {
 }
 
 pub fn build_query(q: &str, filters: Filters, langs: &[&str], settings: &QuerySettings) -> String {
-    build_query_multi_match(q, &settings)
+    let query = build_query_multi_match(q, &settings);
+    format!(
+        r#"{{
+            "query": {query}
+        }}"#,
+        query = query
+    )
 }
 
 fn build_query_multi_match(q: &str, settings: &QuerySettings) -> String {

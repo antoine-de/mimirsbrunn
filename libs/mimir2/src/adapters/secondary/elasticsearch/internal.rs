@@ -900,7 +900,7 @@ impl ElasticsearchStorage {
 
     // Uses search after
     // pub(super) fn kjjjkkve_all_documents<D>(
-    pub fn retrieve_documents<D>(
+    pub fn list_documents<D>(
         &self,
         indices: Vec<String>,
         dsl: String,
@@ -1099,6 +1099,95 @@ impl ElasticsearchStorage {
         .flatten();
 
         Ok(stream.boxed())
+    }
+
+    pub async fn search_documents<D>(
+        &self,
+        indices: Vec<String>,
+        dsl: String,
+    ) -> Result<Vec<D>, Error>
+    where
+        D: DeserializeOwned + Send + Sync + 'static,
+    {
+        let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
+        let body: serde_json::Value =
+            serde_json::from_str(&dsl).context(Json2DeserializationError {
+                details: String::from("could not deserialize query DSL"),
+            })?;
+
+        println!("{:?}", body);
+
+        let response = self
+            .0
+            .search(SearchParts::Index(&indices))
+            .body(body)
+            .send()
+            .await
+            .context(ElasticsearchError {
+                details: format!("could not search indices {}", indices.join(", ")),
+            })?;
+
+        if response.status_code().is_success() {
+            let json = response
+                .json::<Value>()
+                .await
+                .context(JsonDeserializationError)?;
+
+            let hits = json
+                .as_object()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected JSON object"),
+                    json: json.clone(),
+                })?
+                .get("hits")
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected 'hits'"),
+                    json: json.clone(),
+                })?
+                .as_object()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected JSON object"),
+                    json: json.clone(),
+                })?
+                .get("hits")
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected 'hits'"),
+                    json: json.clone(),
+                })?
+                .as_array()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected JSON array"),
+                    json: json.clone(),
+                })?;
+
+            let hits = hits
+                .to_owned()
+                .into_iter()
+                .map(|i| {
+                    let source = i
+                        .as_object()
+                        .unwrap()
+                        .get("_source")
+                        .expect("object has source")
+                        .to_owned();
+                    serde_json::from_value::<D>(source).unwrap()
+                })
+                .collect::<Vec<_>>();
+
+            Ok(hits)
+        } else {
+            let exception = response.exception().await.ok().unwrap();
+
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
     }
 }
 

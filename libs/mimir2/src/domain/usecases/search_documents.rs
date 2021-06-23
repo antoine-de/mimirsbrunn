@@ -8,6 +8,7 @@ use crate::domain::ports::export::{Error as ExportError, Export};
 use crate::domain::ports::query::Query;
 use crate::domain::usecases::{Error as UseCaseError, UseCase};
 
+// FIXME Maybe need two use cases.... one for
 pub struct SearchDocuments<D> {
     pub query: Box<dyn Query<Doc = D> + Send + Sync + 'static>,
 }
@@ -28,7 +29,7 @@ impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for SearchDocuments<D>
     type Param = SearchDocumentsParameters;
 
     async fn execute(&self, param: Self::Param) -> Result<Self::Res, UseCaseError> {
-        self.search_documents(param.query_parameters)
+        self.list_documents(param.query_parameters)
             .map_err(|err| UseCaseError::Execution {
                 source: Box::new(err),
             })
@@ -38,12 +39,24 @@ impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for SearchDocuments<D>
 #[async_trait]
 impl<D: DeserializeOwned + Send + Sync + 'static> Export for SearchDocuments<D> {
     type Doc = D;
-    fn search_documents(
+    fn list_documents(
         &self,
         query_parameters: QueryParameters,
     ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, ExportError> {
+        self.query.list_documents(query_parameters).map_err(|err| {
+            ExportError::DocumentRetrievalError {
+                source: Box::new(err),
+            }
+        })
+    }
+
+    async fn search_documents(
+        &self,
+        query_parameters: QueryParameters,
+    ) -> Result<Vec<Self::Doc>, ExportError> {
         self.query
             .search_documents(query_parameters)
+            .await
             .map_err(|err| ExportError::DocumentRetrievalError {
                 source: Box::new(err),
             })

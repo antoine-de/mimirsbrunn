@@ -172,12 +172,15 @@ impl Mutation {
             containers: vec![String::from("munin_street")],
         };
 
-        let stream = usecase.search_documents(query_parameters)?;
-
-        pin_mut!(stream);
-
-        let res = stream.collect::<Vec<JsonValue>>().await;
+        let res = usecase.search_documents(query_parameters).await?;
         let resp = SearchResponseBody::from(res);
+
+        // let stream = usecase.search_documents(query_parameters)?;
+
+        // pin_mut!(stream);
+
+        // let res = stream.collect::<Vec<JsonValue>>().await;
+        // let resp = SearchResponseBody::from(res);
 
         Ok(resp)
     }
