@@ -10,6 +10,8 @@ edition = "2018"
 async-graphql = { version = "2.8", features = [ "chrono", "tracing" ] }
 async-graphql-warp = "2.8"
 async-trait = "0.1.50"
+# Should be in dev, but cannot get cucumber to work otherwise
+bollard = "0.10.1"
 chrono = { version = "0.4", features = [ "serde" ] }
 clap = "2.33.1"
 config = "0.10"
@@ -38,7 +40,6 @@ warp = "0.3.1"
 [dev-dependencies]
 mockall = "0.9.1"
 criterion = { version = "0.3", features = [ "async_tokio" ] }
-bollard = "0.10.1"
 cucumber = { package = "cucumber_rust", version = "0.8.3" }
 uuid = { version = "0.8", features = [ "serde", "v4" ] }
 rand = "0.8"

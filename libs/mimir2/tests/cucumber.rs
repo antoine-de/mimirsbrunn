@@ -2,9 +2,8 @@ use cucumber::async_trait;
 use std::convert::Infallible;
 use std::sync::Arc;
 
-use crate::utils::docker;
-
 use mimir2::domain::model::index::{Index, IndexStatus};
+use mimir2::utils::docker;
 
 pub struct MyWorld {
     // You can use this struct for mutable context in scenarios.
@@ -84,7 +83,7 @@ mod example_steps {
             .given_async(
                 "I have generated an index",
                 t!(|mut world, _step| {
-                    world.initialize_docker().await;
+                    crate::MyWorld::initialize_docker().await;
                     let settings = include_str!("./fixtures/settings.json");
                     let mappings = include_str!("./fixtures/mappings.json");
                     let index_name = String::from("integration-test");
@@ -153,6 +152,9 @@ mod example_steps {
                 }),
             )
             .then("I find the original list", |world, _step| {
+                // Note that the original vector is very different from the previous one because of
+                // their order. So I only compare the length.
+                // I should be comparing BTreeSet instead...
                 assert_eq!(world.input_data.len(), world.output_data.len());
                 world
             });

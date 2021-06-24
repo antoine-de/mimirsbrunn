@@ -51,19 +51,3 @@ Feature: Non-Regression
       | av jeanne d arc   |                | 3           |
       | av jeanne darc    |                | 3           |
       | av jeanne arc     |                | 3           |
-
-  Scenario Outline: Search with street number
-    When the user searches for "<query>"
-    Then he finds "<id>" in the first <limit> results.
-
-    Examples:
-      | query             | id             | limit       |
-      | gare d'austerlitz |                | 3           |
-      | gare dausterlitz  |                | 3           |
-      | gare d austerlitz |                | 3           |
-      | gare austerlitz   |                | 3           |
-      | av jeanne d'arc   |                | 3           |
-      | av jeanne d arc   |                | 3           |
-      | av jeanne darc    |                | 3           |
-      | av jeanne arc     |                | 3           |
-
