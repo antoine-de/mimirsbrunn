@@ -42,8 +42,10 @@ impl MyWorld {
 mod example_steps {
     use cucumber::{t, Steps};
     use futures::stream::StreamExt;
-    use places::MimirObject;
     use serde::{Deserialize, Serialize};
+    use std::fmt::Display;
+    use std::path::PathBuf;
+    use tokio::io::AsyncReadExt;
     use uuid::Uuid;
 
     use mimir2::adapters::secondary::elasticsearch;
@@ -81,9 +83,9 @@ mod example_steps {
         let mut builder: Steps<crate::MyWorld> = Steps::new();
 
         builder
-            .given_async(
-                "I have generated an index",
-                t!(|mut world, _step| {
+            .given_regex_async(
+                "I have generated an index from \"(.*)\"",
+                t!(|mut world, matches, _step| {
                     crate::MyWorld::initialize_docker().await;
                     let settings = include_str!("./fixtures/settings.json");
                     let mappings = include_str!("./fixtures/mappings.json");
@@ -104,10 +106,23 @@ mod example_steps {
                     let config = Configuration {
                         value: serde_json::to_string(&config).expect("config"),
                     };
-                    let data = include_str!("./fixtures/data.json");
-                    let data: Vec<Person> = serde_json::from_str(data).unwrap();
-                    world.input_data = data.iter().cloned().collect();
-                    let stream = futures::stream::iter(data);
+                    let mut dataset_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                    dataset_file.push("tests/fixtures");
+                    dataset_file.push(matches[1].clone());
+                    let mut dataset_file = tokio::fs::File::open(&dataset_file)
+                        .await
+                        .expect(&format!("Opening dataset from {}", dataset_file.display()));
+
+                    // Read the content of the file into a buffer.
+                    let mut dataset_content = String::new();
+                    dataset_file
+                        .read_to_string(&mut dataset_content)
+                        .await
+                        .expect("reading dataset");
+
+                    let dataset: Vec<Person> = serde_json::from_str(&dataset_content).unwrap();
+                    world.input_data = dataset.iter().cloned().collect();
+                    let stream = futures::stream::iter(dataset);
                     let param = GenerateIndexParameters {
                         config,
                         documents: Box::new(stream),
