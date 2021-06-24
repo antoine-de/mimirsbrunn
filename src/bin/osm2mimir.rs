@@ -36,10 +36,10 @@ use mimir2::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::model::query_parameters::QueryParameters,
+    domain::model::query_parameters::ListParameters,
     domain::model::{configuration::Configuration, document::Document, index::IndexVisibility},
     domain::ports::remote::Remote,
-    domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
+    domain::usecases::search_documents::{ListDocuments, ListDocumentsParameters},
     domain::usecases::{
         generate_index::{GenerateIndex, GenerateIndexParameters},
         UseCase,
@@ -81,12 +81,11 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let search_documents = SearchDocuments::new(Box::new(client.clone()));
+    let list_documents = ListDocuments::new(Box::new(client.clone()));
 
-    let parameters = SearchDocumentsParameters {
-        query_parameters: QueryParameters {
-            containers: vec![String::from("munin_admin")],
-            dsl: String::from(r#"{ "match_all": {} }"#),
+    let parameters = ListDocumentsParameters {
+        parameters: ListParameters {
+            doc_type: Admin::doc_type(),
         },
     };
     let admin_stream = search_documents

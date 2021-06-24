@@ -42,6 +42,7 @@ impl MyWorld {
 mod example_steps {
     use cucumber::{t, Steps};
     use futures::stream::StreamExt;
+    use places::MimirObject;
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
@@ -50,8 +51,8 @@ mod example_steps {
         IndexConfiguration, IndexMappings, IndexParameters, IndexSettings,
     };
     use mimir2::domain::model::{
-        configuration::Configuration, document::Document, index::IndexVisibility,
-        query_parameters::QueryParameters,
+        configuration::Configuration, document::Document, export_parameters::ListParameters,
+        index::IndexVisibility,
     };
     use mimir2::domain::ports::remote::Remote;
     use mimir2::domain::usecases::{
@@ -133,9 +134,8 @@ mod example_steps {
                     let list_documents = ListDocuments::new(Box::new(client));
 
                     let parameters = ListDocumentsParameters {
-                        query_parameters: QueryParameters {
-                            containers: vec![String::from("munin_person")],
-                            dsl: String::from(r#"{ "match_all": {} }"#),
+                        parameters: ListParameters {
+                            doc_type: String::from(Person::DOC_TYPE),
                         },
                     };
                     let person_stream = list_documents

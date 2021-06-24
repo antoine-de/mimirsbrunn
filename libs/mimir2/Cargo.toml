@@ -49,7 +49,7 @@ name = "mimir2"
 path = "src/lib.rs"
 
 [[test]]
-name = "cucumber"
+name = "acceptance"
 harness = false # Allows Cucumber to print output instead of libtest
 
 [[bin]]

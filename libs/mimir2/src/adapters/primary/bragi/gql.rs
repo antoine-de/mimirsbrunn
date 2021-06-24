@@ -1,18 +1,15 @@
 use async_graphql::extensions::Tracing;
 use async_graphql::*;
 use async_graphql::{ErrorExtensions, FieldError};
-use futures::stream::StreamExt;
-// use places::coord::Coord;
-use futures::pin_mut;
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, MimirObject};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tokio::io::AsyncReadExt;
-use tracing::debug;
 
 use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters};
 use crate::adapters::primary::bragi::settings::QuerySettings;
-use crate::domain::model::query_parameters::QueryParameters;
-use crate::domain::ports::export::{Error as ExportError, Export};
+use crate::domain::model::export_parameters::SearchParameters;
+use crate::domain::ports::export::Error as ExportError;
 use crate::domain::usecases::{
     search_documents::{SearchDocuments, SearchDocumentsParameters},
     UseCase,
@@ -23,13 +20,14 @@ impl ErrorExtensions for ExportError {
     fn extend(&self) -> FieldError {
         self.extend_with(|err, e| match err {
             &ExportError::DocumentRetrievalError { source } => e.set("reason", source.to_string()),
+            &ExportError::InterfaceError { details } => e.set("reason", details.to_string()),
         })
     }
 }
 
 /*
  * The following is an attempt at turning coord into an async_graphql input type,
- * but, in the interest of time, i leave the end for later
+ * but, in the interest of time, i ll complete this later
 #[derive(Debug, Serialize, Deserialize)]
 struct InputCoord(Coord);
 
@@ -174,9 +172,15 @@ impl Mutation {
         let query = build_query(&q, filters, &["fr"], &settings);
 
         let parameters = SearchDocumentsParameters {
-            query_parameters: QueryParameters {
+            parameters: SearchParameters {
                 dsl: query,
-                containers: vec![String::from("munin_street")],
+                doc_types: vec![
+                    String::from(Admin::doc_type()),
+                    String::from(Street::doc_type()),
+                    String::from(Addr::doc_type()),
+                    String::from(Stop::doc_type()),
+                    String::from(Poi::doc_type()),
+                ],
             },
         };
 

@@ -39,7 +39,7 @@ mod example_steps {
             self,
             internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
         },
-        domain::model::query_parameters::QueryParameters,
+        domain::model::query_parameters::SearchParameters,
         domain::ports::remote::Remote,
         domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
         domain::usecases::UseCase,
@@ -75,7 +75,7 @@ mod example_steps {
 
                     let search_documents = SearchDocuments::new(Box::new(client));
                     let parameters = SearchDocumentsParameters {
-                        query_parameters: QueryParameters {
+                        query_parameters: SearchParameters {
                             containers: vec![String::from("munin")],
                             dsl: String::from(r#"{ "match_all": {} }"#),
                         },

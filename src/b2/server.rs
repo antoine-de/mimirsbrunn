@@ -23,7 +23,7 @@ use mimir2::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::model::query_parameters::QueryParameters,
+    domain::model::query_parameters::SearchParameters,
     domain::ports::remote::Remote,
     domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
     domain::usecases::UseCase,

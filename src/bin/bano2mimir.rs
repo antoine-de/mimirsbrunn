@@ -37,7 +37,7 @@ use mimir2::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::model::query_parameters::QueryParameters,
+    domain::model::query_parameters::SearchParameters,
     domain::ports::remote::Remote,
     domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
     domain::usecases::UseCase,
@@ -131,9 +131,8 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     let into_addr = {
         let search_documents = ListDocuments::new(Box::new(client.clone()));
         let parameters = ListDocumentsParameters {
-            query_parameters: QueryParameters {
-                containers: vec![String::from("munin_admin")],
-                dsl: String::from(r#"{ "match_all": {} }"#),
+            parameters: ListParameters {
+                doc_type: Admin::doc_type(),
             },
         };
         let admin_stream = search_documents

@@ -1,7 +1,14 @@
+/// Implementation of `Export` for searching documents.
 use async_trait::async_trait;
+use futures::stream::Stream;
 use serde::de::DeserializeOwned;
+use std::pin::Pin;
 
-use crate::domain::model::query_parameters::QueryParameters;
+use crate::domain::model::export_parameters::{
+    ListParameters, SearchParameters as ExportParameters,
+};
+use crate::domain::model::query_parameters::SearchParameters as QueryParameters;
+use crate::domain::ports::export::{Error as ExportError, Export};
 use crate::domain::ports::query::Query;
 use crate::domain::usecases::{Error as UseCaseError, UseCase};
 
@@ -17,7 +24,7 @@ impl<D> SearchDocuments<D> {
 }
 
 pub struct SearchDocumentsParameters {
-    pub query_parameters: QueryParameters,
+    pub parameters: ExportParameters,
 }
 
 #[async_trait]
@@ -26,10 +33,35 @@ impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for SearchDocuments<D>
     type Param = SearchDocumentsParameters;
 
     async fn execute(&self, param: Self::Param) -> Result<Self::Res, UseCaseError> {
-        self.query
-            .search_documents(param.query_parameters)
+        self.search_documents(param.parameters)
             .await
             .map_err(|err| UseCaseError::Execution {
+                source: Box::new(err),
+            })
+    }
+}
+
+#[async_trait]
+impl<D: DeserializeOwned + Send + Sync + 'static> Export for SearchDocuments<D> {
+    type Doc = D;
+    fn list_documents(
+        &self,
+        _parameters: ListParameters,
+    ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, ExportError> {
+        Err(ExportError::InterfaceError {
+            details: String::from("can't use SearchDocuments::list_documents"),
+        })
+    }
+
+    async fn search_documents(
+        &self,
+        parameters: ExportParameters,
+    ) -> Result<Vec<Self::Doc>, ExportError> {
+        let query_parameters = QueryParameters::from(parameters);
+        self.query
+            .search_documents(query_parameters)
+            .await
+            .map_err(|err| ExportError::DocumentRetrievalError {
                 source: Box::new(err),
             })
     }

@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use snafu::Snafu;
 use std::pin::Pin;
 
-use crate::domain::model::query_parameters::QueryParameters;
+use crate::domain::model::query_parameters::{ListParameters, SearchParameters};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -16,10 +16,11 @@ pub enum Error {
 pub trait Query {
     type Doc: DeserializeOwned + Send + Sync + 'static;
 
-    async fn search_documents(&self, parameters: QueryParameters) -> Result<Vec<Self::Doc>, Error>;
+    async fn search_documents(&self, parameters: SearchParameters)
+        -> Result<Vec<Self::Doc>, Error>;
 
     fn list_documents(
         &self,
-        parameters: QueryParameters,
+        parameters: ListParameters,
     ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, Error>;
 }

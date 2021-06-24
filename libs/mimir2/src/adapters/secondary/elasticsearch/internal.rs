@@ -902,8 +902,7 @@ impl ElasticsearchStorage {
     // pub(super) fn kjjjkkve_all_documents<D>(
     pub fn list_documents<D>(
         &self,
-        indices: Vec<String>,
-        dsl: String,
+        index: String,
     ) -> Result<Pin<Box<dyn Stream<Item = D> + Send>>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
@@ -911,15 +910,13 @@ impl ElasticsearchStorage {
         let client = self.0.clone();
         let stream = stream::unfold(State::Start, move |state| {
             let client = client.clone();
-            let dsl = dsl.clone();
-            let indices: Vec<String> = indices.iter().cloned().collect();
+            let index = index.clone();
             async move {
-                let is: Vec<&str> = indices.iter().map(String::as_str).collect();
                 match state {
                     State::Start => {
                         // We're starting, so we get a pit, and make a first requestj
                         let response = client
-                            .open_point_in_time(OpenPointInTimeParts::Index(&is))
+                            .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
                             .keep_alive("1m")
                             .send()
                             .await
@@ -933,11 +930,10 @@ impl ElasticsearchStorage {
 
                         let body_str = format!(
                             r#"{{
-                        "query": {query},
+                        "query": {{ "match_all": {{}} }},
                         "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
                         "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ]
                     }}"#,
-                            query = dsl,
                             pit = pit
                         );
                         let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
@@ -948,7 +944,7 @@ impl ElasticsearchStorage {
                             .send()
                             .await
                             .context(ElasticsearchError {
-                                details: format!("cannot refresh indices {}", is.join(", ")),
+                                details: format!("cannot search index {}", index),
                             })
                             .unwrap();
 
@@ -1012,7 +1008,7 @@ impl ElasticsearchStorage {
                     State::Next(continuation_token) => {
                         let body_str = format!(
                             r#"{{
-                        "query": {query},
+                        "query": {{ "match_all": {{}} }},
                         "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
                         "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ],
                         "search_after": [
@@ -1020,7 +1016,6 @@ impl ElasticsearchStorage {
                           {tiebreaker}
                         ]
                     }}"#,
-                            query = dsl,
                             pit = continuation_token.pit,
                             timestamp = continuation_token.timestamp,
                             tiebreaker = continuation_token.tiebreaker
@@ -1033,7 +1028,7 @@ impl ElasticsearchStorage {
                             .send()
                             .await
                             .context(ElasticsearchError {
-                                details: format!("cannot refresh index {}", is.join(", ")),
+                                details: format!("cannot search index {}", index),
                             })
                             .unwrap();
 

@@ -1,6 +1,6 @@
-Feature: Example feature
+Feature: Acceptance tests
 
-  Scenario: An example scenario
+  Scenario: Baseline scenario
     Given I have generated an index
     When I list all the documents in the index
     Then I find the original list
