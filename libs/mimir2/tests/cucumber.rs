@@ -1,10 +1,16 @@
 use cucumber::async_trait;
 use std::convert::Infallible;
+use std::sync::Arc;
+
+use crate::utils::docker;
+
+use mimir2::domain::model::index::{Index, IndexStatus};
 
 pub struct MyWorld {
     // You can use this struct for mutable context in scenarios.
     input_data: Vec<example_steps::Person>,
     output_data: Vec<example_steps::Person>,
+    index: Index,
 }
 
 #[async_trait(?Send)]
@@ -15,7 +21,22 @@ impl cucumber::World for MyWorld {
         Ok(Self {
             input_data: Vec::new(),
             output_data: Vec::new(),
+            index: Index {
+                name: String::new(),
+                dataset: String::new(),
+                doc_type: String::new(),
+                docs_count: 0u32,
+                status: IndexStatus::NotAvailable,
+            },
         })
+    }
+}
+
+impl MyWorld {
+    async fn initialize_docker() -> () {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let _guard = mtx.lock().unwrap();
+        docker::initialize().await.expect("docker initialize");
     }
 }
 
@@ -63,6 +84,7 @@ mod example_steps {
             .given_async(
                 "I have generated an index",
                 t!(|mut world, _step| {
+                    world.initialize_docker().await;
                     let settings = include_str!("./fixtures/settings.json");
                     let mappings = include_str!("./fixtures/mappings.json");
                     let index_name = String::from("integration-test");
