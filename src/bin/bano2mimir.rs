@@ -39,7 +39,7 @@ use mimir2::{
     },
     domain::model::query_parameters::QueryParameters,
     domain::ports::remote::Remote,
-    domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
+    domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
     domain::usecases::UseCase,
 };
 use mimirsbrunn::bano::Bano;
@@ -129,8 +129,8 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     // the admins for other regions!
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let search_documents = SearchDocuments::new(Box::new(client.clone()));
-        let parameters = SearchDocumentsParameters {
+        let search_documents = ListDocuments::new(Box::new(client.clone()));
+        let parameters = ListDocumentsParameters {
             query_parameters: QueryParameters {
                 containers: vec![String::from("munin_admin")],
                 dsl: String::from(r#"{ "match_all": {} }"#),

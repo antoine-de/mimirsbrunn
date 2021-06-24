@@ -1,7 +1,6 @@
 Feature: Example feature
 
   Scenario: An example scenario
-    Given I am trying out Cucumber
-    When I consider what I am doing
-    Then I am interested in ATDD
-    And we can implement rules with regex
+    Given I have generated an index
+    When I list all the documents in the index
+    Then I find the original list

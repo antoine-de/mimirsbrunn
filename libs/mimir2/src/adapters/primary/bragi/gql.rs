@@ -13,7 +13,10 @@ use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters}
 use crate::adapters::primary::bragi::settings::QuerySettings;
 use crate::domain::model::query_parameters::QueryParameters;
 use crate::domain::ports::export::{Error as ExportError, Export};
-use crate::domain::usecases::search_documents::SearchDocuments;
+use crate::domain::usecases::{
+    search_documents::{SearchDocuments, SearchDocumentsParameters},
+    UseCase,
+};
 
 impl ErrorExtensions for ExportError {
     // lets define our base extensions
@@ -137,6 +140,9 @@ impl Query {
     }
 }
 
+// Note that we have to use a mutation for the forward_geocoder, even though it does not
+// mutate the server. This is because we upload the settings, and the type Upload requires
+// a mutation.
 pub struct Mutation;
 
 #[Object]
@@ -167,20 +173,15 @@ impl Mutation {
         let filters = Filters::from(filters);
         let query = build_query(&q, filters, &["fr"], &settings);
 
-        let query_parameters = QueryParameters {
-            dsl: query,
-            containers: vec![String::from("munin_street")],
+        let parameters = SearchDocumentsParameters {
+            query_parameters: QueryParameters {
+                dsl: query,
+                containers: vec![String::from("munin_street")],
+            },
         };
 
-        let res = usecase.search_documents(query_parameters).await?;
+        let res = usecase.execute(parameters).await?;
         let resp = SearchResponseBody::from(res);
-
-        // let stream = usecase.search_documents(query_parameters)?;
-
-        // pin_mut!(stream);
-
-        // let res = stream.collect::<Vec<JsonValue>>().await;
-        // let resp = SearchResponseBody::from(res);
 
         Ok(resp)
     }
