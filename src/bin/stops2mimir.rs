@@ -28,8 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use failure::ResultExt;
-use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use serde::Deserialize;
 use slog_scope::{info, warn};
@@ -102,7 +100,7 @@ impl GtfsStop {
         }
     }
     // to be moved when TryInto is stablilized
-    fn try_into(self) -> Result<mimir::Stop, StopConversionErr> {
+    fn try_into(self) -> Result<places::stop::Stop, StopConversionErr> {
         if self.location_type != Some(1) {
             Err(StopConversionErr::NotStopArea)
         } else if self.visible == Some(0) {
@@ -118,8 +116,8 @@ impl GtfsStop {
                 self.stop_lon, self.stop_lat, self.stop_name
             )))
         } else {
-            let coord = mimir::Coord::new(self.stop_lon, self.stop_lat);
-            Ok(mimir::Stop {
+            let coord = places::coord::Coord::new(self.stop_lon, self.stop_lat);
+            Ok(places::stop::Stop {
                 id: format!("stop_area:{}", self.stop_id), // prefix to match navitia's id
                 coord,
                 approx_coord: Some(coord.into()),
@@ -129,7 +127,7 @@ impl GtfsStop {
             })
         }
     }
-    fn try_into_with_warn(self) -> Option<mimir::Stop> {
+    fn try_into_with_warn(self) -> Option<places::stop::Stop> {
         match self.try_into() {
             Ok(s) => Some(s),
             Err(StopConversionErr::InvisibleStop) => None,
@@ -150,7 +148,7 @@ async fn run(args: Args) -> Result<(), failure::Error> {
 
     let mut rdr = csv::Reader::from_path(&args.input)?;
     let mut nb_stop_points = HashMap::new();
-    let mut stops: Vec<mimir::Stop> = rdr
+    let mut stops: Vec<places::stop::Stop> = rdr
         .deserialize()
         .filter_map(|rc| rc.map_err(|e| warn!("skip csv line: {}", e)).ok())
         .filter_map(|stop: GtfsStop| {
@@ -176,7 +174,7 @@ fn test_load_stops() {
     let mut rdr = csv::Reader::from_path("./tests/fixtures/stops.txt".to_string()).unwrap();
 
     let mut nb_stop_points = HashMap::new();
-    let stops: Vec<mimir::Stop> = rdr
+    let stops: Vec<places::stop::Stop> = rdr
         .deserialize()
         .filter_map(Result::ok)
         .filter_map(|stop: GtfsStop| {

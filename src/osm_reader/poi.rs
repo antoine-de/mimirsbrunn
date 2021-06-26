@@ -33,8 +33,21 @@ use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings::osm2mimir::Settings, utils};
-use mimir::{rubber, Poi, PoiType};
+use mimir2::{
+    domain::model::export_parameters::SearchParameters,
+    domain::usecases::{
+        search_documents::{SearchDocuments, SearchDocumentsParameters},
+        UseCase,
+    },
+};
 use osm_boundaries_utils::build_boundary;
+use places::{
+    addr::Addr,
+    coord::Coord,
+    i18n_properties::I18nProperties,
+    poi::{Poi, PoiType},
+    MimirObject, Property,
+};
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
@@ -119,9 +132,9 @@ impl PoiConfig {
     }
 }
 
-fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Property> {
+fn make_properties(tags: &osmpbfreader::Tags) -> Vec<Property> {
     tags.iter()
-        .map(|property| mimir::Property {
+        .map(|property| Property {
             key: property.0.to_string(),
             value: property.1.to_string(),
         })
@@ -133,7 +146,7 @@ fn parse_poi(
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
     matcher: &PoiConfig,
     admins_geofinder: &AdminGeoFinder,
-) -> Option<mimir::Poi> {
+) -> Option<Poi> {
     let poi_type = match matcher.get_poi_type(osmobj.tags()) {
         Some(poi_type) => poi_type,
         None => {
@@ -147,7 +160,7 @@ fn parse_poi(
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => (
             format_poi_id("node", node.id.0),
-            mimir::Coord::new(node.lon(), node.lat()),
+            Coord::new(node.lon(), node.lat()),
         ),
         osmpbfreader::OsmObj::Way(ref way) => {
             (format_poi_id("way", way.id.0), get_way_coord(obj_map, way))
@@ -177,7 +190,7 @@ fn parse_poi(
         _ => utils::get_zip_codes_from_admins(&adms),
     };
     let country_codes = utils::find_country_codes(adms.iter().map(|a| a.deref()));
-    Some(mimir::Poi {
+    Some(Poi {
         id,
         name: name.to_string(),
         label: labels::format_poi_label(name, adms.iter().map(|a| a.deref()), &country_codes),
@@ -189,8 +202,8 @@ fn parse_poi(
         poi_type: poi_type.clone(),
         properties: make_properties(osmobj.tags()),
         address: None,
-        names: mimir::I18nProperties::default(),
-        labels: mimir::I18nProperties::default(),
+        names: I18nProperties::default(),
+        labels: I18nProperties::default(),
         distance: None,
         country_codes,
         context: None,
@@ -201,6 +214,7 @@ fn format_poi_id(osm_type: &str, id: i64) -> String {
     format!("poi:osm:{}:{}", osm_type, id)
 }
 
+// FIXME Should produce a stream
 pub fn pois(
     pbf: &mut OsmPbfReader,
     matcher: &PoiConfig,
@@ -214,28 +228,70 @@ pub fn pois(
         .collect()
 }
 
-pub fn compute_poi_weight(pois_vec: &mut [Poi]) {
-    for poi in pois_vec {
-        for admin in &mut poi.administrative_regions {
-            if admin.is_city() {
-                poi.weight = admin.weight;
-                break;
-            }
-        }
+pub async fn compute_weight(poi: Poi) -> Poi {
+    let weight = poi
+        .administrative_regions
+        .iter()
+        .find(|admin| admin.is_city())
+        .map(|admin| admin.weight);
+    match weight {
+        Some(weight) => Poi { weight, ..poi },
+        None => poi,
     }
 }
 
-pub fn add_address(pois_vec: &mut [Poi], rubber: &mut rubber::Rubber) {
-    for poi in pois_vec {
-        poi.address = rubber
-            .get_address(&poi.coord)
-            .ok()
-            .and_then(|addrs| addrs.into_iter().next())
-            .map(|addr| addr.address().unwrap());
-        if poi.address.is_none() {
-            warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
-        }
+// FIXME Return a Result
+pub async fn add_address(poi: Poi, search_documents: &SearchDocuments<serde_json::Value>) -> Poi {
+    // FIXME 1km automagick
+    let reverse = mimir2::adapters::primary::bragi::reverse::build_reverse_query(
+        "1km",
+        poi.coord.lat(),
+        poi.coord.lon(),
+    );
+    let parameters = SearchDocumentsParameters {
+        parameters: SearchParameters {
+            doc_types: vec![String::from(Addr::doc_type())],
+            dsl: reverse,
+        },
+    };
+    // FIXME ladder code, should use Result<(), Error> and combinators
+    match search_documents.execute(parameters).await {
+        // Ok(res) => match serde_json::from_value(res) {
+        Ok(addresses) => match addresses.into_iter().next() {
+            Some(a) => Poi {
+                address: Some(serde_json::from_value(a).unwrap()),
+                ..poi
+            },
+            None => {
+                warn!("Cannot find a closest address for poi {:?}", poi.id);
+                poi
+            }
+        },
+        Err(err) => {
+            warn!(
+                "Cannot deserialize reverse query for poi.id {:?}: {}",
+                poi.id,
+                err.to_string()
+            );
+            poi
+        } // },
+          // Err(err) => {
+          //     warn!(
+          //         "Cannot execute reverse query for poi {:?}: {}",
+          //         poi.id,
+          //         err.to_string()
+          //     );
+          // }
     }
+
+    // poi.address = rubber
+    //     .get_address(&poi.coord)
+    //     .ok()
+    //     .and_then(|addrs| addrs.into_iter().next())
+    //     .map(|addr| addr.address().unwrap());
+    // if poi.address.is_none() {
+    //     warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
+    // }
 }
 
 #[cfg(test)]

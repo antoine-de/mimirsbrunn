@@ -32,7 +32,7 @@ use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
 use crate::Error;
 use failure::ensure;
-use mimir::objects::Admin;
+use places::{addr::Addr, admin::Admin, coord::Coord, street::Street};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::ops::Deref;
@@ -66,7 +66,7 @@ impl Bano {
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
         use_old_index_format: bool,
-    ) -> Result<mimir::Addr, Error> {
+    ) -> Result<Addr, Error> {
         let street_id = format!("street:{}", self.fantoir()?.to_string());
         let mut admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
@@ -110,8 +110,8 @@ impl Bano {
             .map_or(0., |a| a.weight);
 
         let zip_codes: Vec<_> = self.zip.split(';').map(str::to_string).collect();
-        let coord = mimir::Coord::new(self.lon, self.lat);
-        let street = mimir::Street {
+        let coord = Coord::new(self.lon, self.lat);
+        let street = Street {
             id: street_id,
             name: self.street,
             label: street_label,
@@ -124,7 +124,7 @@ impl Bano {
             country_codes: country_codes.clone(),
             context: None,
         };
-        Ok(mimir::Addr {
+        Ok(Addr {
             id: format!(
                 "addr:{};{}{}",
                 self.lon,
@@ -162,7 +162,7 @@ impl Bano {
 }
 
 fn build_admin_from_bano_city(city: &str) -> Admin {
-    mimir::Admin {
+    Admin {
         name: city.to_string(),
         zone_type: Some(cosmogony::ZoneType::City),
         ..Default::default()

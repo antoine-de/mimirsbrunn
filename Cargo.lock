@@ -2841,6 +2841,7 @@ dependencies = [
  "osm_boundaries_utils",
  "osmpbfreader",
  "par-map",
+ "places",
  "regex",
  "reqwest 0.10.9",
  "rs-es",

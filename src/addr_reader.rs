@@ -3,7 +3,6 @@ use crate::Error;
 use failure::format_err;
 use futures::future;
 use futures::stream::{Stream, StreamExt};
-use mimir::Addr;
 use mimir2::{
     adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
     domain::{
@@ -14,6 +13,7 @@ use mimir2::{
         },
     },
 };
+use places::addr::Addr;
 use serde::Serialize;
 use slog_scope::warn;
 use std::marker::{Send, Sync};

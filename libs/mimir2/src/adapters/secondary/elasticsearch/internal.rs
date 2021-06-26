@@ -1159,6 +1159,7 @@ impl ElasticsearchStorage {
                 .to_owned()
                 .into_iter()
                 .map(|i| {
+                    println!("{:?}", i);
                     let source = i
                         .as_object()
                         .unwrap()

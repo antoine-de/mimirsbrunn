@@ -6,7 +6,6 @@ use super::admin::Admin;
 use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
-use super::Address;
 use super::{Members, MimirObject, PlaceDocType, Property};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -24,7 +23,8 @@ pub struct Poi {
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
     pub properties: Vec<Property>,
-    pub address: Option<Address>,
+    // pub address: Option<Address>,
+    pub address: Option<super::addr::Addr>,
     #[serde(default)]
     pub country_codes: Vec<String>,
 

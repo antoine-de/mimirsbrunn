@@ -31,7 +31,6 @@
 use cosmogony::{Zone, ZoneIndex};
 use failure::{format_err, Error};
 use futures::stream::{Stream, StreamExt};
-use mimir::objects::Admin;
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
@@ -50,6 +49,7 @@ use mimir2::{
 use mimirsbrunn::osm_reader::admin;
 use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
+use places::admin::Admin;
 use serde::Serialize;
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
@@ -133,8 +133,8 @@ impl IntoAdmin for Zone {
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = self.label;
         let weight = get_weight(&self.tags, &self.center_tags);
-        let center = self.center.map_or(mimir::Coord::default(), |c| {
-            mimir::Coord::new(c.lng(), c.lat())
+        let center = self.center.map_or(places::coord::Coord::default(), |c| {
+            places::coord::Coord::new(c.lng(), c.lat())
         });
         let format_id = |id, insee| {
             // for retrocompatibity reasons, Navitia needs the

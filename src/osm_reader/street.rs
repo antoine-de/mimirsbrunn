@@ -59,7 +59,7 @@ pub fn streets(
     pbf: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
     settings: &settings::osm2mimir::Settings,
-) -> Result<Vec<mimir::Street>, Error> {
+) -> Result<Vec<places::street::Street>, Error> {
     let invalid_highways = settings
         .street
         .as_ref()
@@ -112,24 +112,26 @@ pub fn streets(
     info!("reading pbf done.");
 
     // Builder for street object
-    let build_street =
-        |id: String, name: String, coord: mimir::Coord, admins: Vec<Arc<mimir::Admin>>| {
-            let admins_iter = admins.iter().map(Deref::deref);
-            let country_codes = utils::find_country_codes(admins_iter.clone());
-            mimir::Street {
-                id,
-                label: labels::format_street_label(&name, admins_iter, &country_codes),
-                name,
-                weight: 0.,
-                zip_codes: utils::get_zip_codes_from_admins(&admins),
-                administrative_regions: admins,
-                coord,
-                approx_coord: Some(coord.into()),
-                distance: None,
-                country_codes,
-                context: None,
-            }
-        };
+    let build_street = |id: String,
+                        name: String,
+                        coord: places::coord::Coord,
+                        admins: Vec<Arc<places::admin::Admin>>| {
+        let admins_iter = admins.iter().map(Deref::deref);
+        let country_codes = utils::find_country_codes(admins_iter.clone());
+        places::street::Street {
+            id,
+            label: labels::format_street_label(&name, admins_iter, &country_codes),
+            name,
+            weight: 0.,
+            zip_codes: utils::get_zip_codes_from_admins(&admins),
+            administrative_regions: admins,
+            coord,
+            approx_coord: Some(coord.into()),
+            distance: None,
+            country_codes,
+            context: None,
+        }
+    };
 
     // Return an iterator giving documents that will be inserted for a given
     // street: one for each hierarchy of admins.
@@ -271,7 +273,7 @@ fn get_street_admin<T: StoreObjs + Getter>(
     admins_geofinder: &AdminGeoFinder,
     obj_map: &T,
     way: &osmpbfreader::objects::Way,
-) -> Vec<Vec<Arc<mimir::Admin>>> {
+) -> Vec<Vec<Arc<places::admin::Admin>>> {
     let nb_nodes = way.nodes.len();
 
     // To avoid corner cases where the ends of the way are near
@@ -306,7 +308,7 @@ fn get_street_admin<T: StoreObjs + Getter>(
         })
 }
 
-pub fn compute_street_weight(streets: &mut Vec<mimir::Street>) {
+pub fn compute_street_weight(streets: &mut Vec<places::street::Street>) {
     for st in streets {
         for admin in &mut st.administrative_regions {
             if admin.is_city() {

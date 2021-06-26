@@ -36,7 +36,7 @@ use osmpbfreader::StoreObjs;
 pub fn get_way_coord<T: StoreObjs + Getter>(
     obj_map: &T,
     way: &osmpbfreader::objects::Way,
-) -> mimir::Coord {
+) -> places::coord::Coord {
     /*
         Returns arbitrary Coord on the way.
         A middle node is chosen as a better marker on a street
@@ -49,49 +49,55 @@ pub fn get_way_coord<T: StoreObjs + Getter>(
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
         .filter_map(|obj| {
             obj.node()
-                .map(|node| mimir::Coord::new(node.lon(), node.lat()))
+                .map(|node| places::coord::Coord::new(node.lon(), node.lat()))
         })
         .next()
-        .unwrap_or_else(mimir::Coord::default)
+        .unwrap_or_else(places::coord::Coord::default)
 }
 
-pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> mimir::Coord {
+pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> places::coord::Coord {
     let coord = boundary
         .as_ref()
-        .and_then(|b| b.centroid().map(|c| mimir::Coord::new(c.x(), c.y())))
-        .unwrap_or_else(mimir::Coord::default);
+        .and_then(|b| {
+            b.centroid()
+                .map(|c| places::coord::Coord::new(c.x(), c.y()))
+        })
+        .unwrap_or_else(places::coord::Coord::default);
     if coord.is_valid() {
         coord
     } else {
-        mimir::Coord::default()
+        places::coord::Coord::default()
     }
 }
 
-pub fn get_osm_codes_from_tags(tags: &osmpbfreader::Tags) -> Vec<mimir::Code> {
+pub fn get_osm_codes_from_tags(tags: &osmpbfreader::Tags) -> Vec<places::code::Code> {
     // read codes from osm tags
     // for the moment we only use:
     // * ISO3166 codes (mainly to get country codes)
     // * ref:* tags (to get NUTS codes, INSEE code (even if we have a custom field for them), ...)
     tags.iter()
         .filter(|(k, _)| k.starts_with("ISO3166") || k.starts_with("ref:") || *k == "wikidata")
-        .map(|property| mimir::Code {
+        .map(|property| places::code::Code {
             name: property.0.to_string(),
             value: property.1.to_string(),
         })
         .collect()
 }
 
-pub fn get_names_from_tags(tags: &osmpbfreader::Tags, langs: &[String]) -> mimir::I18nProperties {
+pub fn get_names_from_tags(
+    tags: &osmpbfreader::Tags,
+    langs: &[String],
+) -> places::i18n_properties::I18nProperties {
     const NAME_TAG_PREFIX: &str = "name:";
 
     let properties = tags
         .iter()
         .filter(|(k, _)| k.starts_with(&NAME_TAG_PREFIX))
-        .map(|property| mimir::Property {
+        .map(|property| places::Property {
             key: property.0[NAME_TAG_PREFIX.len()..].to_string(),
             value: property.1.to_string(),
         })
         .filter(|p| langs.contains(&p.key))
         .collect();
-    mimir::I18nProperties(properties)
+    places::i18n_properties::I18nProperties(properties)
 }

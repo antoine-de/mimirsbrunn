@@ -31,18 +31,18 @@
 use failure::format_err;
 use futures::stream::StreamExt;
 use lazy_static::lazy_static;
-use mimir::objects::Admin;
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::model::query_parameters::SearchParameters,
+    domain::model::export_parameters::ListParameters,
     domain::ports::remote::Remote,
     domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
     domain::usecases::UseCase,
 };
 use mimirsbrunn::bano::Bano;
+use places::{admin::Admin, MimirObject};
 use slog_scope::info;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -132,7 +132,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         let search_documents = ListDocuments::new(Box::new(client.clone()));
         let parameters = ListDocumentsParameters {
             parameters: ListParameters {
-                doc_type: Admin::doc_type(),
+                doc_type: String::from(Admin::doc_type()),
             },
         };
         let admin_stream = search_documents

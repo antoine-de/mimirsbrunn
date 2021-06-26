@@ -1,5 +1,3 @@
-use serde::Deserialize;
-
 use super::settings::QuerySettings;
 
 // fn main() {
@@ -34,7 +32,12 @@ pub struct Filters {
     pub poi_types: Option<Vec<String>>,
 }
 
-pub fn build_query(q: &str, filters: Filters, langs: &[&str], settings: &QuerySettings) -> String {
+pub fn build_query(
+    q: &str,
+    _filters: Filters,
+    _langs: &[&str],
+    settings: &QuerySettings,
+) -> String {
     let query = build_query_multi_match(q, &settings);
     format!(
         r#"{{

@@ -37,7 +37,7 @@ use osm_boundaries_utils::build_boundary;
 use slog_scope::{info, warn};
 use std::collections::BTreeSet;
 
-pub type StreetsVec = Vec<mimir::Street>;
+pub type StreetsVec = Vec<places::street::Street>;
 
 #[derive(Debug)]
 pub struct AdminMatcher {
@@ -70,8 +70,8 @@ pub fn read_administrative_regions(
     pbf: &mut OsmPbfReader,
     levels: BTreeSet<u32>,
     city_level: u32,
-) -> Vec<mimir::Admin> {
-    let mut administrative_regions = Vec::<mimir::Admin>::new();
+) -> Vec<places::admin::Admin> {
+    let mut administrative_regions = Vec::<places::admin::Admin>::new();
     let mut insee_inserted = BTreeSet::default();
     let matcher = AdminMatcher::new(levels);
     info!("reading pbf...");
@@ -118,7 +118,7 @@ pub fn read_administrative_regions(
                 .find(|r| &r.role == "admin_centre")
                 .and_then(|r| objects.get(&r.member))
                 .and_then(|o| o.node())
-                .map(|node| mimir::Coord::new(node.lon(), node.lat()));
+                .map(|node| places::coord::Coord::new(node.lon(), node.lat()));
             let (admin_id, insee_id) = match read_insee(&relation.tags) {
                 Some(val) if !insee_inserted.contains(val) => {
                     insee_inserted.insert(val.to_string());
@@ -157,7 +157,7 @@ pub fn read_administrative_regions(
 
             let coord = coord_center.unwrap_or_else(|| make_centroid(&boundary));
             let codes = get_osm_codes_from_tags(&relation.tags);
-            let admin = mimir::Admin {
+            let admin = places::admin::Admin {
                 id: admin_id,
                 insee: insee_id.to_string(),
                 level,
@@ -173,8 +173,8 @@ pub fn read_administrative_regions(
                 parent_id: None,
                 country_codes: utils::get_country_code(&codes).into_iter().collect(),
                 codes,
-                names: mimir::I18nProperties::default(),
-                labels: mimir::I18nProperties::default(),
+                names: places::i18n_properties::I18nProperties::default(),
+                labels: places::i18n_properties::I18nProperties::default(),
                 distance: None,
                 context: None,
                 administrative_regions: Vec::new(),

@@ -30,26 +30,27 @@
 
 use failure::format_err;
 use futures::stream::StreamExt;
-use mimir::objects::{Admin, Poi, Street};
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::model::query_parameters::ListParameters,
+    domain::model::export_parameters::ListParameters,
     domain::model::{configuration::Configuration, document::Document, index::IndexVisibility},
     domain::ports::remote::Remote,
-    domain::usecases::search_documents::{ListDocuments, ListDocumentsParameters},
     domain::usecases::{
         generate_index::{GenerateIndex, GenerateIndexParameters},
+        list_documents::{ListDocuments, ListDocumentsParameters},
+        search_documents::SearchDocuments,
         UseCase,
     },
 };
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::osm_reader::make_osm_reader;
-use mimirsbrunn::osm_reader::poi::{compute_poi_weight, pois, PoiConfig};
+use mimirsbrunn::osm_reader::poi::{add_address, compute_weight, pois, PoiConfig};
 use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
 use mimirsbrunn::settings::osm2mimir::{Args, Settings};
+use places::{admin::Admin, poi::Poi, street::Street, MimirObject};
 use serde::Serialize;
 use slog_scope::{debug, info};
 
@@ -85,10 +86,10 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     let parameters = ListDocumentsParameters {
         parameters: ListParameters {
-            doc_type: Admin::doc_type(),
+            doc_type: String::from(Admin::doc_type()),
         },
     };
-    let admin_stream = search_documents
+    let admin_stream = list_documents
         .execute(parameters)
         .await
         .map_err(|err| format_err!("could not retrieve admins: {}", err.to_string()))?;
@@ -158,17 +159,19 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             .and_then(|poi| poi.config.clone())
             .unwrap_or_else(PoiConfig::default);
 
+        // Ideally, this pois function would create a stream, which would then map and do other
+        // stuff, and then be indexed
+        //
         info!("Extracting pois from osm");
-        let mut pois = pois(&mut osm_reader, &config, &admins_geofinder);
+        let pois = pois(&mut osm_reader, &config, &admins_geofinder);
 
-        info!("computing poi weight");
-        compute_poi_weight(&mut pois);
-
-        // FIXME Missing Reverse Functionality
-        // info!("Adding address in poi");
-        // add_address(&mut pois, &mut rubber);
-
-        let pois = futures::stream::iter(pois).map(PoiDoc::from);
+        let search_documents = SearchDocuments::new(Box::new(client.clone()));
+        let pois: Vec<PoiDoc> = futures::stream::iter(pois)
+            .then(|poi| compute_weight(poi))
+            .then(|poi| add_address(poi, &search_documents))
+            .map(PoiDoc::from)
+            .collect()
+            .await;
 
         let config = IndexConfiguration {
             name: settings.dataset.clone(),
@@ -193,7 +196,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         let generate_index = GenerateIndex::new(Box::new(client));
         let parameters = GenerateIndexParameters {
             config: Configuration { value: config },
-            documents: Box::new(pois),
+            documents: Box::new(futures::stream::iter(pois)),
             visibility: IndexVisibility::Public,
         };
         generate_index

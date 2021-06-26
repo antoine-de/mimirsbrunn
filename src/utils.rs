@@ -35,7 +35,7 @@ use std::process::exit;
 use std::sync::Arc;
 use structopt::StructOpt;
 
-pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
+pub fn get_zip_codes_from_admins(admins: &[Arc<places::admin::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
         if adm.level > level && !adm.zip_codes.is_empty() {
             adm.level
@@ -56,7 +56,7 @@ pub fn get_zip_codes_from_admins(admins: &[Arc<mimir::Admin>]) -> Vec<String> {
 pub const ADMIN_MAX_WEIGHT: f64 = 1_400_000_000.; // China's population
 
 /// normalize the admin weight for it to be in [0, 1]
-pub fn normalize_admin_weight(admins: &mut [mimir::Admin]) {
+pub fn normalize_admin_weight(admins: &mut [places::admin::Admin]) {
     for admin in admins {
         admin.weight = normalize_weight(admin.weight, ADMIN_MAX_WEIGHT);
     }
@@ -130,13 +130,15 @@ where
     }
 }
 
-pub fn get_country_code(codes: &[mimir::Code]) -> Option<String> {
+pub fn get_country_code(codes: &[places::code::Code]) -> Option<String> {
     codes
         .iter()
         .find(|c| c.name == "ISO3166-1:alpha2")
         .map(|c| c.value.clone())
 }
 
-pub fn find_country_codes<'a>(admins: impl Iterator<Item = &'a mimir::Admin>) -> Vec<String> {
+pub fn find_country_codes<'a>(
+    admins: impl Iterator<Item = &'a places::admin::Admin>,
+) -> Vec<String> {
     admins.filter_map(|a| get_country_code(&a.codes)).collect()
 }

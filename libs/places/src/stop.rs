@@ -5,6 +5,7 @@ use transit_model::objects::Rgb;
 use typed_index_collection::Idx;
 
 use super::admin::Admin;
+use super::code::Code;
 use super::context::Context;
 use super::coord::Coord;
 use super::Property;
@@ -26,12 +27,6 @@ pub struct PhysicalMode {
 pub struct Network {
     pub id: String,
     pub name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Code {
-    pub name: String,
-    pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Default)]

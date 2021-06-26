@@ -33,7 +33,7 @@ use geo::algorithm::{
     intersects::Intersects,
 };
 use geo_types::{MultiPolygon, Point};
-use mimir::Admin;
+use places::admin::Admin;
 use rstar::{Envelope, PointDistance, RTree, RTreeObject, SelectionFunction, AABB};
 use slog_scope::{info, warn};
 use std::collections::{HashMap, HashSet};

@@ -31,19 +31,19 @@
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, utils};
 use failure::format_err;
-use failure::{Error, ResultExt};
+use failure::Error;
 use futures::stream::StreamExt;
+use places::{admin::Admin, stop::Stop, MimirObject};
 use serde::Serialize;
-// use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
-use mimir::objects::{Admin, Stop};
+
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
     domain::model::{
-        configuration::Configuration, document::Document, index::IndexVisibility,
-        query_parameters::ListParameters,
+        configuration::Configuration, document::Document, export_parameters::ListParameters,
+        index::IndexVisibility,
     },
     domain::ports::remote::Remote,
     domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
@@ -52,7 +52,6 @@ use mimir2::{
         UseCase,
     },
 };
-use slog_scope::{info, warn};
 use std::collections::HashMap;
 use std::mem::replace;
 use std::ops::Deref;
@@ -64,7 +63,7 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     stops: It,
     nb_stop_points: &HashMap<String, u32, S>,
 ) where
-    It: Iterator<Item = &'a mut mimir::Stop>,
+    It: Iterator<Item = &'a mut Stop>,
 {
     let max = *nb_stop_points.values().max().unwrap_or(&1) as f64;
     for stop in stops {
@@ -77,7 +76,7 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
 }
 
 pub async fn import_stops(
-    mut stops: Vec<mimir::Stop>,
+    mut stops: Vec<Stop>,
     connection_string: &str,
     dataset: &str,
 ) -> Result<(), Error> {
@@ -161,7 +160,7 @@ pub async fn import_stops(
     Ok(())
 }
 
-fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Arc<mimir::Admin>>) {
+fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
     let admins_iter = admins.iter().map(|a| a.deref());
     let country_codes = utils::find_country_codes(admins_iter.clone());
 
@@ -178,7 +177,7 @@ fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Arc<mimir::Admin>>) {
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
 /// FIXME Use Stream instead of Iterator.
-async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
+async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
     stops: It,
     connection_string: &str,
 ) -> Result<u32, crate::Error> {
@@ -200,10 +199,11 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
 
     let parameters = ListDocumentsParameters {
         parameters: ListParameters {
-            doc_type: Admin::doc_type(),
+            doc_type: String::from(Admin::doc_type()),
         },
     };
-    let admin_stream = search_documents
+
+    let admin_stream = list_documents
         .execute(parameters)
         .await
         .map_err(|err| format_err!("could not retrieve admins: {}", err.to_string()))?;
@@ -252,10 +252,8 @@ fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
 /// merge the stops from all the different indexes
 /// for the moment the merge is very simple and uses only the ID
 /// (and we take the data from the first stop inserted)
-fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
-    stops: It,
-) -> impl Iterator<Item = mimir::Stop> {
-    let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
+fn merge_stops<It: IntoIterator<Item = Stop>>(stops: It) -> impl Iterator<Item = Stop> {
+    let mut stops_by_id = HashMap::<String, Stop>::new();
     for mut stop in stops.into_iter() {
         let cov = replace(&mut stop.coverages, vec![]);
         let codes = replace(&mut stop.codes, vec![]);
@@ -276,21 +274,21 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
     stops_by_id.into_iter().map(|(_, v)| v)
 }
 
-// fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, Error> {
+// fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<Stop>, Error> {
 //     rubber
 //         .get_all_objects_from_index(&index)
 //         .map_err(|e| format_err!("Getting all stops {}", e.to_string()))
 // }
 
-// fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
+// fn update_global_stop_index<'a, It: Iterator<Item = &'a Stop>>(
 //     rubber: &mut Rubber,
 //     stops: It,
 //     dataset: &str,
 //     index_settings: &IndexSettings,
 // ) -> Result<String, Error> {
-//     let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
+//     let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<Stop>(dataset);
 //     let stops_indexes = rubber
-//         .get_all_aliased_index(&mimir::rubber::get_main_type_index::<mimir::Stop>())?
+//         .get_all_aliased_index(&mimir::rubber::get_main_type_index::<Stop>())?
 //         .into_iter()
 //         .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
 //         .map(|(index, _)| index);

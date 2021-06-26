@@ -28,8 +28,6 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use failure::ResultExt;
-use mimir::rubber::IndexSettings;
 use mimirsbrunn::stops::*;
 use slog_scope::{info, warn};
 use std::cmp::Ordering;
@@ -66,12 +64,15 @@ struct Args {
     nb_replicas: usize,
 }
 
-fn get_lines(idx: Idx<navitia::StopArea>, navitia: &transit_model::Model) -> Vec<mimir::Line> {
-    use mimir::FromTransitModel;
+fn get_lines(
+    idx: Idx<navitia::StopArea>,
+    navitia: &transit_model::Model,
+) -> Vec<places::stop::Line> {
+    use places::stop::FromTransitModel;
     let mut lines: Vec<_> = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|l_idx| mimir::Line::from_transit_model(l_idx, navitia))
+        .map(|l_idx| places::stop::Line::from_transit_model(l_idx, navitia))
         .collect();
 
     // we want the lines to be sorted in a way where
@@ -96,22 +97,19 @@ fn to_mimir(
     idx: Idx<navitia::StopArea>,
     stop_area: &navitia::StopArea,
     navitia: &transit_model::Model,
-) -> mimir::Stop {
+) -> places::stop::Stop {
     let commercial_modes = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|cm_idx| mimir::CommercialMode {
-            id: mimir::objects::normalize_id(
-                "commercial_mode",
-                &navitia.commercial_modes[cm_idx].id,
-            ),
+        .map(|cm_idx| places::stop::CommercialMode {
+            id: places::stop::normalize_id("commercial_mode", &navitia.commercial_modes[cm_idx].id),
             name: navitia.commercial_modes[cm_idx].name.clone(),
         })
         .collect();
     let physical_modes = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|pm_idx| mimir::PhysicalMode {
+        .map(|pm_idx| places::stop::PhysicalMode {
             id: mimir::objects::normalize_id("physical_mode", &navitia.physical_modes[pm_idx].id),
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
@@ -126,14 +124,14 @@ fn to_mimir(
             }
             res
         })
-        .map(|comment| mimir::Comment {
+        .map(|comment| places::stop::Comment {
             name: comment.name.clone(),
         })
         .collect();
     let feed_publishers = navitia
         .get_corresponding_from_idx(idx)
         .into_iter()
-        .map(|contrib_idx| mimir::FeedPublisher {
+        .map(|contrib_idx| places::stop::FeedPublisher {
             id: navitia.contributors[contrib_idx].id.clone(),
             name: navitia.contributors[contrib_idx].name.clone(),
             license: navitia.contributors[contrib_idx]
@@ -146,12 +144,12 @@ fn to_mimir(
                 .unwrap_or_else(|| "".into()),
         })
         .collect();
-    let coord = mimir::Coord::new(stop_area.coord.lon, stop_area.coord.lat);
+    let coord = places::coord::Coord::new(stop_area.coord.lon, stop_area.coord.lat);
 
     let lines = get_lines(idx, navitia);
 
-    mimir::Stop {
-        id: mimir::objects::normalize_id("stop_area", &stop_area.id),
+    places::stop::Stop {
+        id: places::stop::normalize_id("stop_area", &stop_area.id),
         label: stop_area.name.clone(),
         name: stop_area.name.clone(),
         coord,
@@ -169,7 +167,7 @@ fn to_mimir(
         codes: stop_area
             .codes
             .iter()
-            .map(|&(ref t, ref v)| mimir::Code {
+            .map(|&(ref t, ref v)| places::code::Code {
                 name: t.clone(),
                 value: v.clone(),
             })
@@ -177,7 +175,7 @@ fn to_mimir(
         properties: stop_area
             .object_properties
             .iter()
-            .map(|&(ref k, ref v)| mimir::Property {
+            .map(|&(ref k, ref v)| places::Property {
                 key: k.clone(),
                 value: v.clone(),
             })
@@ -213,7 +211,7 @@ async fn run(args: Args) -> Result<(), transit_model::Error> {
         })
         .collect();
 
-    let mut stops: Vec<mimir::Stop> = navitia
+    let mut stops: Vec<places::stop::Stop> = navitia
         .stop_areas
         .iter()
         .map(|(idx, sa)| to_mimir(idx, sa, &navitia))
