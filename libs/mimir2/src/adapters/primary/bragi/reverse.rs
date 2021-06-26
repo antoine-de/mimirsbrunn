@@ -5,16 +5,18 @@
 pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> String {
     format!(
         r#"{{
-            "bool": {{
-                "must": {{
-                    "match_all": {{}}
-                }},
-                "filters": {{
-                    "geo_distance": {{
-                        "distance": {distance},
-                        "...": {{
-                            "lat": {lat},
-                            "lon": {lon},
+            "query": {{
+                "bool": {{
+                    "must": {{
+                        "match_all": {{}}
+                    }},
+                    "filter": {{
+                        "geo_distance": {{
+                            "distance": "{distance}",
+                            "coord": {{
+                                "lat": {lat},
+                                "lon": {lon}
+                            }}
                         }}
                     }}
                 }}

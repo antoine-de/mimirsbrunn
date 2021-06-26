@@ -1110,8 +1110,6 @@ impl ElasticsearchStorage {
                 details: String::from("could not deserialize query DSL"),
             })?;
 
-        println!("{:?}", body);
-
         let response = self
             .0
             .search(SearchParts::Index(&indices))
@@ -1159,7 +1157,6 @@ impl ElasticsearchStorage {
                 .to_owned()
                 .into_iter()
                 .map(|i| {
-                    println!("{:?}", i);
                     let source = i
                         .as_object()
                         .unwrap()

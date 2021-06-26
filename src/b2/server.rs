@@ -3,7 +3,6 @@ use clap::ArgMatches;
 use http::StatusCode;
 use snafu::{ResultExt, Snafu};
 use std::convert::Infallible;
-use std::marker::PhantomData;
 use std::net::ToSocketAddrs;
 use tracing::{info, instrument};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
@@ -13,20 +12,9 @@ use tracing_subscriber::{EnvFilter, Registry};
 use warp::{http::Response as HttpResponse, Filter, Rejection};
 
 use super::settings::{Error as SettingsError, Settings as CSettings};
-//use mimir::domain::ports::index::IndexServiceImpl;
-//use mimir::domain::ports::remote::Remote;
-//use mimir::domain::usecases::generate_index::GenerateIndex;
-//use mimir::obj::Obj;
 use mimir2::{
-    adapters::primary::bragi::gql,
-    adapters::secondary::elasticsearch::{
-        self,
-        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-    },
-    domain::model::query_parameters::SearchParameters,
-    domain::ports::remote::Remote,
-    domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
-    domain::usecases::UseCase,
+    adapters::primary::bragi::gql, adapters::secondary::elasticsearch,
+    domain::ports::remote::Remote, domain::usecases::search_documents::SearchDocuments,
 };
 
 #[derive(Debug, Snafu)]
