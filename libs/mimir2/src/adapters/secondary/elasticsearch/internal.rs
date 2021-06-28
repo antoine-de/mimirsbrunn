@@ -1113,6 +1113,9 @@ impl ElasticsearchStorage {
         let response = self
             .0
             .search(SearchParts::Index(&indices))
+            //.search(SearchParts::Index(&[
+            //    "munin_addr_fr_20210627_205442_473913170",
+            //]))
             .body(body)
             .send()
             .await
@@ -1152,6 +1155,8 @@ impl ElasticsearchStorage {
                     details: String::from("expected JSON array"),
                     json: json.clone(),
                 })?;
+
+            println!("count: {}", hits.len());
 
             let hits = hits
                 .to_owned()

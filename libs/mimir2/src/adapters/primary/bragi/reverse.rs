@@ -20,7 +20,22 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> String {
                         }}
                     }}
                 }}
-            }}
+            }},
+            "sort": [
+                {{
+                    "_geo_distance": {{
+                        "coord": {{
+                            "lat": {lat},
+                            "lon": {lon}
+                        }},
+                        "order": "asc",
+                        "unit": "m",
+                        "mode": "min",
+                        "distance_type": "arc",
+                        "ignore_unmapped": true
+                    }}
+                }}
+            ]
         }}"#,
         distance = distance,
         lat = lat,

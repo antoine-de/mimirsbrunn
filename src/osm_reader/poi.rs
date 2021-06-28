@@ -263,7 +263,12 @@ pub async fn add_address(poi: Poi, search_documents: &SearchDocuments<serde_json
                 ..poi
             },
             None => {
-                warn!("Cannot find a closest address for poi {:?}", poi.id);
+                warn!(
+                    "Cannot find a closest address for poi {:?} at lat {} / lon {}",
+                    poi.id,
+                    poi.coord.lat(),
+                    poi.coord.lon()
+                );
                 poi
             }
         },
