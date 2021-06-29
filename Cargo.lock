@@ -1616,9 +1616,11 @@ checksum = "2cfff41391129e0a856d6d822600b8d71179d46879e310417eb9c762eb178b42"
 dependencies = [
  "cfg-if 0.1.10",
  "crc32fast",
+ "futures 0.1.30",
  "libc",
  "miniz-sys",
  "miniz_oxide 0.3.7",
+ "tokio-io",
 ]
 
 [[package]]

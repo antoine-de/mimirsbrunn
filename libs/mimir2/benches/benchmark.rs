@@ -86,8 +86,9 @@ struct Person {
 }
 
 impl Document for Person {
-    const IS_GEO_DATA: bool = false;
-    const DOC_TYPE: &'static str = "person";
+    fn doc_type(&self) -> &'static str {
+        "person"
+    }
 
     fn id(&self) -> String {
         self.id.to_string()

@@ -6,8 +6,11 @@ use std::convert::TryFrom;
 
 use super::internal;
 use super::ElasticsearchStorage;
-use crate::domain::model::configuration::{self, Configuration};
-use crate::domain::model::index::{Index, IndexVisibility};
+use crate::domain::model::{
+    configuration::{self, Configuration},
+    document::Document,
+    index::{Index, IndexVisibility},
+};
 use crate::domain::ports::storage::{Error as StorageError, Storage};
 
 #[async_trait]
@@ -60,7 +63,7 @@ impl Storage for ElasticsearchStorage {
         documents: S,
     ) -> Result<usize, StorageError>
     where
-        D: Serialize + Send + Sync + 'static,
+        D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
         self.add_pipeline(

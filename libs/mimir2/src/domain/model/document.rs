@@ -1,11 +1,10 @@
-use serde::Serialize;
-use std::rc::Rc;
-use std::sync::Arc;
+// use erased_serde::Serialize as ErasedSerialize;
+// use serde::Serialize;
+// use std::rc::Rc;
+// use std::sync::Arc;
 
-pub trait Document: Serialize {
-    const IS_GEO_DATA: bool;
-
-    const DOC_TYPE: &'static str;
+pub trait Document: erased_serde::Serialize {
+    fn doc_type(&self) -> &'static str;
 
     // TODO Maybe returning a String is too restrictive, we
     // could have a DocumentKey?
@@ -13,62 +12,44 @@ pub trait Document: Serialize {
     fn id(&self) -> String;
 }
 
-impl<'a, T: Document> Document for &'a T {
-    const IS_GEO_DATA: bool = T::IS_GEO_DATA;
+// impl<'a, T: Document> Document for &'a T {
+//     fn doc_type(&self) -> &'static str {
+//         T::doc_type(self)
+//     }
+//
+//     fn id(&self) -> String {
+//         T::id(self)
+//     }
+// }
+//
+// impl<T: Document> Document for Rc<T> {
+//     fn doc_type(&self) -> &'static str {
+//         T::doc_type(self)
+//     }
+//
+//     fn id(&self) -> String {
+//         T::id(self)
+//     }
+// }
+//
+// impl<T: Document> Document for Arc<T> {
+//     fn doc_type(&self) -> &'static str {
+//         T::doc_type(self)
+//     }
+//
+//     fn id(&self) -> String {
+//         T::id(self)
+//     }
+// }
 
-    const DOC_TYPE: &'static str = T::DOC_TYPE;
+// impl<T: Document> Document for Box<T> {
+//     fn doc_type(&self) -> &'static str {
+//         T::doc_type(self)
+//     }
+//
+//     fn id(&self) -> String {
+//         T::id(self)
+//     }
+// }
 
-    fn id(&self) -> String {
-        T::id(self)
-    }
-}
-
-impl<T: Document> Document for Rc<T> {
-    const IS_GEO_DATA: bool = T::IS_GEO_DATA;
-
-    const DOC_TYPE: &'static str = T::DOC_TYPE;
-
-    fn id(&self) -> String {
-        T::id(self)
-    }
-}
-
-impl<T: Document> Document for Arc<T> {
-    const IS_GEO_DATA: bool = T::IS_GEO_DATA;
-
-    const DOC_TYPE: &'static str = T::DOC_TYPE;
-
-    fn id(&self) -> String {
-        T::id(self)
-    }
-}
-
-pub fn doc_type<T: Document>() -> &'static str {
-    T::DOC_TYPE
-}
-
-#[cfg(test)]
-pub mod tests {
-
-    // Here we define an example of a document that will be used for testing in other parts of the
-    // project.
-    use serde::Serialize;
-
-    use super::Document;
-
-    #[derive(Debug, Clone, Serialize, PartialEq)]
-    pub struct Book {
-        pub isbn: String,
-        pub title: String,
-    }
-
-    impl Document for Book {
-        const DOC_TYPE: &'static str = "book";
-
-        const IS_GEO_DATA: bool = false;
-
-        fn id(&self) -> String {
-            self.isbn.clone()
-        }
-    }
-}
+erased_serde::serialize_trait_object!(Document);

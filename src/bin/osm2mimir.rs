@@ -237,6 +237,10 @@ async fn main() {
 #[derive(Serialize)]
 struct StreetDoc(Street);
 
+impl StreetDoc {
+    const DOC_TYPE: &'static str = "street";
+}
+
 impl From<Street> for StreetDoc {
     fn from(street: Street) -> Self {
         StreetDoc(street)
@@ -244,8 +248,9 @@ impl From<Street> for StreetDoc {
 }
 
 impl Document for StreetDoc {
-    const IS_GEO_DATA: bool = true;
-    const DOC_TYPE: &'static str = "street";
+    fn doc_type(&self) -> &'static str {
+        Self::DOC_TYPE
+    }
     fn id(&self) -> String {
         self.0.id.clone()
     }

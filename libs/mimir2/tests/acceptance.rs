@@ -70,9 +70,14 @@ mod example_steps {
         age: u16,
     }
 
-    impl Document for Person {
-        const IS_GEO_DATA: bool = false;
+    impl Person {
         const DOC_TYPE: &'static str = "person";
+    }
+
+    impl Document for Person {
+        fn doc_type(&self) -> &'static str {
+            Self::DOC_TYPE
+        }
 
         fn id(&self) -> String {
             self.id.to_string()

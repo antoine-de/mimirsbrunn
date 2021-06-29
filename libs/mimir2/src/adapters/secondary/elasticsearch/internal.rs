@@ -20,6 +20,7 @@ use std::sync::{Arc, Mutex};
 
 use super::ElasticsearchStorage;
 use crate::domain::model::configuration::{self, Configuration};
+use crate::domain::model::document::Document;
 use crate::domain::model::index::{Index, IndexStatus};
 
 static CHUNK_SIZE: usize = 10;
@@ -461,7 +462,7 @@ impl ElasticsearchStorage {
         documents: S,
     ) -> Result<usize, Error>
     where
-        D: Serialize + Send + Sync + 'static,
+        D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
         let counter = Arc::new(Mutex::new(0_usize));
@@ -491,7 +492,7 @@ impl ElasticsearchStorage {
         counter: Arc<Mutex<usize>>,
     ) -> Result<(), Error>
     where
-        D: Serialize + Send + Sync + 'static,
+        D: Document + Send + Sync + 'static,
     {
         // We try to insert the chunk using bulk insertion.
         // We then analyze the result, which contains an array of 'items'.
@@ -501,7 +502,7 @@ impl ElasticsearchStorage {
         let mut ops: Vec<BulkOperation<Value>> = Vec::with_capacity(CHUNK_SIZE);
         chunk.iter().for_each(|doc| {
             let value = serde_json::to_value(doc).expect("to json value");
-            ops.push(BulkOperation::index(value).into());
+            ops.push(BulkOperation::index(value).id(doc.id()).into());
         });
         // FIXME Missing Error Handling
         let resp = self
@@ -1155,8 +1156,6 @@ impl ElasticsearchStorage {
                     details: String::from("expected JSON array"),
                     json: json.clone(),
                 })?;
-
-            println!("count: {}", hits.len());
 
             let hits = hits
                 .to_owned()

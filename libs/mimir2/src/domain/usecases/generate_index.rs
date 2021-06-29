@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use futures::stream::Stream;
+use futures::pin_mut;
+use futures::stream::{Stream, StreamExt};
 use std::marker::PhantomData;
 
 use crate::domain::model::configuration::Configuration;
@@ -58,14 +59,24 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
         S: Stream<Item = Self::Doc> + Send + Sync + Unpin + 'static,
     {
         // 1. We modify the name of the index:
-        //   currently set to the dataset, it should be something like root_doc_type_dataset_timestamp
+        //   currently set to the dataset, it should be something like root_doctype_dataset_timestamp
         // 2. Then we create the index
         // 3. We insert the document stream in that newly created index
         // 4. FIXME Not implemented Publish the index
         // 5. We search for the newly created index to return it.
+
+        // So we need the name of the document type.... At one point it was easy, I could use
+        // a constant associated with the trait Document, and I'd be done with T::DOC_TYPE.
+        // But then I had to turn this into a trait object, which forbids using associated
+        // constant... So the simplest way I can think of, is to ask the first element
+        // its type. So we need to 'peek' into the stream:
+        let s2 = documents.peekable();
+        pin_mut!(s2);
+        let f1 = s2.as_mut().peek().await;
+        let doc_type = f1.map(|d| d.doc_type()).unwrap_or("na");
         let config =
             config
-                .normalize_index_name(T::DOC_TYPE)
+                .normalize_index_name(doc_type)
                 .map_err(|err| ImportError::IndexCreation {
                     source: Box::new(err),
                 })?;
