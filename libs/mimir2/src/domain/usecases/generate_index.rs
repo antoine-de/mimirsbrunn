@@ -29,6 +29,7 @@ pub struct GenerateIndexParameters<T: Document + Send + Sync + 'static> {
     pub config: Configuration,
     pub documents: Box<dyn Stream<Item = T> + Send + Sync + Unpin + 'static>,
     pub visibility: IndexVisibility,
+    pub doc_type: String,
 }
 
 #[async_trait]
@@ -37,11 +38,16 @@ impl<T: Document + Send + Sync + 'static> UseCase for GenerateIndex<T> {
     type Param = GenerateIndexParameters<T>;
 
     async fn execute(&self, param: Self::Param) -> Result<Self::Res, UseCaseError> {
-        self.generate_index(param.documents, param.config, param.visibility)
-            .await
-            .map_err(|err| UseCaseError::Execution {
-                source: Box::new(err),
-            })
+        self.generate_index(
+            param.documents,
+            param.config,
+            &param.doc_type,
+            param.visibility,
+        )
+        .await
+        .map_err(|err| UseCaseError::Execution {
+            source: Box::new(err),
+        })
     }
 }
 
@@ -53,6 +59,7 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
         &self,
         documents: S,
         config: Configuration,
+        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, ImportError>
     where
@@ -70,10 +77,10 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
         // But then I had to turn this into a trait object, which forbids using associated
         // constant... So the simplest way I can think of, is to ask the first element
         // its type. So we need to 'peek' into the stream:
-        let s2 = documents.peekable();
-        pin_mut!(s2);
-        let f1 = s2.as_mut().peek().await;
-        let doc_type = f1.map(|d| d.doc_type()).unwrap_or("na");
+        // let s2 = documents.peekable();
+        // pin_mut!(s2);
+        // let f1 = s2.as_mut().peek().await;
+        // let doc_type = f1.map(|d| d.doc_type()).unwrap_or("na");
         let config =
             config
                 .normalize_index_name(doc_type)
@@ -86,6 +93,8 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
                 source: Box::new(err),
             }
         })?;
+
+        let documents = documents.map(|d| Box::new(d) as Box<dyn Document + Send + Sync + 'static>);
 
         self.storage
             .insert_documents(index.name.clone(), documents)

@@ -33,10 +33,9 @@ pub trait Storage {
 
     async fn find_container(&self, index: String) -> Result<Option<Index>, Error>;
 
-    async fn insert_documents<S, D>(&self, index: String, documents: S) -> Result<usize, Error>
+    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, Error>
     where
-        D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static;
+        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static;
 
     async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error>;
 }
@@ -58,10 +57,9 @@ where
         (**self).find_container(index).await
     }
 
-    async fn insert_documents<S, D>(&self, index: String, documents: S) -> Result<usize, Error>
+    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, Error>
     where
-        D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
         (**self).insert_documents(index, documents).await
     }
@@ -113,13 +111,11 @@ impl Storage for (dyn ErasedStorage + Send + Sync) {
         self.erased_find_container(index).await
     }
 
-    async fn insert_documents<S, D>(&self, index: String, documents: S) -> Result<usize, Error>
+    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, Error>
     where
-        D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
         // FIXME This is a potentially costly operation...
-        let documents = documents.map(|d| Box::new(d) as Box<dyn Document + Send + Sync + 'static>);
         self.erased_insert_documents(index, Box::new(documents))
             .await
     }

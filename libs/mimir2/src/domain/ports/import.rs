@@ -42,6 +42,7 @@ pub trait Import {
         &self,
         mut docs: S,
         config: Configuration,
+        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, Error>
     where
@@ -58,12 +59,15 @@ where
         &self,
         docs: S,
         config: Configuration,
+        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, Error>
     where
         S: Stream<Item = Self::Doc> + Send + Sync + Unpin + 'static,
     {
-        (**self).generate_index(docs, config, visibility).await
+        (**self)
+            .generate_index(docs, config, doc_type, visibility)
+            .await
     }
 }
 
@@ -76,6 +80,7 @@ pub trait ErasedImport {
         &self,
         docs: Box<dyn Stream<Item = Self::Doc> + Send + Sync + Unpin + 'static>,
         config: Configuration,
+        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, Error>;
 }
@@ -87,12 +92,13 @@ impl<T: Document + 'static> Import for (dyn ErasedImport<Doc = T> + Send + Sync)
         &self,
         docs: S,
         config: Configuration,
+        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, Error>
     where
         S: Stream<Item = Self::Doc> + Send + Sync + Unpin + 'static,
     {
-        self.erased_generate_index(Box::new(docs), config, visibility)
+        self.erased_generate_index(Box::new(docs), config, doc_type, visibility)
             .await
     }
 }
@@ -107,8 +113,10 @@ where
         &self,
         docs: Box<dyn Stream<Item = Self::Doc> + Send + Sync + Unpin + 'static>,
         config: Configuration,
+        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, Error> {
-        self.generate_index(docs, config, visibility).await
+        self.generate_index(docs, config, doc_type, visibility)
+            .await
     }
 }

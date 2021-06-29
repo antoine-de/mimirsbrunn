@@ -25,11 +25,17 @@ use tokio::fs::File;
 struct AddrDoc(Addr);
 
 impl Document for AddrDoc {
-    const IS_GEO_DATA: bool = true;
-    const DOC_TYPE: &'static str = "addr";
+    fn doc_type(&self) -> &'static str {
+        Self::DOC_TYPE
+    }
+
     fn id(&self) -> String {
         self.0.id.clone()
     }
+}
+
+impl AddrDoc {
+    const DOC_TYPE: &'static str = "addr";
 }
 
 async fn import_addresses<S, F>(
@@ -67,6 +73,7 @@ where
     let parameters = GenerateIndexParameters {
         config: Configuration { value: config },
         documents: Box::new(addrs),
+        doc_type: String::from(AddrDoc::DOC_TYPE),
         visibility: IndexVisibility::Public,
     };
     generate_index

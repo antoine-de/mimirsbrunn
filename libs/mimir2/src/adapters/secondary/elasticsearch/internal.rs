@@ -456,14 +456,14 @@ impl ElasticsearchStorage {
     */
 
     // Changed the name to avoid recursive calls int storage::insert_documents
-    pub(super) async fn insert_documents_in_index<S, D>(
+    pub(super) async fn insert_documents_in_index<S>(
         &self,
         index: String,
         documents: S,
     ) -> Result<usize, Error>
     where
-        D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+        //D: Document + Send + Sync + 'static,
+        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
         let counter = Arc::new(Mutex::new(0_usize));
 
@@ -485,15 +485,12 @@ impl ElasticsearchStorage {
     }
 
     // Changed the name to avoid recursive calls int storage::insert_documents
-    pub(super) async fn insert_chunk_in_index<D>(
+    pub(super) async fn insert_chunk_in_index(
         &self,
         index: String,
-        chunk: Vec<D>,
+        chunk: Vec<Box<dyn Document + Send + Sync + 'static>>,
         counter: Arc<Mutex<usize>>,
-    ) -> Result<(), Error>
-    where
-        D: Document + Send + Sync + 'static,
-    {
+    ) -> Result<(), Error> {
         // We try to insert the chunk using bulk insertion.
         // We then analyze the result, which contains an array of 'items'.
         // Each item must contain the string 'created'. So we iterate through these items,

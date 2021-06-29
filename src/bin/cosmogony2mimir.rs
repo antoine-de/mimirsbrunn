@@ -72,9 +72,14 @@ trait IntoAdmin {
 #[derive(Serialize)]
 struct AdminDoc(Admin);
 
-impl Document for AdminDoc {
-    const IS_GEO_DATA: bool = true;
+impl AdminDoc {
     const DOC_TYPE: &'static str = "admin";
+}
+
+impl Document for AdminDoc {
+    fn doc_type(&self) -> &'static str {
+        Self::DOC_TYPE
+    }
     fn id(&self) -> String {
         self.0.id.clone()
     }
@@ -99,6 +104,7 @@ where
     let parameters = GenerateIndexParameters {
         config: Configuration { value: config },
         documents: Box::new(admins),
+        doc_type: String::from(AdminDoc::DOC_TYPE),
         visibility: IndexVisibility::Public,
     };
     generate_index

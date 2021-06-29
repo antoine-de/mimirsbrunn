@@ -139,6 +139,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         let parameters = GenerateIndexParameters {
             config: Configuration { value: config },
             documents: Box::new(streets),
+            doc_type: String::from(StreetDoc::DOC_TYPE),
             visibility: IndexVisibility::Public,
         };
         generate_index
@@ -197,6 +198,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         let parameters = GenerateIndexParameters {
             config: Configuration { value: config },
             documents: Box::new(futures::stream::iter(pois)),
+            doc_type: String::from(PoiDoc::DOC_TYPE),
             visibility: IndexVisibility::Public,
         };
         generate_index
@@ -265,9 +267,14 @@ impl From<Poi> for PoiDoc {
     }
 }
 
-impl Document for PoiDoc {
-    const IS_GEO_DATA: bool = true;
+impl PoiDoc {
     const DOC_TYPE: &'static str = "poi";
+}
+
+impl Document for PoiDoc {
+    fn doc_type(&self) -> &'static str {
+        Self::DOC_TYPE
+    }
     fn id(&self) -> String {
         self.0.id.clone()
     }

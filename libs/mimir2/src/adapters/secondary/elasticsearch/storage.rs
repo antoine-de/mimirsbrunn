@@ -57,14 +57,9 @@ impl Storage for ElasticsearchStorage {
     }
 
     // FIXME Move details to impl ElasticsearchStorage.
-    async fn insert_documents<S, D>(
-        &self,
-        index: String,
-        documents: S,
-    ) -> Result<usize, StorageError>
+    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, StorageError>
     where
-        D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
         self.add_pipeline(
             String::from(include_str!(

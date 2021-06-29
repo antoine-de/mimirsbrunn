@@ -141,6 +141,7 @@ pub async fn import_stops(
     let parameters = GenerateIndexParameters {
         config: Configuration { value: config },
         documents: Box::new(stops),
+        doc_type: String::from(StopDoc::DOC_TYPE),
         visibility: IndexVisibility::Public,
     };
     generate_index
@@ -339,11 +340,16 @@ fn merge_stops<It: IntoIterator<Item = Stop>>(stops: It) -> impl Iterator<Item =
 pub struct StopDoc(Stop);
 
 impl Document for StopDoc {
-    const IS_GEO_DATA: bool = true;
-    const DOC_TYPE: &'static str = "stop";
+    fn doc_type(&self) -> &'static str {
+        Self::DOC_TYPE
+    }
     fn id(&self) -> String {
         self.0.id.clone()
     }
+}
+
+impl StopDoc {
+    const DOC_TYPE: &'static str = "stop";
 }
 
 impl From<Stop> for StopDoc {
