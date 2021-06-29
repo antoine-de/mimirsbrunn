@@ -569,7 +569,7 @@ impl ElasticsearchStorage {
                         Ok(())
                     } else {
                         Err(Error::NotCreated {
-                            details: String::from("not created"),
+                            details: format!("not created: {:?}", item),
                         })
                     }
                 })
