@@ -6,64 +6,30 @@
     },
     "house_number": {
       "type": "text",
-      "analyzer": "word"
+      "index": false
     },
     "zip_codes": {
       "type": "text",
       "index_options": "docs",
       "analyzer": "word",
-      "copy_to": "full_label",
-      "fields": {
-        "prefix": {
-          "type": "text",
-          "index_options": "docs",
-          "analyzer": "prefix",
-          "search_analyzer": "word"
-        }
-      }
+      "copy_to": "full_label"
     },
     "coord": {
       "type": "geo_point"
     },
-    "approx_coord": {
-      "type": "geo_shape",
-      "precision": "5m"
-    },
     "name": {
       "type": "text",
-      "index_options": "docs",
-      "analyzer": "word",
-      "fields": {
-        "prefix": {
-          "type": "text",
-          "index_options": "docs",
-          "analyzer": "prefix",
-          "search_analyzer": "word"
-        }
-      }
+      "index": false
     },
     "label": {
       "type": "text",
-      "index_options": "docs",
-      "analyzer": "word",
-      "copy_to": "full_label",
-      "fields": {
-        "prefix": {
-          "type": "text",
-          "index_options": "docs",
-          "analyzer": "prefix",
-          "search_analyzer": "word",
-          "norms": false
-        },
-        "ngram": {
-          "type": "text",
-          "index_options": "docs",
-          "analyzer": "ngram_with_synonyms",
-          "search_analyzer": "ngram",
-          "norms": false
-        }
-      },
-      "norms": false
+      "analyzer": "autocomplete",
+      "search_analyzer": "autocomplete_search",
+      "copy_to": "full_label"
+    },
+    "full_label": {
+      "type": "text",
+      "analyzer": "prefix_elision"
     },
     "weight": {
       "type": "double"

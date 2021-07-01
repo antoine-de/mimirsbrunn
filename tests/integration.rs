@@ -1,18 +1,11 @@
 use cucumber::async_trait;
-use std::{cell::RefCell, convert::Infallible};
+use mimir2::adapters::primary::bragi::settings::QuerySettings;
+use std::convert::Infallible;
+use std::path::PathBuf;
 
 pub struct MyWorld {
-    // You can use this struct for mutable context in scenarios.
-    foo: String,
-    bar: usize,
-    some_value: RefCell<u8>,
-}
-
-impl MyWorld {
-    async fn test_async_fn(&mut self) {
-        *self.some_value.borrow_mut() = 123u8;
-        self.bar = 123;
-    }
+    query_settings: QuerySettings,
+    search_result: Vec<serde_json::Value>,
 }
 
 #[async_trait(?Send)]
@@ -20,10 +13,14 @@ impl cucumber::World for MyWorld {
     type Error = Infallible;
 
     async fn new() -> Result<Self, Infallible> {
+        let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        query_settings_file.push("config/query_settings.toml");
+        let query_settings = QuerySettings::new_from_file(query_settings_file)
+            .await
+            .expect("query settings");
         Ok(Self {
-            foo: "wat".into(),
-            bar: 0,
-            some_value: RefCell::new(0),
+            query_settings,
+            search_result: Vec::new(),
         })
     }
 }
@@ -33,22 +30,35 @@ mod example_steps {
     // use failure::format_err;
     use futures::stream::StreamExt;
     use lazy_static::lazy_static;
-    use mimir::objects::Admin;
     use mimir2::{
+        adapters::primary::bragi::autocomplete::{build_query, Filters},
         adapters::secondary::elasticsearch::{
             self,
             internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
         },
-        domain::model::query_parameters::SearchParameters,
+        domain::model::export_parameters::SearchParameters,
         domain::ports::remote::Remote,
         domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
         domain::usecases::UseCase,
     };
     use mimirsbrunn::bano::Bano;
+    use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, MimirObject};
     use slog_scope::info;
     use std::path::PathBuf;
     use std::sync::Arc;
     use structopt::StructOpt;
+
+    pub fn rank(id: &str, list: &[serde_json::Value]) -> Option<usize> {
+        list.iter()
+            .enumerate()
+            // .find(|(_i, v)| v.as_object().unwrap().get("id").unwrap().as_str().unwrap() == id)
+            .find(|(_i, v)| {
+                let idr = v.as_object().unwrap().get("id").unwrap().as_str().unwrap();
+                println!("id: {}", idr);
+                idr == id
+            })
+            .map(|(i, _r)| i)
+    }
 
     pub fn steps() -> Steps<crate::MyWorld> {
         let mut builder: Steps<crate::MyWorld> = Steps::new();
@@ -68,35 +78,39 @@ mod example_steps {
             )
             .when_regex_async(
                 "the user searches for \"(.*)\"",
-                t!(|world, matches, _step| {
+                t!(|mut world, matches, _step| {
                     let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
 
                     let client = pool.conn().await.unwrap();
 
                     let search_documents = SearchDocuments::new(Box::new(client));
+
+                    let filters = Filters::default();
+
+                    let query = build_query(&matches[1], filters, &["fr"], &world.query_settings);
+
                     let parameters = SearchDocumentsParameters {
-                        query_parameters: SearchParameters {
-                            containers: vec![String::from("munin")],
-                            dsl: String::from(r#"{ "match_all": {} }"#),
+                        parameters: SearchParameters {
+                            dsl: query,
+                            doc_types: vec![
+                                String::from(Admin::doc_type()),
+                                String::from(Street::doc_type()),
+                                String::from(Addr::doc_type()),
+                                String::from(Stop::doc_type()),
+                                String::from(Poi::doc_type()),
+                            ],
                         },
                     };
-                    let stream = search_documents.execute(parameters).await.unwrap();
-
-                    let admins = admin_stream
-                        .map(|v| serde_json::from_value(v).expect("cannot deserialize admin"))
-                        .collect::<Vec<Admin>>()
-                        .await;
-
-                    let t = matches[1].clone();
-                    println!("Search query {}", t);
+                    world.search_result = search_documents.execute(parameters).await.unwrap();
                     world
                 }),
             )
             .then_regex(
                 r"^he finds (.*) in the first (.*) results.$",
                 |world, matches, _step| {
-                    // And access them as an array
-                    assert_eq!(matches[1], "implement");
+                    let limit = matches[2].parse::<usize>().expect("limit");
+                    let rank = rank(&matches[1], &world.search_result).unwrap();
+                    assert!(rank < limit);
                     world
                 },
             );

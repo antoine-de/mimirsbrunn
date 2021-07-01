@@ -159,6 +159,7 @@ impl Mutation {
             .value(context)
             .map_err(|err| to_err("extract settings from upload", "graphql", err.to_string()))?;
 
+        // FIXME Use the new QuerySettings::new_from_file function
         let mut settings_content = String::new();
         let mut settings_file = tokio::fs::File::from_std(settings.content);
         settings_file

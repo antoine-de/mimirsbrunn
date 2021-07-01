@@ -1,4 +1,16 @@
 use serde::Deserialize;
+use snafu::{ResultExt, Snafu};
+use std::path::Path;
+use tokio::io::AsyncReadExt;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Tokio IO Error: {}", source))]
+    InvalidFileOpen { source: tokio::io::Error },
+
+    #[snafu(display("TOML Error: {}", source))]
+    InvalidFileContent { source: toml::de::Error },
+}
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Types {
@@ -78,7 +90,20 @@ pub struct QuerySettings {
 }
 
 impl QuerySettings {
-    pub fn new(settings: &str) -> Result<QuerySettings, String> {
-        toml::from_str(settings).map_err(|e| e.to_string())
+    pub fn new(settings: &str) -> Result<QuerySettings, Error> {
+        toml::from_str(settings).context(InvalidFileContent)
+    }
+
+    pub async fn new_from_file<P>(path: P) -> Result<QuerySettings, Error>
+    where
+        P: AsRef<Path>,
+    {
+        let mut settings_content = String::new();
+        let mut settings_file = tokio::fs::File::open(path).await.context(InvalidFileOpen)?;
+        settings_file
+            .read_to_string(&mut settings_content)
+            .await
+            .context(InvalidFileOpen)?;
+        QuerySettings::new(&settings_content)
     }
 }

@@ -1,20 +1,10 @@
 {
-  "refresh_interval" : "60s",
   "analysis": {
     "filter": {
       "prefix_filter": {
-        "type":     "edge_ngram",
+        "type": "edge_ngram",
         "min_gram": 1,
-        "max_gram": 20
-      },
-      "ngram_filter": {
-        "type": "nGram",
-        "min_gram": "3",
-        "max_gram": "3"
-      },
-      "synonym_filter": {
-        "type": "synonym",
-        "synonyms": ["hackwillbereplacedatindexcreation,hackwillbereplacedatindexcreation"]
+        "max_gram": 10
       },
       "elision_filter" : {
         "type" : "elision",
@@ -23,45 +13,33 @@
     },
     "analyzer": {
       "word": {
-        "type": "custom",
         "tokenizer": "standard",
         "filter": [ "lowercase", "asciifolding" ],
         "char_filter" : [ ]
       },
       "word_elision": {
-        "type": "custom",
         "tokenizer": "standard",
         "filter": [ "lowercase", "elision_filter", "asciifolding" ],
         "char_filter" : [ ]
       },
-      "prefix": {
-        "type": "custom",
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
-        "char_filter" : [ ]
-      },
       "prefix_elision": {
-        "type": "custom",
         "tokenizer": "standard",
-        "filter": [ "lowercase", "elision_filter", "asciifolding", "synonym_filter", "prefix_filter" ],
+        "filter": [ "lowercase", "asciifolding", "elision_filter", "prefix_filter" ],
         "char_filter" : [ ]
       },
-      "ngram_with_synonyms": {
-        "type": "custom",
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding", "synonym_filter", "ngram_filter" ],
-        "char_filter" : [ ]
+      "autocomplete": {
+        "tokenizer": "autocomplete",
+        "filter": [ "lowercase", "asciifolding", "elision_filter" ]
       },
-      "ngram": {
-        "tokenizer": "my_ngram_tokenizer",
-        "filter": [ "lowercase", "asciifolding" ]
+      "autocomplete_search": {
+        "filter": [ "lowercase", "asciifolding", "elision_filter" ]
       }
     },
     "tokenizer": {
-      "my_ngram_tokenizer": {
-        "type": "nGram",
-        "min_gram": "3",
-        "max_gram": "3",
+      "autocomplete": {
+        "type": "edge_ngram",
+        "min_gram": "2",
+        "max_gram": "10",
         "token_chars": [ "letter", "digit" ]
       }
     }

@@ -24,6 +24,7 @@ use super::settings::QuerySettings;
 // }
 //
 /* How to restrict the range of the query... */
+#[derive(Debug, Default)]
 pub struct Filters {
     pub coord: Option<Coord>,
     pub shape: Option<(String, Vec<String>)>,
@@ -107,6 +108,7 @@ impl std::fmt::Display for DecayFn {
     }
 }
 
+#[derive(Debug)]
 struct DecayFnParam {
     pub func: DecayFn,
     pub scale: f32,
@@ -114,6 +116,7 @@ struct DecayFnParam {
     pub decay: f32,
 }
 
+#[derive(Debug)]
 pub struct Coord {
     pub lat: f32,
     pub lon: f32,

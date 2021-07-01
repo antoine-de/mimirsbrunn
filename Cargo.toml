@@ -108,5 +108,5 @@ path = "src/b2/main.rs"
 name = "tests"
 
 [[test]]
-name = "cucumber"
+name = "integration"
 harness = false # Allows Cucumber to print output instead of libtest

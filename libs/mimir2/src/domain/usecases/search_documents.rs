@@ -12,7 +12,6 @@ use crate::domain::ports::export::{Error as ExportError, Export};
 use crate::domain::ports::query::Query;
 use crate::domain::usecases::{Error as UseCaseError, UseCase};
 
-// FIXME Maybe need two use cases.... one for
 pub struct SearchDocuments<D> {
     pub query: Box<dyn Query<Doc = D> + Send + Sync + 'static>,
 }
