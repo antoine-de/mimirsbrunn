@@ -75,12 +75,10 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
         // So we need the name of the document type.... At one point it was easy, I could use
         // a constant associated with the trait Document, and I'd be done with T::DOC_TYPE.
         // But then I had to turn this into a trait object, which forbids using associated
-        // constant... So the simplest way I can think of, is to ask the first element
-        // its type. So we need to 'peek' into the stream:
-        // let s2 = documents.peekable();
-        // pin_mut!(s2);
-        // let f1 = s2.as_mut().peek().await;
-        // let doc_type = f1.map(|d| d.doc_type()).unwrap_or("na");
+        // constant... So I made it a function argument.... but then the information is twice in
+        // there:
+        // 1) in the document type
+        // 2) in the parameter doc_type
         let config =
             config
                 .normalize_index_name(doc_type)
@@ -96,12 +94,15 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
 
         let documents = documents.map(|d| Box::new(d) as Box<dyn Document + Send + Sync + 'static>);
 
-        self.storage
+        let stats = self
+            .storage
             .insert_documents(index.name.clone(), documents)
             .await
             .map_err(|err| ImportError::DocumentStreamInsertion {
                 source: Box::new(err),
             })?;
+
+        println!("Stats: {:?}", stats);
 
         self.storage
             .publish_index(index.clone(), visibility)

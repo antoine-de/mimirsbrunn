@@ -43,7 +43,7 @@ type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
 #[derive(Serialize, Deserialize)]
 pub struct Bano {
     pub id: String,
-    pub nb: String,
+    pub house_number: String,
     pub street: String,
     pub zip: String,
     pub city: String,
@@ -98,7 +98,7 @@ impl Bano {
             &country_codes,
         );
         let (addr_name, addr_label) = labels::format_addr_name_and_label(
-            &self.nb,
+            &self.house_number,
             &self.street,
             zones_for_label_formatting,
             &country_codes,
@@ -134,7 +134,7 @@ impl Bano {
                 } else {
                     format!(
                         ":{}",
-                        self.nb
+                        self.house_number
                             .replace(" ", "")
                             .replace("\t", "")
                             .replace("\r", "")
@@ -148,7 +148,7 @@ impl Bano {
             ),
             name: addr_name,
             label: addr_label,
-            house_number: self.nb,
+            house_number: self.house_number,
             street,
             coord,
             approx_coord: Some(coord.into()),

@@ -2,9 +2,12 @@ use async_trait::async_trait;
 use futures::stream::{Stream, StreamExt};
 use snafu::Snafu;
 
-use crate::domain::model::configuration::Configuration;
-use crate::domain::model::document::Document;
-use crate::domain::model::index::{Index, IndexVisibility};
+use crate::domain::model::{
+    configuration::Configuration,
+    document::Document,
+    index::{Index, IndexVisibility},
+    stats::InsertStats,
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -33,7 +36,7 @@ pub trait Storage {
 
     async fn find_container(&self, index: String) -> Result<Option<Index>, Error>;
 
-    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, Error>
+    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
     where
         S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static;
 
@@ -57,7 +60,7 @@ where
         (**self).find_container(index).await
     }
 
-    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, Error>
+    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
     where
         S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
@@ -88,7 +91,7 @@ pub trait ErasedStorage {
                 + Unpin
                 + 'static,
         >,
-    ) -> Result<usize, Error>;
+    ) -> Result<InsertStats, Error>;
 
     async fn erased_publish_index(
         &self,
@@ -111,7 +114,7 @@ impl Storage for (dyn ErasedStorage + Send + Sync) {
         self.erased_find_container(index).await
     }
 
-    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, Error>
+    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
     where
         S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
@@ -152,7 +155,7 @@ where
                 + Unpin
                 + 'static,
         >,
-    ) -> Result<usize, Error> {
+    ) -> Result<InsertStats, Error> {
         self.insert_documents(index, documents).await
     }
 

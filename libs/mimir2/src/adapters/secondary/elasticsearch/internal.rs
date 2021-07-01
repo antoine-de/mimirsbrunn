@@ -19,9 +19,12 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
 use super::ElasticsearchStorage;
-use crate::domain::model::configuration::{self, Configuration};
-use crate::domain::model::document::Document;
-use crate::domain::model::index::{Index, IndexStatus};
+use crate::domain::model::{
+    configuration::{self, Configuration},
+    document::Document,
+    index::{Index, IndexStatus},
+    stats::InsertStats as ModelInsertStats,
+};
 
 static CHUNK_SIZE: usize = 10;
 
@@ -92,6 +95,10 @@ pub enum Error {
     /// Invalid JSON Value
     #[snafu(display("JSON Deserialization Invalid: {} {:?}", details, json))]
     JsonDeserializationInvalid { details: String, json: Value },
+
+    /// Internal Error
+    #[snafu(display("Internal Error: {}", reason))]
+    InternalError { reason: String },
 }
 
 /// The indices create index API has 4 components, which are
@@ -460,28 +467,36 @@ impl ElasticsearchStorage {
         &self,
         index: String,
         documents: S,
-    ) -> Result<usize, Error>
+    ) -> Result<InsertStats, Error>
     where
         //D: Document + Send + Sync + 'static,
         S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
-        let counter = Arc::new(Mutex::new(0_usize));
+        let stats = Arc::new(Mutex::new(InsertStats::default()));
 
         documents
             .chunks(CHUNK_SIZE) // FIXME chunck size should be a variable.
             .for_each_concurrent(8, |chunk| {
                 // FIXME 8 automagick!!??
-                let counter = counter.clone();
+                let stats = stats.clone();
                 let index = index.clone();
                 async move {
-                    if let Err(err) = self.insert_chunk_in_index(index, chunk, counter).await {
-                        println!("Error inserting chunk: {}", err.to_string());
+                    if let Err(_err) = self.insert_chunk_in_index(index, chunk, stats).await {
+                        // println!("Error inserting chunk: {}", err.to_string());
                     }
                 } // res
             })
             .await;
-        let count = *counter.lock().unwrap();
-        Ok(count)
+
+        let lock = Arc::try_unwrap(stats).map_err(|_err| Error::InternalError {
+            reason: String::from("Lock has still multiple owners"),
+        })?;
+
+        let res = lock.into_inner().map_err(|_err| Error::InternalError {
+            reason: String::from("Mutex cannot be unlocked"),
+        })?;
+
+        Ok(res)
     }
 
     // Changed the name to avoid recursive calls int storage::insert_documents
@@ -489,7 +504,7 @@ impl ElasticsearchStorage {
         &self,
         index: String,
         chunk: Vec<Box<dyn Document + Send + Sync + 'static>>,
-        counter: Arc<Mutex<usize>>,
+        stats: Arc<Mutex<InsertStats>>,
     ) -> Result<(), Error> {
         // We try to insert the chunk using bulk insertion.
         // We then analyze the result, which contains an array of 'items'.
@@ -564,9 +579,16 @@ impl ElasticsearchStorage {
                         })?;
 
                     if result == "created" {
-                        let mut count_guard = (*counter).lock().unwrap();
-                        *count_guard += 1;
+                        // println!("TRACE: item {:?} was created", item);
+                        (*stats).lock().unwrap().created += 1;
+                        // let mut stats_guard = (*stats).lock().unwrap().created += 1;
+                        // *stats_guard.created += 1;
                         Ok(())
+                    } else if result == "updated" {
+                        (*stats).lock().unwrap().updated += 1;
+                        Err(Error::NotCreated {
+                            details: format!("WARN: item {:?} was updated", item),
+                        })
                     } else {
                         Err(Error::NotCreated {
                             details: format!("not created: {:?}", item),
@@ -1256,4 +1278,26 @@ enum State {
     Start,
     Next(ContinuationToken),
     End(String),
+}
+
+#[derive(Debug, Default)]
+pub struct InsertStats {
+    pub created: usize,
+    pub updated: usize,
+    pub error: usize,
+}
+
+impl From<InsertStats> for ModelInsertStats {
+    fn from(stats: InsertStats) -> Self {
+        let InsertStats {
+            created,
+            updated,
+            error,
+        } = stats;
+        ModelInsertStats {
+            created,
+            updated,
+            error,
+        }
+    }
 }

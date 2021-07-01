@@ -10,6 +10,7 @@ use crate::domain::model::{
     configuration::{self, Configuration},
     document::Document,
     index::{Index, IndexVisibility},
+    stats::InsertStats,
 };
 use crate::domain::ports::storage::{Error as StorageError, Storage};
 
@@ -57,7 +58,11 @@ impl Storage for ElasticsearchStorage {
     }
 
     // FIXME Move details to impl ElasticsearchStorage.
-    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<usize, StorageError>
+    async fn insert_documents<S>(
+        &self,
+        index: String,
+        documents: S,
+    ) -> Result<InsertStats, StorageError>
     where
         S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
     {
@@ -73,6 +78,7 @@ impl Storage for ElasticsearchStorage {
         })?;
         self.insert_documents_in_index(index, documents)
             .await
+            .map(InsertStats::from)
             .map_err(|err| StorageError::DocumentInsertionError {
                 source: Box::new(err),
             })
