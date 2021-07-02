@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use std::pin::Pin;
 
 use crate::domain::model::export_parameters::{
-    ListParameters as ExportParameters, SearchParameters,
+    ExplainParameters, ListParameters as ExportParameters, SearchParameters,
 };
 use crate::domain::model::query_parameters::ListParameters as QueryParameters;
 use crate::domain::ports::export::{Error as ExportError, Export};
@@ -60,6 +60,15 @@ impl<D: DeserializeOwned + Send + Sync + 'static> Export for ListDocuments<D> {
     ) -> Result<Vec<Self::Doc>, ExportError> {
         Err(ExportError::InterfaceError {
             details: String::from("can't use ListDocuments::search_documents"),
+        })
+    }
+
+    async fn explain_document(
+        &self,
+        _parameters: ExplainParameters,
+    ) -> Result<Self::Doc, ExportError> {
+        Err(ExportError::InterfaceError {
+            details: String::from("can't use ListDocuments::explain_document"),
         })
     }
 }

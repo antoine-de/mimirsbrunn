@@ -6,7 +6,9 @@ use serde::de::DeserializeOwned;
 use snafu::Snafu;
 use std::pin::Pin;
 
-use crate::domain::model::export_parameters::{ListParameters, SearchParameters};
+use crate::domain::model::export_parameters::{
+    ExplainParameters, ListParameters, SearchParameters,
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -27,4 +29,6 @@ pub trait Export {
 
     async fn search_documents(&self, parameters: SearchParameters)
         -> Result<Vec<Self::Doc>, Error>;
+
+    async fn explain_document(&self, parameters: ExplainParameters) -> Result<Self::Doc, Error>;
 }

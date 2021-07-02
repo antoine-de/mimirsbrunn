@@ -14,6 +14,7 @@ impl From<super::export_parameters::ListParameters> for ListParameters {
         }
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct SearchParameters {
     pub indices: Vec<String>, // if you want to target all indices, use vec![munin]
@@ -29,6 +30,23 @@ impl From<super::export_parameters::SearchParameters> for SearchParameters {
                 .map(|doc_type| super::configuration::root_doctype(&doc_type))
                 .collect(),
             dsl: input.dsl,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ExplainParameters {
+    pub index: String, // if you want to target all indices, use vec![munin]
+    pub dsl: String,   // if you want to target all documents, use { match_all: {} }
+    pub id: String,
+}
+
+impl From<super::export_parameters::ExplainParameters> for ExplainParameters {
+    fn from(input: super::export_parameters::ExplainParameters) -> Self {
+        ExplainParameters {
+            index: super::configuration::root_doctype(&input.doc_type),
+            dsl: input.dsl,
+            id: input.id,
         }
     }
 }

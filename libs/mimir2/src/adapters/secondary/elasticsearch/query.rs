@@ -1,20 +1,30 @@
 use async_trait::async_trait;
 use futures::stream::Stream;
-use serde_json::Value;
 use std::pin::Pin;
 
 use super::ElasticsearchStorage;
-use crate::domain::model::query_parameters::{ListParameters, SearchParameters};
+use crate::domain::model::query_parameters::{ExplainParameters, ListParameters, SearchParameters};
 use crate::domain::ports::query::{Error as QueryError, Query};
 
 #[async_trait]
 impl Query for ElasticsearchStorage {
-    type Doc = Value;
+    type Doc = serde_json::Value;
     async fn search_documents(
         &self,
         parameters: SearchParameters,
     ) -> Result<Vec<Self::Doc>, QueryError> {
         self.search_documents(parameters.indices, parameters.dsl)
+            .await
+            .map_err(|err| QueryError::DocumentRetrievalError {
+                source: Box::new(err),
+            })
+    }
+
+    async fn explain_document(
+        &self,
+        parameters: ExplainParameters,
+    ) -> Result<Self::Doc, QueryError> {
+        self.explain_search(parameters.index, parameters.dsl, parameters.id)
             .await
             .map_err(|err| QueryError::DocumentRetrievalError {
                 source: Box::new(err),

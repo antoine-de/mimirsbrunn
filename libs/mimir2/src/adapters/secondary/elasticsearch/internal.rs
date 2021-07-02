@@ -5,7 +5,9 @@ use elasticsearch::indices::{
     IndicesPutAliasParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
-use elasticsearch::{BulkOperation, BulkParts, Elasticsearch, OpenPointInTimeParts, SearchParts};
+use elasticsearch::{
+    BulkOperation, BulkParts, Elasticsearch, ExplainParts, OpenPointInTimeParts, SearchParts,
+};
 use futures::stream::{self, Stream, StreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -1133,9 +1135,6 @@ impl ElasticsearchStorage {
         let response = self
             .0
             .search(SearchParts::Index(&indices))
-            //.search(SearchParts::Index(&[
-            //    "munin_addr_fr_20210627_205442_473913170",
-            //]))
             .body(body)
             .send()
             .await
@@ -1191,6 +1190,68 @@ impl ElasticsearchStorage {
                 .collect::<Vec<_>>();
 
             Ok(hits)
+        } else {
+            let exception = response.exception().await.ok().unwrap();
+
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
+    }
+
+    pub async fn explain_search<D>(
+        &self,
+        index: String,
+        dsl: String,
+        id: String,
+    ) -> Result<D, Error>
+    where
+        D: DeserializeOwned + Send + Sync + 'static,
+    {
+        let body: serde_json::Value =
+            serde_json::from_str(&dsl).context(Json2DeserializationError {
+                details: String::from("could not deserialize query DSL"),
+            })?;
+
+        let response = self
+            .0
+            .explain(ExplainParts::IndexId(&id, &index))
+            .body(body)
+            .send()
+            .await
+            .context(ElasticsearchError {
+                details: format!("could not explain document {} in index {}", id, index),
+            })?;
+
+        if response.status_code().is_success() {
+            let json = response
+                .json::<Value>()
+                .await
+                .context(JsonDeserializationError)?;
+
+            let explanation = json
+                .as_object()
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected JSON object"),
+                    json: json.clone(),
+                })?
+                .get("explanation")
+                .ok_or(Error::JsonDeserializationInvalid {
+                    details: String::from("expected 'hits'"),
+                    json: json.clone(),
+                })?
+                .to_owned();
+            let explanation =
+                serde_json::from_value::<D>(explanation).context(Json2DeserializationError {
+                    details: String::from("could not deserialize explanation"),
+                })?;
+            Ok(explanation)
         } else {
             let exception = response.exception().await.ok().unwrap();
 

@@ -43,6 +43,7 @@ impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for SearchDocuments<D>
 #[async_trait]
 impl<D: DeserializeOwned + Send + Sync + 'static> Export for SearchDocuments<D> {
     type Doc = D;
+    // FIXME If this ain't a code smell, then what is!!?
     fn list_documents(
         &self,
         _parameters: ListParameters,
@@ -59,6 +60,20 @@ impl<D: DeserializeOwned + Send + Sync + 'static> Export for SearchDocuments<D> 
         let query_parameters = QueryParameters::from(parameters);
         self.query
             .search_documents(query_parameters)
+            .await
+            .map_err(|err| ExportError::DocumentRetrievalError {
+                source: Box::new(err),
+            })
+    }
+
+    async fn explain_document(
+        &self,
+        parameters: crate::domain::model::export_parameters::ExplainParameters,
+    ) -> Result<Self::Doc, ExportError> {
+        let query_parameters =
+            crate::domain::model::query_parameters::ExplainParameters::from(parameters);
+        self.query
+            .explain_document(query_parameters)
             .await
             .map_err(|err| ExportError::DocumentRetrievalError {
                 source: Box::new(err),
