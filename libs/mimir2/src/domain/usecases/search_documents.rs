@@ -26,6 +26,10 @@ pub struct SearchDocumentsParameters {
     pub parameters: ExportParameters,
 }
 
+pub struct ExplainDocumentsParameters {
+    pub parameters: crate::domain::model::export_parameters::ExplainParameters,
+}
+
 #[async_trait]
 impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for SearchDocuments<D> {
     type Res = Vec<D>;

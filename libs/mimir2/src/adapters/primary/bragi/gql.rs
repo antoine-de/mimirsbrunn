@@ -190,6 +190,56 @@ impl Mutation {
 
         Ok(resp)
     }
+
+    async fn explain_geocoder(
+        &self,
+        context: &Context<'_>,
+        q: String,
+        id: String,
+        filters: InputFilters,
+        settings: Upload,
+    ) -> FieldResult<SearchResponseBody> {
+        let usecase = get_usecase_from_context(context)?;
+
+        // Read settings from uploaded file
+        let settings = settings
+            .value(context)
+            .map_err(|err| to_err("extract settings from upload", "graphql", err.to_string()))?;
+
+        // FIXME Use the new QuerySettings::new_from_file function
+        let mut settings_content = String::new();
+        let mut settings_file = tokio::fs::File::from_std(settings.content);
+        settings_file
+            .read_to_string(&mut settings_content)
+            .await
+            .map_err(|err| to_err("read settings from content", "graphql", err.to_string()))?;
+        let settings = QuerySettings::new(&settings_content)
+            .map_err(|err| to_err("invalid settings", "graphql", err.to_string()))?;
+
+        let filters = Filters::from(filters);
+        let query = build_query(&q, filters, &["fr"], &settings);
+
+        let endb = id.find(":").unwrap();
+        let doc_type = String::from(id[0..endb]);
+
+        let parameters = SearchDocumentsParameters {
+            parameters: SearchParameters {
+                dsl: query,
+                doc_types: vec![
+                    String::from(Admin::doc_type()),
+                    String::from(Street::doc_type()),
+                    String::from(Addr::doc_type()),
+                    String::from(Stop::doc_type()),
+                    String::from(Poi::doc_type()),
+                ],
+            },
+        };
+
+        let res = usecase.execute(parameters).await?;
+        let resp = SearchResponseBody::from(res);
+
+        Ok(resp)
+    }
 }
 
 pub type BragiSchema = Schema<Query, Mutation, EmptySubscription>;
