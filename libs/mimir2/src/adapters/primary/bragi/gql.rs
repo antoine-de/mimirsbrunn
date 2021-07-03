@@ -8,19 +8,18 @@ use tokio::io::AsyncReadExt;
 
 use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters};
 use crate::adapters::primary::bragi::settings::QuerySettings;
-use crate::domain::model::export_parameters::SearchParameters;
-use crate::domain::ports::export::Error as ExportError;
+use crate::domain::ports::search::{Error as SearchError, SearchParameters};
 use crate::domain::usecases::{
     search_documents::{SearchDocuments, SearchDocumentsParameters},
     UseCase,
 };
 
-impl ErrorExtensions for ExportError {
+impl ErrorExtensions for SearchError {
     // lets define our base extensions
     fn extend(&self) -> FieldError {
         self.extend_with(|err, e| match err {
-            &ExportError::DocumentRetrievalError { source } => e.set("reason", source.to_string()),
-            &ExportError::InterfaceError { details } => e.set("reason", details.to_string()),
+            &SearchError::DocumentRetrievalError { source } => e.set("reason", source.to_string()),
+            &SearchError::InterfaceError { details } => e.set("reason", details.to_string()),
         })
     }
 }
@@ -220,7 +219,7 @@ impl Mutation {
         let query = build_query(&q, filters, &["fr"], &settings);
 
         let endb = id.find(":").unwrap();
-        let doc_type = String::from(id[0..endb]);
+        let doc_type = String::from(&id[0..endb]);
 
         let parameters = SearchDocumentsParameters {
             parameters: SearchParameters {

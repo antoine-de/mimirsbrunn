@@ -3,13 +3,13 @@ use futures::stream::Stream;
 use serde::de::DeserializeOwned;
 use std::pin::Pin;
 
-use crate::domain::model::export_parameters::{
-    ExplainParameters, ListParameters as ExportParameters, SearchParameters,
+use crate::domain::{
+    ports::{
+        list::{Error as PortError, List, ListParameters as PrimaryParameters},
+        query::Query,
+    },
+    usecases::{Error as UseCaseError, UseCase},
 };
-use crate::domain::model::query_parameters::ListParameters as QueryParameters;
-use crate::domain::ports::export::{Error as ExportError, Export};
-use crate::domain::ports::query::Query;
-use crate::domain::usecases::{Error as UseCaseError, UseCase};
 
 // FIXME Maybe need two use cases.... one for
 pub struct ListDocuments<D> {
@@ -23,7 +23,7 @@ impl<D> ListDocuments<D> {
 }
 
 pub struct ListDocumentsParameters {
-    pub parameters: ExportParameters,
+    pub parameters: PrimaryParameters,
 }
 
 #[async_trait]
@@ -40,35 +40,17 @@ impl<D: DeserializeOwned + Send + Sync + 'static> UseCase for ListDocuments<D> {
 }
 
 #[async_trait]
-impl<D: DeserializeOwned + Send + Sync + 'static> Export for ListDocuments<D> {
+impl<D: DeserializeOwned + Send + Sync + 'static> List for ListDocuments<D> {
     type Doc = D;
     fn list_documents(
         &self,
-        parameters: ExportParameters,
-    ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, ExportError> {
-        let query_parameters = QueryParameters::from(parameters);
-        self.query.list_documents(query_parameters).map_err(|err| {
-            ExportError::DocumentRetrievalError {
+        parameters: PrimaryParameters,
+    ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, PortError> {
+        let parameters = crate::domain::ports::query::ListParameters::from(parameters);
+        self.query
+            .list_documents(parameters)
+            .map_err(|err| PortError::DocumentRetrievalError {
                 source: Box::new(err),
-            }
-        })
-    }
-
-    async fn search_documents(
-        &self,
-        _parameters: SearchParameters,
-    ) -> Result<Vec<Self::Doc>, ExportError> {
-        Err(ExportError::InterfaceError {
-            details: String::from("can't use ListDocuments::search_documents"),
-        })
-    }
-
-    async fn explain_document(
-        &self,
-        _parameters: ExplainParameters,
-    ) -> Result<Self::Doc, ExportError> {
-        Err(ExportError::InterfaceError {
-            details: String::from("can't use ListDocuments::explain_document"),
-        })
+            })
     }
 }

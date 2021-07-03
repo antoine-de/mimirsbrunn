@@ -3,8 +3,9 @@ use futures::stream::Stream;
 use std::pin::Pin;
 
 use super::ElasticsearchStorage;
-use crate::domain::model::query_parameters::{ExplainParameters, ListParameters, SearchParameters};
-use crate::domain::ports::query::{Error as QueryError, Query};
+use crate::domain::ports::query::{
+    Error as QueryError, ExplainParameters, ListParameters, Query, SearchParameters,
+};
 
 #[async_trait]
 impl Query for ElasticsearchStorage {
