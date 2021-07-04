@@ -34,7 +34,7 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings::osm2mimir::Settings, utils};
 use mimir2::{
-    domain::model::export_parameters::SearchParameters,
+    domain::ports::search::SearchParameters,
     domain::usecases::{
         search_documents::{SearchDocuments, SearchDocumentsParameters},
         UseCase,

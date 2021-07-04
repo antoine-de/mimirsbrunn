@@ -35,9 +35,8 @@ use mimir2::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::model::export_parameters::ListParameters,
     domain::model::{configuration::Configuration, document::Document, index::IndexVisibility},
-    domain::ports::remote::Remote,
+    domain::ports::{list::ListParameters, remote::Remote},
     domain::usecases::{
         generate_index::{GenerateIndex, GenerateIndexParameters},
         list_documents::{ListDocuments, ListDocumentsParameters},

@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use futures::future::TryFutureExt;
 use futures::stream::Stream;
-use serde::Serialize;
 use std::convert::TryFrom;
 
 use super::internal;

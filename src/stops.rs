@@ -41,11 +41,8 @@ use mimir2::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::model::{
-        configuration::Configuration, document::Document, export_parameters::ListParameters,
-        index::IndexVisibility,
-    },
-    domain::ports::remote::Remote,
+    domain::model::{configuration::Configuration, document::Document, index::IndexVisibility},
+    domain::ports::{list::ListParameters, remote::Remote},
     domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
     domain::usecases::{
         generate_index::{GenerateIndex, GenerateIndexParameters},
@@ -57,7 +54,7 @@ use std::mem::replace;
 use std::ops::Deref;
 use std::sync::Arc;
 
-const GLOBAL_STOP_INDEX_NAME: &str = "munin_global_stops";
+// const GLOBAL_STOP_INDEX_NAME: &str = "munin_global_stops";
 
 pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     stops: It,

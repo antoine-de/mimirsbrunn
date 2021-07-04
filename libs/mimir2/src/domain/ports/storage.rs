@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
 use snafu::Snafu;
 
 use crate::domain::model::{

@@ -14,7 +14,8 @@ use warp::{http::Response as HttpResponse, Filter, Rejection};
 use super::settings::{Error as SettingsError, Settings as CSettings};
 use mimir2::{
     adapters::primary::bragi::gql, adapters::secondary::elasticsearch,
-    domain::ports::remote::Remote, domain::usecases::search_documents::SearchDocuments,
+    domain::ports::remote::Remote, domain::usecases::explain_query::ExplainDocument,
+    domain::usecases::search_documents::SearchDocuments,
 };
 
 #[derive(Debug, Snafu)]
@@ -66,9 +67,10 @@ pub async fn run_server(settings: CSettings) -> Result<(), Error> {
         source: Box::new(err),
     })?;
 
-    let service = SearchDocuments::new(Box::new(client));
+    let search = SearchDocuments::new(Box::new(client.clone()));
+    let explain = ExplainDocument::new(Box::new(client));
 
-    let schema = gql::bragi_schema(service);
+    let schema = gql::bragi_schema(search, explain);
 
     let graphql_post = async_graphql_warp::graphql(schema).and_then(
         |(schema, request): (gql::BragiSchema, async_graphql::Request)| async move {

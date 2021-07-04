@@ -8,21 +8,23 @@ use tokio::io::AsyncReadExt;
 
 use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters};
 use crate::adapters::primary::bragi::settings::QuerySettings;
-use crate::domain::ports::search::{Error as SearchError, SearchParameters};
+use crate::domain::ports::explain::ExplainParameters;
+use crate::domain::ports::search::SearchParameters;
 use crate::domain::usecases::{
+    explain_query::{ExplainDocument, ExplainDocumentParameters},
     search_documents::{SearchDocuments, SearchDocumentsParameters},
     UseCase,
 };
 
-impl ErrorExtensions for SearchError {
-    // lets define our base extensions
-    fn extend(&self) -> FieldError {
-        self.extend_with(|err, e| match err {
-            &SearchError::DocumentRetrievalError { source } => e.set("reason", source.to_string()),
-            &SearchError::InterfaceError { details } => e.set("reason", details.to_string()),
-        })
-    }
-}
+// impl ErrorExtensions for SearchError {
+//     // lets define our base extensions
+//     fn extend(&self) -> FieldError {
+//         self.extend_with(|err, e| match err {
+//             &SearchError::DocumentRetrievalError { source } => e.set("reason", source.to_string()),
+//             &SearchError::InterfaceError { details } => e.set("reason", details.to_string()),
+//         })
+//     }
+// }
 
 /*
  * The following is an attempt at turning coord into an async_graphql input type,
@@ -127,6 +129,25 @@ impl From<Vec<JsonValue>> for SearchResponseBody {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ExplainResponseBody {
+    pub explanation: JsonValue,
+}
+
+#[Object]
+impl ExplainResponseBody {
+    async fn explanation(&self) -> &JsonValue {
+        &self.explanation
+    }
+}
+
+impl From<JsonValue> for ExplainResponseBody {
+    fn from(explanation: JsonValue) -> Self {
+        ExplainResponseBody { explanation }
+    }
+}
+
 pub struct Query;
 
 #[Object]
@@ -151,7 +172,7 @@ impl Mutation {
         filters: InputFilters,
         settings: Upload,
     ) -> FieldResult<SearchResponseBody> {
-        let usecase = get_usecase_from_context(context)?;
+        let search = get_search_from_context(context)?;
 
         // Read settings from uploaded file
         let settings = settings
@@ -184,7 +205,7 @@ impl Mutation {
             },
         };
 
-        let res = usecase.execute(parameters).await?;
+        let res = search.execute(parameters).await?;
         let resp = SearchResponseBody::from(res);
 
         Ok(resp)
@@ -197,8 +218,8 @@ impl Mutation {
         id: String,
         filters: InputFilters,
         settings: Upload,
-    ) -> FieldResult<SearchResponseBody> {
-        let usecase = get_usecase_from_context(context)?;
+    ) -> FieldResult<ExplainResponseBody> {
+        let explain = get_explain_from_context(context)?;
 
         // Read settings from uploaded file
         let settings = settings
@@ -218,45 +239,57 @@ impl Mutation {
         let filters = Filters::from(filters);
         let query = build_query(&q, filters, &["fr"], &settings);
 
+        // When we go about explaining, its about the behavior of a query against a particular
+        // document. So we need to give the name of the index, and the id of the document. We
+        // already have the id, and we'll extract the index from the id, because the id is prefixed
+        // by the document type.
         let endb = id.find(":").unwrap();
         let doc_type = String::from(&id[0..endb]);
 
-        let parameters = SearchDocumentsParameters {
-            parameters: SearchParameters {
+        let parameters = ExplainDocumentParameters {
+            parameters: ExplainParameters {
                 dsl: query,
-                doc_types: vec![
-                    String::from(Admin::doc_type()),
-                    String::from(Street::doc_type()),
-                    String::from(Addr::doc_type()),
-                    String::from(Stop::doc_type()),
-                    String::from(Poi::doc_type()),
-                ],
+                doc_type,
+                id,
             },
         };
 
-        let res = usecase.execute(parameters).await?;
-        let resp = SearchResponseBody::from(res);
+        let res = explain.execute(parameters).await?;
+        // let resp = ExplainResponseBody::from(res);
 
-        Ok(resp)
+        Ok(res)
     }
 }
 
 pub type BragiSchema = Schema<Query, Mutation, EmptySubscription>;
 
-pub fn bragi_schema<D: 'static>(usecase: SearchDocuments<D>) -> BragiSchema {
+pub fn bragi_schema<D: 'static>(
+    search: SearchDocuments<D>,
+    explain: ExplainDocument<D>,
+) -> BragiSchema {
     Schema::build(Query, Mutation, EmptySubscription)
         .extension(Tracing)
-        .data(usecase)
+        .data(search)
+        .data(explain)
         .finish()
 }
 
 #[allow(clippy::borrowed_box)]
-pub fn get_usecase_from_context<'ctx, D: 'static>(
+pub fn get_search_from_context<'ctx, D: 'static>(
     context: &'ctx Context,
 ) -> Result<&'ctx SearchDocuments<D>, async_graphql::Error>
 where
 {
     context.data::<SearchDocuments<D>>()
+}
+
+#[allow(clippy::borrowed_box)]
+pub fn get_explain_from_context<'ctx, D: 'static>(
+    context: &'ctx Context,
+) -> Result<&'ctx ExplainDocument<D>, async_graphql::Error>
+where
+{
+    context.data::<ExplainDocument<D>>()
 }
 
 // #[cfg(test)]

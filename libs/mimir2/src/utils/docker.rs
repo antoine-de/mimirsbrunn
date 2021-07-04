@@ -14,7 +14,7 @@ use elasticsearch::{
 use lazy_static::lazy_static;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use tokio::time::{sleep, Duration};
 use url::Url;
 
@@ -221,7 +221,7 @@ impl DockerWrapper {
         Ok(())
     }
 
-    async fn drop(&mut self) {
+    async fn _drop(&mut self) {
         if std::env::var("DONT_KILL_THE_WHALE") == Ok("1".to_string()) {
             println!(
                 "the docker won't be stoped at the end, you can debug it.
