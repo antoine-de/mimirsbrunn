@@ -32,6 +32,7 @@
         "filter": [ "lowercase", "asciifolding", "elision_filter" ]
       },
       "autocomplete_search": {
+        "tokenizer": "standard",
         "filter": [ "lowercase", "asciifolding", "elision_filter" ]
       }
     },

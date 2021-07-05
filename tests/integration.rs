@@ -36,8 +36,7 @@ mod example_steps {
             self,
             internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
         },
-        domain::model::export_parameters::SearchParameters,
-        domain::ports::remote::Remote,
+        domain::ports::{remote::Remote, search::SearchParameters},
         domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
         domain::usecases::UseCase,
     };

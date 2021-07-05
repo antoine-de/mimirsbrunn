@@ -19,6 +19,7 @@ impl<D> ExplainDocument<D> {
     }
 }
 
+#[derive(Debug)]
 pub struct ExplainDocumentParameters {
     pub parameters: PrimaryParameters,
 }

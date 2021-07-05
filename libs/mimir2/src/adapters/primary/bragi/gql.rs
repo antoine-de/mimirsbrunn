@@ -254,10 +254,12 @@ impl Mutation {
             },
         };
 
-        let res = explain.execute(parameters).await?;
-        // let resp = ExplainResponseBody::from(res);
+        let res: JsonValue = explain.execute(parameters).await?;
+        println!("res: {:?}", res);
 
-        Ok(res)
+        let resp = ExplainResponseBody::from(res);
+
+        Ok(resp)
     }
 }
 

@@ -71,6 +71,10 @@ pub enum Error {
     #[snafu(display("Elasticsearch Failed to Parse"))]
     ElasticsearchFailedToParse,
 
+    /// Elasticsearch Failed To Parse
+    #[snafu(display("Elasticsearch Failed to Parse Mapping of {}: {}", object, reason))]
+    ElasticsearchInvalidMapping { object: String, reason: String },
+
     /// Elasticsearch Unknown Index
     #[snafu(display("Elasticsearch Unknown Index: {}", index))]
     ElasticsearchUnknownIndex { index: String },
@@ -184,6 +188,12 @@ impl From<Exception> for Error {
                 static ref FAILED_PARSE: Regex = Regex::new(r"failed to parse").unwrap();
             }
             lazy_static! {
+                // Example: Failed to parse mapping [_doc]: analyzer [ngram] has not been configured in mappings
+                // we extract an 'object', between [], and the reason, behind ':'
+                static ref FAILED_PARSE_MAPPING: Regex =
+                    Regex::new(r"Failed to parse mapping \[([^\]/]+).*\]: (.*)").unwrap();
+            }
+            lazy_static! {
                 static ref UNKNOWN_SETTING: Regex =
                     Regex::new(r"unknown setting \[([^\]/]+).*\]").unwrap();
             }
@@ -195,6 +205,10 @@ impl From<Exception> for Error {
                     } else if let Some(caps) = NOT_FOUND.captures(reason) {
                         let index = String::from(caps.get(1).unwrap().as_str());
                         Error::ElasticsearchUnknownIndex { index }
+                    } else if let Some(caps) = FAILED_PARSE_MAPPING.captures(reason) {
+                        let object = String::from(caps.get(1).unwrap().as_str());
+                        let reason = String::from(caps.get(2).unwrap().as_str());
+                        Error::ElasticsearchInvalidMapping { object, reason }
                     } else if FAILED_PARSE.is_match(reason) {
                         Error::ElasticsearchFailedToParse
                     } else if let Some(caps) = UNKNOWN_SETTING.captures(reason) {
@@ -1219,9 +1233,13 @@ impl ElasticsearchStorage {
                 details: String::from("could not deserialize query DSL"),
             })?;
 
+        println!("id: {:?}", id);
+        println!("index: {:?}", index);
+        println!("dsl: {:?}", dsl);
+
         let response = self
             .0
-            .explain(ExplainParts::IndexId(&id, &index))
+            .explain(ExplainParts::IndexId(&index, &id))
             .body(body)
             .send()
             .await
@@ -1234,6 +1252,8 @@ impl ElasticsearchStorage {
                 .json::<Value>()
                 .await
                 .context(JsonDeserializationError)?;
+
+            println!("json: {:?}", json);
 
             let explanation = json
                 .as_object()
