@@ -40,15 +40,7 @@
           "type": "text",
           "index_options": "docs",
           "analyzer": "word",
-          "copy_to": "full_label",
-          "fields": {
-            "prefix": {
-              "type": "text",
-              "index_options": "docs",
-              "analyzer": "prefix",
-              "search_analyzer": "word"
-            }
-          }
+          "copy_to": "full_label"
         }
       }
     },
