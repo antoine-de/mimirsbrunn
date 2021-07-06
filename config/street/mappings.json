@@ -1,25 +1,38 @@
 {
   "properties": {
-    "id": {
-      "type": "text",
-      "index": false
+    "administrative_regions": {
+      "enabled": false,
+      "type": "object"
     },
-    "level": {
-      "type": "long",
-      "index": false
+    "approx_coord": {
+      "index": false,
+      "type": "geo_point"
     },
-    "name": {
-      "type": "text",
-      "index": false
-    },
-    "zip_codes": {
-      "type": "text",
-      "index_options": "docs",
-      "analyzer": "word",
-      "copy_to": "full_label"
+    "context": {
+      "enabled": false,
+      "type": "object"
     },
     "coord": {
       "type": "geo_point"
+    },
+    "country_codes": {
+      "index": false,
+      "type": "text"
+    },
+    "distance": {
+      "index": false,
+      "type": "long"
+    },
+    "full_label": {
+      "type": "text",
+      "analyzer": "prefix_elision"
+    },
+    "id": {
+      "index": false,
+      "type": "text"
+    },
+    "indexed_at": {
+      "type": "date"
     },
     "label": {
       "type": "text",
@@ -27,15 +40,18 @@
       "search_analyzer": "autocomplete_search",
       "copy_to": "full_label"
     },
-    "full_label": {
-      "type": "text",
-      "analyzer": "prefix_elision"
+    "name": {
+      "index": false,
+      "type": "text"
     },
     "weight": {
       "type": "double"
     },
-    "indexed_at": {
-      "type": "date"
+    "zip_codes": {
+      "type": "text",
+      "index_options": "docs",
+      "analyzer": "word",
+      "copy_to": "full_label"
     }
   }
 }
