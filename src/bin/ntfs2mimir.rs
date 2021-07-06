@@ -177,7 +177,7 @@ fn to_mimir(
         properties: stop_area
             .object_properties
             .iter()
-            .map(|&(ref k, ref v)| mimir::Property {
+            .map(|(k, v)| mimir::Property {
                 key: k.clone(),
                 value: v.clone(),
             })
