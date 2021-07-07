@@ -46,6 +46,12 @@ jobs:
           name: debian-package-release
           path: ./scripts/deb-scratch/*
 
+      - name: Github Release
+        uses: softprops/action-gh-release@v1
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: slack notification (the job has failed)
         if: failure()
         run: |
