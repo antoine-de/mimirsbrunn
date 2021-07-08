@@ -5,8 +5,8 @@
       "type": "object"
     },
     "approx_coord": {
-      "type": "geo_shape",
-      "precision": "5m"
+      "enabled": false,
+      "type": "object"
     },
     "codes": {
       "enabled": false,
@@ -45,10 +45,6 @@
     },
     "indexed_at": {
       "type": "date"
-    },
-    "level": {
-      "type": "long",
-      "index": false
     },
     "lines": {
       "enabled": false,

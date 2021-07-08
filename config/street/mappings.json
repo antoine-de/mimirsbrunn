@@ -5,8 +5,8 @@
       "type": "object"
     },
     "approx_coord": {
-      "index": false,
-      "type": "geo_point"
+      "enabled": false,
+      "type": "object"
     },
     "context": {
       "enabled": false,
@@ -28,8 +28,8 @@
       "analyzer": "prefix_elision"
     },
     "id": {
-      "index": false,
-      "type": "text"
+      "type": "text",
+      "index": false
     },
     "indexed_at": {
       "type": "date"
@@ -41,8 +41,8 @@
       "copy_to": "full_label"
     },
     "name": {
-      "index": false,
-      "type": "text"
+      "type": "text",
+      "index": false
     },
     "weight": {
       "type": "double"

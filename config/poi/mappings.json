@@ -9,8 +9,8 @@
       "type": "object"
     },
     "approx_coord": {
-      "index": false,
-      "type": "geo_point"
+      "enabled": false,
+      "type": "object"
     },
     "context": {
       "enabled": false,
