@@ -1,35 +1,81 @@
 {
   "properties": {
-    "id": {
-      "type": "text",
-      "index": false
-    },
-    "level": {
-      "type": "long",
-      "index": false
-    },
-    "name": {
-      "type": "text",
-      "index": false
-    },
-    "zip_codes": {
-      "type": "text",
-      "index_options": "docs",
-      "analyzer": "word",
-      "copy_to": "full_label"
-    },
-    "coord": {
-      "type": "geo_point"
+    "administrative_regions": {
+      "enabled": false,
+      "type": "object"
     },
     "approx_coord": {
       "type": "geo_shape",
       "precision": "5m"
     },
+    "codes": {
+      "enabled": false,
+      "type": "object"
+    },
+    "comments": {
+      "enabled": false,
+      "type": "object"
+    },
+    "commercial_modes": {
+      "enabled": false,
+      "type": "object"
+    },
+    "context": {
+      "enabled": false,
+      "type": "object"
+    },
+    "coord": {
+      "type": "geo_point"
+    },
+    "distance": {
+      "index": false,
+      "type": "long"
+    },
+    "feed_publishers": {
+      "enabled": false,
+      "type": "object"
+    },
     "full_label": {
       "type": "text",
       "analyzer": "prefix_elision"
     },
+    "id": {
+      "type": "text",
+      "index": false
+    },
+    "indexed_at": {
+      "type": "date"
+    },
+    "level": {
+      "type": "long",
+      "index": false
+    },
+    "lines": {
+      "enabled": false,
+      "type": "object"
+    },
+    "name": {
+      "type": "text",
+      "index": false
+    },
+    "properties": {
+      "enabled": false,
+      "type": "object"
+    },
+    "physical_modes": {
+      "enabled": false,
+      "type": "object"
+    },
+    "timezone": {
+      "type": "keyword",
+      "index": false
+    },
     "weight": { "type": "double" },
-    "indexed_at": { "type": "date" }
+    "zip_codes": {
+      "type": "text",
+      "index_options": "docs",
+      "analyzer": "word",
+      "copy_to": "full_label"
+    }
   }
 }

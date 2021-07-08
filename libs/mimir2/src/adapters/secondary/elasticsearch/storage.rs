@@ -130,6 +130,20 @@ impl Storage for ElasticsearchStorage {
                 .map_err(|err| StorageError::IndexPublicationError {
                     source: Box::new(err),
                 })?;
+
+            let base_index = configuration::root();
+            if !previous_indices.is_empty() {
+                self.remove_alias(previous_indices.clone(), base_index.clone())
+                    .await
+                    .map_err(|err| StorageError::IndexPublicationError {
+                        source: Box::new(err),
+                    })?;
+            }
+            self.add_alias(vec![index.name.clone()], base_index.clone())
+                .await
+                .map_err(|err| StorageError::IndexPublicationError {
+                    source: Box::new(err),
+                })?;
         }
 
         Ok(())
