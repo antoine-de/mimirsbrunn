@@ -33,7 +33,7 @@ cosmogony = { path = "../../../cosmogony/cosmogony" }
 par-map = "0.1.4"
 lazy_static = "1"
 prometheus = {version= "0.7"}
-transit_model = "0.38"
+transit_model = "0.39"
 typed_index_collection = "2.0"
 human-sort = "0.2"
 address-formatter = "^0.2.1"

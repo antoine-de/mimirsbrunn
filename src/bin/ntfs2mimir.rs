@@ -280,8 +280,7 @@ fn test_bad_file() {
     assert_eq!(
         causes,
         [
-            "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
-            "No such file or directory (os error 2)",
+            "file \"./tests/fixtures/not_exist\" is neither a file nor a directory, cannot read a ntfs from it"
         ]
     );
 }

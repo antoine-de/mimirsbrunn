@@ -42,7 +42,7 @@ geo = "0.18"
 geo-types = { version = "0.7.2", features = [ "rstar" ] }
 rstar = "0.8"
 itertools = "0.9"
-transit_model = "0.38"
+transit_model = "0.39"
 typed_index_collection = "2.0"
 failure = "0.1"
 cosmogony = { path = "../cosmogony/cosmogony" }

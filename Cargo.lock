@@ -3878,9 +3878,9 @@ dependencies = [
 
 [[package]]
 name = "transit_model"
-version = "0.38.0"
+version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfead529b0f1703afc77c159a35434fd2a78701603cfa344e38e949e07c8a1d4"
+checksum = "785121862e0aac9559fb25b79a8b1e50f59b3db09c686f11a825823242fdff65"
 dependencies = [
  "chrono",
  "chrono-tz",
