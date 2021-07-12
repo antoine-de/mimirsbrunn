@@ -797,7 +797,9 @@ checksum = "ea221b5284a47e40033bf9b66f35f984ec0ea2931eb03505246cd27a963f981b"
 
 [[package]]
 name = "cosmogony"
-version = "0.10.0"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "872730d50756b836c9c02ab9f99045e265eae87f66a4b8e0fb435a5351732895"
 dependencies = [
  "failure",
  "flate2",
@@ -2955,6 +2957,7 @@ checksum = "e5864e7ef1a6b7bcf1d6ca3f655e65e724ed3b52546a0d0a663c991522f552ea"
 [[package]]
 name = "rs-es"
 version = "0.12.3"
+source = "git+https://github.com/canaltp/rs-es#d379033daa600b51c0f91bcf23f2c5fefdb5dddb"
 dependencies = [
  "geojson",
  "log",
