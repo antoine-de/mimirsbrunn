@@ -18,7 +18,7 @@ readme = "README.md"
 db-storage = [ "rusqlite" ]
 
 [dependencies]
-config = "0.10"
+config = "0.11"
 log = { version = "0.4", features = ["release_max_level_debug"] }
 slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
 slog-scope = "4.3"
@@ -31,27 +31,27 @@ csv = "1.1"
 rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
 regex = "1"
 osmpbfreader = "0.14"
-osm_boundaries_utils = "0.8.2"
+osm_boundaries_utils = "0.9"
 chrono = "0.4"
 chrono-tz = "0.5"
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
 bincode = "1.2"
-geo = "0.16"
-geo-types = { version = "0.6.1", features = [ "rstar" ] }
+geo = "0.18"
+geo-types = { version = "0.7.2", features = [ "use-rstar" ] }
 rstar = "0.8"
 itertools = "0.9"
-transit_model = "0.31.4"
-typed_index_collection = "1.1"
+transit_model = "0.39"
+typed_index_collection = "2.0"
 failure = "0.1"
-cosmogony = "0.9"
+cosmogony = "0.10.1"
 par-map = "0.1.4"
 lazy_static = "1.4"
 num_cpus = "1.13"
 assert_float_eq = "1.1"
 human-sort = "0.2"
 address-formatter = "0.2.1"
-navitia-poi-model = "0.3"
+navitia-poi-model = "0.4"
 walkdir = "2.3"
 rusqlite = { version = "0.23", optional = true }
 flate2 = "1.0"

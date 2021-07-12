@@ -17,14 +17,14 @@ slog-scope = "4.3"
 rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3" }
 serde = { version = "1", features = ["rc"]}
 serde_json = "1"
-geojson = { version = "0.19", features = ["geo-types"] }
-geo-types = "0.6.1"
+geojson = { version = "0.22", features = ["geo-types"] }
+geo-types = { version = "0.7.2", features = [ "use-rstar" ] }
 lazy_static = "1"
 prometheus = {version= "0.7", features = ["process"]}
 heck = "0.3"
 failure = "0.1"
 num_cpus = "1.13"
-cosmogony = "0.9"
+cosmogony = "0.10.1"
 actix-web = "1"
 actix-rt = "0.2"
 actix-cors = "0.1"
