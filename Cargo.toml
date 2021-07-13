@@ -1,6 +1,6 @@
 [package]
 name = "mimirsbrunn"
-version = "1.23.0"
+version = "1.22.0"
 authors = ["Canal TP <dt.ro@canaltp.fr>"]
 build = "build.rs"
 autotests = false

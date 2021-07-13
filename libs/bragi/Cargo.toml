@@ -1,6 +1,6 @@
 [package]
 name = "bragi"
-version = "1.23.0"
+version = "1.22.0"
 authors = ["dt.ro <dt.ro@canaltp.fr>"]
 edition = "2018"
 description = "Wrapper around Elasticsearch for geocoding"
