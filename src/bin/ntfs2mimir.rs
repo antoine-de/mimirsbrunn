@@ -162,6 +162,7 @@ fn to_mimir(
         comments,
         timezone: stop_area
             .timezone
+            .clone()
             .map(chrono_tz::Tz::name)
             .map(str::to_owned)
             .unwrap_or_default(),
@@ -176,9 +177,9 @@ fn to_mimir(
         properties: stop_area
             .object_properties
             .iter()
-            .map(|(k, v)| mimir::Property {
-                key: k.clone(),
-                value: v.clone(),
+            .map(|(ref k, ref v)| mimir::Property {
+                key: k.to_string(),
+                value: v.to_string(),
             })
             .collect(),
         feed_publishers,

@@ -255,11 +255,11 @@ pub struct Property {
     pub value: String,
 }
 
-impl From<(String, String)> for Property {
-    fn from(pair: (String, String)) -> Property {
+impl From<navitia_poi_model::Property> for Property {
+    fn from(property: navitia_poi_model::Property) -> Property {
         Property {
-            key: pair.0,
-            value: pair.1,
+            key: property.key,
+            value: property.value,
         }
     }
 }
