@@ -35,6 +35,7 @@ use failure::{Error, ResultExt};
 use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
 use slog_scope::{info, warn};
 use std::collections::HashMap;
+use std::mem::replace;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -149,7 +150,7 @@ fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
 }
 fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
     use std::collections::BTreeSet;
-    let tmp = std::mem::take(target);
+    let tmp = replace(target, vec![]);
     *target = tmp
         .into_iter()
         .chain(source)
@@ -166,12 +167,12 @@ fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
 ) -> impl Iterator<Item = mimir::Stop> {
     let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
     for mut stop in stops.into_iter() {
-        let cov = std::mem::take(&mut stop.coverages);
-        let codes = std::mem::take(&mut stop.codes);
-        let physical_modes = std::mem::take(&mut stop.physical_modes);
-        let commercial_modes = std::mem::take(&mut stop.commercial_modes);
-        let properties = std::mem::take(&mut stop.properties);
-        let feed_publishers = std::mem::take(&mut stop.feed_publishers);
+        let cov = replace(&mut stop.coverages, vec![]);
+        let codes = replace(&mut stop.codes, vec![]);
+        let physical_modes = replace(&mut stop.physical_modes, vec![]);
+        let commercial_modes = replace(&mut stop.commercial_modes, vec![]);
+        let properties = replace(&mut stop.properties, vec![]);
+        let feed_publishers = replace(&mut stop.feed_publishers, vec![]);
 
         let stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
 
