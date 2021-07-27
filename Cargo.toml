@@ -16,7 +16,6 @@ readme = "README.md"
 members = [
   "libs/mimir",
   "libs/mimir2",
-  "libs/bragi",
   "libs/places"
 ]
 
@@ -79,7 +78,6 @@ http = "0.2"
 warp = { version = "0.3.1" }
 
 mimir = { path = "libs/mimir" }
-bragi = { path = "libs/bragi" }
 mimir2 = { path = "libs/mimir2" }
 places = { path = "libs/places" }
 
@@ -91,7 +89,6 @@ path = "src/lib.rs"
 reqwest = { version = "0.10", features = [ "blocking", "json" ] }
 approx = "0.3"
 actix-web = "1"
-tools = { path = "libs/tools" }
 docker_wrapper = { path = "libs/docker_wrapper" }
 cucumber = { package = "cucumber_rust", version = "0.8.4", features = ["macros"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
