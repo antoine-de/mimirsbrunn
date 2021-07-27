@@ -1,8 +1,9 @@
 use crate::bano::Bano;
 use crate::Error;
 use failure::format_err;
+use flate2::read::GzDecoder;
 use futures::future;
-use futures::stream::{Stream, StreamExt};
+use futures::stream::{self, Stream, StreamExt};
 use mimir2::{
     adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
     domain::{
@@ -15,10 +16,13 @@ use mimir2::{
 };
 use places::addr::Addr;
 use serde::Serialize;
-use slog_scope::warn;
+use serde::de::DeserializeOwned;
+use slog_scope::{info, warn};
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
+use std::io::Read;
 use tokio::fs::File;
+
 
 // We use a new type to wrap around Addr and implement the Document trait.
 #[derive(Serialize)]
@@ -38,15 +42,15 @@ impl AddrDoc {
     const DOC_TYPE: &'static str = "addr";
 }
 
-async fn import_addresses<S, F>(
+async fn import_addresses<S, F, T>(
     client: ElasticsearchStorage,
     config: IndexConfiguration,
     records: S,
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(Bano) -> Result<Addr, Error> + Send + Sync + 'static,
-    S: Stream<Item = Bano> + Send + Sync + Unpin + 'static,
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
+    S: Stream<Item = T> + Send + Sync + Unpin + 'static,
 {
     let addrs = records.map(into_addr).filter_map(|ra| match ra {
         Ok(a) => {
@@ -84,23 +88,53 @@ where
     Ok(())
 }
 
-/* pub async fn import_addresses_from_stream<S, T, F>(
+/* pub async fn import_addresses_from_stream<T, F>(
     client: ElasticsearchStorage,
     config: IndexConfiguration,
-    rubber: &mut Rubber,
     has_headers: bool,
     nb_threads: usize,
-    streams: impl IntoIterator<Item = impl Read>,
+    streams: impl Iterator<Item = impl AsyncRead + Unpin + Sync + Send + 'static>,
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
-    T: DeserializeOwned + Send + 'static,
-    S: Stream<Item = > + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
+    T: DeserializeOwned + Send + Sync + 'static,
 {
+
     let iter = streams
+        .map(|stream| {
+            csv_async::AsyncReaderBuilder::new()
+                .has_headers(has_headers)
+                .create_deserializer(stream)
+                .into_deserialize::<T>()
+        });
+        //.collect::<Vec<_>>();
+
+    let addrs = futures::stream::iter(iter)
+        .flatten()
+        .filter_map(|line| {
+            future::ready(line.map_err(|e| warn!("Impossible to read line, error: {}", e))
+                .ok())
+        });
+
+    import_addresses(client, config, addrs, into_addr).await
+}*/
+
+pub async fn import_addresses_from_reads<T, F>(
+    client: ElasticsearchStorage,
+    config: IndexConfiguration,
+    has_headers: bool,
+    nb_threads: usize,
+    inputs: Vec<impl Read + Send + Sync + 'static>,
+    into_addr: F,
+) -> Result<(), Error> 
+where
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
+    T: DeserializeOwned + Send + Sync + 'static,
+{
+    let iter = inputs
         .into_iter()
-        .flat_map(|stream| {
+        .flat_map(move |stream| {
             csv::ReaderBuilder::new()
                 .has_headers(has_headers)
                 .from_reader(stream)
@@ -111,88 +145,78 @@ where
                 .ok()
         });
 
-    import_addresses(client, config, rubber, nb_threads, iter, into_addr).await
+    let stream = stream::iter(iter);
+
+    import_addresses(client, config, stream, into_addr).await
 }
+
 
 pub async fn import_addresses_from_files<T, F>(
     client: ElasticsearchStorage,
     config: IndexConfiguration,
-    rubber: &mut Rubber,
     has_headers: bool,
     nb_threads: usize,
     files: impl IntoIterator<Item = PathBuf>,
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
-    T: DeserializeOwned + Send + 'static,
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
+    T: DeserializeOwned + Send + Sync + 'static,
 {
-    let stream = futures::stream::iter(files.into_iter()).filter_map(|path| {
-        info!("importing {:?}...", &path);
+   let files = files.into_iter()
+        .filter_map(|path| {
+            info!("importing {:?}...", &path);
 
-        let with_gzip = path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .map(|ext| ext == "gz")
-            .unwrap_or(false);
+            let with_gzip = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext == "gz")
+                .unwrap_or(false);
 
-        File::open(&path)
-            .map_err(|err| error!("Impossible to read file {:?}, error: {}", path, err))
-            .map(|file| {
-                if with_gzip {
-                    let decoder = GzDecoder::new(file);
-                    Box::new(decoder) as Box<dyn Read>
-                } else {
-                    Box::new(file) as Box<dyn Read>
-                }
-            })
-            .ok()
-    });
+            std::fs::File::open(&path)
+                .map(|file| {
+                        if with_gzip {
+                            let decoder = GzDecoder::new(file);
+                            Box::new(decoder) as Box<dyn Read + Send + Sync>
+                        } else {
+                            Box::new(file) as Box<dyn Read + Send + Sync>
+                        }
+                    
+                })
+                .ok()
+            }
+        )
+        .collect();
 
-    import_addresses_from_streams(
+
+    import_addresses_from_reads(
         client,
         config,
-        rubber,
         has_headers,
         nb_threads,
-        stream,
+        files,
         into_addr,
     )
     .await
-} */
+}
 
-pub async fn import_addresses_from_file<F>(
+pub async fn import_addresses_from_file<F, T>(
     client: ElasticsearchStorage,
     config: IndexConfiguration,
     file: PathBuf,
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(Bano) -> Result<Addr, Error> + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
+    T: DeserializeOwned + Send + Sync + 'static,
 {
     let reader = File::open(file).await.expect("file open");
     let csv_reader = csv_async::AsyncReaderBuilder::new()
         .has_headers(false)
         .create_deserializer(reader);
     let records = csv_reader
-        .into_deserialize::<Bano>()
+        .into_deserialize::<T>()
         .filter_map(|rec| future::ready(rec.ok()));
 
     import_addresses(client, config, records, into_addr).await
-}
-
-pub async fn count_records(file: PathBuf) -> Result<(), Error> {
-    let reader = csv_async::AsyncReaderBuilder::new()
-        .has_headers(false)
-        .create_deserializer(File::open(file).await?);
-    let records = reader
-        .into_deserialize::<Bano>()
-        .inspect(|rec| match rec {
-            Err(err) => println!("err: {:?}", err),
-            Ok(bano) => println!("ok: {}", bano.street),
-        })
-        .filter_map(|rec| future::ready(rec.ok()));
-    let records = records.collect::<Vec<_>>().await;
-    println!("{} records", records.len());
-    Ok(())
 }

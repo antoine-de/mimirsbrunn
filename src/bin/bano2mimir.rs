@@ -160,7 +160,6 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     };
 
     if let Some(input_path) = args.input {
-        // mimirsbrunn::addr_reader::count_records(input_path.clone()).await?;
         mimirsbrunn::addr_reader::import_addresses_from_file(client, config, input_path, into_addr)
             .await
     } else {
