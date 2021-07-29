@@ -146,6 +146,10 @@ impl Storage for ElasticsearchStorage {
                 })?;
         }
 
+        for index_name in previous_indices {
+            self.delete_container(index_name).await?;
+        }
+
         Ok(())
     }
 }
