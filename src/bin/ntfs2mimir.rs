@@ -160,7 +160,6 @@ fn to_mimir(
         comments,
         timezone: stop_area
             .timezone
-            .clone()
             .map(chrono_tz::Tz::name)
             .map(str::to_owned)
             .unwrap_or_default(),
