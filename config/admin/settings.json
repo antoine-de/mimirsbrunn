@@ -23,6 +23,11 @@
         "filter": [ "lowercase", "elision_filter", "asciifolding" ],
         "char_filter" : [ ]
       },
+      "prefix": {
+        "tokenizer": "standard",
+        "filter": [ "lowercase", "asciifolding", "prefix_filter" ],
+        "char_filter" : [ ]
+      },
       "prefix_elision": {
         "tokenizer": "standard",
         "filter": [ "lowercase", "asciifolding", "elision_filter", "prefix_filter" ],

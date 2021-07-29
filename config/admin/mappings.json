@@ -1,7 +1,7 @@
 {
   "properties": {
     "id": {
-      "type": "text",
+      "type": "keyword",
       "index": false
     },
     "level": {
@@ -22,20 +22,36 @@
     },
     "label": {
       "type": "text",
-      "analyzer": "autocomplete",
-      "search_analyzer": "autocomplete_search",
-      "copy_to": "full_label"
+      "analyzer": "word",
+      "copy_to": "full_label",
+      "norms": false,
+      "fields": {
+        "prefix": {
+          "type": "text",
+          "analyzer": "prefix",
+          "search_analyzer": "word",
+          "norms": false
+        }
+      }
     },
     "full_label": {
       "type": "text",
-      "analyzer": "prefix_elision"
+      "index": false,
+      "norms": false,
+      "fields": {
+        "prefix": {
+          "type": "text",
+          "analyzer": "prefix_elision",
+          "search_analyzer": "word_elision",
+          "norms": false
+        }
+      }
     },
     "weight": {
       "type": "double"
     },
     "zone_type": {
-      "type": "text",
-      "index": false
+      "type": "keyword"
     },
     "indexed_at": {
       "type": "date"
