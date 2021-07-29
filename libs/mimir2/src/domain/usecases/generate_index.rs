@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use futures::stream::{Stream, StreamExt};
 use std::marker::PhantomData;
+use tracing::info;
 
 use crate::domain::model::configuration::Configuration;
 use crate::domain::model::document::Document;
@@ -101,7 +102,7 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
                 source: Box::new(err),
             })?;
 
-        println!("Stats: {:?}", stats);
+        info!("Stats: {:?}", stats);
 
         self.storage
             .publish_index(index.clone(), visibility)

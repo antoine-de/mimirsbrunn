@@ -1,4 +1,3 @@
-use crate::bano::Bano;
 use crate::Error;
 use failure::format_err;
 use flate2::read::GzDecoder;
@@ -15,14 +14,13 @@ use mimir2::{
     },
 };
 use places::addr::Addr;
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use slog_scope::{info, warn};
+use std::io::Read;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
-use std::io::Read;
 use tokio::fs::File;
-
 
 // We use a new type to wrap around Addr and implement the Document trait.
 #[derive(Serialize)]
@@ -127,7 +125,7 @@ pub async fn import_addresses_from_reads<T, F>(
     nb_threads: usize,
     inputs: Vec<impl Read + Send + Sync + 'static>,
     into_addr: F,
-) -> Result<(), Error> 
+) -> Result<(), Error>
 where
     F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
@@ -150,7 +148,6 @@ where
     import_addresses(client, config, stream, into_addr).await
 }
 
-
 pub async fn import_addresses_from_files<T, F>(
     client: ElasticsearchStorage,
     config: IndexConfiguration,
@@ -163,7 +160,8 @@ where
     F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
-   let files = files.into_iter()
+    let files = files
+        .into_iter()
         .filter_map(|path| {
             info!("importing {:?}...", &path);
 
@@ -175,29 +173,18 @@ where
 
             std::fs::File::open(&path)
                 .map(|file| {
-                        if with_gzip {
-                            let decoder = GzDecoder::new(file);
-                            Box::new(decoder) as Box<dyn Read + Send + Sync>
-                        } else {
-                            Box::new(file) as Box<dyn Read + Send + Sync>
-                        }
-                    
+                    if with_gzip {
+                        let decoder = GzDecoder::new(file);
+                        Box::new(decoder) as Box<dyn Read + Send + Sync>
+                    } else {
+                        Box::new(file) as Box<dyn Read + Send + Sync>
+                    }
                 })
                 .ok()
-            }
-        )
+        })
         .collect();
 
-
-    import_addresses_from_reads(
-        client,
-        config,
-        has_headers,
-        nb_threads,
-        files,
-        into_addr,
-    )
-    .await
+    import_addresses_from_reads(client, config, has_headers, nb_threads, files, into_addr).await
 }
 
 pub async fn import_addresses_from_file<F, T>(

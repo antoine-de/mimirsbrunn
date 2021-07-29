@@ -1,4 +1,5 @@
 {
+  "refresh_interval": "60s",
   "analysis": {
     "filter": {
       "prefix_filter": {

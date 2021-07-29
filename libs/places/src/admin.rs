@@ -3,9 +3,9 @@ use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
-use slog_scope::warn;
 use std::cmp::Ordering;
 use std::sync::Arc;
+use tracing::warn;
 
 use super::code::Code;
 use super::context::Context;

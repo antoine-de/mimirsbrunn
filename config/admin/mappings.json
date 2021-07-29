@@ -17,6 +17,9 @@
     "coord": {
       "type": "geo_point"
     },
+    "approx_coord": {
+      "type": "geo_shape"
+    },
     "label": {
       "type": "text",
       "analyzer": "autocomplete",

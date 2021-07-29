@@ -32,9 +32,6 @@ use failure::format_err;
 use futures::stream::StreamExt;
 
 use lazy_static::lazy_static;
-use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::{labels, utils};
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
@@ -44,7 +41,10 @@ use mimir2::{
     domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
     domain::usecases::UseCase,
 };
-use places::{street::Street, admin::Admin, addr::Addr, MimirObject};
+use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
+use mimirsbrunn::admin_geofinder::AdminGeoFinder;
+use mimirsbrunn::{labels, utils};
+use places::{addr::Addr, admin::Admin, street::Street, MimirObject};
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
 use std::io::stdin;
@@ -116,16 +116,16 @@ impl OpenAddress {
         };
 
         let id_suffix = format!(
-                    ":{}",
-                    self.number
-                        .replace(" ", "")
-                        .replace("\t", "")
-                        .replace("\r", "")
-                        .replace("\n", "")
-                        .replace("/", "-")
-                        .replace(".", "-")
-                        .replace(":", "-")
-                        .replace(";", "-")
+            ":{}",
+            self.number
+                .replace(" ", "")
+                .replace("\t", "")
+                .replace("\r", "")
+                .replace("\n", "")
+                .replace("/", "-")
+                .replace(".", "-")
+                .replace(":", "-")
+                .replace(";", "-")
         );
 
         let id = {
@@ -272,14 +272,8 @@ async fn run(args: Args) -> Result<(), failure::Error> {
                     f
                 });
 
-            import_addresses_from_files(
-                client,
-                config,
-                true,
-                args.nb_threads,
-                path_iter,
-                into_addr,
-            ).await
+            import_addresses_from_files(client, config, true, args.nb_threads, path_iter, into_addr)
+                .await
         } else {
             import_addresses_from_files(
                 client,
@@ -288,7 +282,8 @@ async fn run(args: Args) -> Result<(), failure::Error> {
                 args.nb_threads,
                 std::iter::once(input_path),
                 into_addr,
-            ).await
+            )
+            .await
         }
     } else {
         // Import from stdin
@@ -299,7 +294,8 @@ async fn run(args: Args) -> Result<(), failure::Error> {
             args.nb_threads,
             vec![stdin()],
             into_addr,
-        ).await
+        )
+        .await
     }
 }
 

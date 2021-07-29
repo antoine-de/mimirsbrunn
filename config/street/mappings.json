@@ -5,8 +5,7 @@
       "type": "object"
     },
     "approx_coord": {
-      "enabled": false,
-      "type": "object"
+      "type": "geo_shape"
     },
     "context": {
       "enabled": false,

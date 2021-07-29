@@ -1,8 +1,7 @@
 {
   "properties": {
     "approx_coord": {
-      "index": false,
-      "type": "geo_point"
+      "type": "geo_shape"
     },
     "context": {
       "enabled": false,

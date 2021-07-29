@@ -13,12 +13,13 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
+use tracing::warn;
 
 use super::ElasticsearchStorage;
 use crate::domain::model::{
@@ -28,7 +29,7 @@ use crate::domain::model::{
     stats::InsertStats as ModelInsertStats,
 };
 
-static CHUNK_SIZE: usize = 10;
+static CHUNK_SIZE: usize = 100;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -497,8 +498,8 @@ impl ElasticsearchStorage {
                 let stats = stats.clone();
                 let index = index.clone();
                 async move {
-                    if let Err(_err) = self.insert_chunk_in_index(index, chunk, stats).await {
-                        // println!("Error inserting chunk: {}", err.to_string());
+                    if let Err(err) = self.insert_chunk_in_index(index, chunk, stats).await {
+                        panic!("Error inserting chunk: {}", err.to_string());
                     }
                 } // res
             })
@@ -602,9 +603,8 @@ impl ElasticsearchStorage {
                         Ok(())
                     } else if result == "updated" {
                         (*stats).lock().unwrap().updated += 1;
-                        Err(Error::NotCreated {
-                            details: format!("WARN: item {:?} was updated", item),
-                        })
+                        warn!("Item was updated: {:?}", item);
+                        Ok(())
                     } else {
                         Err(Error::NotCreated {
                             details: format!("not created: {:?}", item),
@@ -964,15 +964,12 @@ impl ElasticsearchStorage {
                             .as_str()
                             .unwrap();
 
-                        let body_str = format!(
-                            r#"{{
-                        "query": {{ "match_all": {{}} }},
-                        "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
-                        "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ]
-                    }}"#,
-                            pit = pit
-                        );
-                        let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
+                        let body = json!({
+                            "query": { "match_all": {}},
+                            "pit": {"id": pit, "keep_alive": "1m" },
+                            "sort": [ { "indexed_at": {"order": "asc" }}, {"_id": {"order": "asc"}} ],
+                            "track_total_hits": false
+                        });
 
                         let response = client
                             .search(SearchParts::None)
@@ -1014,12 +1011,12 @@ impl ElasticsearchStorage {
                                 .unwrap();
 
                             let timestamp = sort[0].as_u64().unwrap();
-                            let tiebreaker = sort[1].as_u64().unwrap();
+                            let tiebreaker = sort[1].as_str().unwrap();
 
                             let continuation_token = ContinuationToken {
                                 pit: String::from(pit),
                                 timestamp,
-                                tiebreaker,
+                                tiebreaker: tiebreaker.into(),
                             };
 
                             Some((
@@ -1042,21 +1039,15 @@ impl ElasticsearchStorage {
                         }
                     }
                     State::Next(continuation_token) => {
-                        let body_str = format!(
-                            r#"{{
-                        "query": {{ "match_all": {{}} }},
-                        "pit": {{ "id": "{pit}", "keep_alive": "1m" }},
-                        "sort": [ {{ "indexed_at": {{ "order": "asc" }} }} ],
-                        "search_after": [
-                          {timestamp},
-                          {tiebreaker}
-                        ]
-                    }}"#,
-                            pit = continuation_token.pit,
-                            timestamp = continuation_token.timestamp,
-                            tiebreaker = continuation_token.tiebreaker
-                        );
-                        let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
+                        let body = json!({
+                            "query": { "match_all": {}},
+                            "pit": {"id": continuation_token.pit, "keep_alive": "1m" },
+                            "sort": [ { "indexed_at": {"order": "asc" }}, {"_id": {"order": "asc"}} ],
+                            "search_after": [
+                                continuation_token.timestamp,
+                                continuation_token.tiebreaker
+                            ]
+                        });
 
                         let response = client
                             .search(SearchParts::None)
@@ -1069,7 +1060,7 @@ impl ElasticsearchStorage {
                             .unwrap();
 
                         let response_body = response.json::<Value>().await.unwrap();
-                        let pit = response_body["pit_id"].as_str().unwrap();
+                        let pit = response_body["pit_id"].as_str().expect(&format!("Unexpected response: {}", response_body));
 
                         let hits = response_body["hits"].as_object().unwrap()["hits"]
                             .as_array()
@@ -1083,12 +1074,12 @@ impl ElasticsearchStorage {
                             let sort = last_hit.as_object().unwrap()["sort"].as_array().unwrap();
 
                             let timestamp = sort[0].as_u64().unwrap();
-                            let tiebreaker = sort[1].as_u64().unwrap();
+                            let tiebreaker = sort[1].as_str().unwrap();
 
                             let continuation_token = ContinuationToken {
                                 pit: String::from(pit),
                                 timestamp,
-                                tiebreaker,
+                                tiebreaker: tiebreaker.into(),
                             };
                             Some((
                                 stream::iter(
@@ -1110,12 +1101,9 @@ impl ElasticsearchStorage {
                         }
                     }
                     State::End(pit) => {
-                        let body_str = format!(r#"{{ "id": "{pit}" }}"#, pit = pit,);
-                        let body: serde_json::Value = serde_json::from_str(&body_str).unwrap();
-
                         let response = client
                             .close_point_in_time()
-                            .body(body)
+                            .body(json!({"id": pit}))
                             .send()
                             .await
                             .unwrap();
@@ -1164,27 +1152,27 @@ impl ElasticsearchStorage {
 
             let hits = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("hits")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonDeserializationInvalid {
                     details: String::from("expected 'hits'"),
                     json: json.clone(),
                 })?
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("hits")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonDeserializationInvalid {
                     details: String::from("expected 'hits'"),
                     json: json.clone(),
                 })?
                 .as_array()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonDeserializationInvalid {
                     details: String::from("expected JSON array"),
                     json: json.clone(),
                 })?;
@@ -1352,7 +1340,7 @@ impl From<String> for IndexStatus {
 struct ContinuationToken {
     pit: String,
     timestamp: u64,
-    tiebreaker: u64,
+    tiebreaker: String,
 }
 
 enum State {

@@ -277,7 +277,9 @@ impl FromIterator<Admin> for AdminGeoFinder {
     fn from_iter<I: IntoIterator<Item = Admin>>(admins: I) -> Self {
         let mut geofinder = AdminGeoFinder::default();
 
-        for admin in admins {
+        for mut admin in admins {
+            // Usless to keep parent admins for each admin.
+            admin.administrative_regions = vec![];
             geofinder.insert(admin);
         }
 
@@ -290,12 +292,13 @@ mod tests {
     use super::*;
     use cosmogony::ZoneType;
     use geo::prelude::BoundingRect;
+    use places::coord::Coord;
 
     fn p(x: f64, y: f64) -> geo_types::Point<f64> {
         geo_types::Point(geo_types::Coordinate { x, y })
     }
 
-    fn make_admin(offset: f64, zt: Option<ZoneType>) -> ::mimir::Admin {
+    fn make_admin(offset: f64, zt: Option<ZoneType>) -> Admin {
         make_complex_admin(&format!("admin:offset:{}", offset,), offset, zt, 1., None)
     }
 
@@ -305,7 +308,7 @@ mod tests {
         zone_type: Option<ZoneType>,
         zone_size: f64,
         parent_offset: Option<&str>,
-    ) -> ::mimir::Admin {
+    ) -> Admin {
         // the boundary is a big octogon
         // the zone_size param is used to control the area of the zone
         let shape = geo_types::Polygon::new(
@@ -324,8 +327,8 @@ mod tests {
         );
         let boundary = geo_types::MultiPolygon(vec![shape]);
 
-        let coord = ::mimir::Coord::new(4.0 + offset, 4.0 + offset);
-        ::mimir::Admin {
+        let coord = Coord::new(4.0 + offset, 4.0 + offset);
+        Admin {
             id: id.into(),
             level: 8,
             name: "city".to_string(),
