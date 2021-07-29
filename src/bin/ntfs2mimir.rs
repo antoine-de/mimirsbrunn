@@ -110,7 +110,7 @@ fn to_mimir(
         .get_corresponding_from_idx(idx)
         .into_iter()
         .map(|pm_idx| places::stop::PhysicalMode {
-            id: mimir::objects::normalize_id("physical_mode", &navitia.physical_modes[pm_idx].id),
+            id: places::stop::normalize_id("physical_mode", &navitia.physical_modes[pm_idx].id),
             name: navitia.physical_modes[pm_idx].name.clone(),
         })
         .collect();
@@ -203,7 +203,7 @@ async fn run(args: Args) -> Result<(), transit_model::Error> {
         .stop_areas
         .iter()
         .map(|(idx, sa)| {
-            let id = mimir::objects::normalize_id("stop_area", &sa.id);
+            let id = places::stop::normalize_id("stop_area", &sa.id);
             let nb_stop_points = navitia
                 .get_corresponding_from_idx::<_, navitia::StopPoint>(idx)
                 .len();

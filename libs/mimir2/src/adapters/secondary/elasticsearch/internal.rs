@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use tracing::warn;
+use tracing::{info, warn};
 
 use super::ElasticsearchStorage;
 use crate::domain::model::{

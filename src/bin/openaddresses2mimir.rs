@@ -44,9 +44,9 @@ use mimir2::{
 use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
-use places::{addr::Addr, admin::Admin, street::Street, MimirObject};
+use places::{admin::Admin, MimirObject};
 use serde::{Deserialize, Serialize};
-use slog_scope::{info, warn};
+use slog_scope::{info};
 use std::io::stdin;
 use std::ops::Deref;
 use std::path::PathBuf;

@@ -14,7 +14,6 @@ readme = "README.md"
 
 [workspace]
 members = [
-  "libs/mimir",
   "libs/mimir2",
   "libs/places"
 ]
@@ -31,6 +30,7 @@ slog-envlogger = "2.2"
 slog-async = "2.5"
 slog-term = "2.8"
 slog-stdlog = "4.1"
+slog-json = "2.4"
 structopt = "0.3"
 futures = "0.3"
 csv = "1.1"
@@ -77,7 +77,6 @@ tracing-log = "0.1.2"
 http = "0.2"
 warp = { version = "0.3.1" }
 
-mimir = { path = "libs/mimir" }
 mimir2 = { path = "libs/mimir2" }
 places = { path = "libs/places" }
 
@@ -89,7 +88,6 @@ path = "src/lib.rs"
 reqwest = { version = "0.10", features = [ "blocking", "json" ] }
 approx = "0.3"
 actix-web = "1"
-docker_wrapper = { path = "libs/docker_wrapper" }
 cucumber = { package = "cucumber_rust", version = "0.8.4", features = ["macros"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 

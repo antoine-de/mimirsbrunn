@@ -9,8 +9,8 @@ use url::Url;
 use super::ElasticsearchStorage;
 use crate::domain::ports::remote::{Error as RemoteError, Remote};
 
-const ES_KEY: &'static str = "ELASTICSEARCH_URL";
-const ES_TEST_KEY: &'static str = "ELASTICSEARCH_TEST_URL";
+const ES_KEY: &str = "ELASTICSEARCH_URL";
+const ES_TEST_KEY: &str = "ELASTICSEARCH_TEST_URL";
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]

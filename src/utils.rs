@@ -35,6 +35,8 @@ use std::process::exit;
 use std::sync::Arc;
 use structopt::StructOpt;
 
+use crate::logger::{logger_init};
+
 pub fn get_zip_codes_from_admins(admins: &[Arc<places::admin::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
         if adm.level > level && !adm.zip_codes.is_empty() {
@@ -78,7 +80,7 @@ where
     F: FnOnce(O) -> Fut,
     Fut: Future<Output = Result<(), Error>>,
 {
-    let _guard = mimir::logger_init();
+    let _guard = logger_init();
     if let Err(err) = run(O::from_args()).await {
         for cause in err.iter_chain() {
             error!("{}", cause);
@@ -107,7 +109,7 @@ where
     F: FnOnce(O) -> Result<(), Error>,
     O: StructOpt,
 {
-    let _guard = mimir::logger_init();
+    let _guard = logger_init();
     if let Err(err) = run(O::from_args()) {
         for cause in err.iter_chain() {
             error!("{}", cause);
