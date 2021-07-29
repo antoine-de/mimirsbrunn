@@ -255,7 +255,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchError {
-                details: format!("cannot index document '{}'", config.name),
+                details: format!("cannot create index '{}'", config.name),
             })?;
 
         if response.status_code().is_success() {
@@ -801,19 +801,21 @@ impl ElasticsearchStorage {
                 .await
                 .context(JsonDeserializationError)?;
 
-            let obj = json.as_object().ok_or(Error::JsonDeserializationInvalid {
-                details: String::from("expected JSON object"),
-                json: json.clone(),
-            })?;
-
-            let mut aliases = BTreeMap::new();
-            for (key, value) in obj {
-                let x = value.as_object().expect("aliases object")["aliases"]
-                    .as_object()
-                    .expect("list of aliases");
-                let y = x.keys().map(|key| String::from(key)).collect::<Vec<_>>();
-                aliases.insert(String::from(key), y); // should not be worrying about duplicate entries ??
-            }
+            let aliases = json.as_object()
+                .map(|indices| {
+                    indices
+                        .iter()
+                        .filter_map(|(index, value)| {
+                            value["aliases"]
+                                .as_object()
+                                .map(|aliases| (index.clone(), aliases.keys().cloned().collect()))
+                        })
+                        .collect()
+                })
+                .unwrap_or_else(|| {
+                    info!("No alias for index {}", index);
+                    BTreeMap::new()
+                });
             Ok(aliases)
         } else {
             let exception = response.exception().await.ok().unwrap();

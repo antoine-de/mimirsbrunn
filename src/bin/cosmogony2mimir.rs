@@ -99,7 +99,7 @@ where
             err.to_string()
         )
     })?;
-    let admins = admins.map(|admin| AdminDoc(admin));
+    let admins = admins.map(AdminDoc);
     let generate_index = GenerateIndex::new(Box::new(client));
     let parameters = GenerateIndexParameters {
         config: Configuration { value: config },

@@ -167,7 +167,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
         let search_documents = SearchDocuments::new(Box::new(client.clone()));
         let pois: Vec<PoiDoc> = futures::stream::iter(pois)
-            .then(|poi| compute_weight(poi))
+            .then(compute_weight)
             .then(|poi| add_address(poi, &search_documents))
             .map(PoiDoc::from)
             .collect()
