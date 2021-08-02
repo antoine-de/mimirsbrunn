@@ -29,6 +29,7 @@
 // www.navitia.io
 
 use super::osm_store::Getter;
+use std::collections::BTreeMap;
 use geo::centroid::Centroid;
 use geo::MultiPolygon;
 use osmpbfreader::StoreObjs;
@@ -70,17 +71,14 @@ pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> places::coord::Coo
     }
 }
 
-pub fn get_osm_codes_from_tags(tags: &osmpbfreader::Tags) -> Vec<places::code::Code> {
+pub fn get_osm_codes_from_tags(tags: &osmpbfreader::Tags) -> BTreeMap<String, String> {
     // read codes from osm tags
     // for the moment we only use:
     // * ISO3166 codes (mainly to get country codes)
     // * ref:* tags (to get NUTS codes, INSEE code (even if we have a custom field for them), ...)
     tags.iter()
         .filter(|(k, _)| k.starts_with("ISO3166") || k.starts_with("ref:") || *k == "wikidata")
-        .map(|property| places::code::Code {
-            name: property.0.to_string(),
-            value: property.1.to_string(),
-        })
+        .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect()
 }
 

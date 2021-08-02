@@ -55,6 +55,24 @@
     },
     "indexed_at": {
       "type": "date"
+    },
+    "administrative_regions": {
+      "enabled": false
+    },
+    "boundary": {
+      "enabled": false
+    },
+    "country_codes": {
+      "type": "keyword"
+    },
+    "insee": {
+      "type": "keyword"
+    },
+    "parent_id": {
+      "type": "keyword"
+    },
+    "codes": {
+      "type": "flattened"
     }
   }
 }

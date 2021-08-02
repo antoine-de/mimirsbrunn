@@ -4,10 +4,10 @@ use geojson::Geometry;
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::warn;
 
-use super::code::Code;
 use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
@@ -53,7 +53,7 @@ pub struct Admin {
     pub country_codes: Vec<String>,
 
     #[serde(default)]
-    pub codes: Vec<Code>,
+    pub codes: BTreeMap<String, String>,
 
     #[serde(default)]
     pub names: I18nProperties,

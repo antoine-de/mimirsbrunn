@@ -33,6 +33,7 @@ use futures::future::Future;
 use slog_scope::error;
 use std::process::exit;
 use std::sync::Arc;
+use std::collections::BTreeMap;
 use structopt::StructOpt;
 
 use crate::logger::{logger_init};
@@ -132,11 +133,8 @@ where
     }
 }
 
-pub fn get_country_code(codes: &[places::code::Code]) -> Option<String> {
-    codes
-        .iter()
-        .find(|c| c.name == "ISO3166-1:alpha2")
-        .map(|c| c.value.clone())
+pub fn get_country_code(codes: &BTreeMap<String,String>) -> Option<String> {
+    codes.get("ISO3166-1:alpha2").cloned()
 }
 
 pub fn find_country_codes<'a>(
