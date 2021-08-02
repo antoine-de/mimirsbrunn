@@ -14,6 +14,7 @@ use super::i18n_properties::I18nProperties;
 use super::{Members, MimirObject, PlaceDocType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(tag = "type", rename = "admin")]
 pub struct Admin {
     pub id: String,
     pub insee: String,
