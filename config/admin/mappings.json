@@ -90,12 +90,14 @@
       "fields": {
         "prefix": {
           "type": "text",
+          "index_options": "docs",
           "analyzer": "prefix_elision",
           "search_analyzer": "word_elision",
           "norms": false
         },
         "ngram": {
           "type": "text",
+          "index_options": "docs",
           "analyzer": "ngram",
           "search_analyzer": "ngram",
           "norms": false

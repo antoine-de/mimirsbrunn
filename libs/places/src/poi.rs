@@ -9,6 +9,7 @@ use super::i18n_properties::I18nProperties;
 use super::{Members, MimirObject, PlaceDocType, Property};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(tag = "type", rename = "poi")]
 pub struct Poi {
     pub id: String,
     pub label: String,

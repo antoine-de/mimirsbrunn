@@ -9,6 +9,7 @@ use super::street::Street;
 use super::{Members, MimirObject, PlaceDocType};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", rename = "addr")]
 pub struct Addr {
     pub id: String,
     #[serde(default)]

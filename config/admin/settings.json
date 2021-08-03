@@ -15,6 +15,10 @@
         "type": "truncate",
         "length": 10
       },
+      "first_ngram_truncate_words": {
+        "type": "truncate",
+        "length": 3
+      },
       "ngram_fuzzy": {
         "type": "ngram",
         "min_gram": 3,
@@ -51,9 +55,12 @@
         "filter": [ "lowercase", "asciifolding", "elision_filter" ]
       },
       "ngram": {
-          "tokenizer": "standard",
-          "filter": [ "lowercase", "asciifolding", "ngram_truncate_words", "ngram_fuzzy"]
-      }
+        "tokenizer": "standard",
+        "filter": [ "lowercase", "asciifolding", "ngram_truncate_words", "ngram_fuzzy"]
+      },
+      "ngram_as_prefix_search": {
+        "tokenizer": "standard",
+        "filter": [ "lowercase", "asciifolding", "first_ngram_truncate_words"]
       }
     },
     "tokenizer": {

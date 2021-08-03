@@ -8,6 +8,7 @@ use super::coord::Coord;
 use super::{Members, MimirObject, PlaceDocType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(tag = "type", rename = "street")]
 pub struct Street {
     pub id: String,
     #[serde(default)]

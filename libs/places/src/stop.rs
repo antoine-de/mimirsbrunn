@@ -105,6 +105,7 @@ pub struct Comment {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(tag = "type", rename = "stop")]
 pub struct Stop {
     pub id: String,
     pub label: String,
