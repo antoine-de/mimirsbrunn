@@ -210,14 +210,9 @@ impl IntoAdmin for Zone {
     }
 }
 
-// Its difficult to get a stream from cosmogony. Also, since we use that function a few times,
-// might as well save the result once and for all.
-fn read_zones(input: &str) -> Result<Vec<Zone>, Error> {
-    let zones = cosmogony::read_zones_from_file(input)?;
-    let zones = zones
-        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok())
-        .collect::<Vec<_>>();
-    Ok(zones)
+fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
+    Ok(cosmogony::read_zones_from_file(input)?
+        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok()))
 }
 
 async fn index_cosmogony(args: Args) -> Result<(), Error> {
@@ -251,27 +246,23 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         },
     };
 
-    let zones = read_zones(&args.input)?;
-
     info!("building maps");
     use cosmogony::ZoneType::City;
 
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     let max_weight = utils::ADMIN_MAX_WEIGHT;
-    zones.iter().for_each(|z| {
+    for z in read_zones(&args.input)? {
         let insee = match z.zone_type {
             Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
             _ => None,
         };
         cosmogony_id_to_osm_id.insert(z.id, (z.osm_id.clone(), insee));
-    });
+    }
     let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
 
     info!("building admins hierarchy");
-    let admins_without_boundaries = zones
-        .iter()
-        .map(|zone| {
-            let mut zone = zone.clone();
+    let admins_without_boundaries = read_zones(&args.input)?
+        .map(|mut zone| {
             zone.boundary = None;
             let admin = zone.into_admin(
                 &cosmogony_id_to_osm_id,
@@ -286,19 +277,15 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 
     info!("importing cosmogony into Mimir");
 
-    let admins = zones
-        .into_iter()
-        .map(|zone| {
-            zone.into_admin(
-                &cosmogony_id_to_osm_id,
-                &args.langs,
-                args.french_id_retrocompatibility,
-                max_weight,
-                Some(&admins_without_boundaries),
-            )
-        })
-        .collect::<Vec<_>>();
-
+    let admins = read_zones(&args.input)?.map(move |z| {
+        z.into_admin(
+            &cosmogony_id_to_osm_id,
+            &args.langs,
+            args.french_id_retrocompatibility,
+            max_weight,
+            Some(&admins_without_boundaries),
+        )
+    });
     import_admins(client, config, futures::stream::iter(admins)).await
 }
 

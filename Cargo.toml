@@ -38,20 +38,20 @@ csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
 rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
 regex = "1"
 osmpbfreader = "0.14"
-osm_boundaries_utils = "0.8.2"
+osm_boundaries_utils = "0.9"
 chrono = "0.4"
 chrono-tz = "0.5"
 serde = {version = "1", features = ["rc"]}
 serde_json = "1"
 bincode = "1.2"
-geo = "0.16"
-geo-types = { version = "0.6.1", features = [ "rstar" ] }
+geo = "0.18"
+geo-types = { version = "0.7", features = [ "rstar" ] }
 rstar = "0.8"
 itertools = "0.9"
 transit_model = "0.31.4"
 typed_index_collection = "1.1"
 failure = "0.1"
-cosmogony = "0.9"
+cosmogony = "0.10"
 par-map = "0.1.4"
 lazy_static = "1.4"
 num_cpus = "1.13"
@@ -105,3 +105,6 @@ name = "tests"
 [[test]]
 name = "integration"
 harness = false # Allows Cucumber to print output instead of libtest
+
+[patch.crates-io]
+cosmogony = { git = "https://github.com/osm-without-borders/cosmogony", branch = "read-send-sync"}
