@@ -30,42 +30,17 @@ WORKDIR /home/mimirsbrunn
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
 
-RUN echo "// dummy file" > src/lib.rs
-RUN echo "fn main () { }" > ./build.rs
-
-RUN mkdir -p libs/bragi/src
-COPY ./libs/bragi/Cargo.toml ./libs/bragi/Cargo.toml
-RUN echo "// dummy file" > ./libs/bragi/src/lib.rs
-
-RUN mkdir -p libs/mimir/src
-COPY ./libs/mimir/Cargo.toml ./libs/mimir/Cargo.toml
-RUN echo "// dummy file" > ./libs/mimir/src/lib.rs
-
-RUN mkdir -p libs/docker_wrapper/src
-COPY ./libs/docker_wrapper/Cargo.toml ./libs/docker_wrapper/Cargo.toml
-RUN echo "// dummy file" > ./libs/docker_wrapper/src/lib.rs
-
-RUN mkdir -p libs/tools/src
-COPY ./libs/tools/Cargo.toml ./libs/tools/Cargo.toml
-RUN echo "// dummy file" > ./libs/tools/src/lib.rs
-
-RUN mkdir -p tests
-RUN echo "// dummy file" > ./tests/tests.rs
-
-RUN cargo build --release
-RUN rm src/*.rs
+# TODO:
+# Build dummy files to run `cargo build` and cache dependencies ?
 
 COPY ./src ./src
 COPY ./libs ./libs
 COPY ./config ./config
 COPY ./docker ./docker
 COPY ./build.rs ./build.rs
+COPY ./tests ./tests
 
-RUN rm ./target/release/deps/libmimir*
-RUN rm ./target/release/deps/libbragi*
-RUN rm ./target/release/deps/mimirsbrunn*
-
-RUN cargo build --release --features db-storage
+RUN cargo build --release --bins --locked --features db-storage
 
 ARG DEBIAN_VERSION
 
