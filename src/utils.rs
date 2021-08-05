@@ -31,12 +31,12 @@
 use crate::Error;
 use futures::future::Future;
 use slog_scope::error;
+use std::collections::BTreeMap;
 use std::process::exit;
 use std::sync::Arc;
-use std::collections::BTreeMap;
 use structopt::StructOpt;
 
-use crate::logger::{logger_init};
+use crate::logger::logger_init;
 
 pub fn get_zip_codes_from_admins(admins: &[Arc<places::admin::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {
@@ -133,7 +133,7 @@ where
     }
 }
 
-pub fn get_country_code(codes: &BTreeMap<String,String>) -> Option<String> {
+pub fn get_country_code(codes: &BTreeMap<String, String>) -> Option<String> {
     codes.get("ISO3166-1:alpha2").cloned()
 }
 

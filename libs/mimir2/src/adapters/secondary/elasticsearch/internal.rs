@@ -812,7 +812,8 @@ impl ElasticsearchStorage {
                 .await
                 .context(JsonDeserializationError)?;
 
-            let aliases = json.as_object()
+            let aliases = json
+                .as_object()
                 .map(|indices| {
                     indices
                         .iter()
@@ -1073,7 +1074,7 @@ impl ElasticsearchStorage {
                             .unwrap();
 
                         let response_body = response.json::<Value>().await.unwrap();
-                        let pit = response_body["pit_id"].as_str().expect(&format!("Unexpected response: {}", response_body));
+                        let pit = response_body["pit_id"].as_str().unwrap_or_else(|| panic!("Unexpected response: {}", response_body));
 
                         let hits = response_body["hits"].as_object().unwrap()["hits"]
                             .as_array()

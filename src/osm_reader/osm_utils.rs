@@ -29,10 +29,10 @@
 // www.navitia.io
 
 use super::osm_store::Getter;
-use std::collections::BTreeMap;
 use geo::centroid::Centroid;
 use geo::MultiPolygon;
 use osmpbfreader::StoreObjs;
+use std::collections::BTreeMap;
 
 pub fn get_way_coord<T: StoreObjs + Getter>(
     obj_map: &T,
