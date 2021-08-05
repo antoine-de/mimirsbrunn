@@ -158,7 +158,14 @@ async fn run(args: Args) -> Result<(), failure::Error> {
         .collect();
     initialize_weights(stops.iter_mut(), &nb_stop_points);
 
-    import_stops(stops, &args.connection_string, &args.dataset).await?;
+    import_stops(
+        stops,
+        &args.connection_string,
+        &args.dataset,
+        args.nb_shards,
+        args.nb_replicas,
+    )
+    .await?;
 
     Ok(())
 }

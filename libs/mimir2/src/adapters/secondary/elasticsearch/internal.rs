@@ -128,7 +128,18 @@ pub struct IndexConfiguration {
 // FIXME A lot of work needs to go in there to type everything
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct IndexSettings {
-    pub value: String,
+    pub base: serde_json::Value,
+    pub nb_shards: usize,
+    pub nb_replicas: usize,
+}
+
+impl IndexSettings {
+    fn into_value(self) -> serde_json::Value {
+        let mut settings = self.base;
+        *settings.pointer_mut("/number_of_shards").unwrap() = json!(self.nb_shards);
+        *settings.pointer_mut("/number_of_replicas").unwrap() = json!(self.nb_replicas);
+        settings
+    }
 }
 
 // FIXME A lot of work needs to go in there to type everything
@@ -238,7 +249,7 @@ impl ElasticsearchStorage {
         let body_str = format!(
             r#"{{ "mappings": {mappings}, "settings": {settings} }}"#,
             mappings = config.mappings.value,
-            settings = config.settings.value
+            settings = config.settings.into_value(),
         );
         let body: serde_json::Value =
             serde_json::from_str(&body_str).context(Json2DeserializationError {

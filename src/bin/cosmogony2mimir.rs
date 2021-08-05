@@ -51,6 +51,7 @@ use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
 use places::admin::Admin;
 use serde::Serialize;
+use serde_json::json;
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -216,8 +217,6 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 }
 
 async fn index_cosmogony(args: Args) -> Result<(), Error> {
-    let dataset = args.dataset.clone();
-
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
         .map_err(|err| {
@@ -233,13 +232,15 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
     let config = IndexConfiguration {
-        name: dataset.clone(),
+        name: args.dataset.clone(),
         parameters: IndexParameters {
             timeout: String::from("10s"),
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            value: String::from(include_str!("../../config/admin/settings.json")),
+            base: json!(include_str!("../../config/admin/settings.json")),
+            nb_shards: args.nb_shards,
+            nb_replicas: args.nb_replicas,
         },
         mappings: IndexMappings {
             value: String::from(include_str!("../../config/admin/mappings.json")),

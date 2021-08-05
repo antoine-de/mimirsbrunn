@@ -35,6 +35,7 @@ use failure::Error;
 use futures::stream::StreamExt;
 use places::{admin::Admin, stop::Stop, MimirObject};
 use serde::Serialize;
+use serde_json::json;
 
 use mimir2::{
     adapters::secondary::elasticsearch::{
@@ -76,6 +77,8 @@ pub async fn import_stops(
     mut stops: Vec<Stop>,
     connection_string: &str,
     dataset: &str,
+    nb_shards: usize,
+    nb_replicas: usize,
 ) -> Result<(), Error> {
     attach_stops_to_admins(stops.iter_mut(), connection_string).await?;
 
@@ -121,7 +124,9 @@ pub async fn import_stops(
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            value: String::from(include_str!("../config/stop/settings.json")),
+            base: json!(include_str!("../config/stop/settings.json")),
+            nb_shards,
+            nb_replicas,
         },
         mappings: IndexMappings {
             value: String::from(include_str!("../config/stop/mappings.json")),

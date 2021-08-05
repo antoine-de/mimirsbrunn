@@ -42,6 +42,7 @@ use mimir2::{
 };
 use mimirsbrunn::bano::Bano;
 use places::{admin::Admin, MimirObject};
+use serde_json::json;
 use slog_scope::info;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -116,7 +117,9 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            value: String::from(include_str!("../../config/addr/settings.json")),
+            base: json!(include_str!("../../config/addr/settings.json")),
+            nb_shards: args.nb_shards,
+            nb_replicas: args.nb_replicas,
         },
         mappings: IndexMappings {
             value: String::from(include_str!("../../config/addr/mappings.json")),
