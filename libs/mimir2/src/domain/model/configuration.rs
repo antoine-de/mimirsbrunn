@@ -35,28 +35,9 @@ pub struct Configuration {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexConfiguration {
     pub name: String,
-    pub parameters: IndexParameters,
-    pub settings: IndexSettings,
-    pub mappings: IndexMappings,
-}
-
-// FIXME A lot of work needs to go in there to type everything
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct IndexSettings {
-    pub value: String,
-}
-
-// FIXME A lot of work needs to go in there to type everything
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct IndexMappings {
-    pub value: String,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename = "snake_case")]
-pub struct IndexParameters {
-    pub timeout: String,
-    pub wait_for_active_shards: String,
+    pub parameters: serde_json::Value,
+    pub settings: serde_json::Value,
+    pub mappings: serde_json::Value,
 }
 
 impl TryFrom<Configuration> for IndexConfiguration {

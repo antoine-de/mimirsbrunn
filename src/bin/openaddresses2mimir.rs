@@ -46,7 +46,6 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
 use places::{admin::Admin, MimirObject};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use slog_scope::info;
 use std::io::stdin;
 use std::ops::Deref;
@@ -209,7 +208,7 @@ async fn run(args: Args) -> Result<(), failure::Error> {
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            base: json!(include_str!("../../config/addr/settings.json")),
+            base: serde_json::from_str(include_str!("../../config/addr/settings.json")).expect("invalid JSON file"),
             nb_shards: args.nb_shards,
             nb_replicas: args.nb_replicas,
         },

@@ -51,7 +51,6 @@ use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
 use mimirsbrunn::settings::osm2mimir::{Args, Settings};
 use places::{admin::Admin, poi::Poi, street::Street, MimirObject};
 use serde::Serialize;
-use serde_json::json;
 use slog_scope::{debug, info};
 
 async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
@@ -122,7 +121,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: IndexSettings {
-                base: json!(include_str!("../../config/street/settings.json")),
+                base: serde_json::from_str(include_str!("../../config/street/settings.json")).expect("invalid json file"),
                 nb_shards: settings.elasticsearch.streets_shards,
                 nb_replicas: settings.elasticsearch.streets_replicas,
             },
@@ -183,7 +182,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: IndexSettings {
-                base: json!(include_str!("../../config/poi/settings.json")),
+                base: serde_json::from_str(include_str!("../../config/poi/settings.json")).expect("invalid json file"),
                 nb_shards: settings.elasticsearch.pois_shards,
                 nb_replicas: settings.elasticsearch.pois_replicas,
             },

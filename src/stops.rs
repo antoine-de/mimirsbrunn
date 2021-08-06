@@ -35,7 +35,6 @@ use failure::Error;
 use futures::stream::StreamExt;
 use places::{admin::Admin, stop::Stop, MimirObject};
 use serde::Serialize;
-use serde_json::json;
 
 use mimir2::{
     adapters::secondary::elasticsearch::{
@@ -124,7 +123,7 @@ pub async fn import_stops(
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            base: json!(include_str!("../config/stop/settings.json")),
+            base: serde_json::from_str(include_str!("../config/stop/settings.json")).expect("invalid json file"),
             nb_shards,
             nb_replicas,
         },

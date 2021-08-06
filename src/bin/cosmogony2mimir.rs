@@ -51,7 +51,6 @@ use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
 use places::admin::Admin;
 use serde::Serialize;
-use serde_json::json;
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -238,7 +237,7 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            base: json!(include_str!("../../config/admin/settings.json")),
+            base: serde_json::from_str(include_str!("../../config/admin/settings.json")).expect("invalid JSON file"),
             nb_shards: args.nb_shards,
             nb_replicas: args.nb_replicas,
         },

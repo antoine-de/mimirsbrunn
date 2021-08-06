@@ -136,9 +136,9 @@ pub struct IndexSettings {
 impl IndexSettings {
     fn into_value(self) -> serde_json::Value {
         let mut settings = self.base;
-        *settings.pointer_mut("/number_of_shards").unwrap() = json!(self.nb_shards);
-        *settings.pointer_mut("/number_of_replicas").unwrap() = json!(self.nb_replicas);
-        settings
+        settings["number_of_shards"] = json!(self.nb_shards);
+        settings["number_of_replicas"] = json!(self.nb_replicas);
+        json!(settings)
     }
 }
 

@@ -42,7 +42,6 @@ use mimir2::{
 };
 use mimirsbrunn::bano::Bano;
 use places::{admin::Admin, MimirObject};
-use serde_json::json;
 use slog_scope::info;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -117,7 +116,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            base: json!(include_str!("../../config/addr/settings.json")),
+            base: serde_json::from_str(include_str!("../../config/addr/settings.json")).expect("invalid JSON file"),
             nb_shards: args.nb_shards,
             nb_replicas: args.nb_replicas,
         },
