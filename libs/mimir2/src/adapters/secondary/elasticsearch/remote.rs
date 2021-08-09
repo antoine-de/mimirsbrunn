@@ -38,7 +38,6 @@ impl Remote for SingleNodeConnectionPool {
     /// Use the connection to create a client.
     async fn conn(self) -> Result<Self::Conn, RemoteError> {
         let transport = TransportBuilder::new(self)
-            .disable_proxy()
             .build()
             .context(ElasticsearchConnectionError)
             .map_err(|err| RemoteError::Connection {
