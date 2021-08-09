@@ -81,7 +81,8 @@ where
     F: FnOnce(O) -> Fut,
     Fut: Future<Output = Result<(), Error>>,
 {
-    let _guard = logger_init();
+    let (guard, _) = logger_init();
+    guard.cancel_reset(); // The guard should not be dropped before the Future has been resolved
     if let Err(err) = run(O::from_args()).await {
         for cause in err.iter_chain() {
             error!("{}", cause);
