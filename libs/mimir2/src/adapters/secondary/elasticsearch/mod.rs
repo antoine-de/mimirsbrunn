@@ -11,6 +11,7 @@ pub struct ElasticsearchStorage(Elasticsearch);
 #[cfg(test)]
 pub mod tests {
 
+    use futures::stream::StreamExt;
     use serde::Serialize;
     use serde_json::json;
     use std::convert::TryFrom;
@@ -224,27 +225,28 @@ pub mod tests {
             .await
             .expect("container creation");
         let documents = vec![
-            Box::new(TestObj {
+            TestObj {
                 value: String::from("obj1"),
-            }),
-            Box::new(TestObj {
+            },
+            TestObj {
                 value: String::from("obj2"),
-            }),
-            Box::new(TestObj {
+            },
+            TestObj {
                 value: String::from("obj3"),
-            }),
-            Box::new(TestObj {
+            },
+            TestObj {
                 value: String::from("obj4"),
-            }),
-            Box::new(TestObj {
+            },
+            TestObj {
                 value: String::from("obj5"),
-            }),
-            Box::new(TestObj {
+            },
+            TestObj {
                 value: String::from("obj6"),
-            }),
+            },
         ];
         let documents = futures::stream::iter(documents);
 
+        let documents = documents.map(|d| Box::new(d) as Box<dyn Document + Send + Sync + 'static>);
         let res = client
             .insert_documents(
                 String::from("root_obj_dataset_test-index-bulk-insert"),
@@ -253,6 +255,6 @@ pub mod tests {
             .await;
         drop(guard);
 
-        assert_eq!(res.expect("document count"), 6);
+        assert_eq!(res.expect("insertion stats").created, 6);
     }
 }

@@ -132,6 +132,7 @@ pub mod tests {
     use crate::domain::model::configuration::Configuration;
     use crate::domain::model::document::Document;
     use crate::domain::model::index::{Index, IndexStatus, IndexVisibility};
+    use crate::domain::model::stats::InsertStats;
     use crate::domain::ports::storage::MockErasedStorage;
     use crate::domain::usecases::UseCase;
 
@@ -168,7 +169,13 @@ pub mod tests {
         storage
             .expect_erased_insert_documents()
             .times(1)
-            .return_once(move |_, _| Ok(1));
+            .return_once(move |_, _| {
+                Ok(InsertStats {
+                    created: 1,
+                    updated: 0,
+                    error: 0,
+                })
+            });
         storage
             .expect_erased_find_container()
             .times(1)
@@ -193,6 +200,7 @@ pub mod tests {
             config,
             documents: Box::new(stream),
             visibility: IndexVisibility::Public,
+            doc_type: String::from("obj"),
         };
 
         let result = usecase.execute(param).await;

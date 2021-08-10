@@ -43,7 +43,7 @@ mod example_steps {
     use cucumber::{t, Steps};
     use futures::stream::StreamExt;
     use serde::{Deserialize, Serialize};
-    use std::fmt::Display;
+    use serde_json::json;
     use std::path::PathBuf;
     use tokio::io::AsyncReadExt;
     use uuid::Uuid;
@@ -53,9 +53,9 @@ mod example_steps {
         IndexConfiguration, IndexMappings, IndexParameters, IndexSettings,
     };
     use mimir2::domain::model::{
-        configuration::Configuration, document::Document, export_parameters::ListParameters,
-        index::IndexVisibility,
+        configuration::Configuration, document::Document, index::IndexVisibility,
     };
+    use mimir2::domain::ports::list::ListParameters;
     use mimir2::domain::ports::remote::Remote;
     use mimir2::domain::usecases::{
         generate_index::{GenerateIndex, GenerateIndexParameters},
@@ -102,7 +102,9 @@ mod example_steps {
                             wait_for_active_shards: String::from("1"), // only the primary shard
                         },
                         settings: IndexSettings {
-                            value: String::from(settings), // <<=== Invalid Settings
+                            base: json!(settings), // <<=== Invalid Settings
+                            nb_replicas: 1,
+                            nb_shards: 1,
                         },
                         mappings: IndexMappings {
                             value: String::from(mappings),
@@ -132,6 +134,7 @@ mod example_steps {
                         config,
                         documents: Box::new(stream),
                         visibility: IndexVisibility::Public,
+                        doc_type: String::from(Person::DOC_TYPE),
                     };
 
                     let pool = elasticsearch::remote::connection_test_pool()

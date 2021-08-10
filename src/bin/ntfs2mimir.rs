@@ -230,50 +230,57 @@ async fn run(args: Args) -> Result<(), transit_model::Error> {
     Ok(())
 }
 
-#[test]
-fn test_bad_connection_string() {
-    let args = Args {
-        input: PathBuf::from("./tests/fixtures/ntfs"),
-        connection_string: "http://localhost:1".to_string(),
-        dataset: "bob".to_string(),
-        city_level: None,
-        nb_replicas: 1,
-        nb_shards: 1,
-    };
-    let causes = run(args)
-        .unwrap_err()
-        .iter_chain()
-        .map(|cause| format!("{}", cause))
-        .collect::<Vec<String>>();
-    assert_eq!(
-        causes,
-        [
-            "Error occurred when importing stops into bob on http://localhost:1: Error: HTTP Error while creating template template_addr".to_string(),
-            "Error: HTTP Error while creating template template_addr".to_string(),
-        ]
-    );
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-fn test_bad_file() {
-    let args = Args {
-        input: PathBuf::from("./tests/fixtures/not_exist"),
-        connection_string: "http://localhost:9200".to_string(),
-        dataset: "bob".to_string(),
-        city_level: None,
-        nb_replicas: 1,
-        nb_shards: 1,
-    };
-    let causes = run(args)
-        .unwrap_err()
-        .iter_chain()
-        .map(|cause| format!("{}", cause))
-        .collect::<Vec<String>>();
-    assert_eq!(
-        causes,
-        [
-            "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
-            "No such file or directory (os error 2)",
-        ]
-    );
+    #[tokio::test]
+    async fn test_bad_connection_string() {
+        let args = Args {
+            input: PathBuf::from("./tests/fixtures/ntfs"),
+            connection_string: "http://localhost:1".to_string(),
+            dataset: "bob".to_string(),
+            city_level: None,
+            nb_replicas: 1,
+            nb_shards: 1,
+        };
+        let causes = run(args)
+            .await
+            .unwrap_err()
+            .iter_chain()
+            .map(|cause| format!("{}", cause))
+            .collect::<Vec<String>>();
+        assert_eq!(
+            causes,
+            [
+                "Error occurred when importing stops into bob on http://localhost:1: Error: HTTP Error while creating template template_addr".to_string(),
+                "Error: HTTP Error while creating template template_addr".to_string(),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn test_bad_file() {
+        let args = Args {
+            input: PathBuf::from("./tests/fixtures/not_exist"),
+            connection_string: "http://localhost:9200".to_string(),
+            dataset: "bob".to_string(),
+            city_level: None,
+            nb_replicas: 1,
+            nb_shards: 1,
+        };
+        let causes = run(args)
+            .await
+            .unwrap_err()
+            .iter_chain()
+            .map(|cause| format!("{}", cause))
+            .collect::<Vec<String>>();
+        assert_eq!(
+            causes,
+            [
+                "Error reading \"./tests/fixtures/not_exist/contributors.txt\"",
+                "No such file or directory (os error 2)",
+            ]
+        );
+    }
 }
