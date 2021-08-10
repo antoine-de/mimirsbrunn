@@ -99,8 +99,8 @@ name = "b2"
 path = "src/b2/main.rs"
 
 # we just call one test method: cf. tests::all_tests()
-[[test]]
-name = "tests"
+# [[test]]
+# name = "tests"
 
 [[test]]
 name = "integration"

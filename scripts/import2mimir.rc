@@ -1,8 +1,8 @@
 # The directory in which data is stored
 DATA_DIR="data"
 
-# The port number for elasticsearch
-ES_PORT=9200
+# The port number for elasticsearch host (9200 + offset, 9300 + offset)
+ES_PORT_OFFSET=0
 
 # The name of the index
 ES_INDEX="munin"
@@ -11,10 +11,10 @@ ES_INDEX="munin"
 ES_DATASET="fr"
 
 # The name of the image
-ES_IMAGE="elasticsearch:2"
+ES_IMAGE="docker.elastic.co/elasticsearch/elasticsearch:7.13.0"
 
 # The name of the container
-ES_NAME="es"
+ES_NAME="elasticsearch"
 
 # The departement (French administrative regions) for BANO
 # Base d'Adresses Nationale Ouverte data.gouv.fr

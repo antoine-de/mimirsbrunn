@@ -112,10 +112,10 @@ check_arguments()
 {
     log_info "Checking arguments"
     # Check that the variable $ES_PORT is set and non-empty
-    [[ -z "${ES_PORT+xxx}" ]] &&
-    { log_error "The variable \$ES_PORT is not set. Make sure it is set in the configuration file."; usage; return 1; }
-    [[ -z "$ES_PORT" && "${ES_PORT+xxx}" = "xxx" ]] &&
-    { log_error "The variable \$ES_PORT is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
+    [[ -z "${ES_PORT_OFFSET+xxx}" ]] &&
+    { log_error "The variable \$ES_PORT_OFFSET is not set. Make sure it is set in the configuration file."; usage; return 1; }
+    [[ -z "$ES_PORT_OFFSET" && "${ES_PORT_OFFSET+xxx}" = "xxx" ]] &&
+    { log_error "The variable \$ES_PORT_OFFSET is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
 
     # Check that the variable $ES_INDEX is set and non-empty
     [[ -z "${ES_INDEX+xxx}" ]] &&
@@ -134,12 +134,6 @@ check_arguments()
     { log_error "The variable \$ES_IMAGE is not set. Make sure it is set in the configuration file."; usage; return 1; }
     [[ -z "$ES_IMAGE" && "${ES_IMAGE+xxx}" = "xxx" ]] &&
     { log_error "The variable \$ES_IMAGE is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
-
-    # Check that the variable $ES_NAME is set and non-empty
-    [[ -z "${ES_NAME+xxx}" ]] &&
-    { log_error "The variable \$ES_NAME is not set. Make sure it is set in the configuration file."; usage; return 1; }
-    [[ -z "$ES_NAME" && "${ES_NAME+xxx}" = "xxx" ]] &&
-    { log_error "The variable \$ES_NAME is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
 
     # Check that the variable $ES_NAME is set and non-empty
     [[ -z "${ES_NAME+xxx}" ]] &&
@@ -184,15 +178,19 @@ search_in()
 restart_docker_es() {
   log_info "Checking docker ${ES_NAME}"
   local DOCKER_NAMES=`docker ps --all --format '{{.Names}}'`
-  if [[ ${DOCKER_NAMES} =~ ${ES_NAME} ]]; then
-    log_info "docker container "${ES_NAME}" is running"
-    docker stop es > /dev/null 2> /dev/null
-    log_info "docker container "${ES_NAME}" stopped"
-    docker rm es > /dev/null 2> /dev/null
-    log_info "docker container "${ES_NAME}" removed"
+  if [[ $DOCKER_NAMES =~ (^|[[:space:]])$ES_NAME($|[[:space:]]) ]]; then
+    log_info "docker container ${ES_NAME} is running"
+    docker stop ${ES_NAME}
+    log_info "docker container ${ES_NAME} stopped"
+    docker rm ${ES_NAME}
+    log_info "docker container ${ES_NAME} removed"
   fi
-  log_info "Starting docker container: ${ES_NAME}"
-  docker run -d --name ${ES_NAME} -p ${ES_PORT}:${ES_PORT} ${ES_IMAGE} > /dev/null 2> /dev/null
+  ES_PORT_1=$((9200+ES_PORT_OFFSET))
+  ES_PORT_2=$((9300+ES_PORT_OFFSET))
+  log_info "Starting docker container ${ES_NAME} on ports ${ES_PORT_1} and ${ES_PORT_2}"
+  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 -d ${ES_IMAGE}
+  log_info "Waiting for Elasticsearch to be up and running"
+  sleep 5
   return $?
 }
 
@@ -215,6 +213,10 @@ generate_cosmogony() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   local OUTPUT="${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz"
   [[ -f "${INPUT}" ]] || { log_error "cosmogony cannot run: Missing input ${INPUT}"; return 1; }
+  if [[ -f "${OUTPUT}" ]]; then
+      log_info "${OUTPUT} already exists, skipping cosmogony generation"
+      return 0
+  fi
   "${COSMOGONY}" --country-code FR --input "${INPUT}" --output "${OUTPUT}" > /dev/null 2> /dev/null
   [[ $? != 0 ]] && { log_error "Could not generate cosmogony data for ${OSM_REGION}. Aborting"; return 1; }
   return 0
@@ -228,7 +230,7 @@ import_cosmogony() {
   local INPUT="${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz"
   [[ -f "${INPUT}" ]] || { log_error "cosmogony2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${COSMOGONY2MIMIR}" --connection-string "http://localhost:${ES_PORT}" --input "${INPUT}"
+  "${COSMOGONY2MIMIR}" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))" --input "${INPUT}"
   [[ $? != 0 ]] && { log_error "Could not import cosmogony data from ${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz into mimir. Aborting"; return 1; }
   return 0
 }
@@ -248,8 +250,12 @@ import_osm() {
 
 # Pre requisite: DATA_DIR exists.
 download_osm() {
-  log_info "Downloading osm into mimir for ${OSM_REGION}"
+  log_info "Downloading OSM for ${OSM_REGION}"
   mkdir -p "$DATA_DIR/osm"
+  if [[ -f "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" ]]; then
+    log_info "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf already exists, skipping download"
+    return 0
+  fi
   wget --quiet --directory-prefix="${DATA_DIR}/osm" "https://download.geofabrik.de/europe/france/${OSM_REGION}-latest.osm.pbf"
   [[ $? != 0 ]] && { log_error "Could not download OSM PBF data for ${OSM_REGION}. Aborting"; return 1; }
   return 0
@@ -364,14 +370,14 @@ fi
 check_arguments
 [[ $? != 0 ]] && { log_error "Invalid arguments. Aborting"; exit 1; }
 
-# check_requirements
-# [[ $? != 0 ]] && { log_error "Invalid requirements. Aborting"; exit 1; }
-# 
-# check_environment
-# [[ $? != 0 ]] && { log_error "Invalid environment. Aborting"; exit 1; }
+check_requirements
+[[ $? != 0 ]] && { log_error "Invalid requirements. Aborting"; exit 1; }
 
-# restart_docker_es 9200
-# [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
+check_environment
+[[ $? != 0 ]] && { log_error "Invalid environment. Aborting"; exit 1; }
+
+restart_docker_es 9200
+[[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
 # 
 # import_templates
 # [[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
@@ -380,8 +386,8 @@ check_arguments
 # First we generate the admin regions with cosmogony
 # Second we import the addresses with bano
 
-# download_osm
-# [[ $? != 0 ]] && { log_error "Could not download osm. Aborting"; exit 1; }
+download_osm
+[[ $? != 0 ]] && { log_error "Could not download osm. Aborting"; exit 1; }
 # 
 # download_bano
 # [[ $? != 0 ]] && { log_error "Could not download bano. Aborting"; exit 1; }
@@ -389,8 +395,8 @@ check_arguments
 # download_ntfs
 # [[ $? != 0 ]] && { log_error "Could not download ntfs. Aborting"; exit 1; }
 # 
-# generate_cosmogony
-# [[ $? != 0 ]] && { log_error "Could not generate cosmogony. Aborting"; exit 1; }
+generate_cosmogony
+[[ $? != 0 ]] && { log_error "Could not generate cosmogony. Aborting"; exit 1; }
 
 import_cosmogony
 [[ $? != 0 ]] && { log_error "Could not import cosmogony into mimir. Aborting"; exit 1; }

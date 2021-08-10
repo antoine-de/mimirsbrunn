@@ -69,7 +69,7 @@ impl<T: Document + Send + Sync + 'static> Import for GenerateIndex<T> {
         //   currently set to the dataset, it should be something like root_doctype_dataset_timestamp
         // 2. Then we create the index
         // 3. We insert the document stream in that newly created index
-        // 4. FIXME Not implemented Publish the index
+        // 4. We publish the index
         // 5. We search for the newly created index to return it.
 
         // So we need the name of the document type.... At one point it was easy, I could use
@@ -141,8 +141,9 @@ pub mod tests {
     }
 
     impl Document for TestObj {
-        const IS_GEO_DATA: bool = false;
-        const DOC_TYPE: &'static str = "test-obj";
+        fn doc_type(&self) -> &'static str {
+            "test-obj"
+        }
 
         fn id(&self) -> String {
             self.value.clone()

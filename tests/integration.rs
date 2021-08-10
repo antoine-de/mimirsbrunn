@@ -28,24 +28,15 @@ impl cucumber::World for MyWorld {
 mod example_steps {
     use cucumber::{t, Steps};
     // use failure::format_err;
-    use futures::stream::StreamExt;
-    use lazy_static::lazy_static;
     use mimir2::{
         adapters::primary::bragi::autocomplete::{build_query, Filters},
-        adapters::secondary::elasticsearch::{
-            self,
-            internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-        },
-        domain::ports::{remote::Remote, search::SearchParameters},
+        adapters::secondary::elasticsearch,
+        domain::ports::remote::Remote,
+        domain::ports::search::SearchParameters,
         domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
         domain::usecases::UseCase,
     };
-    use mimirsbrunn::bano::Bano;
     use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, MimirObject};
-    use slog_scope::info;
-    use std::path::PathBuf;
-    use std::sync::Arc;
-    use structopt::StructOpt;
 
     pub fn rank(id: &str, list: &[serde_json::Value]) -> Option<usize> {
         list.iter()
@@ -66,12 +57,9 @@ mod example_steps {
             .given_regex_async(
                 "(.*) have been loaded using (.*) from (.*)",
                 t!(|world, matches, _step| {
-                    let t = matches[1].clone();
-                    let u = matches[2].clone();
-                    //let v = matches[3].clone();
-                    println!("TODO: load {} with {}", t, u);
-                    // world.foo = "elho".into();
-                    // world.test_async_fn().await;
+                    let _t = matches[1].clone();
+                    let _u = matches[2].clone();
+                    /* TODO load t with u */
                     world
                 }),
             )

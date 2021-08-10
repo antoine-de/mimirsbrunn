@@ -1,8 +1,3 @@
-// use erased_serde::Serialize as ErasedSerialize;
-// use serde::Serialize;
-// use std::rc::Rc;
-// use std::sync::Arc;
-
 pub trait Document: erased_serde::Serialize {
     fn doc_type(&self) -> &'static str;
 
@@ -12,44 +7,26 @@ pub trait Document: erased_serde::Serialize {
     fn id(&self) -> String;
 }
 
-// impl<'a, T: Document> Document for &'a T {
-//     fn doc_type(&self) -> &'static str {
-//         T::doc_type(self)
-//     }
-//
-//     fn id(&self) -> String {
-//         T::id(self)
-//     }
-// }
-//
-// impl<T: Document> Document for Rc<T> {
-//     fn doc_type(&self) -> &'static str {
-//         T::doc_type(self)
-//     }
-//
-//     fn id(&self) -> String {
-//         T::id(self)
-//     }
-// }
-//
-// impl<T: Document> Document for Arc<T> {
-//     fn doc_type(&self) -> &'static str {
-//         T::doc_type(self)
-//     }
-//
-//     fn id(&self) -> String {
-//         T::id(self)
-//     }
-// }
-
-// impl<T: Document> Document for Box<T> {
-//     fn doc_type(&self) -> &'static str {
-//         T::doc_type(self)
-//     }
-//
-//     fn id(&self) -> String {
-//         T::id(self)
-//     }
-// }
-
 erased_serde::serialize_trait_object!(Document);
+
+#[cfg(test)]
+pub mod tests {
+    use super::Document;
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    pub struct Book {
+        name: String,
+        isbn: String,
+    }
+
+    impl Document for Book {
+        fn doc_type(&self) -> &'static str {
+            "book"
+        }
+
+        fn id(&self) -> String {
+            self.isbn.clone()
+        }
+    }
+}

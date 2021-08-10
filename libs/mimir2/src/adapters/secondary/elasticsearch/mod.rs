@@ -12,6 +12,7 @@ pub struct ElasticsearchStorage(Elasticsearch);
 pub mod tests {
 
     use serde::Serialize;
+    use serde_json::json;
     use std::convert::TryFrom;
     use std::sync::Arc;
 
@@ -77,7 +78,9 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                value: String::from(r#"{ "index": { "number_of_shards": 1 } }"#),
+                base: json!(r#"{ "index": { "number_of_shards": 1 } }"#),
+                nb_replicas: 1,
+                nb_shards: 1,
             },
             mappings: internal::IndexMappings {
                 value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
@@ -110,7 +113,9 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                value: String::from(r#"{ "index": { "number_of_shards": 1 } }"#),
+                base: json!(r#"{ "index": { "number_of_shards": 1 } }"#),
+                nb_replicas: 1,
+                nb_shards: 1,
             },
             mappings: internal::IndexMappings {
                 value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
@@ -150,7 +155,9 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                value: String::from(r#"{ "index": }"#), // <<=== Invalid Settings
+                base: json!(r#"{ "index": }"#), // <<=== Invalid Settings
+                nb_replicas: 1,
+                nb_shards: 1,
             },
             mappings: internal::IndexMappings {
                 value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
@@ -173,8 +180,9 @@ pub mod tests {
     }
 
     impl Document for TestObj {
-        const IS_GEO_DATA: bool = false;
-        const DOC_TYPE: &'static str = "test-obj";
+        fn doc_type(&self) -> &'static str {
+            "test-obj"
+        }
 
         fn id(&self) -> String {
             self.value.clone()
@@ -200,7 +208,9 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                value: String::from(r#"{ "index": { "number_of_shards": 1 } }"#), // <<=== Invalid Settings
+                base: json!(r#"{ "index": { "number_of_shards": 1 } }"#), // <<=== Invalid Settings
+                nb_replicas: 1,
+                nb_shards: 1,
             },
             mappings: internal::IndexMappings {
                 value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
@@ -214,24 +224,24 @@ pub mod tests {
             .await
             .expect("container creation");
         let documents = vec![
-            TestObj {
+            Box::new(TestObj {
                 value: String::from("obj1"),
-            },
-            TestObj {
+            }),
+            Box::new(TestObj {
                 value: String::from("obj2"),
-            },
-            TestObj {
+            }),
+            Box::new(TestObj {
                 value: String::from("obj3"),
-            },
-            TestObj {
+            }),
+            Box::new(TestObj {
                 value: String::from("obj4"),
-            },
-            TestObj {
+            }),
+            Box::new(TestObj {
                 value: String::from("obj5"),
-            },
-            TestObj {
+            }),
+            Box::new(TestObj {
                 value: String::from("obj6"),
-            },
+            }),
         ];
         let documents = futures::stream::iter(documents);
 

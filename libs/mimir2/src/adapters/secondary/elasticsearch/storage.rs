@@ -38,7 +38,6 @@ impl Storage for ElasticsearchStorage {
             })
     }
 
-    // FIXME Move details to impl ElasticsearchStorage.
     async fn delete_container(&self, index: String) -> Result<(), StorageError> {
         self.delete_index(index.clone())
             .await
@@ -47,7 +46,6 @@ impl Storage for ElasticsearchStorage {
             })
     }
 
-    // FIXME Move details to impl ElasticsearchStorage.
     async fn find_container(&self, index: String) -> Result<Option<Index>, StorageError> {
         self.find_index(index)
             .await
@@ -56,7 +54,7 @@ impl Storage for ElasticsearchStorage {
             })
     }
 
-    // FIXME Move details to impl ElasticsearchStorage.
+    // FIXME Explain why we call add_pipeline
     async fn insert_documents<S>(
         &self,
         index: String,
@@ -83,7 +81,7 @@ impl Storage for ElasticsearchStorage {
             })
     }
 
-    // Maybe all this should be run in some kind of transaction.
+    // FIXME all this should be run in some kind of transaction.
     async fn publish_index(
         &self,
         index: Index,
