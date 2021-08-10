@@ -82,15 +82,19 @@ where
     Fut: Future<Output = Result<(), Error>>,
 {
     let (guard, _) = logger_init();
-    guard.cancel_reset(); // The guard should not be dropped before the Future has been resolved
-    if let Err(err) = run(O::from_args()).await {
+    let res = if let Err(err) = run(O::from_args()).await {
         for cause in err.iter_chain() {
             error!("{}", cause);
         }
         Err(err)
     } else {
         Ok(())
-    }
+    };
+
+    // Ensure the logger persists until the future is resolved
+    // and is flushed before the process exits.
+    drop(guard);
+    res
 }
 
 pub async fn launch_async<O, F, Fut>(run: F)
