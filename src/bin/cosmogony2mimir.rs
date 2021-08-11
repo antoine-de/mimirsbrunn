@@ -62,7 +62,6 @@ trait IntoAdmin {
         self,
         _: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
-        retrocompat_on_french_id: bool,
         max_weight: f64,
         all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin;
@@ -131,7 +130,6 @@ impl IntoAdmin for Zone {
         self,
         zones_osm_id: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
-        french_id_retrocompatibility: bool,
         max_weight: f64,
         all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin {
@@ -142,14 +140,7 @@ impl IntoAdmin for Zone {
         let center = self.center.map_or(places::coord::Coord::default(), |c| {
             places::coord::Coord::new(c.lng(), c.lat())
         });
-        let format_id = |id, insee| {
-            // for retrocompatibity reasons, Navitia needs the
-            // french admins to have an id with the insee for cities
-            match insee {
-                Some(insee) if french_id_retrocompatibility => format!("admin:fr:{}", insee),
-                _ => format!("admin:osm:{}", id),
-            }
-        };
+        let format_id = |id, _insee| format!("admin:osm:{}", id);
         let parent_osm_id = self
             .parent
             .and_then(|id| zones_osm_id.get(&id))
@@ -237,7 +228,8 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            base: serde_json::from_str(include_str!("../../config/admin/settings.json")).expect("invalid JSON file"),
+            base: serde_json::from_str(include_str!("../../config/admin/settings.json"))
+                .expect("invalid JSON file"),
             nb_shards: args.nb_shards,
             nb_replicas: args.nb_replicas,
         },
@@ -264,13 +256,7 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
     let admins_without_boundaries = read_zones(&args.input)?
         .map(|mut zone| {
             zone.boundary = None;
-            let admin = zone.into_admin(
-                &cosmogony_id_to_osm_id,
-                &args.langs,
-                args.french_id_retrocompatibility,
-                max_weight,
-                None,
-            );
+            let admin = zone.into_admin(&cosmogony_id_to_osm_id, &args.langs, max_weight, None);
             (admin.id.clone(), Arc::new(admin))
         })
         .collect::<HashMap<_, _>>();
@@ -281,7 +267,6 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         z.into_admin(
             &cosmogony_id_to_osm_id,
             &args.langs,
-            args.french_id_retrocompatibility,
             max_weight,
             Some(&admins_without_boundaries),
         )
@@ -313,11 +298,6 @@ struct Args {
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
-    /// Retrocompatibiilty on french admin id
-    /// if activated, the french administrative regions will have an id like 'admin:fr:{insee}'
-    /// instead of 'admin:osm:{osm_id}'
-    #[structopt(long = "french-id-retrocompatibility")]
-    french_id_retrocompatibility: bool,
 }
 
 #[tokio::main]
