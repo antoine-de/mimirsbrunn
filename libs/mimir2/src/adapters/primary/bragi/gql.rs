@@ -1,6 +1,5 @@
 use async_graphql::extensions::Tracing;
 use async_graphql::*;
-use async_graphql::{ErrorExtensions, FieldError};
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, MimirObject};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;

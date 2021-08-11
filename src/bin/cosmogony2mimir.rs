@@ -51,9 +51,11 @@ use mimirsbrunn::osm_reader::osm_utils;
 use mimirsbrunn::utils;
 use places::admin::Admin;
 use serde::Serialize;
+use serde_json::json;
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use structopt::StructOpt;
 
@@ -221,21 +223,44 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
+    let settings = tokio::fs::read_to_string(args.settings.clone())
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not read settings file from '{}': {}",
+                args.settings.display(),
+                err.to_string(),
+            )
+        })?;
+
+    let mut settings = json!(settings);
+    if let Some(nb_shards) = args.nb_shards {
+        settings["index"]["number_of_shards"] = json!(nb_shards);
+    }
+    if let Some(nb_replicas) = args.nb_replicas {
+        settings["index"]["number_of_replicas"] = json!(nb_replicas);
+    }
+
+    let mappings = tokio::fs::read_to_string(args.mappings.clone())
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not read mappings file from '{}': {}",
+                args.mappings.display(),
+                err.to_string(),
+            )
+        })?;
+
+    let mappings = json!(mappings);
+
     let config = IndexConfiguration {
         name: args.dataset.clone(),
         parameters: IndexParameters {
             timeout: String::from("10s"),
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
-        settings: IndexSettings {
-            base: serde_json::from_str(include_str!("../../config/admin/settings.json"))
-                .expect("invalid JSON file"),
-            nb_shards: args.nb_shards,
-            nb_replicas: args.nb_replicas,
-        },
-        mappings: IndexMappings {
-            value: String::from(include_str!("../../config/admin/mappings.json")),
-        },
+        settings: IndexSettings { value: settings },
+        mappings: IndexMappings { value: mappings },
     };
 
     info!("building maps");
@@ -289,12 +314,16 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
+    #[structopt(parse(from_os_str), default_value = "./config/admin/mappings.json")]
+    mappings: PathBuf,
+    #[structopt(parse(from_os_str), default_value = "./config/admin/settings.json")]
+    settings: PathBuf,
     /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
-    nb_shards: usize,
+    #[structopt(short = "s", long = "nb-shards")]
+    nb_shards: Option<usize>,
     /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
-    nb_replicas: usize,
+    #[structopt(short = "r", long = "nb-replicas")]
+    nb_replicas: Option<usize>,
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,

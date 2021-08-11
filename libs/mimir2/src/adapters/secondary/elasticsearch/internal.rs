@@ -128,24 +128,22 @@ pub struct IndexConfiguration {
 // FIXME A lot of work needs to go in there to type everything
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct IndexSettings {
-    pub base: serde_json::Value,
-    pub nb_shards: usize,
-    pub nb_replicas: usize,
+    pub value: serde_json::Value,
 }
 
-impl IndexSettings {
-    fn into_value(self) -> serde_json::Value {
-        let mut settings = self.base;
-        settings["number_of_shards"] = json!(self.nb_shards);
-        settings["number_of_replicas"] = json!(self.nb_replicas);
-        json!(settings)
-    }
-}
+// impl IndexSettings {
+//     fn into_value(self) -> serde_json::Value {
+//         let mut settings = self.base;
+//         settings["number_of_shards"] = json!(self.nb_shards);
+//         settings["number_of_replicas"] = json!(self.nb_replicas);
+//         json!(settings)
+//     }
+// }
 
 // FIXME A lot of work needs to go in there to type everything
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct IndexMappings {
-    pub value: String,
+    pub value: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -249,7 +247,7 @@ impl ElasticsearchStorage {
         let body_str = format!(
             r#"{{ "mappings": {mappings}, "settings": {settings} }}"#,
             mappings = config.mappings.value,
-            settings = config.settings.into_value(),
+            settings = config.settings.value,
         );
         let body: serde_json::Value =
             serde_json::from_str(&body_str).context(Json2DeserializationError {

@@ -35,6 +35,6 @@ pub mod labels;
 pub mod logger;
 pub mod osm_reader;
 pub mod settings;
-pub mod stops;
+// pub mod stops;
 pub mod utils;
 pub type Error = failure::Error;
