@@ -2669,6 +2669,7 @@ dependencies = [
  "csv",
  "csv-async",
  "cucumber_rust",
+ "env_logger",
  "failure",
  "flate2",
  "futures 0.3.15",
@@ -2713,6 +2714,7 @@ dependencies = [
  "tracing-subscriber",
  "transit_model",
  "typed_index_collection",
+ "url 2.2.2",
  "walkdir",
  "warp",
 ]

@@ -86,6 +86,8 @@ path = "src/lib.rs"
 
 [dev-dependencies]
 reqwest = { version = "0.10", features = [ "blocking", "json" ] }
+env_logger = "*"
+url = "2.2.2"
 approx = "0.3"
 actix-web = "1"
 cucumber = { package = "cucumber_rust", version = "0.8.4", features = ["macros"] }
@@ -98,9 +100,9 @@ json = "0.12"
 name = "b2"
 path = "src/b2/main.rs"
 
-# we just call one test method: cf. tests::all_tests()
-# [[test]]
-# name = "tests"
+[[test]]
+name = "admin"
+harness = false # Allows Cucumber to print output instead of libtest
 
 [[test]]
 name = "integration"
