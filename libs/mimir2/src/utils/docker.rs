@@ -2,6 +2,7 @@ use bollard::service::{HostConfig, PortBinding};
 use bollard::{
     container::{Config, CreateContainerOptions, ListContainersOptions, StartContainerOptions},
     errors::Error as BollardError,
+    image::CreateImageOptions,
     Docker,
 };
 use elasticsearch::{
@@ -11,6 +12,7 @@ use elasticsearch::{
     indices::{IndicesDeleteAliasParts, IndicesDeleteIndexTemplateParts, IndicesDeleteParts},
     Elasticsearch, Error as ElasticsearchError,
 };
+use futures::stream::TryStreamExt;
 use lazy_static::lazy_static;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
@@ -166,6 +168,19 @@ impl DockerWrapper {
                 env: Some(env_vars),
                 ..Default::default()
             };
+
+            docker
+                .create_image(
+                    Some(CreateImageOptions {
+                        from_image: self.docker_image.clone(),
+                        ..Default::default()
+                    }),
+                    None,
+                    None,
+                )
+                .try_collect::<Vec<_>>()
+                .await
+                .context(DockerError)?;
 
             let _ = docker
                 .create_container(Some(options), config)
