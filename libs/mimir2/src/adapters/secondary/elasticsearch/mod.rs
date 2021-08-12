@@ -79,12 +79,10 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                base: json!(r#"{ "index": { "number_of_shards": 1 } }"#),
-                nb_replicas: 1,
-                nb_shards: 1,
+                value: json!({ "index": { "number_of_shards": 1, "number_of_replicas": 1 } }),
             },
             mappings: internal::IndexMappings {
-                value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
+                value: json!({ "properties": { "value": { "type": "text" } } }),
             },
         };
         let config = Configuration {
@@ -114,12 +112,10 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                base: json!(r#"{ "index": { "number_of_shards": 1 } }"#),
-                nb_replicas: 1,
-                nb_shards: 1,
+                value: json!({ "index": { "number_of_shards": 1, "number_of_replicas": 1 } }),
             },
             mappings: internal::IndexMappings {
-                value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
+                value: json!({ "properties": { "value": { "type": "text" } } }),
             },
         };
         let config = Configuration {
@@ -156,12 +152,10 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                base: json!(r#"{ "index": }"#), // <<=== Invalid Settings
-                nb_replicas: 1,
-                nb_shards: 1,
+                value: json!({ "index": "foo" }), // <<=== Invalid Settings
             },
             mappings: internal::IndexMappings {
-                value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
+                value: json!({ "properties": { "value": { "type": "text" } } }),
             },
         };
         let config = Configuration {
@@ -209,12 +203,10 @@ pub mod tests {
                 wait_for_active_shards: String::from("1"), // only the primary shard
             },
             settings: internal::IndexSettings {
-                base: json!(r#"{ "index": { "number_of_shards": 1 } }"#), // <<=== Invalid Settings
-                nb_replicas: 1,
-                nb_shards: 1,
+                value: json!({ "index": { "number_of_shards": 1, "number_of_replicas": 1 } }),
             },
             mappings: internal::IndexMappings {
-                value: String::from(r#"{ "properties": { "value": { "type": "text" } } }"#),
+                value: json!({ "properties": { "value": { "type": "text" } } }),
             },
         };
         let config = Configuration {
