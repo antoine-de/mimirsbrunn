@@ -85,13 +85,14 @@ name = "mimirsbrunn"
 path = "src/lib.rs"
 
 [dev-dependencies]
-reqwest = { version = "0.10", features = [ "blocking", "json" ] }
+reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 env_logger = "*"
 url = "2.2.2"
 approx = "0.3"
 actix-web = "1"
-cucumber = { package = "cucumber_rust", version = "0.8.4", features = ["macros"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+cucumber = { package = "cucumber_rust", version = "0.9" }
+tokio = { version = "1.6.0", features = [ "rt-multi-thread", "macros", "process" ] }
+elasticsearch = "7.12.0-alpha.1"
 
 [build-dependencies]
 json = "0.12"
@@ -104,9 +105,9 @@ path = "src/b2/main.rs"
 name = "admin"
 harness = false # Allows Cucumber to print output instead of libtest
 
-[[test]]
-name = "integration"
-harness = false # Allows Cucumber to print output instead of libtest
+# [[test]]
+# name = "integration"
+# harness = false # Allows Cucumber to print output instead of libtest
 
 [patch.crates-io]
 cosmogony = { git = "https://github.com/osm-without-borders/cosmogony", branch = "read-send-sync"}

@@ -1136,13 +1136,11 @@ dependencies = [
  "async-stream",
  "async-trait",
  "clap",
- "cucumber_rust_codegen",
  "cute_custom_default",
  "futures 0.3.15",
  "futures-timer",
  "gherkin_rust",
  "globwalk",
- "inventory",
  "pathdiff",
  "regex",
  "shh",
@@ -1152,17 +1150,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "cucumber_rust_codegen"
-version = "0.1.0"
+name = "cucumber_rust"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ebf7a94fedf6f251d5cb208ea536496a191c552509a052976af59792199cbc8"
+checksum = "5d1cc772687e83e581621d37bb11543237dc55618dbc04c8e600928e532dc879"
 dependencies = [
- "inflections",
- "itertools 0.9.0",
- "proc-macro2 1.0.28",
- "quote 1.0.9",
+ "async-stream",
+ "async-trait",
+ "clap",
+ "cute_custom_default",
+ "futures 0.3.15",
+ "futures-timer",
+ "gherkin_rust",
+ "globwalk",
+ "once_cell",
+ "pathdiff",
  "regex",
- "syn 1.0.74",
+ "shh",
+ "termcolor",
+ "textwrap 0.12.1",
+ "thiserror",
+ "tracing",
 ]
 
 [[package]]
@@ -1858,17 +1866,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ghost"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a5bcf1bbeab73aa4cf2fde60a846858dc036163c7c33bec309f8d17de785479"
-dependencies = [
- "proc-macro2 1.0.28",
- "quote 1.0.9",
- "syn 1.0.74",
-]
-
-[[package]]
 name = "gimli"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2333,40 +2330,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "inflections"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
-
-[[package]]
 name = "input_buffer"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f97967975f448f1a7ddb12b0bc41069d09ed6a1c161a92687e057325db35d413"
 dependencies = [
  "bytes 1.0.1",
-]
-
-[[package]]
-name = "inventory"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f0f7efb804ec95e33db9ad49e4252f049e37e8b0a4652e3cd61f7999f2eff7f"
-dependencies = [
- "ctor",
- "ghost",
- "inventory-impl",
-]
-
-[[package]]
-name = "inventory-impl"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75c094e94816723ab936484666968f5b58060492e880f3c8d00489a1e244fa51"
-dependencies = [
- "proc-macro2 1.0.28",
- "quote 1.0.9",
- "syn 1.0.74",
 ]
 
 [[package]]
@@ -2624,7 +2593,7 @@ dependencies = [
  "bollard",
  "chrono",
  "criterion",
- "cucumber_rust",
+ "cucumber_rust 0.8.4",
  "elasticsearch",
  "erased-serde",
  "futures 0.3.15",
@@ -2668,7 +2637,8 @@ dependencies = [
  "cosmogony",
  "csv",
  "csv-async",
- "cucumber_rust",
+ "cucumber_rust 0.9.0",
+ "elasticsearch",
  "env_logger",
  "failure",
  "flate2",
@@ -2689,7 +2659,7 @@ dependencies = [
  "par-map",
  "places",
  "regex",
- "reqwest 0.10.10",
+ "reqwest 0.11.4",
  "rs-es",
  "rstar",
  "rusqlite",
@@ -3891,7 +3861,6 @@ dependencies = [
  "percent-encoding 2.1.0",
  "pin-project-lite 0.2.7",
  "serde 1.0.126",
- "serde_json",
  "serde_urlencoded 0.7.0",
  "tokio 0.2.25",
  "tokio-tls",

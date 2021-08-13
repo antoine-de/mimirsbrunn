@@ -29,6 +29,7 @@
 // www.navitia.io
 
 pub mod addr_reader;
+pub mod admin;
 pub mod admin_geofinder;
 pub mod bano;
 pub mod labels;
