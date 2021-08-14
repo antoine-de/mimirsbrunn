@@ -1,12 +1,13 @@
 Feature: Baseline
   List of scenarios for geocoding
 
-  @fullSpell @street
-  Scenario Outline: Simple street search
-    Given admins have been loaded using cosmogony from bretagne
+  Scenario Outline: Simple admin search
+		# Given osm file has been downloaded for bretagne
+		# Given osm file has been processed by cosmogony for bretagne
+		# Given cosmogony file has been indexed for bretagne
     When the user searches for "<query>"
     Then he finds "<id>" in the first <limit> results.
 
     Examples:
       | query             | id             | limit       |
-      | rue hector malot  | id3234         | 3           |
+      | quimper           | id3234         | 3           |

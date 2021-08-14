@@ -1,16 +1,18 @@
 use cucumber::{async_trait, criteria::feature, futures::FutureExt, Context, Cucumber, World};
 use elasticsearch::http::transport::SingleNodeConnectionPool;
+use mimir2::adapters::primary::bragi::settings::QuerySettings;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
+// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir2::domain::ports::remote::Remote;
 use std::convert::Infallible;
+use std::path::PathBuf;
 
 mod steps;
 
-pub enum MyWorld {
-    Nothing,
-    SomeString(String),
-    SuffixedString(String),
-    TwoStrings(String, String),
+pub struct MyWorld {
+    query_settings: QuerySettings,
+    search_result: Vec<serde_json::Value>,
+    // client: Option<ElasticsearchStorage>,
 }
 
 #[async_trait(?Send)]
@@ -18,7 +20,15 @@ impl World for MyWorld {
     type Error = Infallible;
 
     async fn new() -> Result<Self, Infallible> {
-        Ok(Self::Nothing)
+        let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        query_settings_file.push("config/query_settings.toml");
+        let query_settings = QuerySettings::new_from_file(query_settings_file)
+            .await
+            .expect("query settings");
+        Ok(Self {
+            query_settings,
+            search_result: Vec::new(),
+        })
     }
 }
 
@@ -71,15 +81,6 @@ async fn main() {
 //     type Error = Infallible;
 //
 //     async fn new() -> Result<Self, Infallible> {
-//         let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-//         query_settings_file.push("config/query_settings.toml");
-//         let query_settings = QuerySettings::new_from_file(query_settings_file)
-//             .await
-//             .expect("query settings");
-//         Ok(Self {
-//             query_settings,
-//             search_result: Vec::new(),
-//         })
 //     }
 // }
 //

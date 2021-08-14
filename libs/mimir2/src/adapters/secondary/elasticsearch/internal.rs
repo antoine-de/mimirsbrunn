@@ -249,6 +249,7 @@ impl ElasticsearchStorage {
             mappings = config.mappings.value,
             settings = config.settings.value,
         );
+
         let body: serde_json::Value =
             serde_json::from_str(&body_str).context(Json2DeserializationError {
                 details: String::from("could not deserialize index configuration"),
