@@ -133,6 +133,14 @@
     },
     "type": {
       "type": "constant_keyword"
+    },
+    "name": {
+      "type": "text"
+    },
+    "label": {
+      "type": "text",
+      "analyzer": "ngram",
+      "copy_to": "full_label"
     }
   }
 }

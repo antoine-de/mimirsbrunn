@@ -56,8 +56,7 @@ fn build_query_multi_match(q: &str, settings: &QuerySettings) -> String {
                 "type": "bool_prefix",
                 "fields": [
                   "label",
-                  "label._2gram",
-                  "label._3gram"
+                  "name"
                 ],
                 "fuzziness": "auto",
                 "boost": {boost}

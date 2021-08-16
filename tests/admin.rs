@@ -22,7 +22,7 @@ impl World for MyWorld {
         let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         query_settings_file.push("config");
         query_settings_file.push("query");
-        query_settings_file.push("query_settings.toml");
+        query_settings_file.push("settings.toml");
         let query_settings = QuerySettings::new_from_file(query_settings_file)
             .await
             .expect("query settings");

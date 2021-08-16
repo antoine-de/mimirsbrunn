@@ -76,16 +76,12 @@ pub fn steps() -> Steps<crate::MyWorld> {
         }),
     );
 
-    steps.then_regex(
-        r"^he finds (.*) in the first (.*) results.$",
-        |world, ctx| {
-            let limit = ctx.matches[2].parse::<usize>().expect("limit");
-            panic!("search results: {}", world.search_result[0]);
-            let rank = rank(&ctx.matches[1], &world.search_result).unwrap();
-            assert!(rank < limit);
-            world
-        },
-    );
+    steps.then_regex(r"^he finds (.*) as the first result.$", |world, ctx| {
+        let limit = ctx.matches[2].parse::<usize>().expect("limit");
+        // let rank = rank(&ctx.matches[1], &world.search_result).unwrap();
+        assert_eq!(limit, 1);
+        world
+    });
 
     steps
 }
