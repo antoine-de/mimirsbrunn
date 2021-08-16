@@ -11,6 +11,7 @@ mod steps;
 pub struct MyWorld {
     query_settings: QuerySettings,
     search_result: Vec<serde_json::Value>,
+    processing_step: Option<steps::admin::ProcessingStep>,
     // client: Option<ElasticsearchStorage>,
 }
 
@@ -29,6 +30,7 @@ impl World for MyWorld {
         Ok(Self {
             query_settings,
             search_result: Vec::new(),
+            processing_step: None,
         })
     }
 }

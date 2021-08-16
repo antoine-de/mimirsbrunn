@@ -26,28 +26,35 @@ pub fn steps() -> Steps<crate::MyWorld> {
 
     steps.given_regex_async(
         "osm file has been downloaded for (.*)",
-        t!(|world, ctx| {
+        t!(|mut world, ctx| {
             let region = ctx.matches[1].clone();
-            download_osm(&region).await.unwrap();
+            world
+                .processing_step
+                .insert(download_osm(&region).await.unwrap());
             world
         }),
     );
 
     steps.given_regex_async(
         "osm file has been processed by cosmogony for (.*)",
-        t!(|world, ctx| {
+        t!(|mut world, ctx| {
             let region = ctx.matches[1].clone();
-            generate_cosmogony(&region).await.unwrap();
-            index_cosmogony(&region).await.unwrap();
+            let previous = world.processing_step.clone().unwrap(); // we must have done something before, file either skipped or downloaded.
+            world
+                .processing_step
+                .insert(generate_cosmogony(&region, previous).await.unwrap());
             world
         }),
     );
 
     steps.given_regex_async(
         "cosmogony file has been indexed for (.*)",
-        t!(|world, ctx| {
+        t!(|mut world, ctx| {
             let region = ctx.matches[1].clone();
-            index_cosmogony(&region).await.unwrap();
+            let previous = world.processing_step.clone().unwrap(); // we must have done something before, file either skipped or downloaded.
+            world
+                .processing_step
+                .insert(index_cosmogony(&region, previous).await.unwrap());
             world
         }),
     );
@@ -76,18 +83,20 @@ pub fn steps() -> Steps<crate::MyWorld> {
         }),
     );
 
-    steps.then_regex(r"^he finds (.*) as the first result.$", |world, ctx| {
-        let limit = ctx.matches[2].parse::<usize>().expect("limit");
-        // let rank = rank(&ctx.matches[1], &world.search_result).unwrap();
-        assert_eq!(limit, 1);
+    steps.then_regex("he finds \"(.*)\" as the first result", |world, ctx| {
+        let rank = rank(&ctx.matches[1], &world.search_result).unwrap();
+        assert_eq!(rank, 0);
         world
     });
 
     steps
 }
 
+#[derive(PartialEq, Clone)]
 pub enum ProcessingStep {
-    Done,
+    Downloaded,
+    Generated,
+    Indexed,
     Skipped,
 }
 
@@ -125,6 +134,14 @@ pub enum Error {
     },
 }
 
+// Given the name of a french region, it will download the matching OSM file
+// If that file is already in the local filesystem, then we skip the download.
+// This function makes several assumptions:
+// 1. The name of the region is one found in http://download.geofabrik.de/europe/france.html
+// 2. The file will be downloaded to `tests/data/osm` under the project's root (identified
+//    by the CARGO_MANIFEST_DIR environment variable
+// The function returns either `ProcessingStep::Skipped` or `ProcessingStep::Downloaded`,
+// or an error.
 async fn download_osm(region: &str) -> Result<ProcessingStep, Error> {
     // Here we make sure that there is a folder tests/data/osm at the root of the project.
     let path: &'static str = env!("CARGO_MANIFEST_DIR");
@@ -188,13 +205,23 @@ async fn download_osm(region: &str) -> Result<ProcessingStep, Error> {
         details: String::from("flush"),
     })?;
 
-    Ok(ProcessingStep::Done)
+    Ok(ProcessingStep::Downloaded)
 }
 
-// Generate a cosmogony file given the region (assuming the osm file
-// has been previously downloaded. If a cosmogony file is already there,
-// we skip the generation.
-async fn generate_cosmogony(region: &str) -> Result<ProcessingStep, Error> {
+// Generate a cosmogony file given the region
+// The function makes several assumptions:
+// 1. The OSM file has previously been downloaded into the expected folder (tests/data/osm)
+// 2. The output is a jsonl.gz
+// 3. The output will be stored in tests/data/cosmogony
+//
+// The OSM file will be processed if:
+// 1. The output file is not found
+// 2. If the output file is found and the previous step is 'downloaded' (that is it's probably a
+//    new OSM file and we need to generate a new cosmogony file.
+async fn generate_cosmogony(
+    region: &str,
+    previous: ProcessingStep,
+) -> Result<ProcessingStep, Error> {
     let path: &'static str = env!("CARGO_MANIFEST_DIR");
     let mut input_path: PathBuf = [path, "tests", "data", "osm"].iter().collect();
     let filename = format!("{}-latest.osm.pbf", region);
@@ -207,10 +234,11 @@ async fn generate_cosmogony(region: &str) -> Result<ProcessingStep, Error> {
                 details: format!("could no create directory {}", output_path.display()),
             })?;
     }
-    let filename = format!("{}.json.gz", region);
+    let filename = format!("{}.jsonl.gz", region);
     output_path.push(&filename);
-    // if the output already exists, then skip the generation
-    if tokio::fs::metadata(&output_path).await.is_ok() {
+    // if the output already exists, and the input is not a new file, then skip the generation
+    if (tokio::fs::metadata(&output_path).await.is_ok()) && (previous != ProcessingStep::Downloaded)
+    {
         return Ok(ProcessingStep::Skipped);
     }
     let mut child = tokio::process::Command::new(
@@ -235,10 +263,15 @@ async fn generate_cosmogony(region: &str) -> Result<ProcessingStep, Error> {
 
     // TODO Do something with the status?
 
-    Ok(ProcessingStep::Done)
+    Ok(ProcessingStep::Generated)
 }
 
-async fn index_cosmogony(region: &str) -> Result<(), Error> {
+async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<ProcessingStep, Error> {
+    // if the previous step is 'generated', then we need to index the cosmogony file.
+    // Otherwise, we skip.
+    if previous != ProcessingStep::Generated {
+        return Ok(ProcessingStep::Skipped);
+    }
     let pool = connection_test_pool()
         .await
         .context(ElasticsearchPoolError {
@@ -292,7 +325,7 @@ async fn index_cosmogony(region: &str) -> Result<(), Error> {
     };
 
     let mut input_path: PathBuf = [path, "tests", "data", "cosmogony"].iter().collect();
-    let filename = format!("{}.json.gz", region);
+    let filename = format!("{}.jsonl.gz", region);
     input_path.push(&filename);
     mimirsbrunn::admin::index_cosmogony(
         input_path.into_os_string().into_string().unwrap(),
@@ -303,7 +336,8 @@ async fn index_cosmogony(region: &str) -> Result<(), Error> {
     .await
     .map_err(|err| Error::IndexingError {
         details: format!("could not index cosmogony: {}", err.to_string(),),
-    })
+    })?;
+    Ok(ProcessingStep::Indexed)
 }
 
 pub fn rank(id: &str, list: &[serde_json::Value]) -> Option<usize> {
