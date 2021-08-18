@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use snafu::Snafu;
 use std::pin::Pin;
 
-use crate::domain::model::configuration::root_doctype;
+use crate::domain::model::{configuration::root_doctype, query::Query as SearchQuery};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -29,7 +29,7 @@ impl From<crate::domain::ports::list::ListParameters> for ListParameters {
 #[derive(Debug, Clone)]
 pub struct SearchParameters {
     pub indices: Vec<String>, // if you want to target all indices, use vec![munin]
-    pub dsl: String,          // if you want to target all documents, use { match_all: {} }
+    pub query: SearchQuery,   // if you want to target all documents, use { match_all: {} }
 }
 
 impl From<crate::domain::ports::search::SearchParameters> for SearchParameters {
@@ -40,15 +40,15 @@ impl From<crate::domain::ports::search::SearchParameters> for SearchParameters {
                 .iter()
                 .map(|doc_type| root_doctype(&doc_type))
                 .collect(),
-            dsl: input.dsl,
+            query: input.query,
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ExplainParameters {
-    pub index: String, // if you want to target all indices, use vec![munin]
-    pub dsl: String,   // if you want to target all documents, use { match_all: {} }
+    pub index: String,      // if you want to target all indices, use vec![munin]
+    pub query: SearchQuery, // if you want to target all documents, use { match_all: {} }
     pub id: String,
 }
 
@@ -56,7 +56,7 @@ impl From<crate::domain::ports::explain::ExplainParameters> for ExplainParameter
     fn from(input: crate::domain::ports::explain::ExplainParameters) -> Self {
         ExplainParameters {
             index: root_doctype(&input.doc_type),
-            dsl: input.dsl,
+            query: input.query,
             id: input.id,
         }
     }

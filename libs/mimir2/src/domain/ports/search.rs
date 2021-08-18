@@ -3,6 +3,8 @@ use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use snafu::Snafu;
 
+use crate::domain::model::query::Query;
+
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Document Retrieval Error: {}", source))]
@@ -15,8 +17,7 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct SearchParameters {
     pub doc_types: Vec<String>,
-    // A valid query DSL
-    pub dsl: String,
+    pub query: Query,
 }
 
 #[async_trait]

@@ -1,3 +1,4 @@
+use crate::domain::model::query::Query;
 /// This port defines a method to debug queries / settings
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
@@ -15,8 +16,7 @@ pub enum Error {
 #[derive(Debug, Clone)]
 pub struct ExplainParameters {
     pub doc_type: String,
-    // A valid query DSL
-    pub dsl: String,
+    pub query: Query,
     pub id: String,
 }
 

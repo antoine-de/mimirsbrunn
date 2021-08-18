@@ -7,6 +7,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters};
 use crate::adapters::primary::bragi::settings::QuerySettings;
+use crate::domain::model::query::Query as SearchQuery;
 use crate::domain::ports::explain::ExplainParameters;
 use crate::domain::ports::search::SearchParameters;
 use crate::domain::usecases::{
@@ -189,11 +190,11 @@ impl Mutation {
             .map_err(|err| to_err("invalid settings", "graphql", err.to_string()))?;
 
         let filters = Filters::from(filters);
-        let query = build_query(&q, filters, &["fr"], &settings);
+        let dsl = build_query(&q, filters, &["fr"], &settings);
 
         let parameters = SearchDocumentsParameters {
             parameters: SearchParameters {
-                dsl: query,
+                query: SearchQuery::QueryDSL(dsl),
                 doc_types: vec![
                     String::from(Admin::doc_type()),
                     String::from(Street::doc_type()),
@@ -236,7 +237,7 @@ impl Mutation {
             .map_err(|err| to_err("invalid settings", "graphql", err.to_string()))?;
 
         let filters = Filters::from(filters);
-        let query = build_query(&q, filters, &["fr"], &settings);
+        let dsl = build_query(&q, filters, &["fr"], &settings);
 
         // When we go about explaining, its about the behavior of a query against a particular
         // document. So we need to give the name of the index, and the id of the document. We
@@ -247,7 +248,7 @@ impl Mutation {
 
         let parameters = ExplainDocumentParameters {
             parameters: ExplainParameters {
-                dsl: query,
+                query: SearchQuery::QueryDSL(dsl),
                 doc_type,
                 id,
             },

@@ -26,6 +26,7 @@ use crate::domain::model::{
     configuration::{self, Configuration},
     document::Document,
     index::{Index, IndexStatus},
+    query::Query,
     stats::InsertStats as ModelInsertStats,
 };
 
@@ -1136,26 +1137,25 @@ impl ElasticsearchStorage {
     pub async fn search_documents<D>(
         &self,
         indices: Vec<String>,
-        dsl: String,
+        query: Query,
     ) -> Result<Vec<D>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
-        let body: serde_json::Value =
-            serde_json::from_str(&dsl).context(Json2DeserializationError {
-                details: String::from("could not deserialize query DSL"),
-            })?;
 
-        let response = self
-            .0
-            .search(SearchParts::Index(&indices))
-            .body(body)
-            .send()
-            .await
-            .context(ElasticsearchError {
+        let search = self.0.search(SearchParts::Index(&indices));
+
+        let response = match query {
+            Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchError {
                 details: format!("could not search indices {}", indices.join(", ")),
-            })?;
+            })?,
+            Query::QueryDSL(json) => {
+                search.body(json).send().await.context(ElasticsearchError {
+                    details: format!("could not search indices {}", indices.join(", ")),
+                })?
+            }
+        };
 
         if response.status_code().is_success() {
             let json = response
@@ -1223,30 +1223,28 @@ impl ElasticsearchStorage {
     pub async fn explain_search<D>(
         &self,
         index: String,
-        dsl: String,
+        query: Query,
         id: String,
     ) -> Result<D, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
-        let body: serde_json::Value =
-            serde_json::from_str(&dsl).context(Json2DeserializationError {
-                details: String::from("could not deserialize query DSL"),
-            })?;
+        let explain = self.0.explain(ExplainParts::IndexId(&index, &id));
 
-        println!("id: {:?}", id);
-        println!("index: {:?}", index);
-        println!("dsl: {:?}", dsl);
-
-        let response = self
-            .0
-            .explain(ExplainParts::IndexId(&index, &id))
-            .body(body)
-            .send()
-            .await
-            .context(ElasticsearchError {
+        let response = match query {
+            Query::QueryString(q) => explain.q(&q).send().await.context(ElasticsearchError {
                 details: format!("could not explain document {} in index {}", id, index),
-            })?;
+            })?,
+            Query::QueryDSL(json) => {
+                explain
+                    .body(json)
+                    .send()
+                    .await
+                    .context(ElasticsearchError {
+                        details: format!("could not explain document {} in index {}", id, index),
+                    })?
+            }
+        };
 
         if response.status_code().is_success() {
             let json = response

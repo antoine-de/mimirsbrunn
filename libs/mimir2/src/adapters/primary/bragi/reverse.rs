@@ -1,9 +1,5 @@
-//        r#"{{
-//            "query": {query}
-//        }}"#,
-
-pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> String {
-    format!(
+pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Value {
+    let json_lit = format!(
         r#"{{
             "query": {{
                 "bool": {{
@@ -40,5 +36,7 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> String {
         distance = distance,
         lat = lat,
         lon = lon
-    )
+    );
+
+    serde_json::from_str(&json_lit).unwrap()
 }

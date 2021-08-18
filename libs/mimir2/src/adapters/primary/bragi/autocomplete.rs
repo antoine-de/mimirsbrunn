@@ -1,28 +1,5 @@
 use super::settings::QuerySettings;
 
-// fn main() {
-//     let settings = include_str!("../config/settings.toml");
-//     let settings = match QuerySettings::new(settings) {
-//         Ok(settings) => settings,
-//         Err(err) => {
-//             println!("err: {}", err.to_string());
-//             std::process::exit(1);
-//         }
-//     };
-//
-//     let filters = Filters {
-//         coord: None,
-//         shape: None,
-//         datasets: None,
-//         zone_types: None,
-//         poi_types: None,
-//     };
-//
-//     let query = build_query("jeanne d'arc", filters, &["fr"], &settings);
-//
-//     println!("{}", query);
-// }
-//
 /* How to restrict the range of the query... */
 #[derive(Debug, Default)]
 pub struct Filters {
@@ -38,18 +15,19 @@ pub fn build_query(
     _filters: Filters,
     _langs: &[&str],
     settings: &QuerySettings,
-) -> String {
+) -> serde_json::Value {
     let query = build_query_multi_match(q, &settings);
-    format!(
+    let json_lit = format!(
         r#"{{
             "query": {query}
         }}"#,
         query = query
-    )
+    );
+    serde_json::from_str(&json_lit).unwrap()
 }
 
-fn build_query_multi_match(q: &str, settings: &QuerySettings) -> String {
-    format!(
+fn build_query_multi_match(q: &str, settings: &QuerySettings) -> serde_json::Value {
+    let json_lit = format!(
         r#"{{
             "multi_match": {{
                 "query": "{query}",
@@ -64,7 +42,8 @@ fn build_query_multi_match(q: &str, settings: &QuerySettings) -> String {
         }}"#,
         query = q,
         boost = settings.string_query.boosts.label
-    )
+    );
+    serde_json::from_str(&json_lit).unwrap()
 }
 
 fn build_coverage_condition(datasets: &[&str]) -> String {

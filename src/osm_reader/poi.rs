@@ -34,6 +34,7 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings::osm2mimir::Settings, utils};
 use mimir2::{
+    domain::model::query::Query,
     domain::ports::search::SearchParameters,
     domain::usecases::{
         search_documents::{SearchDocuments, SearchDocumentsParameters},
@@ -251,7 +252,7 @@ pub async fn add_address(poi: Poi, search_documents: &SearchDocuments<serde_json
     let parameters = SearchDocumentsParameters {
         parameters: SearchParameters {
             doc_types: vec![String::from(Addr::doc_type())],
-            dsl: reverse,
+            query: Query::QueryDSL(reverse),
         },
     };
     // FIXME ladder code, should use Result<(), Error> and combinators

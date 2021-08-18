@@ -2,6 +2,7 @@ use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
     adapters::primary::bragi::settings::QuerySettings,
     adapters::secondary::elasticsearch::remote::connection_test_pool,
+    domain::model::query::Query,
     domain::ports::remote::Remote,
     domain::ports::search::SearchParameters,
     domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
@@ -35,11 +36,11 @@ async fn main() {
         .await
         .expect("query settings");
 
-    let query = build_query(&q, filters, &["fr"], &query_settings);
+    let dsl = build_query(&q, filters, &["fr"], &query_settings);
 
     let parameters = SearchDocumentsParameters {
         parameters: SearchParameters {
-            dsl: query,
+            query: Query::QueryDSL(dsl),
             doc_types: vec![String::from(Admin::doc_type())],
         },
     };

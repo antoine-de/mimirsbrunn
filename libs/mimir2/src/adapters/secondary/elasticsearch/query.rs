@@ -14,7 +14,7 @@ impl Query for ElasticsearchStorage {
         &self,
         parameters: SearchParameters,
     ) -> Result<Vec<Self::Doc>, QueryError> {
-        self.search_documents(parameters.indices, parameters.dsl)
+        self.search_documents(parameters.indices, parameters.query)
             .await
             .map_err(|err| QueryError::DocumentRetrievalError {
                 source: Box::new(err),
@@ -25,7 +25,7 @@ impl Query for ElasticsearchStorage {
         &self,
         parameters: ExplainParameters,
     ) -> Result<Self::Doc, QueryError> {
-        self.explain_search(parameters.index, parameters.dsl, parameters.id)
+        self.explain_search(parameters.index, parameters.query, parameters.id)
             .await
             .map_err(|err| QueryError::DocumentRetrievalError {
                 source: Box::new(err),
