@@ -2,6 +2,7 @@ use cucumber::{t, Steps};
 use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
     adapters::secondary::elasticsearch,
+    domain::model::query::Query,
     domain::ports::remote::Remote,
     domain::ports::search::SearchParameters,
     domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
@@ -70,11 +71,11 @@ pub fn steps() -> Steps<crate::MyWorld> {
 
             let filters = Filters::default();
 
-            let query = build_query(&ctx.matches[1], filters, &["fr"], &world.query_settings);
+            let dsl = build_query(&ctx.matches[1], filters, &["fr"], &world.query_settings);
 
             let parameters = SearchDocumentsParameters {
                 parameters: SearchParameters {
-                    dsl: query,
+                    query: Query::QueryDSL(dsl),
                     doc_types: vec![String::from(Admin::doc_type())],
                 },
             };
