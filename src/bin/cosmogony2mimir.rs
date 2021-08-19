@@ -150,9 +150,18 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
+    use futures::stream::StreamExt;
     use std::sync::Arc;
 
-    use mimir2::utils::docker;
+    use mimir2::{
+        adapters::secondary::elasticsearch::remote::connection_test_pool,
+        domain::ports::list::ListParameters,
+        domain::ports::remote::Remote,
+        domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
+        domain::usecases::UseCase,
+        utils::docker,
+    };
+    use places::{admin::Admin, MimirObject};
 
     use super::*;
 
@@ -305,7 +314,28 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+
+        // Now we query the index we just created. Since a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let pool = connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let list_documents = ListDocuments::new(Box::new(client));
+
+        let parameters = ListDocumentsParameters {
+            parameters: ListParameters {
+                doc_type: String::from(Admin::doc_type()),
+            },
+        };
+
+        let list_result = list_documents.execute(parameters).await;
+        let list: Vec<_> = list_result.unwrap().collect().await;
         drop(guard);
-        assert!(res.is_ok())
+        assert_eq!(list.len(), 8);
     }
 }
