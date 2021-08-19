@@ -135,6 +135,12 @@ pub enum Error {
         details: String,
         source: serde_json::Error,
     },
+
+    #[snafu(display("Environment Variable Error: {} ({})", details, source))]
+    EnvironmentVariableError {
+        details: String,
+        source: std::env::VarError,
+    },
 }
 
 // Given the name of a french region, it will download the matching OSM file
@@ -242,16 +248,19 @@ async fn generate_cosmogony(
     {
         return Ok(ProcessingStep::Skipped);
     }
-    let mut child =
-        tokio::process::Command::new("/home/remi/code/cosmogony/target/release/cosmogony")
-            .arg("--country-code")
-            .arg("FR")
-            .arg("--input")
-            .arg(&input_path)
-            .arg("--output")
-            .arg(&output_path)
-            .spawn()
-            .expect("failed to spawn cosmogony");
+    let cosmogony_path = std::env::var("COSMOGONY_EXE").context(EnvironmentVariableError {
+        details: String::from("Could not get cosmogony executable"),
+    })?;
+
+    let mut child = tokio::process::Command::new(&cosmogony_path)
+        .arg("--country-code")
+        .arg("FR")
+        .arg("--input")
+        .arg(&input_path)
+        .arg("--output")
+        .arg(&output_path)
+        .spawn()
+        .expect("failed to spawn cosmogony");
 
     let _status = child.wait().await.context(InvalidIO {
         details: format!(
