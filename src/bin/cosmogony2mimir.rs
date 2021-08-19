@@ -36,7 +36,6 @@ use mimir2::{
     },
     domain::ports::remote::Remote,
 };
-
 use serde_json::json;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -86,10 +85,14 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
             )
         })?;
 
+    println!("got pool from {}", args.connection_string);
+
     let client = pool
         .conn()
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
+
+    println!("got conn from {}", args.connection_string);
 
     let settings = tokio::fs::read_to_string(args.settings.clone())
         .await
@@ -134,4 +137,55 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
     mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, client)
         .await
         .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string(),))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[should_panic(
+        expected = "could not create elasticsearch connection pool: Invalid Elasticsearch URL"
+    )]
+    async fn should_return_an_error_when_given_an_invalid_es_url() {
+        // See https://url.spec.whatwg.org/ for what constitutes a bad URL.
+        let url = String::from("http://example.com:demo"); // invalid URL
+        let args = Args {
+            input: String::from("foo"),
+            connection_string: url,
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
+
+        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args)
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[should_panic(
+        expected = "could not connect elasticsearch pool: Connection Error: Elasticsearch Connection Error"
+    )]
+    async fn should_return_an_error_when_given_an_url_not_es() {
+        // let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
+        let url = String::from("http://localhost:80"); // Hopefully there is no ES on localhost:80
+        let args = Args {
+            input: String::from("foo"),
+            connection_string: url,
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
+
+        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args)
+            .await
+            .unwrap();
+    }
 }

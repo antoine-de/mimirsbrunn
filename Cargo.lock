@@ -2603,6 +2603,7 @@ dependencies = [
  "places",
  "rand 0.8.4",
  "regex",
+ "semver 1.0.3",
  "serde 1.0.126",
  "serde_json",
  "snafu",

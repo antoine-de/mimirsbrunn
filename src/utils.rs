@@ -75,14 +75,34 @@ pub fn normalize_weight(weight: f64, max_weight: f64) -> f64 {
     }
 }
 
-pub async fn wrapped_launch_async<O, F, Fut>(run: F) -> Result<(), Error>
+pub async fn launch_async_args<O, F, Fut>(run: F, args: O) -> Result<(), Error>
+where
+    O: StructOpt,
+    F: FnOnce(O) -> Fut,
+    Fut: Future<Output = Result<(), Error>>,
+{
+    let res = if let Err(err) = run(args).await {
+        for cause in err.iter_chain() {
+            eprintln!("{}", cause);
+        }
+        Err(err)
+    } else {
+        Ok(())
+    };
+
+    res
+}
+
+// Ensures the logger is initialized prior to launching a function, and also making sure the logger
+// is flushed at the end. Whatever is returned by the main function is forwarded out.
+pub async fn wrapped_launch_async_args<O, F, Fut>(run: F, args: O) -> Result<(), Error>
 where
     O: StructOpt,
     F: FnOnce(O) -> Fut,
     Fut: Future<Output = Result<(), Error>>,
 {
     let (guard, _) = logger_init();
-    let res = if let Err(err) = run(O::from_args()).await {
+    let res = if let Err(err) = run(args).await {
         for cause in err.iter_chain() {
             error!("{}", cause);
         }
@@ -95,6 +115,15 @@ where
     // and is flushed before the process exits.
     drop(guard);
     res
+}
+
+pub async fn wrapped_launch_async<O, F, Fut>(run: F) -> Result<(), Error>
+where
+    O: StructOpt,
+    F: FnOnce(O) -> Fut,
+    Fut: Future<Output = Result<(), Error>>,
+{
+    wrapped_launch_async_args(run, O::from_args()).await
 }
 
 pub async fn launch_async<O, F, Fut>(run: F)

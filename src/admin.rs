@@ -207,8 +207,7 @@ pub async fn index_cosmogony(
     config: IndexConfiguration,
     client: ElasticsearchStorage,
 ) -> Result<(), Error> {
-    info!("building maps");
-
+    info!("building map cosmogony id => osm id");
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     let max_weight = utils::ADMIN_MAX_WEIGHT;
     for z in read_zones(&input)? {
@@ -229,8 +228,7 @@ pub async fn index_cosmogony(
         })
         .collect::<HashMap<_, _>>();
 
-    info!("importing cosmogony into Mimir");
-
+    info!("importing admins into Elasticsearch");
     let admins = read_zones(&input)?.map(move |z| {
         z.into_admin(
             &cosmogony_id_to_osm_id,
