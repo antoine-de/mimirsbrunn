@@ -85,14 +85,10 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
             )
         })?;
 
-    println!("got pool from {}", args.connection_string);
-
     let client = pool
         .conn()
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
-
-    println!("got conn from {}", args.connection_string);
 
     let settings = tokio::fs::read_to_string(args.settings.clone())
         .await
@@ -104,7 +100,14 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
             )
         })?;
 
-    let mut settings = json!(settings);
+    let mut settings: serde_json::Value = serde_json::from_str(&settings).map_err(|err| {
+        format_err!(
+            "could not deserialize settings file from '{}': {}",
+            args.settings.display(),
+            err.to_string(),
+        )
+    })?;
+
     if let Some(nb_shards) = args.nb_shards {
         settings["index"]["number_of_shards"] = json!(nb_shards);
     }
@@ -122,7 +125,13 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
             )
         })?;
 
-    let mappings = json!(mappings);
+    let mappings = serde_json::from_str(&mappings).map_err(|err| {
+        format_err!(
+            "could not deserialize mappings file from '{}': {}",
+            args.mappings.display(),
+            err.to_string(),
+        )
+    })?;
 
     let config = IndexConfiguration {
         name: args.dataset.clone(),
@@ -141,14 +150,18 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use mimir2::utils::docker;
+
     use super::*;
 
     #[tokio::test]
-    #[should_panic(
-        expected = "could not create elasticsearch connection pool: Invalid Elasticsearch URL"
-    )]
     async fn should_return_an_error_when_given_an_invalid_es_url() {
-        // See https://url.spec.whatwg.org/ for what constitutes a bad URL.
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
+        docker::initialize().await.expect("initialization");
+
         let url = String::from("http://example.com:demo"); // invalid URL
         let args = Args {
             input: String::from("foo"),
@@ -161,17 +174,20 @@ mod tests {
             langs: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args)
-            .await
-            .unwrap();
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        drop(guard);
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("could not create elasticsearch connection pool: Invalid Elasticsearch URL"));
     }
 
     #[tokio::test]
-    #[should_panic(
-        expected = "could not connect elasticsearch pool: Connection Error: Elasticsearch Connection Error"
-    )]
     async fn should_return_an_error_when_given_an_url_not_es() {
-        // let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
+        docker::initialize().await.expect("initialization");
+
         let url = String::from("http://localhost:80"); // Hopefully there is no ES on localhost:80
         let args = Args {
             input: String::from("foo"),
@@ -184,8 +200,112 @@ mod tests {
             langs: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args)
-            .await
-            .unwrap();
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        drop(guard);
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("could not connect elasticsearch pool: Connection Error: Elasticsearch Connection Error"));
+    }
+
+    #[tokio::test]
+    async fn should_return_an_error_when_given_an_invalid_path_for_mappings() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
+        docker::initialize().await.expect("initialization");
+
+        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
+        let args = Args {
+            input: String::from("foo"),
+            connection_string: url,
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        drop(guard);
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("could not read mappings file from"));
+    }
+
+    #[tokio::test]
+    async fn should_return_an_error_when_given_an_invalid_mappings() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
+        docker::initialize().await.expect("initialization");
+
+        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
+        let args = Args {
+            input: String::from("foo"),
+            connection_string: url,
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./README.md"), // exists, but not json
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        drop(guard);
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("could not deserialize mappings file from"));
+    }
+
+    #[tokio::test]
+    async fn should_return_an_error_when_given_an_invalid_path_for_input() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
+        docker::initialize().await.expect("initialization");
+
+        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
+        let args = Args {
+            input: String::from("./invalid.jsonl.gz"),
+            connection_string: url,
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        drop(guard);
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("could not index cosmogony: No such file or directory"));
+    }
+
+    #[tokio::test]
+    async fn should_correctly_index_a_small_cosmogony_file() {
+        let mtx = Arc::clone(&docker::AVAILABLE);
+        let guard = mtx.lock().unwrap();
+        docker::initialize().await.expect("initialization");
+
+        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
+        let args = Args {
+            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            connection_string: url,
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        drop(guard);
+        assert!(res.is_ok())
     }
 }

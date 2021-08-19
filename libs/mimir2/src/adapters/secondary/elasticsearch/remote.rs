@@ -47,13 +47,6 @@ pub enum Error {
     #[snafu(display("Elasticsearch Exception: {}", msg))]
     ElasticsearchException { msg: String },
 
-    /// Elasticsearch Deserialization Error
-    #[snafu(display("JSON Serde Deserialization Error: {}", source))]
-    Json2DeserializationError {
-        source: serde_json::Error,
-        details: String,
-    },
-
     /// Invalid JSON Value
     #[snafu(display("JSON Deserialization Invalid: {} {:?}", details, json))]
     JsonDeserializationInvalid { details: String, json: Value },
@@ -143,7 +136,7 @@ impl Remote for SingleNodeConnectionPool {
                 .map_err(|err| RemoteError::Connection {
                     source: Box::new(err),
                 })?;
-            let version = Version::parse("1.3.0").unwrap();
+            let version = Version::parse(version_number).unwrap();
             lazy_static! {
                 static ref VERSION_REQ: VersionReq = VersionReq::parse(ES_VERSION_REQ).unwrap();
             }
@@ -172,11 +165,9 @@ impl Remote for SingleNodeConnectionPool {
 
 /// Opens a connection to elasticsearch given a url
 pub async fn connection_pool_url(url: &str) -> Result<SingleNodeConnectionPool, Error> {
-    println!("parsing {}", url);
     let url = Url::parse(url).context(InvalidUrl {
         details: String::from(url),
     })?;
-    println!("ok!");
     let pool = SingleNodeConnectionPool::new(url);
     Ok(pool)
 }
