@@ -24,11 +24,27 @@ Feature: Baseline
             | Quimper           | admin:osm:relation:296095 |
             | Saint-Malo        | admin:osm:relation:905534 |
 
-            # These cities have homonyms, we expect the one with the greatest
-            # weight.
+    # With 'Homonyms', several communes have identical names in different
+    # departments. This scenario ensures that the ones with the bigger weight
+    # (which is based on the population) is returned ahead of the one with
+    # the lower weight.
+    Scenario Outline: Homonyms
+        When the user searches for "<query>"
+        Then he finds "<id>" as the first result
+
+        Examples:
+            | query             | id                        |
             | Tréméven          | admin:osm:relation:74058  |
             | Saint-Armel       | admin:osm:relation:145091 |
             | Plouhinec         | admin:osm:relation:122789 |
 
-            # Saint-Malo is the biggest city with "saint" in its name.
+    # With 'Prefix', several communes share the same prefix. This scenario
+    # ensures that the ones with the bigger weight (which is based on the
+    # population) is returned ahead of the one with the lower weight.
+    Scenario Outline: Prefix
+        When the user searches for "<query>"
+        Then he finds "<id>" as the first result
+
+        Examples:
+            | query             | id                        |
             | Saint             | admin:osm:relation:905534 |
