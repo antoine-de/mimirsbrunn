@@ -47,22 +47,7 @@ async fn main() {
 
     let search_result = search_documents.execute(parameters).await.unwrap();
     search_result.iter().enumerate().for_each(|(i, v)| {
-        let id = v.as_object().unwrap().get("id").unwrap().as_str().unwrap();
-        let name = v
-            .as_object()
-            .unwrap()
-            .get("name")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        let label = v
-            .as_object()
-            .unwrap()
-            .get("label")
-            .unwrap()
-            .as_str()
-            .unwrap();
-        println!("{}: {} | {} | {}", i, id, name, label);
+        println!("{}: {} | {} | {}", i, v["id"], v["name"], v["label"]);
     });
 }
 // let search_result = serde_json::to_string_pretty(&search_result).unwrap();

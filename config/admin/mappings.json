@@ -23,12 +23,14 @@
           "path_match": "^label($|s\\.\\w+)",
           "mapping": {
               "type": "text",
+              "index_options": "docs",
               "analyzer": "word",
               "copy_to": "full_label",
               "norms": false,
               "fields": {
                   "prefix": {
                       "type": "text",
+                      "index_options": "docs",
                       "analyzer": "prefix",
                       "search_analyzer": "word",
                       "norms": false
@@ -136,11 +138,6 @@
     },
     "name": {
       "type": "text"
-    },
-    "label": {
-      "type": "text",
-      "analyzer": "ngram",
-      "copy_to": "full_label"
     }
   }
 }

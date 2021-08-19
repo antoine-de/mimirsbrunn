@@ -2,20 +2,18 @@ use cucumber::{t, Steps};
 use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
     adapters::secondary::elasticsearch,
+    adapters::secondary::elasticsearch::{
+        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
+        remote::{connection_test_pool, Error as PoolError},
+    },
     domain::model::query::Query,
+    domain::ports::remote::Error as ConnectionError,
     domain::ports::remote::Remote,
     domain::ports::search::SearchParameters,
     domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
     domain::usecases::UseCase,
 };
-use mimir2::{
-    adapters::secondary::elasticsearch::{
-        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-        remote::{connection_test_pool, Error as PoolError},
-    },
-    domain::ports::remote::Error as ConnectionError,
-};
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, MimirObject};
+use places::{admin::Admin, MimirObject};
 use snafu::{ResultExt, Snafu};
 
 use std::path::PathBuf;
@@ -85,8 +83,12 @@ pub fn steps() -> Steps<crate::MyWorld> {
     );
 
     steps.then_regex("he finds \"(.*)\" as the first result", |world, ctx| {
-        let rank = rank(&ctx.matches[1], &world.search_result).unwrap();
-        assert_eq!(rank, 0);
+        assert_eq!(
+            rank(&ctx.matches[1], &world.search_result)
+                .expect("the user must perform a search before checking results"),
+            0
+        );
+
         world
     });
 
@@ -173,9 +175,7 @@ async fn download_osm(region: &str) -> Result<ProcessingStep, Error> {
         "https://download.geofabrik.de/europe/france/{}-latest.osm.pbf",
         region
     );
-    let url = Url::parse(&url).context(InvalidUrl {
-        details: String::from(url),
-    })?;
+    let url = Url::parse(&url).context(InvalidUrl { details: url })?;
 
     let resp = reqwest::get(url.clone()).await.context(DownloadError {
         details: format!("could not download url {}", url),
@@ -242,19 +242,18 @@ async fn generate_cosmogony(
     {
         return Ok(ProcessingStep::Skipped);
     }
-    let mut child = tokio::process::Command::new(
-        "/home/matt/lab/rust/kisio/cosmogony/target/release/cosmogony",
-    )
-    .arg("--country-code")
-    .arg("FR")
-    .arg("--input")
-    .arg(&input_path)
-    .arg("--output")
-    .arg(&output_path)
-    .spawn()
-    .expect("failed to spawn cosmogony");
+    let mut child =
+        tokio::process::Command::new("/home/remi/code/cosmogony/target/release/cosmogony")
+            .arg("--country-code")
+            .arg("FR")
+            .arg("--input")
+            .arg(&input_path)
+            .arg("--output")
+            .arg(&output_path)
+            .spawn()
+            .expect("failed to spawn cosmogony");
 
-    let status = child.wait().await.context(InvalidIO {
+    let _status = child.wait().await.context(InvalidIO {
         details: format!(
             "failed to generate cosmogony with input {} and output {}",
             input_path.display(),
@@ -270,6 +269,7 @@ async fn generate_cosmogony(
 async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<ProcessingStep, Error> {
     // if the previous step is 'generated', then we need to index the cosmogony file.
     // Otherwise, we skip.
+    // TODO: change this logic to check immutably what appends?
     if previous != ProcessingStep::Generated {
         return Ok(ProcessingStep::Skipped);
     }
