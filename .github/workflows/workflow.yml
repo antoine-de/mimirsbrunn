@@ -15,6 +15,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.48.0
+          toolchain: 1.54.0
       - name: Validate Code
         run: make check
