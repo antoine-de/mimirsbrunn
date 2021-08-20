@@ -403,10 +403,17 @@ impl ElasticsearchStorage {
         } else {
             let exception = response.exception().await.ok().unwrap();
 
+            // We need to handle this exception carefully, so that the 'unknown index' does
+            // not result in an Error, but rather a Ok(None) to indicate that nothing was found.
+
             match exception {
                 Some(exception) => {
                     let err = Error::from(exception);
-                    Err(err)
+                    if std::matches!(err, Error::ElasticsearchUnknownIndex { .. }) {
+                        Ok(None)
+                    } else {
+                        Err(err)
+                    }
                 }
                 None => Err(Error::ElasticsearchFailureWithoutException {
                     details: String::from("Fail status without exception"),

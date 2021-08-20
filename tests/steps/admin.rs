@@ -10,6 +10,7 @@ use mimir2::{
     domain::ports::remote::Error as ConnectionError,
     domain::ports::remote::Remote,
     domain::ports::search::SearchParameters,
+    domain::ports::storage::Storage,
     domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
     domain::usecases::UseCase,
 };
@@ -276,12 +277,6 @@ async fn generate_cosmogony(
 }
 
 async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<ProcessingStep, Error> {
-    // if the previous step is 'generated', then we need to index the cosmogony file.
-    // Otherwise, we skip.
-    // TODO: change this logic to check immutably what appends?
-    if previous != ProcessingStep::Generated {
-        return Ok(ProcessingStep::Skipped);
-    }
     let pool = connection_test_pool().await.context(ElasticsearchPool {
         details: String::from("Could not retrieve Elasticsearch test pool"),
     })?;
@@ -290,6 +285,17 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
         details: String::from("Could not establish connection to Elasticsearch"),
     })?;
 
+    let index = client
+        .find_container(String::from("munin_admin"))
+        .await
+        .expect("Looking up munin_admin");
+
+    // if the previous step is 'generated', then we need to index the cosmogony file.
+    // Otherwise, we skip.
+    // TODO: change this logic to check immutably what appends?
+    if (previous != ProcessingStep::Generated) && (index.is_some()) {
+        return Ok(ProcessingStep::Skipped);
+    }
     let path: &'static str = env!("CARGO_MANIFEST_DIR");
     let config_path: PathBuf = [path, "config", "admin"].iter().collect();
     let mut settings_path = config_path.clone();
