@@ -116,28 +116,28 @@ pub enum Error {
         source: std::io::Error,
     },
     #[snafu(display("Download Error: {} ({})", source, details))]
-    DownloadError {
+    Download {
         details: String,
         source: reqwest::Error,
     },
     #[snafu(display("Elasticsearch Pool Error: {} ({})", source, details))]
-    ElasticsearchPoolError { details: String, source: PoolError },
+    ElasticsearchPool { details: String, source: PoolError },
     #[snafu(display("Elasticsearch Connection Error: {} ({})", source, details))]
-    ElasticsearchConnectionError {
+    ElasticsearchConnection {
         details: String,
         source: ConnectionError,
     },
     #[snafu(display("Indexing Error: {}", details))]
-    IndexingError { details: String },
+    Indexing { details: String },
 
     #[snafu(display("JSON Error: {} ({})", details, source))]
-    JsonError {
+    Json {
         details: String,
         source: serde_json::Error,
     },
 
     #[snafu(display("Environment Variable Error: {} ({})", details, source))]
-    EnvironmentVariableError {
+    EnvironmentVariable {
         details: String,
         source: std::env::VarError,
     },
@@ -183,13 +183,13 @@ async fn download_osm(region: &str) -> Result<ProcessingStep, Error> {
     );
     let url = Url::parse(&url).context(InvalidUrl { details: url })?;
 
-    let resp = reqwest::get(url.clone()).await.context(DownloadError {
+    let resp = reqwest::get(url.clone()).await.context(Download {
         details: format!("could not download url {}", url),
     })?;
 
     // If we got a response which is an error (eg 404), then turn it
     // into an Error.
-    let mut resp = resp.error_for_status().context(DownloadError {
+    let mut resp = resp.error_for_status().context(Download {
         details: format!("download response error {}", url),
     })?;
 
@@ -200,7 +200,7 @@ async fn download_osm(region: &str) -> Result<ProcessingStep, Error> {
     // Do an asynchronous, buffered copy of the download to the output file
     let mut file = tokio::io::BufWriter::new(file);
 
-    while let Some(chunk) = resp.chunk().await.context(DownloadError {
+    while let Some(chunk) = resp.chunk().await.context(Download {
         details: String::from("read chunk"),
     })? {
         file.write(&chunk).await.context(InvalidIO {
@@ -248,7 +248,7 @@ async fn generate_cosmogony(
     {
         return Ok(ProcessingStep::Skipped);
     }
-    let cosmogony_path = std::env::var("COSMOGONY_EXE").context(EnvironmentVariableError {
+    let cosmogony_path = std::env::var("COSMOGONY_EXE").context(EnvironmentVariable {
         details: String::from("Could not get cosmogony executable"),
     })?;
 
@@ -282,13 +282,11 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
     if previous != ProcessingStep::Generated {
         return Ok(ProcessingStep::Skipped);
     }
-    let pool = connection_test_pool()
-        .await
-        .context(ElasticsearchPoolError {
-            details: String::from("Could not retrieve Elasticsearch test pool"),
-        })?;
+    let pool = connection_test_pool().await.context(ElasticsearchPool {
+        details: String::from("Could not retrieve Elasticsearch test pool"),
+    })?;
 
-    let client = pool.conn().await.context(ElasticsearchConnectionError {
+    let client = pool.conn().await.context(ElasticsearchConnection {
         details: String::from("Could not establish connection to Elasticsearch"),
     })?;
 
@@ -305,7 +303,7 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
             ),
         })?;
 
-    let settings = serde_json::from_str(&settings).context(JsonError {
+    let settings = serde_json::from_str(&settings).context(Json {
         details: String::from("Could not deserialize settings"),
     })?;
 
@@ -320,7 +318,7 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
             ),
         })?;
 
-    let mappings = serde_json::from_str(&mappings).context(JsonError {
+    let mappings = serde_json::from_str(&mappings).context(Json {
         details: String::from("Could not deserialize settings"),
     })?;
 
@@ -344,7 +342,7 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
         client,
     )
     .await
-    .map_err(|err| Error::IndexingError {
+    .map_err(|err| Error::Indexing {
         details: format!("could not index cosmogony: {}", err.to_string(),),
     })?;
     Ok(ProcessingStep::Indexed)

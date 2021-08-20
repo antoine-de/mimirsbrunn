@@ -100,7 +100,7 @@ pub fn format_international_poi_label<'a>(
 ) -> I18nProperties {
     let labels = langs
         .iter()
-        .filter_map(|ref lang| {
+        .filter_map(|lang| {
             let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
             let i18n_poi_label =
                 format_i18n_label(local_poi_name, admins.clone(), country_codes, lang);

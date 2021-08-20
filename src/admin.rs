@@ -163,17 +163,17 @@ impl IntoAdmin for Zone {
             // (so it has a country code mainly if it is a country)
             country_codes: utils::get_country_code(&codes).into_iter().collect(),
             codes,
-            names: osm_utils::get_names_from_tags(&self.tags, &langs),
+            names: osm_utils::get_names_from_tags(&self.tags, langs),
             labels: self
                 .international_labels
                 .into_iter()
-                .filter(|(k, _)| langs.contains(&k))
+                .filter(|(k, _)| langs.contains(k))
                 .collect(),
             distance: None,
             context: None,
             administrative_regions: Vec::new(),
         };
-        if let Some(ref admins) = all_admins {
+        if let Some(admins) = all_admins {
             // Get a list of encompassing parent ids, which will be used as the get
             // administrative_regions.
             let mut parent_ids = Vec::new();

@@ -36,7 +36,7 @@ async fn main() {
         .await
         .expect("query settings");
 
-    let dsl = build_query(&q, filters, &["fr"], &query_settings);
+    let dsl = build_query(q, filters, &["fr"], &query_settings);
 
     let parameters = SearchDocumentsParameters {
         parameters: SearchParameters {

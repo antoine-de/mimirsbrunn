@@ -183,14 +183,14 @@ pub fn streets(
             .filter_map(|ref_obj| {
                 let obj = objs_map.get(&ref_obj.member)?;
                 let way = obj.way()?;
-                let coord = get_way_coord(&objs_map, &way);
+                let coord = get_way_coord(&objs_map, way);
                 let name = rel_name.or_else(|| way.tags.get("name"))?;
 
                 Some(build_streets_for_admins(
                     name.to_string(),
                     rel.id.0,
                     "relation",
-                    get_street_admin(admins_geofinder, &objs_map, &way),
+                    get_street_admin(admins_geofinder, &objs_map, way),
                     coord,
                 ))
             })
