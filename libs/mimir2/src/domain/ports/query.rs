@@ -38,7 +38,7 @@ impl From<crate::domain::ports::search::SearchParameters> for SearchParameters {
             indices: input
                 .doc_types
                 .iter()
-                .map(|doc_type| root_doctype(&doc_type))
+                .map(|doc_type| root_doctype(doc_type))
                 .collect(),
             query: input.query,
         }
