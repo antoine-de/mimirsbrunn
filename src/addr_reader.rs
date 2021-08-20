@@ -122,7 +122,7 @@ pub async fn import_addresses_from_reads<T, F>(
     client: ElasticsearchStorage,
     config: IndexConfiguration,
     has_headers: bool,
-    nb_threads: usize,
+    _nb_threads: usize,
     inputs: Vec<impl Read + Send + Sync + 'static>,
     into_addr: F,
 ) -> Result<(), Error>

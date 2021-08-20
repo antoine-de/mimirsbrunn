@@ -243,7 +243,7 @@ impl Mutation {
         // document. So we need to give the name of the index, and the id of the document. We
         // already have the id, and we'll extract the index from the id, because the id is prefixed
         // by the document type.
-        let endb = id.find(":").unwrap();
+        let endb = id.find(':').unwrap();
         let doc_type = String::from(&id[0..endb]);
 
         let parameters = ExplainDocumentParameters {

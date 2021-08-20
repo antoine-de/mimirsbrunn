@@ -1129,28 +1129,6 @@ dependencies = [
 
 [[package]]
 name = "cucumber_rust"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cc67008716666beb00d20d63debed61b55c78f1ccdf4efb629ddae3205d0f52"
-dependencies = [
- "async-stream",
- "async-trait",
- "clap",
- "cute_custom_default",
- "futures 0.3.15",
- "futures-timer",
- "gherkin_rust",
- "globwalk",
- "pathdiff",
- "regex",
- "shh",
- "termcolor",
- "textwrap 0.12.1",
- "thiserror",
-]
-
-[[package]]
-name = "cucumber_rust"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d1cc772687e83e581621d37bb11543237dc55618dbc04c8e600928e532dc879"
@@ -2593,7 +2571,6 @@ dependencies = [
  "bollard",
  "chrono",
  "criterion",
- "cucumber_rust 0.8.4",
  "elasticsearch",
  "erased-serde",
  "futures 0.3.15",
@@ -2638,7 +2615,7 @@ dependencies = [
  "cosmogony",
  "csv",
  "csv-async",
- "cucumber_rust 0.9.0",
+ "cucumber_rust",
  "elasticsearch",
  "env_logger",
  "failure",

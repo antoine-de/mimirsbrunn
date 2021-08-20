@@ -64,13 +64,19 @@ pub struct DockerWrapper {
     container_name: String, // ip: String,
 }
 
-impl DockerWrapper {
-    pub fn new() -> DockerWrapper {
+impl Default for DockerWrapper {
+    fn default() -> Self {
         DockerWrapper {
             ports: vec![(9201, 9200), (9301, 9300)],
             docker_image: String::from("docker.elastic.co/elasticsearch/elasticsearch:7.13.0"),
             container_name: String::from("mimir-test-elasticsearch"),
         }
+    }
+}
+
+impl DockerWrapper {
+    pub fn new() -> DockerWrapper {
+        DockerWrapper::default()
     }
 
     // Returns true if the container self.container_name is running
@@ -88,7 +94,7 @@ impl DockerWrapper {
 
         let docker = &docker.negotiate_version().await.context(Version)?;
 
-        &docker.version().await.context(Version);
+        docker.version().await.context(Version)?;
 
         let mut filters = HashMap::new();
         filters.insert("name", vec![self.container_name.as_str()]);
@@ -162,7 +168,7 @@ impl DockerWrapper {
             let env_vars = vec![String::from("discovery.type=single-node")];
 
             let config = Config {
-                image: Some(String::from(self.docker_image.clone())),
+                image: Some(self.docker_image.clone()),
                 exposed_ports: Some(exposed_ports),
                 host_config: Some(host_config),
                 env: Some(env_vars),

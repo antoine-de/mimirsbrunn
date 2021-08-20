@@ -1,10 +1,8 @@
-use criterion::BenchmarkId;
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
-use rand::distributions::{Alphanumeric, Distribution, Uniform};
-use rand::Rng;
+// use rand::distributions::{Alphanumeric, Distribution, Uniform};
+// use rand::Rng;
 use serde::{Deserialize, Serialize};
-use tokio::runtime::Runtime;
 use uuid::Uuid;
 
 use mimir2::adapters::secondary::elasticsearch;
@@ -32,7 +30,9 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             rt.block_on(async move {
                 let settings = include_str!("./fixtures/settings.json");
+                let settings = serde_json::from_str(&settings).unwrap();
                 let mappings = include_str!("./fixtures/mappings.json");
+                let mappings = serde_json::from_str(&mappings).unwrap();
                 let index_name = String::from("test-benchmark-people");
                 let config = IndexConfiguration {
                     name: index_name.clone(),
@@ -41,11 +41,9 @@ fn criterion_benchmark(c: &mut Criterion) {
                         wait_for_active_shards: String::from("1"), // only the primary shard
                     },
                     settings: IndexSettings {
-                        value: String::from(settings), // <<=== Invalid Settings
+                        value: settings, // <<=== Invalid Settings
                     },
-                    mappings: IndexMappings {
-                        value: String::from(mappings),
-                    },
+                    mappings: IndexMappings { value: mappings },
                 };
                 let config = Configuration {
                     value: serde_json::to_string(&config).expect("config"),
@@ -57,6 +55,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                     config,
                     documents: Box::new(stream),
                     visibility: IndexVisibility::Public,
+                    doc_type: String::from("person"),
                 };
 
                 let pool = elasticsearch::remote::connection_test_pool()
@@ -95,22 +94,22 @@ impl Document for Person {
     }
 }
 
-fn generate_people(count: usize) -> Vec<Person> {
-    let mut rng = rand::thread_rng();
-    let age_gen = Uniform::from(9..99);
-    let name_len_gen = Uniform::from(5..20);
-    let mut ps = Vec::with_capacity(count);
-    for _ in 0..count {
-        let age = age_gen.sample(&mut rng);
-        let name_len = name_len_gen.sample(&mut rng);
-        let name: String = std::iter::repeat(())
-            .map(|()| rng.sample(Alphanumeric))
-            .map(char::from)
-            .take(name_len)
-            .collect();
-        let id = Uuid::new_v4();
-        let p = Person { id, name, age };
-        ps.push(p);
-    }
-    ps
-}
+// fn generate_people(count: usize) -> Vec<Person> {
+//     let mut rng = rand::thread_rng();
+//     let age_gen = Uniform::from(9..99);
+//     let name_len_gen = Uniform::from(5..20);
+//     let mut ps = Vec::with_capacity(count);
+//     for _ in 0..count {
+//         let age = age_gen.sample(&mut rng);
+//         let name_len = name_len_gen.sample(&mut rng);
+//         let name: String = std::iter::repeat(())
+//             .map(|()| rng.sample(Alphanumeric))
+//             .map(char::from)
+//             .take(name_len)
+//             .collect();
+//         let id = Uuid::new_v4();
+//         let p = Person { id, name, age };
+//         ps.push(p);
+//     }
+//     ps
+// }

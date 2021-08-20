@@ -3,6 +3,13 @@ name = "mimir2"
 version = "0.1.0"
 authors = ["crocme10 <matt@area403.org>"]
 edition = "2018"
+description = "library for manipulating document index, based on elasticsearch"
+license = "AGPLv3"
+repository = "https://github.com/CanalTP/mimirsbrunn.git"
+keywords = [ "mimirsbrunn", "elasticsearch"]
+categories = [ "application" ]
+readme = "README.md"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -38,21 +45,12 @@ warp = "0.3.1"
 [dev-dependencies]
 mockall = "0.9.1"
 criterion = { version = "0.3", features = [ "async_tokio" ] }
-cucumber = { package = "cucumber_rust", version = "0.8.3" }
 uuid = { version = "0.8", features = [ "serde", "v4" ] }
 rand = "0.8"
 
 [lib]
 name = "mimir2"
 path = "src/lib.rs"
-
-[[test]]
-name = "acceptance"
-harness = false # Allows Cucumber to print output instead of libtest
-
-[[bin]]
-name = "service"
-path = "src/main.rs"
 
 [[bench]]
 name = "benchmark"
