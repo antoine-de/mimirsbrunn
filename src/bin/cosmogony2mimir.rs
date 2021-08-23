@@ -168,11 +168,11 @@ mod tests {
 
     use super::*;
 
-    fn get_es_test_url() -> String {
+    fn elasticsearch_test_url() -> String {
         std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
     }
 
-    async fn es_initialize() -> std::sync::MutexGuard<'static, ()> {
+    async fn initialize_elasticsearch_docker() -> std::sync::MutexGuard<'static, ()> {
         let guard = docker::AVAILABLE.lock().unwrap();
         docker::initialize().await.expect("initialization");
         guard
@@ -222,11 +222,11 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_path_for_mappings() {
-        let _guard = es_initialize().await;
+        let guard = initialize_elasticsearch_docker().await;
 
         let args = Args {
             input: String::from("foo"),
-            connection_string: get_es_test_url(),
+            connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
             settings: PathBuf::from("./config/admin/settings.json"),
@@ -236,6 +236,9 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+
+        drop(guard);
+
         assert!(res
             .unwrap_err()
             .to_string()
@@ -244,11 +247,11 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_mappings() {
-        let _guard = es_initialize().await;
+        let guard = initialize_elasticsearch_docker().await;
 
         let args = Args {
             input: String::from("foo"),
-            connection_string: get_es_test_url(),
+            connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
             mappings: PathBuf::from("./README.md"), // exists, but not json
             settings: PathBuf::from("./config/admin/settings.json"),
@@ -258,6 +261,9 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+
+        drop(guard);
+
         assert!(res
             .unwrap_err()
             .to_string()
@@ -266,13 +272,13 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_path_for_input() {
-        let _guard = es_initialize().await;
+        let guard = initialize_elasticsearch_docker().await;
 
         let args = Args {
             input: String::from("./invalid.jsonl.gz"),
-            connection_string: get_es_test_url(),
+            connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
@@ -280,6 +286,9 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+
+        drop(guard);
+
         assert!(res
             .unwrap_err()
             .to_string()
@@ -288,13 +297,13 @@ mod tests {
 
     #[tokio::test]
     async fn should_correctly_index_a_small_cosmogony_file() {
-        let _guard = es_initialize().await;
+        let guard = initialize_elasticsearch_docker().await;
 
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: get_es_test_url(),
+            connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
@@ -302,9 +311,8 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        assert!(res.is_ok(), "index_cosmogony failed {:?}", &res);
 
-        // Now we query the index we just created. Since a small cosmogony file with few entries,
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
         let pool = connection_test_pool()
             .await
@@ -328,6 +336,9 @@ mod tests {
             .map(|json| serde_json::from_value(json).unwrap())
             .collect()
             .await;
+
+        drop(guard);
+
         assert_eq!(list.len(), 8);
         assert!(list.iter().all(|place| place.is_admin()));
 
@@ -344,13 +355,13 @@ mod tests {
 
     #[tokio::test]
     async fn should_correctly_index_cosmogony_with_langs() {
-        let _guard = es_initialize().await;
+        let guard = initialize_elasticsearch_docker().await;
 
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: get_es_test_url(),
+            connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
@@ -358,7 +369,6 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        assert!(res.is_ok(), "index_cosmogony failed {:?}", &res);
 
         // Now we query the index we just created. Since a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
@@ -384,6 +394,11 @@ mod tests {
             .map(|json| serde_json::from_value(json).unwrap())
             .collect()
             .await;
+
+        drop(guard);
+
+        // FIXME: Should we rerun the next 4 tests, which are already part
+        // of the previous test, and focus on the language part?
         assert_eq!(list.len(), 8);
         assert!(list.iter().all(|place| place.is_admin()));
 
@@ -404,14 +419,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_index_cosmgony_with_correct_values() {
-        let _guard = es_initialize().await;
+    async fn should_index_cosmogony_with_correct_values() {
+        let guard = initialize_elasticsearch_docker().await;
 
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: get_es_test_url(),
+            connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
@@ -419,7 +434,6 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        assert!(res.is_ok(), "index_cosmogony failed {:?}", &res);
 
         // Now we query the index we just created. Since a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
@@ -431,6 +445,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
+        // FIXME Use the SearchDocument instead of Listing all documents.
         let list_documents = ListDocuments::new(Box::new(client));
 
         let parameters = ListDocumentsParameters {
@@ -440,11 +455,15 @@ mod tests {
         };
 
         let list_result = list_documents.execute(parameters).await;
+
         let list: Vec<Place> = list_result
             .unwrap()
             .map(|json| serde_json::from_value(json).unwrap())
             .collect()
             .await;
+
+        drop(guard);
+
         assert_eq!(list.len(), 8);
         assert!(list.iter().all(|place| place.is_admin()));
 
