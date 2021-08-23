@@ -313,7 +313,7 @@ mod tests {
             langs: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
@@ -371,7 +371,7 @@ mod tests {
             langs: vec!["fr".into(), "en".into()],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
         // Now we query the index we just created. Since a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
@@ -436,7 +436,7 @@ mod tests {
             langs: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
         // Now we query the index we just created. Since a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
