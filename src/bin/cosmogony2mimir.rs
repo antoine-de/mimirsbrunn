@@ -40,6 +40,10 @@ use serde_json::json;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+#[cfg(test)]
+#[macro_use]
+extern crate approx;
+
 #[derive(StructOpt, Debug)]
 struct Args {
     /// cosmogony file
@@ -151,7 +155,6 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use futures::stream::StreamExt;
-    use std::sync::Arc;
 
     use mimir2::{
         adapters::secondary::elasticsearch::remote::connection_test_pool,
@@ -161,17 +164,23 @@ mod tests {
         domain::usecases::UseCase,
         utils::docker,
     };
-    use places::{admin::Admin, MimirObject};
+    use places::{admin::Admin, MimirObject, Place};
 
     use super::*;
 
+    fn get_es_test_url() -> String {
+        std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
+    }
+
+    async fn es_initialize() -> std::sync::MutexGuard<'static, ()> {
+        let guard = docker::AVAILABLE.lock().unwrap();
+        docker::initialize().await.expect("initialization");
+        guard
+    }
+
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_es_url() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
-
-        let url = String::from("http://example.com:demo"); // invalid URL
+        let url = String::from("http://example.com:demo");
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
@@ -184,7 +193,6 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -193,11 +201,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_url_not_es() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
-
-        let url = String::from("http://localhost:80"); // Hopefully there is no ES on localhost:80
+        let url = String::from("http://no-es.test");
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
@@ -210,7 +214,6 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -219,14 +222,11 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_path_for_mappings() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let _guard = es_initialize().await;
 
-        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
         let args = Args {
             input: String::from("foo"),
-            connection_string: url,
+            connection_string: get_es_test_url(),
             dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
             settings: PathBuf::from("./config/admin/settings.json"),
@@ -236,7 +236,6 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -245,14 +244,11 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_mappings() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let _guard = es_initialize().await;
 
-        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
         let args = Args {
             input: String::from("foo"),
-            connection_string: url,
+            connection_string: get_es_test_url(),
             dataset: String::from("dataset"),
             mappings: PathBuf::from("./README.md"), // exists, but not json
             settings: PathBuf::from("./config/admin/settings.json"),
@@ -262,7 +258,6 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -271,14 +266,11 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_path_for_input() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let _guard = es_initialize().await;
 
-        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
         let args = Args {
             input: String::from("./invalid.jsonl.gz"),
-            connection_string: url,
+            connection_string: get_es_test_url(),
             dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
             settings: PathBuf::from("./config/admin/settings.json"),
@@ -288,7 +280,6 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -297,14 +288,11 @@ mod tests {
 
     #[tokio::test]
     async fn should_correctly_index_a_small_cosmogony_file() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let _guard = es_initialize().await;
 
-        let url = std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var");
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: url,
+            connection_string: get_es_test_url(),
             dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
             settings: PathBuf::from("./config/admin/settings.json"),
@@ -313,7 +301,8 @@ mod tests {
             langs: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        assert!(res.is_ok(), "index_cosmogony failed {:?}", &res);
 
         // Now we query the index we just created. Since a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
@@ -334,8 +323,158 @@ mod tests {
         };
 
         let list_result = list_documents.execute(parameters).await;
-        let list: Vec<_> = list_result.unwrap().collect().await;
-        drop(guard);
+        let list: Vec<Place> = list_result
+            .unwrap()
+            .map(|json| serde_json::from_value(json).unwrap())
+            .collect()
+            .await;
         assert_eq!(list.len(), 8);
+        assert!(list.iter().all(|place| place.is_admin()));
+
+        let admins: Vec<Admin> = list
+            .into_iter()
+            .map(|place| match place {
+                Place::Admin(a) => a,
+                _ => unreachable!(),
+            })
+            .collect();
+        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
+        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+    }
+
+    #[tokio::test]
+    async fn should_correctly_index_cosmogony_with_langs() {
+        let _guard = es_initialize().await;
+
+        let args = Args {
+            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            connection_string: get_es_test_url(),
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec!["fr".into(), "en".into()],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        assert!(res.is_ok(), "index_cosmogony failed {:?}", &res);
+
+        // Now we query the index we just created. Since a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let pool = connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let list_documents = ListDocuments::new(Box::new(client));
+
+        let parameters = ListDocumentsParameters {
+            parameters: ListParameters {
+                doc_type: String::from(Admin::doc_type()),
+            },
+        };
+
+        let list_result = list_documents.execute(parameters).await;
+        let list: Vec<Place> = list_result
+            .unwrap()
+            .map(|json| serde_json::from_value(json).unwrap())
+            .collect()
+            .await;
+        assert_eq!(list.len(), 8);
+        assert!(list.iter().all(|place| place.is_admin()));
+
+        let admins: Vec<Admin> = list
+            .into_iter()
+            .map(|place| match place {
+                Place::Admin(a) => a,
+                _ => unreachable!(),
+            })
+            .collect();
+        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
+        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+
+        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
+        assert_eq!(brittany.names.get("fr"), Some("Bretagne"));
+        assert_eq!(brittany.names.get("en"), Some("Brittany"));
+        assert_eq!(brittany.labels.get("en"), Some("Brittany"));
+    }
+
+    #[tokio::test]
+    async fn should_index_cosmgony_with_correct_values() {
+        let _guard = es_initialize().await;
+
+        let args = Args {
+            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            connection_string: get_es_test_url(),
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"), // exists, but not json
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        assert!(res.is_ok(), "index_cosmogony failed {:?}", &res);
+
+        // Now we query the index we just created. Since a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let pool = connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let list_documents = ListDocuments::new(Box::new(client));
+
+        let parameters = ListDocumentsParameters {
+            parameters: ListParameters {
+                doc_type: String::from(Admin::doc_type()),
+            },
+        };
+
+        let list_result = list_documents.execute(parameters).await;
+        let list: Vec<Place> = list_result
+            .unwrap()
+            .map(|json| serde_json::from_value(json).unwrap())
+            .collect()
+            .await;
+        assert_eq!(list.len(), 8);
+        assert!(list.iter().all(|place| place.is_admin()));
+
+        let admins: Vec<Admin> = list
+            .into_iter()
+            .map(|place| match place {
+                Place::Admin(a) => a,
+                _ => unreachable!(),
+            })
+            .collect();
+        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
+        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+
+        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
+        assert_eq!(brittany.id, "admin:osm:relation:102740");
+        assert_eq!(brittany.zone_type, Some(cosmogony::ZoneType::State));
+        assert_relative_eq!(brittany.weight, 0.002_298, epsilon = 1e-6);
+        assert_eq!(
+            brittany.codes,
+            vec![
+                ("ISO3166-2", "FR-BRE"),
+                ("ref:INSEE", "53"),
+                ("ref:nuts", "FRH;FRH0"),
+                ("ref:nuts:1", "FRH"),
+                ("ref:nuts:2", "FRH0"),
+                ("wikidata", "Q12130")
+            ]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+        )
     }
 }

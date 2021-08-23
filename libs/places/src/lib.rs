@@ -20,7 +20,8 @@ use street::Street;
 
 /// Object stored in elastic search
 #[allow(clippy::large_enum_variant)]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum Place {
     Admin(Admin),
     Street(Street),

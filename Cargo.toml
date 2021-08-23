@@ -72,7 +72,7 @@ tracing = "0.1.26"
 tracing-appender = "0.1.2"
 tracing-futures = "0.2.5"
 tracing-subscriber = "0.2.17"
-tracing-bunyan-formatter = "0.1.7"
+tracing-bunyan-formatter = { version = "0.2", default-features = false }
 tracing-log = "0.1.2"
 http = "0.2"
 warp = { version = "0.3.1" }
@@ -88,7 +88,7 @@ path = "src/lib.rs"
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 env_logger = "*"
 url = "2.2.2"
-approx = "0.3"
+approx = "0.5"
 actix-web = "1"
 cucumber = { package = "cucumber_rust", version = "0.9" }
 tokio = { version = "1.6.0", features = [ "rt-multi-thread", "macros", "process" ] }
