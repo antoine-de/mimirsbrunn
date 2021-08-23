@@ -158,9 +158,12 @@ mod tests {
 
     use mimir2::{
         adapters::secondary::elasticsearch::remote::connection_test_pool,
+        domain::model::query::Query,
         domain::ports::list::ListParameters,
         domain::ports::remote::Remote,
+        domain::ports::search::SearchParameters,
         domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
+        domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
         domain::usecases::UseCase,
         utils::docker,
     };
@@ -445,37 +448,42 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        // FIXME Use the SearchDocument instead of Listing all documents.
-        let list_documents = ListDocuments::new(Box::new(client));
+        let search_documents = SearchDocuments::new(Box::new(client));
 
-        let parameters = ListDocumentsParameters {
-            parameters: ListParameters {
-                doc_type: String::from(Admin::doc_type()),
+        // Preparing the query:
+        // let filters = Filters::default();
+
+        // let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        // query_settings_file.push("config");
+        // query_settings_file.push("query");
+        // query_settings_file.push("settings.toml");
+        // let query_settings = QuerySettings::new_from_file(query_settings_file)
+        //     .await
+        //     .expect("query settings");
+
+        // let dsl = build_query("bretagne", filters, &["fr"], &query_settings);
+
+        // We're searching for the admin whose name is 'Bretagne'
+        let parameters = SearchDocumentsParameters {
+            parameters: SearchParameters {
+                query: Query::QueryString(String::from("name:bretagne")),
+                doc_types: vec![String::from(Admin::doc_type())],
             },
         };
 
-        let list_result = list_documents.execute(parameters).await;
+        let list_result = search_documents.execute(parameters).await;
 
-        let list: Vec<Place> = list_result
+        let admins: Vec<Admin> = list_result
             .unwrap()
-            .map(|json| serde_json::from_value(json).unwrap())
-            .collect()
-            .await;
-
-        drop(guard);
-
-        assert_eq!(list.len(), 8);
-        assert!(list.iter().all(|place| place.is_admin()));
-
-        let admins: Vec<Admin> = list
             .into_iter()
+            .map(|json| serde_json::from_value::<Place>(json).unwrap())
             .map(|place| match place {
-                Place::Admin(a) => a,
-                _ => unreachable!(),
+                Place::Admin(admin) => admin,
+                _ => panic!("should only have admins"),
             })
             .collect();
-        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
-        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+
+        drop(guard);
 
         let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
         assert_eq!(brittany.id, "admin:osm:relation:102740");
