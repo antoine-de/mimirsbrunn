@@ -50,4 +50,4 @@ lint: ## Check quality of the code
 	cargo clippy --all-features --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
 
 test: ## Launch all tests
-	ELASTICSEARCH_TEST_URL="http://localhost:9200" cargo test --all-targets
+	ELASTICSEARCH_TEST_URL="http://localhost:9201" cargo test --all-targets
