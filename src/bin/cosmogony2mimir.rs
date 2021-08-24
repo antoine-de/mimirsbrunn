@@ -40,9 +40,9 @@ use serde_json::json;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-#[cfg(test)]
-#[macro_use]
-extern crate approx;
+// #[cfg(test)]
+// #[macro_use]
+// extern crate approx;
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -154,20 +154,8 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use futures::stream::StreamExt;
 
-    use mimir2::{
-        adapters::secondary::elasticsearch::remote::connection_test_pool,
-        domain::model::query::Query,
-        domain::ports::list::ListParameters,
-        domain::ports::remote::Remote,
-        domain::ports::search::SearchParameters,
-        domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
-        domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
-        domain::usecases::UseCase,
-        utils::docker,
-    };
-    use places::{admin::Admin, MimirObject, Place};
+    use mimir2::utils::docker;
 
     use super::*;
 
@@ -298,210 +286,210 @@ mod tests {
             .contains("could not index cosmogony: No such file or directory"));
     }
 
-    #[tokio::test]
-    async fn should_correctly_index_a_small_cosmogony_file() {
-        let guard = initialize_elasticsearch_docker().await;
+    // #[tokio::test]
+    // async fn should_correctly_index_a_small_cosmogony_file() {
+    //     let guard = initialize_elasticsearch_docker().await;
 
-        let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
-            langs: vec![],
-        };
+    //     let args = Args {
+    //         input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+    //         connection_string: elasticsearch_test_url(),
+    //         dataset: String::from("dataset"),
+    //         mappings: PathBuf::from("./config/admin/mappings.json"),
+    //         settings: PathBuf::from("./config/admin/settings.json"),
+    //         nb_shards: None,
+    //         nb_replicas: None,
+    //         langs: vec![],
+    //     };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+    //     let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
-        // we'll just list all the documents in the index, and check them.
-        let pool = connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
-            .conn()
-            .await
-            .expect("Elasticsearch Connection Established");
+    //     // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+    //     // we'll just list all the documents in the index, and check them.
+    //     let pool = connection_test_pool()
+    //         .await
+    //         .expect("Elasticsearch Connection Pool");
+    //     let client = pool
+    //         .conn()
+    //         .await
+    //         .expect("Elasticsearch Connection Established");
 
-        let list_documents = ListDocuments::new(Box::new(client));
+    //     let list_documents = ListDocuments::new(Box::new(client));
 
-        let parameters = ListDocumentsParameters {
-            parameters: ListParameters {
-                doc_type: String::from(Admin::doc_type()),
-            },
-        };
+    //     let parameters = ListDocumentsParameters {
+    //         parameters: ListParameters {
+    //             doc_type: String::from(Admin::doc_type()),
+    //         },
+    //     };
 
-        let list_result = list_documents.execute(parameters).await;
-        let list: Vec<Place> = list_result
-            .unwrap()
-            .map(|json| serde_json::from_value(json).unwrap())
-            .collect()
-            .await;
+    //     let list_result = list_documents.execute(parameters).await;
+    //     let list: Vec<Place> = list_result
+    //         .unwrap()
+    //         .map(|json| serde_json::from_value(json).unwrap())
+    //         .collect()
+    //         .await;
 
-        drop(guard);
+    //     drop(guard);
 
-        assert_eq!(list.len(), 8);
-        assert!(list.iter().all(|place| place.is_admin()));
+    //     assert_eq!(list.len(), 8);
+    //     assert!(list.iter().all(|place| place.is_admin()));
 
-        let admins: Vec<Admin> = list
-            .into_iter()
-            .map(|place| match place {
-                Place::Admin(a) => a,
-                _ => unreachable!(),
-            })
-            .collect();
-        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
-        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
-    }
+    //     let admins: Vec<Admin> = list
+    //         .into_iter()
+    //         .map(|place| match place {
+    //             Place::Admin(a) => a,
+    //             _ => unreachable!(),
+    //         })
+    //         .collect();
+    //     assert!(admins.iter().all(|admin| admin.boundary.is_some()));
+    //     assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+    // }
 
-    #[tokio::test]
-    async fn should_correctly_index_cosmogony_with_langs() {
-        let guard = initialize_elasticsearch_docker().await;
+    // #[tokio::test]
+    // async fn should_correctly_index_cosmogony_with_langs() {
+    //     let guard = initialize_elasticsearch_docker().await;
 
-        let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
-            langs: vec!["fr".into(), "en".into()],
-        };
+    //     let args = Args {
+    //         input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+    //         connection_string: elasticsearch_test_url(),
+    //         dataset: String::from("dataset"),
+    //         mappings: PathBuf::from("./config/admin/mappings.json"),
+    //         settings: PathBuf::from("./config/admin/settings.json"),
+    //         nb_shards: None,
+    //         nb_replicas: None,
+    //         langs: vec!["fr".into(), "en".into()],
+    //     };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+    //     let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-        // Now we query the index we just created. Since a small cosmogony file with few entries,
-        // we'll just list all the documents in the index, and check them.
-        let pool = connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
-            .conn()
-            .await
-            .expect("Elasticsearch Connection Established");
+    //     // Now we query the index we just created. Since a small cosmogony file with few entries,
+    //     // we'll just list all the documents in the index, and check them.
+    //     let pool = connection_test_pool()
+    //         .await
+    //         .expect("Elasticsearch Connection Pool");
+    //     let client = pool
+    //         .conn()
+    //         .await
+    //         .expect("Elasticsearch Connection Established");
 
-        let list_documents = ListDocuments::new(Box::new(client));
+    //     let list_documents = ListDocuments::new(Box::new(client));
 
-        let parameters = ListDocumentsParameters {
-            parameters: ListParameters {
-                doc_type: String::from(Admin::doc_type()),
-            },
-        };
+    //     let parameters = ListDocumentsParameters {
+    //         parameters: ListParameters {
+    //             doc_type: String::from(Admin::doc_type()),
+    //         },
+    //     };
 
-        let list_result = list_documents.execute(parameters).await;
-        let list: Vec<Place> = list_result
-            .unwrap()
-            .map(|json| serde_json::from_value(json).unwrap())
-            .collect()
-            .await;
+    //     let list_result = list_documents.execute(parameters).await;
+    //     let list: Vec<Place> = list_result
+    //         .unwrap()
+    //         .map(|json| serde_json::from_value(json).unwrap())
+    //         .collect()
+    //         .await;
 
-        drop(guard);
+    //     drop(guard);
 
-        // FIXME: Should we rerun the next 4 tests, which are already part
-        // of the previous test, and focus on the language part?
-        assert_eq!(list.len(), 8);
-        assert!(list.iter().all(|place| place.is_admin()));
+    //     // FIXME: Should we rerun the next 4 tests, which are already part
+    //     // of the previous test, and focus on the language part?
+    //     assert_eq!(list.len(), 8);
+    //     assert!(list.iter().all(|place| place.is_admin()));
 
-        let admins: Vec<Admin> = list
-            .into_iter()
-            .map(|place| match place {
-                Place::Admin(a) => a,
-                _ => unreachable!(),
-            })
-            .collect();
-        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
-        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+    //     let admins: Vec<Admin> = list
+    //         .into_iter()
+    //         .map(|place| match place {
+    //             Place::Admin(a) => a,
+    //             _ => unreachable!(),
+    //         })
+    //         .collect();
+    //     assert!(admins.iter().all(|admin| admin.boundary.is_some()));
+    //     assert!(admins.iter().all(|admin| admin.coord.is_valid()));
 
-        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
-        assert_eq!(brittany.names.get("fr"), Some("Bretagne"));
-        assert_eq!(brittany.names.get("en"), Some("Brittany"));
-        assert_eq!(brittany.labels.get("en"), Some("Brittany"));
-    }
+    //     let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
+    //     assert_eq!(brittany.names.get("fr"), Some("Bretagne"));
+    //     assert_eq!(brittany.names.get("en"), Some("Brittany"));
+    //     assert_eq!(brittany.labels.get("en"), Some("Brittany"));
+    // }
 
-    #[tokio::test]
-    async fn should_index_cosmogony_with_correct_values() {
-        let guard = initialize_elasticsearch_docker().await;
+    // #[tokio::test]
+    // async fn should_index_cosmogony_with_correct_values() {
+    //     let guard = initialize_elasticsearch_docker().await;
 
-        let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
-            langs: vec![],
-        };
+    //     let args = Args {
+    //         input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+    //         connection_string: elasticsearch_test_url(),
+    //         dataset: String::from("dataset"),
+    //         mappings: PathBuf::from("./config/admin/mappings.json"),
+    //         settings: PathBuf::from("./config/admin/settings.json"),
+    //         nb_shards: None,
+    //         nb_replicas: None,
+    //         langs: vec![],
+    //     };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+    //     let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-        // Now we query the index we just created. Since a small cosmogony file with few entries,
-        // we'll just list all the documents in the index, and check them.
-        let pool = connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
-            .conn()
-            .await
-            .expect("Elasticsearch Connection Established");
+    //     // Now we query the index we just created. Since a small cosmogony file with few entries,
+    //     // we'll just list all the documents in the index, and check them.
+    //     let pool = connection_test_pool()
+    //         .await
+    //         .expect("Elasticsearch Connection Pool");
+    //     let client = pool
+    //         .conn()
+    //         .await
+    //         .expect("Elasticsearch Connection Established");
 
-        let search_documents = SearchDocuments::new(Box::new(client));
+    //     let search_documents = SearchDocuments::new(Box::new(client));
 
-        // Preparing the query:
-        // let filters = Filters::default();
+    //     // Preparing the query:
+    //     // let filters = Filters::default();
 
-        // let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        // query_settings_file.push("config");
-        // query_settings_file.push("query");
-        // query_settings_file.push("settings.toml");
-        // let query_settings = QuerySettings::new_from_file(query_settings_file)
-        //     .await
-        //     .expect("query settings");
+    //     // let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    //     // query_settings_file.push("config");
+    //     // query_settings_file.push("query");
+    //     // query_settings_file.push("settings.toml");
+    //     // let query_settings = QuerySettings::new_from_file(query_settings_file)
+    //     //     .await
+    //     //     .expect("query settings");
 
-        // let dsl = build_query("bretagne", filters, &["fr"], &query_settings);
+    //     // let dsl = build_query("bretagne", filters, &["fr"], &query_settings);
 
-        // We're searching for the admin whose name is 'Bretagne'
-        let parameters = SearchDocumentsParameters {
-            parameters: SearchParameters {
-                query: Query::QueryString(String::from("name:bretagne")),
-                doc_types: vec![String::from(Admin::doc_type())],
-            },
-        };
+    //     // We're searching for the admin whose name is 'Bretagne'
+    //     let parameters = SearchDocumentsParameters {
+    //         parameters: SearchParameters {
+    //             query: Query::QueryString(String::from("name:bretagne")),
+    //             doc_types: vec![String::from(Admin::doc_type())],
+    //         },
+    //     };
 
-        let list_result = search_documents.execute(parameters).await;
+    //     let list_result = search_documents.execute(parameters).await;
 
-        let admins: Vec<Admin> = list_result
-            .unwrap()
-            .into_iter()
-            .map(|json| serde_json::from_value::<Place>(json).unwrap())
-            .map(|place| match place {
-                Place::Admin(admin) => admin,
-                _ => panic!("should only have admins"),
-            })
-            .collect();
+    //     let admins: Vec<Admin> = list_result
+    //         .unwrap()
+    //         .into_iter()
+    //         .map(|json| serde_json::from_value::<Place>(json).unwrap())
+    //         .map(|place| match place {
+    //             Place::Admin(admin) => admin,
+    //             _ => panic!("should only have admins"),
+    //         })
+    //         .collect();
 
-        drop(guard);
+    //     drop(guard);
 
-        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
-        assert_eq!(brittany.id, "admin:osm:relation:102740");
-        assert_eq!(brittany.zone_type, Some(cosmogony::ZoneType::State));
-        assert_relative_eq!(brittany.weight, 0.002_298, epsilon = 1e-6);
-        assert_eq!(
-            brittany.codes,
-            vec![
-                ("ISO3166-2", "FR-BRE"),
-                ("ref:INSEE", "53"),
-                ("ref:nuts", "FRH;FRH0"),
-                ("ref:nuts:1", "FRH"),
-                ("ref:nuts:2", "FRH0"),
-                ("wikidata", "Q12130")
-            ]
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect()
-        )
-    }
+    //     let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
+    //     assert_eq!(brittany.id, "admin:osm:relation:102740");
+    //     assert_eq!(brittany.zone_type, Some(cosmogony::ZoneType::State));
+    //     assert_relative_eq!(brittany.weight, 0.002_298, epsilon = 1e-6);
+    //     assert_eq!(
+    //         brittany.codes,
+    //         vec![
+    //             ("ISO3166-2", "FR-BRE"),
+    //             ("ref:INSEE", "53"),
+    //             ("ref:nuts", "FRH;FRH0"),
+    //             ("ref:nuts:1", "FRH"),
+    //             ("ref:nuts:2", "FRH0"),
+    //             ("wikidata", "Q12130")
+    //         ]
+    //         .into_iter()
+    //         .map(|(k, v)| (k.to_string(), v.to_string()))
+    //         .collect()
+    //     )
+    // }
 }
