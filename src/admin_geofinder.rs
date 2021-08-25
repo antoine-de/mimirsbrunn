@@ -37,6 +37,7 @@ use places::admin::Admin;
 use rstar::{Envelope, PointDistance, RTree, RTreeObject, SelectionFunction, AABB};
 use slog_scope::{info, warn};
 use std::collections::{HashMap, HashSet};
+use std::iter::Extend;
 use std::iter::FromIterator;
 use std::sync::Arc;
 
@@ -273,16 +274,19 @@ impl Default for AdminGeoFinder {
     }
 }
 
+impl Extend<Admin> for AdminGeoFinder {
+    fn extend<T: IntoIterator<Item = Admin>>(&mut self, admins: T) {
+        for mut admin in admins {
+            admin.administrative_regions = Vec::new();
+            self.insert(admin);
+        }
+    }
+}
+
 impl FromIterator<Admin> for AdminGeoFinder {
     fn from_iter<I: IntoIterator<Item = Admin>>(admins: I) -> Self {
         let mut geofinder = AdminGeoFinder::default();
-
-        for mut admin in admins {
-            // Usless to keep parent admins for each admin.
-            admin.administrative_regions = vec![];
-            geofinder.insert(admin);
-        }
-
+        geofinder.extend(admins);
         geofinder
     }
 }
