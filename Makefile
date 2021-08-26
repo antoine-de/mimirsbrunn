@@ -4,6 +4,7 @@ SHELL=/bin/bash
 # Configuration
 .PHONY: check docker-build-bragi-release docker-build-bragi-master dockerhub-login push-bragi-image-master push-bragi-image-release wipe-useless-images help
 .DEFAULT_GOAL := help
+ELASTICSEARCH_TEST_URL=http://localhost:9201
 
 check: pre-build ## Runs several tests (alias for pre-build)
 pre-build: fmt lint test
@@ -50,4 +51,4 @@ lint: ## Check quality of the code
 	cargo clippy --all-features --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
 
 test: ## Launch all tests
-	ELASTICSEARCH_TEST_URL="http://localhost:9201" cargo test --all-targets
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --all-targets
