@@ -1,4 +1,3 @@
-use async_graphql::extensions::Tracing;
 use async_graphql::*;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, MimirObject};
 use serde::{Deserialize, Serialize};
@@ -7,13 +6,10 @@ use tokio::io::AsyncReadExt;
 
 use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters};
 use crate::adapters::primary::bragi::settings::QuerySettings;
+use crate::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use crate::domain::model::query::Query as SearchQuery;
-use crate::domain::ports::explain::ExplainParameters;
-use crate::domain::ports::search::SearchParameters;
 use crate::domain::usecases::{
-    explain_query::{ExplainDocument, ExplainDocumentParameters},
-    search_documents::{SearchDocuments, SearchDocumentsParameters},
-    UseCase,
+    explain_query::explain_document, search_documents::search_documents,
 };
 
 // impl ErrorExtensions for SearchError {
@@ -172,7 +168,7 @@ impl Mutation {
         filters: InputFilters,
         settings: Upload,
     ) -> FieldResult<SearchResponseBody> {
-        let search = get_search_from_context(context)?;
+        let client = get_client_from_context(context)?;
 
         // Read settings from uploaded file
         let settings = settings
@@ -192,23 +188,20 @@ impl Mutation {
         let filters = Filters::from(filters);
         let dsl = build_query(&q, filters, &["fr"], &settings);
 
-        let parameters = SearchDocumentsParameters {
-            parameters: SearchParameters {
-                query: SearchQuery::QueryDSL(dsl),
-                doc_types: vec![
-                    String::from(Admin::doc_type()),
-                    String::from(Street::doc_type()),
-                    String::from(Addr::doc_type()),
-                    String::from(Stop::doc_type()),
-                    String::from(Poi::doc_type()),
-                ],
-            },
-        };
+        let res = search_documents(
+            client,
+            vec![
+                String::from(Admin::doc_type()),
+                String::from(Street::doc_type()),
+                String::from(Addr::doc_type()),
+                String::from(Stop::doc_type()),
+                String::from(Poi::doc_type()),
+            ],
+            SearchQuery::QueryDSL(dsl),
+        )
+        .await?;
 
-        let res = search.execute(parameters).await?;
-        let resp = SearchResponseBody::from(res);
-
-        Ok(resp)
+        Ok(res.into())
     }
 
     async fn explain_geocoder(
@@ -219,7 +212,7 @@ impl Mutation {
         filters: InputFilters,
         settings: Upload,
     ) -> FieldResult<ExplainResponseBody> {
-        let explain = get_explain_from_context(context)?;
+        let client = get_client_from_context(context)?;
 
         // Read settings from uploaded file
         let settings = settings
@@ -244,54 +237,22 @@ impl Mutation {
         // already have the id, and we'll extract the index from the id, because the id is prefixed
         // by the document type.
         let endb = id.find(':').unwrap();
-        let doc_type = String::from(&id[0..endb]);
-
-        let parameters = ExplainDocumentParameters {
-            parameters: ExplainParameters {
-                query: SearchQuery::QueryDSL(dsl),
-                doc_type,
-                id,
-            },
-        };
-
-        let res: JsonValue = explain.execute(parameters).await?;
+        let doc_type = id[0..endb].to_string();
+        let res = explain_document(client, SearchQuery::QueryDSL(dsl), id, doc_type).await?;
         println!("res: {:?}", res);
-
-        let resp = ExplainResponseBody::from(res);
-
-        Ok(resp)
+        Ok(res.into())
     }
 }
 
 pub type BragiSchema = Schema<Query, Mutation, EmptySubscription>;
 
-pub fn bragi_schema<D: 'static>(
-    search: SearchDocuments<D>,
-    explain: ExplainDocument<D>,
-) -> BragiSchema {
-    Schema::build(Query, Mutation, EmptySubscription)
-        .extension(Tracing)
-        .data(search)
-        .data(explain)
-        .finish()
-}
-
 #[allow(clippy::borrowed_box)]
-pub fn get_search_from_context<'ctx, D: 'static>(
+pub fn get_client_from_context<'ctx>(
     context: &'ctx Context,
-) -> Result<&'ctx SearchDocuments<D>, async_graphql::Error>
+) -> Result<&'ctx ElasticsearchStorage, async_graphql::Error>
 where
 {
-    context.data::<SearchDocuments<D>>()
-}
-
-#[allow(clippy::borrowed_box)]
-pub fn get_explain_from_context<'ctx, D: 'static>(
-    context: &'ctx Context,
-) -> Result<&'ctx ExplainDocument<D>, async_graphql::Error>
-where
-{
-    context.data::<ExplainDocument<D>>()
+    context.data()
 }
 
 // #[cfg(test)]

@@ -154,7 +154,6 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-
     use mimir2::utils::docker;
 
     use super::*;

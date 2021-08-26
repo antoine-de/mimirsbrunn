@@ -498,14 +498,15 @@ impl ElasticsearchStorage {
     */
 
     // Changed the name to avoid recursive calls int storage::insert_documents
-    pub(super) async fn insert_documents_in_index<S>(
+    pub(super) async fn insert_documents_in_index<D, S>(
         &self,
         index: String,
         documents: S,
     ) -> Result<InsertStats, Error>
     where
         //D: Document + Send + Sync + 'static,
-        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
+        D: Document + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
         let stats = Arc::new(Mutex::new(InsertStats::default()));
 
@@ -535,21 +536,25 @@ impl ElasticsearchStorage {
     }
 
     // Changed the name to avoid recursive calls int storage::insert_documents
-    pub(super) async fn insert_chunk_in_index(
+    pub(super) async fn insert_chunk_in_index<D>(
         &self,
         index: String,
-        chunk: Vec<Box<dyn Document + Send + Sync + 'static>>,
+        chunk: Vec<D>,
         stats: Arc<Mutex<InsertStats>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Error>
+    where
+        D: Document + Send + Sync + 'static,
+    {
         // We try to insert the chunk using bulk insertion.
         // We then analyze the result, which contains an array of 'items'.
         // Each item must contain the string 'created'. So we iterate through these items,
         // and build a Result<(), Error>, and skip while it `is_ok()`. If we have an
         // error, we report it.
         let mut ops: Vec<BulkOperation<Value>> = Vec::with_capacity(CHUNK_SIZE);
-        chunk.iter().for_each(|doc| {
+        chunk.into_iter().for_each(|doc| {
+            let doc_id = doc.id();
             let value = serde_json::to_value(doc).expect("to json value");
-            ops.push(BulkOperation::index(value).id(doc.id()).into());
+            ops.push(BulkOperation::index(value).id(doc_id).into());
         });
         // FIXME Missing Error Handling
         let resp = self

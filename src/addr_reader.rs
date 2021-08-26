@@ -7,10 +7,7 @@ use mimir2::{
     adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
     domain::{
         model::{configuration::Configuration, document::Document, index::IndexVisibility},
-        usecases::{
-            generate_index::{GenerateIndex, GenerateIndexParameters},
-            UseCase,
-        },
+        usecases::generate_index::generate_index,
     },
 };
 use places::addr::Addr;
@@ -71,17 +68,16 @@ where
             err.to_string()
         )
     })?;
-    let generate_index = GenerateIndex::new(Box::new(client));
-    let parameters = GenerateIndexParameters {
-        config: Configuration { value: config },
-        documents: Box::new(addrs),
-        doc_type: String::from(AddrDoc::DOC_TYPE),
-        visibility: IndexVisibility::Public,
-    };
-    generate_index
-        .execute(parameters)
-        .await
-        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
+
+    generate_index(
+        &client,
+        Configuration { value: config },
+        addrs,
+        AddrDoc::DOC_TYPE,
+        IndexVisibility::Public,
+    )
+    .await
+    .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
 
     Ok(())
 }

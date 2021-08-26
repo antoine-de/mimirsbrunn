@@ -36,41 +36,46 @@ pub trait Storage {
 
     async fn find_container(&self, index: String) -> Result<Option<Index>, Error>;
 
-    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
+    async fn insert_documents<D, S>(
+        &self,
+        index: String,
+        documents: S,
+    ) -> Result<InsertStats, Error>
     where
-        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static;
+        D: Document + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync + Unpin + 'static;
 
     async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error>;
 }
 
-#[async_trait]
-impl<'a, T: ?Sized> Storage for Box<T>
-where
-    T: Storage + Send + Sync,
-{
-    async fn create_container(&self, config: Configuration) -> Result<Index, Error> {
-        (**self).create_container(config).await
-    }
-
-    async fn delete_container(&self, index: String) -> Result<(), Error> {
-        (**self).delete_container(index).await
-    }
-
-    async fn find_container(&self, index: String) -> Result<Option<Index>, Error> {
-        (**self).find_container(index).await
-    }
-
-    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
-    where
-        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
-    {
-        (**self).insert_documents(index, documents).await
-    }
-
-    async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error> {
-        (**self).publish_index(index, visibility).await
-    }
-}
+// #[async_trait]
+// impl<'a, T: ?Sized> Storage for Box<T>
+// where
+//     T: Storage + Send + Sync,
+// {
+//     async fn create_container(&self, config: Configuration) -> Result<Index, Error> {
+//         (**self).create_container(config).await
+//     }
+//
+//     async fn delete_container(&self, index: String) -> Result<(), Error> {
+//         (**self).delete_container(index).await
+//     }
+//
+//     async fn find_container(&self, index: String) -> Result<Option<Index>, Error> {
+//         (**self).find_container(index).await
+//     }
+//
+//     async fn insert_documents<S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
+//     where
+//         S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
+//     {
+//         (**self).insert_documents(index, documents).await
+//     }
+//
+//     async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error> {
+//         (**self).publish_index(index, visibility).await
+//     }
+// }
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
@@ -81,17 +86,14 @@ pub trait ErasedStorage {
 
     async fn erased_find_container(&self, index: String) -> Result<Option<Index>, Error>;
 
-    async fn erased_insert_documents(
+    async fn erased_insert_documents<D, S>(
         &self,
         index: String,
-        documents: Box<
-            dyn Stream<Item = Box<dyn Document + Send + Sync + 'static>>
-                + Send
-                + Sync
-                + Unpin
-                + 'static,
-        >,
-    ) -> Result<InsertStats, Error>;
+        documents: S,
+    ) -> Result<InsertStats, Error>
+    where
+        D: Document + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync + Unpin + 'static;
 
     async fn erased_publish_index(
         &self,
@@ -101,7 +103,7 @@ pub trait ErasedStorage {
 }
 
 #[async_trait]
-impl Storage for (dyn ErasedStorage + Send + Sync) {
+impl<T: ErasedStorage + Send + Sync> Storage for T {
     async fn create_container(&self, config: Configuration) -> Result<Index, Error> {
         self.erased_create_container(config).await
     }
@@ -114,13 +116,17 @@ impl Storage for (dyn ErasedStorage + Send + Sync) {
         self.erased_find_container(index).await
     }
 
-    async fn insert_documents<S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
+    async fn insert_documents<D, S>(
+        &self,
+        index: String,
+        documents: S,
+    ) -> Result<InsertStats, Error>
     where
-        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
+        D: Document + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
         // FIXME This is a potentially costly operation...
-        self.erased_insert_documents(index, Box::new(documents))
-            .await
+        self.erased_insert_documents(index, documents).await
     }
 
     async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error> {
@@ -128,42 +134,42 @@ impl Storage for (dyn ErasedStorage + Send + Sync) {
     }
 }
 
-#[async_trait]
-impl<T> ErasedStorage for T
-where
-    T: Storage + Send + Sync,
-{
-    async fn erased_create_container(&self, config: Configuration) -> Result<Index, Error> {
-        self.create_container(config).await
-    }
-
-    async fn erased_delete_container(&self, index: String) -> Result<(), Error> {
-        self.delete_container(index).await
-    }
-
-    async fn erased_find_container(&self, index: String) -> Result<Option<Index>, Error> {
-        self.find_container(index).await
-    }
-
-    async fn erased_insert_documents(
-        &self,
-        index: String,
-        documents: Box<
-            dyn Stream<Item = Box<dyn Document + Send + Sync + 'static>>
-                + Send
-                + Sync
-                + Unpin
-                + 'static,
-        >,
-    ) -> Result<InsertStats, Error> {
-        self.insert_documents(index, documents).await
-    }
-
-    async fn erased_publish_index(
-        &self,
-        index: Index,
-        visibility: IndexVisibility,
-    ) -> Result<(), Error> {
-        self.publish_index(index, visibility).await
-    }
-}
+// #[async_trait]
+// impl<T> ErasedStorage for T
+// where
+//     T: Storage + Send + Sync,
+// {
+//     async fn erased_create_container(&self, config: Configuration) -> Result<Index, Error> {
+//         self.create_container(config).await
+//     }
+//
+//     async fn erased_delete_container(&self, index: String) -> Result<(), Error> {
+//         self.delete_container(index).await
+//     }
+//
+//     async fn erased_find_container(&self, index: String) -> Result<Option<Index>, Error> {
+//         self.find_container(index).await
+//     }
+//
+//     async fn erased_insert_documents(
+//         &self,
+//         index: String,
+//         documents: Box<
+//             dyn Stream<Item = Box<dyn Document + Send + Sync + 'static>>
+//                 + Send
+//                 + Sync
+//                 + Unpin
+//                 + 'static,
+//         >,
+//     ) -> Result<InsertStats, Error> {
+//         self.insert_documents(index, documents).await
+//     }
+//
+//     async fn erased_publish_index(
+//         &self,
+//         index: Index,
+//         visibility: IndexVisibility,
+//     ) -> Result<(), Error> {
+//         self.publish_index(index, visibility).await
+//     }
+// }

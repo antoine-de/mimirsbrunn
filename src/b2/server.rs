@@ -12,11 +12,6 @@ use tracing_subscriber::{EnvFilter, Registry};
 use warp::{http::Response as HttpResponse, Filter, Rejection};
 
 use super::settings::{Error as SettingsError, Settings as CSettings};
-use mimir2::{
-    adapters::primary::bragi::gql, adapters::secondary::elasticsearch,
-    domain::ports::remote::Remote, domain::usecases::explain_query::ExplainDocument,
-    domain::usecases::search_documents::SearchDocuments,
-};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -57,53 +52,25 @@ pub async fn run<'a>(matches: &ArgMatches<'a>) -> Result<(), Error> {
 
 #[instrument]
 pub async fn run_server(settings: CSettings) -> Result<(), Error> {
-    let pool = elasticsearch::remote::connection_pool()
-        .await
-        .map_err(|err| Error::Connection {
-            source: Box::new(err),
-        })?;
-
-    let client = pool.conn().await.map_err(|err| Error::Connection {
-        source: Box::new(err),
-    })?;
-
-    let search = SearchDocuments::new(Box::new(client.clone()));
-    let explain = ExplainDocument::new(Box::new(client));
-
-    let schema = gql::bragi_schema(search, explain);
-
-    let graphql_post = async_graphql_warp::graphql(schema).and_then(
-        |(schema, request): (gql::BragiSchema, async_graphql::Request)| async move {
-            // let request_id = Uuid::new_v4();
-            // let root_span = span!(parent: None, Level::INFO, "graphql request", %request_id);
-            // let request = request.data(Tracing::default().parent_span(root_span));
-            Ok::<_, Infallible>(async_graphql_warp::Response::from(
-                schema.execute(request).await,
-            ))
-        },
-    );
-
     let graphql_playground = warp::path("playground").and(warp::get()).map(|| {
         HttpResponse::builder()
             .header("content-type", "text/html")
             .body(playground_source(GraphQLPlaygroundConfig::new("/")))
     });
 
-    let routes = graphql_playground
-        .or(graphql_post)
-        .recover(|err: Rejection| async move {
-            if let Some(async_graphql_warp::BadRequest(err)) = err.find() {
-                return Ok::<_, Infallible>(warp::reply::with_status(
-                    err.to_string(),
-                    StatusCode::BAD_REQUEST,
-                ));
-            }
+    let routes = graphql_playground.recover(|err: Rejection| async move {
+        if let Some(async_graphql_warp::BadRequest(err)) = err.find() {
+            return Ok::<_, Infallible>(warp::reply::with_status(
+                err.to_string(),
+                StatusCode::BAD_REQUEST,
+            ));
+        }
 
-            Ok(warp::reply::with_status(
-                "INTERNAL_SERVER_ERROR".to_string(),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ))
-        });
+        Ok(warp::reply::with_status(
+            "INTERNAL_SERVER_ERROR".to_string(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    });
 
     let host = settings.service.host;
     let port = settings.service.port;

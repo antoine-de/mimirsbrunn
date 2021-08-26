@@ -1,4 +1,4 @@
-pub trait Document: erased_serde::Serialize {
+pub trait Document: serde::Serialize {
     fn doc_type(&self) -> &'static str;
 
     // TODO Maybe returning a String is too restrictive, we
@@ -6,8 +6,6 @@ pub trait Document: erased_serde::Serialize {
     /// provides the id of the document, must be unique in the document container.
     fn id(&self) -> String;
 }
-
-erased_serde::serialize_trait_object!(Document);
 
 #[cfg(test)]
 pub mod tests {
