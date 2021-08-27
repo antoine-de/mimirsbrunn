@@ -34,7 +34,7 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings::osm2mimir::Settings, utils};
 use mimir2::{
-    domain::model::query::Query, domain::ports::query::Query as Queriable,
+    domain::model::query::Query, domain::ports::search::Search,
     domain::usecases::search_documents::search_documents,
 };
 use osm_boundaries_utils::build_boundary;
@@ -238,7 +238,7 @@ pub async fn compute_weight(poi: Poi) -> Poi {
 }
 
 // FIXME Return a Result
-pub async fn add_address(backend: &impl Queriable<Doc = Addr>, poi: Poi) -> Poi {
+pub async fn add_address(backend: &impl Search<Doc = Addr>, poi: Poi) -> Poi {
     // FIXME 1km automagick
     let reverse = mimir2::adapters::primary::bragi::reverse::build_reverse_query(
         "1km",

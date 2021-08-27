@@ -1,6 +1,8 @@
 use elasticsearch::Elasticsearch;
 
+pub mod explain;
 pub mod internal;
+pub mod list;
 pub mod query;
 pub mod remote;
 pub mod storage;
