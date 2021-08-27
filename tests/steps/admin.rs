@@ -7,10 +7,10 @@ use mimir2::{
         remote::{connection_test_pool, Error as PoolError},
     },
     domain::model::query::Query,
-    domain::ports::remote::Error as ConnectionError,
-    domain::ports::remote::Remote,
-    domain::ports::storage::Storage,
-    domain::usecases::search_documents::search_documents,
+    domain::ports::primary::search_documents::search_documents,
+    domain::ports::secondary::remote::Error as ConnectionError,
+    domain::ports::secondary::remote::Remote,
+    domain::ports::secondary::storage::Storage,
 };
 use places::{admin::Admin, MimirObject};
 use snafu::{ResultExt, Snafu};

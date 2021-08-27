@@ -11,7 +11,7 @@ use crate::domain::model::{
     index::{Index, IndexVisibility},
     stats::InsertStats,
 };
-use crate::domain::ports::storage::{Error as StorageError, Storage};
+use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 
 #[async_trait]
 impl Storage for ElasticsearchStorage {

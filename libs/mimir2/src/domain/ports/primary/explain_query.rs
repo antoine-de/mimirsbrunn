@@ -1,5 +1,5 @@
 use crate::domain::model::query::Query;
-use crate::domain::ports::explain::{Error, Explain, Parameters};
+use crate::domain::ports::secondary::explain::{Error, Explain, Parameters};
 
 pub async fn explain_document<B, D>(
     backend: &B,

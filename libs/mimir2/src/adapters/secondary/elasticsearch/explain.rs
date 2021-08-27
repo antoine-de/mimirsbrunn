@@ -1,6 +1,6 @@
 use super::ElasticsearchStorage;
 use crate::domain::model::configuration::root_doctype;
-use crate::domain::ports::explain::{Error, Explain, Parameters};
+use crate::domain::ports::secondary::explain::{Error, Explain, Parameters};
 use async_trait::async_trait;
 
 #[async_trait]

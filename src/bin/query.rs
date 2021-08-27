@@ -3,8 +3,8 @@ use mimir2::{
     adapters::primary::bragi::settings::QuerySettings,
     adapters::secondary::elasticsearch::remote::connection_test_pool,
     domain::model::query::Query,
-    domain::ports::remote::Remote,
-    domain::usecases::search_documents::search_documents,
+    domain::ports::primary::search_documents::search_documents,
+    domain::ports::secondary::remote::Remote,
 };
 use places::{admin::Admin, MimirObject};
 use std::path::PathBuf;

@@ -1,6 +1,6 @@
 use super::ElasticsearchStorage;
 use crate::domain::model::configuration::root_doctype;
-use crate::domain::ports::list::{Error, List, Parameters};
+use crate::domain::ports::secondary::list::{Error, List, Parameters};
 use async_trait::async_trait;
 use futures::stream::Stream;
 use std::pin::Pin;

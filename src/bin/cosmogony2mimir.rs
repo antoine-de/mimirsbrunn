@@ -34,7 +34,7 @@ use mimir2::{
         self,
         internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::ports::remote::Remote,
+    domain::ports::secondary::remote::Remote,
 };
 use serde_json::json;
 use std::path::PathBuf;

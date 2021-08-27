@@ -39,7 +39,7 @@ use mimir2::{
     adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
     domain::{
         model::{configuration::Configuration, document::Document, index::IndexVisibility},
-        usecases::generate_index::generate_index,
+        ports::primary::generate_index::generate_index,
     },
 };
 use places::admin::Admin;

@@ -1,8 +1,8 @@
 use crate::domain::model::configuration::Configuration;
 use crate::domain::model::document::Document;
 use crate::domain::model::index::{Index, IndexVisibility};
-use crate::domain::ports::import::Error as ImportError;
-use crate::domain::ports::storage::Storage;
+use crate::domain::ports::secondary::import::Error as ImportError;
+use crate::domain::ports::secondary::storage::Storage;
 use futures::stream::Stream;
 use tracing::info;
 

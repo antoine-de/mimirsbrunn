@@ -2,7 +2,7 @@ use async_trait::async_trait;
 
 use super::ElasticsearchStorage;
 use crate::domain::model::configuration::root_doctype;
-use crate::domain::ports::search::{Error, Parameters, Search};
+use crate::domain::ports::secondary::search::{Error, Parameters, Search};
 
 #[async_trait]
 impl Search for ElasticsearchStorage {

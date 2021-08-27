@@ -8,7 +8,7 @@ use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters}
 use crate::adapters::primary::bragi::settings::QuerySettings;
 use crate::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use crate::domain::model::query::Query as SearchQuery;
-use crate::domain::usecases::{
+use crate::domain::ports::primary::{
     explain_query::explain_document, search_documents::search_documents,
 };
 

@@ -12,7 +12,7 @@ use snafu::{ResultExt, Snafu};
 use url::Url;
 
 use super::ElasticsearchStorage;
-use crate::domain::ports::remote::{Error as RemoteError, Remote};
+use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
 pub const ES_KEY: &str = "ELASTICSEARCH_URL";
 pub const ES_TEST_KEY: &str = "ELASTICSEARCH_TEST_URL";

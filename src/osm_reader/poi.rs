@@ -34,8 +34,8 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings::osm2mimir::Settings, utils};
 use mimir2::{
-    domain::model::query::Query, domain::ports::search::Search,
-    domain::usecases::search_documents::search_documents,
+    domain::model::query::Query, domain::ports::primary::search_documents::search_documents,
+    domain::ports::secondary::search::Search,
 };
 use osm_boundaries_utils::build_boundary;
 use places::{

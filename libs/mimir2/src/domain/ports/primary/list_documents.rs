@@ -1,4 +1,4 @@
-use crate::domain::ports::list::{Error, List, Parameters};
+use crate::domain::ports::secondary::list::{Error, List, Parameters};
 use futures::stream::Stream;
 use places::MimirObject;
 
