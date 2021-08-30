@@ -7,7 +7,7 @@ use mimir2::{
         remote::{connection_test_pool, Error as PoolError},
     },
     domain::model::query::Query,
-    domain::ports::primary::search_documents::search_documents,
+    domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Error as ConnectionError,
     domain::ports::secondary::remote::Remote,
     domain::ports::secondary::storage::Storage,
@@ -70,13 +70,10 @@ pub fn steps() -> Steps<crate::MyWorld> {
             );
 
             world.search_result = {
-                search_documents(
-                    &client,
-                    vec![String::from(Admin::doc_type())],
-                    Query::QueryDSL(dsl),
-                )
-                .await
-                .unwrap()
+                client
+                    .search_documents(vec![String::from(Admin::doc_type())], Query::QueryDSL(dsl))
+                    .await
+                    .unwrap()
             };
 
             world

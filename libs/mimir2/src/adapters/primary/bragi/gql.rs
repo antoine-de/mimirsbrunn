@@ -8,9 +8,8 @@ use crate::adapters::primary::bragi::autocomplete::{build_query, Coord, Filters}
 use crate::adapters::primary::bragi::settings::QuerySettings;
 use crate::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use crate::domain::model::query::Query as SearchQuery;
-use crate::domain::ports::primary::{
-    explain_query::explain_document, search_documents::search_documents,
-};
+use crate::domain::ports::primary::explain_query::ExplainDocument;
+use crate::domain::ports::primary::search_documents::SearchDocuments;
 
 // impl ErrorExtensions for SearchError {
 //     // lets define our base extensions
@@ -188,18 +187,18 @@ impl Mutation {
         let filters = Filters::from(filters);
         let dsl = build_query(&q, filters, &["fr"], &settings);
 
-        let res = search_documents(
-            client,
-            vec![
-                String::from(Admin::doc_type()),
-                String::from(Street::doc_type()),
-                String::from(Addr::doc_type()),
-                String::from(Stop::doc_type()),
-                String::from(Poi::doc_type()),
-            ],
-            SearchQuery::QueryDSL(dsl),
-        )
-        .await?;
+        let res = client
+            .search_documents(
+                vec![
+                    String::from(Admin::doc_type()),
+                    String::from(Street::doc_type()),
+                    String::from(Addr::doc_type()),
+                    String::from(Stop::doc_type()),
+                    String::from(Poi::doc_type()),
+                ],
+                SearchQuery::QueryDSL(dsl),
+            )
+            .await?;
 
         Ok(res.into())
     }
@@ -238,7 +237,9 @@ impl Mutation {
         // by the document type.
         let endb = id.find(':').unwrap();
         let doc_type = id[0..endb].to_string();
-        let res = explain_document(client, SearchQuery::QueryDSL(dsl), id, doc_type).await?;
+        let res = client
+            .explain_document(SearchQuery::QueryDSL(dsl), id, doc_type)
+            .await?;
         println!("res: {:?}", res);
         Ok(res.into())
     }

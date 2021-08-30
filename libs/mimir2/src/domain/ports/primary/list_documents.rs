@@ -1,12 +1,28 @@
 use crate::domain::ports::secondary::list::{Error, List, Parameters};
+use async_trait::async_trait;
 use futures::stream::Stream;
 use places::MimirObject;
 
-pub fn list_documents<B, D>(backend: &B) -> Result<impl Stream<Item = D> + Send + 'static, Error>
+#[async_trait]
+pub trait ListDocuments {
+    type Document;
+
+    fn list_documents(
+        &self,
+    ) -> Result<Box<dyn Stream<Item = Self::Document> + Send + 'static>, Error>;
+}
+
+impl<T> ListDocuments for T
 where
-    B: List<Doc = D>,
-    D: MimirObject + 'static,
+    T: List,
+    T::Doc: MimirObject + 'static,
 {
-    let doc_type = D::doc_type().to_string();
-    backend.list_documents(Parameters { doc_type })
+    type Document = T::Doc;
+
+    fn list_documents(
+        &self,
+    ) -> Result<Box<dyn Stream<Item = Self::Document> + Send + 'static>, Error> {
+        let doc_type = T::Doc::doc_type().to_string();
+        Ok(Box::new(self.list_documents(Parameters { doc_type })?))
+    }
 }

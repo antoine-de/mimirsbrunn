@@ -1146,7 +1146,7 @@ impl ElasticsearchStorage {
         Ok(stream.boxed())
     }
 
-    pub async fn search_documents<D>(
+    pub(super) async fn search_documents<D>(
         &self,
         indices: Vec<String>,
         query: Query,

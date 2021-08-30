@@ -3,7 +3,7 @@ use mimir2::{
     adapters::primary::bragi::settings::QuerySettings,
     adapters::secondary::elasticsearch::remote::connection_test_pool,
     domain::model::query::Query,
-    domain::ports::primary::search_documents::search_documents,
+    domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Remote,
 };
 use places::{admin::Admin, MimirObject};
@@ -34,16 +34,13 @@ async fn main() {
 
     let dsl = build_query(q, filters, &["fr"], &query_settings);
 
-    search_documents(
-        &client,
-        vec![String::from(Admin::doc_type())],
-        Query::QueryDSL(dsl),
-    )
-    .await
-    .unwrap()
-    .iter()
-    .enumerate()
-    .for_each(|(i, v)| {
-        println!("{}: {} | {} | {}", i, v["id"], v["name"], v["label"]);
-    });
+    client
+        .search_documents(vec![String::from(Admin::doc_type())], Query::QueryDSL(dsl))
+        .await
+        .unwrap()
+        .iter()
+        .enumerate()
+        .for_each(|(i, v): (_, &serde_json::Value)| {
+            println!("{}: {} | {} | {}", i, v["id"], v["name"], v["label"]);
+        });
 }
