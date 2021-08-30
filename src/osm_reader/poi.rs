@@ -34,12 +34,8 @@ use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings::osm2mimir::Settings, utils};
 use mimir2::{
-    domain::model::query::Query,
-    domain::ports::search::SearchParameters,
-    domain::usecases::{
-        search_documents::{SearchDocuments, SearchDocumentsParameters},
-        UseCase,
-    },
+    domain::model::query::Query, domain::ports::primary::search_documents::search_documents,
+    domain::ports::secondary::search::Search,
 };
 use osm_boundaries_utils::build_boundary;
 use places::{
@@ -242,25 +238,25 @@ pub async fn compute_weight(poi: Poi) -> Poi {
 }
 
 // FIXME Return a Result
-pub async fn add_address(poi: Poi, search_documents: &SearchDocuments<serde_json::Value>) -> Poi {
+pub async fn add_address(backend: &impl Search<Doc = Addr>, poi: Poi) -> Poi {
     // FIXME 1km automagick
     let reverse = mimir2::adapters::primary::bragi::reverse::build_reverse_query(
         "1km",
         poi.coord.lat(),
         poi.coord.lon(),
     );
-    let parameters = SearchDocumentsParameters {
-        parameters: SearchParameters {
-            doc_types: vec![String::from(Addr::doc_type())],
-            query: Query::QueryDSL(reverse),
-        },
-    };
+    let documents = search_documents(
+        backend,
+        vec![String::from(Addr::doc_type())],
+        Query::QueryDSL(reverse),
+    );
+
     // FIXME ladder code, should use Result<(), Error> and combinators
-    match search_documents.execute(parameters).await {
+    match documents.await {
         // Ok(res) => match serde_json::from_value(res) {
         Ok(addresses) => match addresses.into_iter().next() {
             Some(a) => Poi {
-                address: Some(serde_json::from_value(a).unwrap()),
+                address: Some(a),
                 ..poi
             },
             None => {

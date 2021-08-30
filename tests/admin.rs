@@ -2,7 +2,7 @@ use cucumber::{async_trait, criteria::feature, futures::FutureExt, Context, Cucu
 use elasticsearch::http::transport::SingleNodeConnectionPool;
 use mimir2::adapters::primary::bragi::settings::QuerySettings;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir2::domain::ports::remote::Remote;
+use mimir2::domain::ports::secondary::remote::Remote;
 use std::convert::Infallible;
 use std::path::PathBuf;
 

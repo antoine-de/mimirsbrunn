@@ -14,9 +14,7 @@ use mimir2::domain::model::document::Document;
 use mimir2::domain::model::index::IndexVisibility;
 use mimir2::domain::ports::remote::Remote;
 use mimir2::domain::ports::storage::Storage;
-use mimir2::domain::usecases::generate_index::GenerateIndex;
-use mimir2::domain::usecases::generate_index::GenerateIndexParameters;
-use mimir2::domain::usecases::UseCase;
+use mimir2::domain::usecases::generate_index::generate_index;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -30,9 +28,9 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             rt.block_on(async move {
                 let settings = include_str!("./fixtures/settings.json");
-                let settings = serde_json::from_str(&settings).unwrap();
+                let settings = serde_json::from_str(settings).unwrap();
                 let mappings = include_str!("./fixtures/mappings.json");
-                let mappings = serde_json::from_str(&mappings).unwrap();
+                let mappings = serde_json::from_str(mappings).unwrap();
                 let index_name = String::from("test-benchmark-people");
                 let config = IndexConfiguration {
                     name: index_name.clone(),
@@ -51,19 +49,13 @@ fn criterion_benchmark(c: &mut Criterion) {
                 let data = include_str!("./fixtures/data.json");
                 let data: Vec<Person> = serde_json::from_str(data).unwrap();
                 let stream = futures::stream::iter(data);
-                let param = GenerateIndexParameters {
-                    config,
-                    documents: Box::new(stream),
-                    visibility: IndexVisibility::Public,
-                    doc_type: String::from("person"),
-                };
-
                 let pool = elasticsearch::remote::connection_test_pool()
                     .await
                     .expect("connection pool");
                 let client = pool.conn().await.expect("client connection");
-                let usecase = GenerateIndex::new(Box::new(client));
-                usecase.execute(param).await.unwrap();
+                generate_index(&client, config, stream, "person", IndexVisibility::Public)
+                    .await
+                    .unwrap();
                 let pool = elasticsearch::remote::connection_test_pool()
                     .await
                     .expect("connection pool");

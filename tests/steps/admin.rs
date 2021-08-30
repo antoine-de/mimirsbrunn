@@ -7,12 +7,10 @@ use mimir2::{
         remote::{connection_test_pool, Error as PoolError},
     },
     domain::model::query::Query,
-    domain::ports::remote::Error as ConnectionError,
-    domain::ports::remote::Remote,
-    domain::ports::search::SearchParameters,
-    domain::ports::storage::Storage,
-    domain::usecases::search_documents::{SearchDocuments, SearchDocumentsParameters},
-    domain::usecases::UseCase,
+    domain::ports::primary::search_documents::search_documents,
+    domain::ports::secondary::remote::Error as ConnectionError,
+    domain::ports::secondary::remote::Remote,
+    domain::ports::secondary::storage::Storage,
 };
 use places::{admin::Admin, MimirObject};
 use snafu::{ResultExt, Snafu};
@@ -63,22 +61,24 @@ pub fn steps() -> Steps<crate::MyWorld> {
         "the user searches for \"(.*)\"",
         t!(|mut world, ctx| {
             let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
-
             let client = pool.conn().await.unwrap();
+            let dsl = build_query(
+                &ctx.matches[1],
+                Filters::default(),
+                &["fr"],
+                &world.query_settings,
+            );
 
-            let search_documents = SearchDocuments::new(Box::new(client));
-
-            let filters = Filters::default();
-
-            let dsl = build_query(&ctx.matches[1], filters, &["fr"], &world.query_settings);
-
-            let parameters = SearchDocumentsParameters {
-                parameters: SearchParameters {
-                    query: Query::QueryDSL(dsl),
-                    doc_types: vec![String::from(Admin::doc_type())],
-                },
+            world.search_result = {
+                search_documents(
+                    &client,
+                    vec![String::from(Admin::doc_type())],
+                    Query::QueryDSL(dsl),
+                )
+                .await
+                .unwrap()
             };
-            world.search_result = search_documents.execute(parameters).await.unwrap();
+
             world
         }),
     );

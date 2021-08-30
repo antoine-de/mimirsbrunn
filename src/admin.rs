@@ -39,10 +39,7 @@ use mimir2::{
     adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
     domain::{
         model::{configuration::Configuration, document::Document, index::IndexVisibility},
-        usecases::{
-            generate_index::{GenerateIndex, GenerateIndexParameters},
-            UseCase,
-        },
+        ports::primary::generate_index::generate_index,
     },
 };
 use places::admin::Admin;
@@ -94,17 +91,16 @@ where
         )
     })?;
     let admins = admins.map(AdminDoc);
-    let generate_index = GenerateIndex::new(Box::new(client));
-    let parameters = GenerateIndexParameters {
-        config: Configuration { value: config },
-        documents: Box::new(admins),
-        doc_type: String::from(AdminDoc::DOC_TYPE),
-        visibility: IndexVisibility::Public,
-    };
-    generate_index
-        .execute(parameters)
-        .await
-        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
+
+    generate_index(
+        &client,
+        Configuration { value: config },
+        admins,
+        AdminDoc::DOC_TYPE,
+        IndexVisibility::Public,
+    )
+    .await
+    .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
 
     Ok(())
 }

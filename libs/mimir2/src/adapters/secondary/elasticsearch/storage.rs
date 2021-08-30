@@ -11,7 +11,7 @@ use crate::domain::model::{
     index::{Index, IndexVisibility},
     stats::InsertStats,
 };
-use crate::domain::ports::storage::{Error as StorageError, Storage};
+use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 
 #[async_trait]
 impl Storage for ElasticsearchStorage {
@@ -55,13 +55,14 @@ impl Storage for ElasticsearchStorage {
     }
 
     // FIXME Explain why we call add_pipeline
-    async fn insert_documents<S>(
+    async fn insert_documents<D, S>(
         &self,
         index: String,
         documents: S,
     ) -> Result<InsertStats, StorageError>
     where
-        S: Stream<Item = Box<dyn Document + Send + Sync + 'static>> + Send + Sync + Unpin + 'static,
+        D: Document + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
         self.add_pipeline(
             String::from(include_str!(
