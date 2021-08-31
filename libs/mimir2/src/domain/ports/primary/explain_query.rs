@@ -1,20 +1,38 @@
 use crate::domain::model::query::Query;
 use crate::domain::ports::secondary::explain::{Error, Explain, Parameters};
+use async_trait::async_trait;
 
-pub async fn explain_document<B, D>(
-    backend: &B,
-    query: Query,
-    id: String,
-    doc_type: String,
-) -> Result<D, Error>
+#[async_trait]
+pub trait ExplainDocument {
+    type Document;
+
+    async fn explain_document(
+        &self,
+        query: Query,
+        id: String,
+        doc_type: String,
+    ) -> Result<Self::Document, Error>;
+}
+
+#[async_trait]
+impl<T> ExplainDocument for T
 where
-    B: Explain<Doc = D>,
+    T: Explain + Send + Sync,
 {
-    let explain_params = Parameters {
-        doc_type,
-        query,
-        id,
-    };
+    type Document = T::Doc;
 
-    backend.explain_document(explain_params).await
+    async fn explain_document(
+        &self,
+        query: Query,
+        id: String,
+        doc_type: String,
+    ) -> Result<Self::Document, Error> {
+        let explain_params = Parameters {
+            doc_type,
+            query,
+            id,
+        };
+
+        self.explain_document(explain_params).await
+    }
 }

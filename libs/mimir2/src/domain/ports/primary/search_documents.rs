@@ -1,17 +1,32 @@
 use crate::domain::model::query::Query;
 use crate::domain::ports::secondary::search::{Error, Parameters, Search};
+use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
-pub async fn search_documents<B, D>(
-    backend: &B,
-    doc_types: Vec<String>,
-    query: Query,
-) -> Result<Vec<D>, Error>
+#[async_trait]
+pub trait SearchDocuments {
+    type Document;
+
+    async fn search_documents(
+        &self,
+        doc_types: Vec<String>,
+        query: Query,
+    ) -> Result<Vec<Self::Document>, Error>;
+}
+
+#[async_trait]
+impl<T> SearchDocuments for T
 where
-    B: Search<Doc = D>,
-    D: DeserializeOwned,
+    T: Search + Send + Sync,
+    T::Doc: DeserializeOwned,
 {
-    backend
-        .search_documents(Parameters { doc_types, query })
-        .await
+    type Document = T::Doc;
+
+    async fn search_documents(
+        &self,
+        doc_types: Vec<String>,
+        query: Query,
+    ) -> Result<Vec<Self::Document>, Error> {
+        self.search_documents(Parameters { doc_types, query }).await
+    }
 }
