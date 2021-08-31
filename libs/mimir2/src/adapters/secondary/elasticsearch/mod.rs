@@ -23,8 +23,8 @@ pub mod tests {
 
     use crate::domain::model::configuration::Configuration;
     use crate::domain::model::document::Document;
-    use crate::domain::ports::remote::Remote;
-    use crate::domain::ports::storage::Storage;
+    use crate::domain::ports::secondary::remote::Remote;
+    use crate::domain::ports::secondary::storage::Storage;
     use crate::utils::docker;
 
     #[test]
@@ -240,7 +240,6 @@ pub mod tests {
         ];
         let documents = futures::stream::iter(documents);
 
-        let documents = documents.map(|d| Box::new(d) as Box<dyn Document + Send + Sync + 'static>);
         let res = client
             .insert_documents(
                 String::from("root_obj_dataset_test-index-bulk-insert"),
