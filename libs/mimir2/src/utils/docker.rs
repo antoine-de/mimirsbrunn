@@ -232,7 +232,7 @@ impl DockerWrapper {
             .await
             .context(DockerEngine)?;
 
-        sleep(Duration::from_secs(15)).await;
+        sleep(Duration::from_secs(30)).await;
 
         Ok(())
     }
@@ -268,7 +268,7 @@ impl DockerWrapper {
             .context(ElasticsearchClient)?;
 
         println!("done with cleanup");
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(5)).await;
         Ok(())
     }
 
