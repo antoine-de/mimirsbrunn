@@ -8,7 +8,7 @@ pub mod remote;
 pub mod storage;
 
 #[derive(Clone)]
-pub struct ElasticsearchStorage(Elasticsearch);
+pub struct ElasticsearchStorage(pub Elasticsearch);
 
 #[cfg(test)]
 pub mod tests {

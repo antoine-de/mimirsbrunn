@@ -76,7 +76,7 @@ pub enum Error {
     #[snafu(display("elasticsearch transport error: {}", source))]
     ElasticsearchTransport { source: TransportBuilderError },
 
-    #[snafu(display("elasticsearch transport error: {}", source))]
+    #[snafu(display("elasticsearch client error: {}", source))]
     ElasticsearchClient { source: ElasticsearchError },
 
     #[snafu(display("docker error: {}", source))]
@@ -92,6 +92,7 @@ pub struct DockerWrapper {
     container_name: String, // ip: String,
 }
 
+// FIXME: Here we hardcode elasticsearch ports. These should be had from the ELASTICSEARCH_TEST_URL
 impl Default for DockerWrapper {
     fn default() -> Self {
         DockerWrapper {
@@ -240,17 +241,13 @@ impl DockerWrapper {
     }
 
     async fn cleanup(&mut self) -> Result<(), Error> {
-        let port = self.ports[0].0;
-        // FIXME Hardcoded URL, need to extract it from self.
-        let url = Url::parse(&format!("http://localhost:{}", port)).context(UrlParse)?;
-        let conn_pool = SingleNodeConnectionPool::new(url);
-        let transport = TransportBuilder::new(conn_pool)
-            .disable_proxy()
-            .build()
-            .context(ElasticsearchTransport)?;
-        let client = Elasticsearch::new(transport);
+        let pool = remote::connection_test_pool()
+            .await
+            .context(ElasticsearchPoolCreation)?;
+        let client = pool.conn().await.context(ElasticsearchConnection)?;
 
         let _ = client
+            .0
             .indices()
             .delete(IndicesDeleteParts::Index(&["*"]))
             .send()
@@ -258,6 +255,7 @@ impl DockerWrapper {
             .context(ElasticsearchClient)?;
 
         let _ = client
+            .0
             .indices()
             .delete_alias(IndicesDeleteAliasParts::IndexName(&["*"], &["*"]))
             .send()
@@ -265,6 +263,7 @@ impl DockerWrapper {
             .context(ElasticsearchClient)?;
 
         let _ = client
+            .0
             .indices()
             .delete_index_template(IndicesDeleteIndexTemplateParts::Name("*"))
             .send()
