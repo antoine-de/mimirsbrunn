@@ -6,11 +6,9 @@ use bollard::{
     Docker,
 };
 use elasticsearch::{
-    http::transport::{
-        BuildError as TransportBuilderError, SingleNodeConnectionPool, TransportBuilder,
-    },
+    http::transport::BuildError as TransportBuilderError,
     indices::{IndicesDeleteAliasParts, IndicesDeleteIndexTemplateParts, IndicesDeleteParts},
-    Elasticsearch, Error as ElasticsearchError,
+    Error as ElasticsearchError,
 };
 use futures::stream::TryStreamExt;
 use lazy_static::lazy_static;
@@ -18,7 +16,6 @@ use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::time::{sleep, Duration};
-use url::Url;
 
 use crate::adapters::secondary::elasticsearch::remote::{self, Error as ElasticsearchRemoteError};
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
