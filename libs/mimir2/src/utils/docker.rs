@@ -16,7 +16,7 @@ use futures::stream::TryStreamExt;
 use lazy_static::lazy_static;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::time::{sleep, Duration};
 use url::Url;
 
@@ -24,17 +24,16 @@ lazy_static! {
     pub static ref AVAILABLE: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
-// pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
-pub async fn initialize() -> Result<(), Error> {
-    // let mtx = Arc::clone(&AVAILABLE);
+pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
+    let guard = AVAILABLE.lock().unwrap();
     let mut docker = DockerWrapper::new();
-    // let guard = AVAILABLE.lock().unwrap();
     let is_available = docker.is_container_available().await?;
     if !is_available {
-        docker.create_container().await
+        docker.create_container().await?;
     } else {
-        docker.cleanup().await
+        docker.cleanup().await?;
     }
+    Ok(guard)
 }
 
 #[derive(Debug, Snafu)]
