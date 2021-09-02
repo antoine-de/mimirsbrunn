@@ -962,7 +962,7 @@ impl ElasticsearchStorage {
 
     // Uses search after
     // pub(super) fn kjjjkkve_all_documents<D>(
-    pub fn list_documents<D>(
+    pub(crate) fn list_documents<D>(
         &self,
         index: String,
     ) -> Result<Pin<Box<dyn Stream<Item = D> + Send>>, Error>
@@ -1232,7 +1232,7 @@ impl ElasticsearchStorage {
         }
     }
 
-    pub async fn explain_search<D>(
+    pub(crate) async fn explain_search<D>(
         &self,
         index: String,
         query: Query,
@@ -1302,21 +1302,21 @@ impl ElasticsearchStorage {
 /// This is the information provided by Elasticsearch CAT Indice API
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct ElasticsearchIndex {
-    pub health: String,
+    pub(crate) health: String,
     pub status: String,
     #[serde(rename = "index")]
-    pub name: String,
+    pub(crate) name: String,
     #[serde(rename = "docs.count")]
-    pub docs_count: Option<String>,
+    pub(crate) docs_count: Option<String>,
     #[serde(rename = "docs.deleted")]
-    pub docs_deleted: Option<String>,
-    pub pri: String,
+    pub(crate) docs_deleted: Option<String>,
+    pub(crate) pri: String,
     #[serde(rename = "pri.store.size")]
-    pub pri_store_size: Option<String>,
-    pub rep: String,
+    pub(crate) pri_store_size: Option<String>,
+    pub(crate) rep: String,
     #[serde(rename = "store.size")]
-    pub store_size: Option<String>,
-    pub uuid: String,
+    pub(crate) store_size: Option<String>,
+    pub(crate) uuid: String,
 }
 
 impl TryFrom<ElasticsearchIndex> for Index {
@@ -1374,9 +1374,9 @@ enum State {
 
 #[derive(Debug, Default)]
 pub struct InsertStats {
-    pub created: usize,
-    pub updated: usize,
-    pub error: usize,
+    pub(crate) created: usize,
+    pub(crate) updated: usize,
+    pub(crate) error: usize,
 }
 
 impl From<InsertStats> for ModelInsertStats {

@@ -38,12 +38,16 @@ use futures::stream::{Stream, StreamExt};
 use mimir2::{
     adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
     domain::{
-        model::{configuration::Configuration, document::Document, index::IndexVisibility},
+        model::{
+            configuration::Configuration,
+            document::{ContainerDocument, Document},
+            index::IndexVisibility,
+        },
         ports::primary::generate_index::GenerateIndex,
     },
 };
 use places::admin::Admin;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -60,8 +64,9 @@ trait IntoAdmin {
 }
 
 // We use a new type to wrap around Addr and implement the Document trait.
-#[derive(Serialize)]
-struct AdminDoc(Admin);
+#[derive(Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct AdminDoc(pub Admin);
 
 impl AdminDoc {
     const DOC_TYPE: &'static str = "admin";
@@ -73,6 +78,12 @@ impl Document for AdminDoc {
     }
     fn id(&self) -> String {
         self.0.id.clone()
+    }
+}
+
+impl ContainerDocument for AdminDoc {
+    fn static_doc_type() -> &'static str {
+        Self::DOC_TYPE
     }
 }
 

@@ -154,8 +154,10 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-
-    use mimir2::utils::docker;
+    use futures::TryStreamExt;
+    use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
+    use mimirsbrunn::admin::AdminDoc;
 
     use super::*;
 
@@ -286,63 +288,44 @@ mod tests {
             .contains("could not index cosmogony: No such file or directory"));
     }
 
-    // #[tokio::test]
-    // async fn should_correctly_index_a_small_cosmogony_file() {
-    //     let guard = initialize_elasticsearch_docker().await;
+    #[tokio::test]
+    async fn should_correctly_index_a_small_cosmogony_file() {
+        let _guard = docker::initialize().await.unwrap();
 
-    //     let args = Args {
-    //         input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-    //         connection_string: elasticsearch_test_url(),
-    //         dataset: String::from("dataset"),
-    //         mappings: PathBuf::from("./config/admin/mappings.json"),
-    //         settings: PathBuf::from("./config/admin/settings.json"),
-    //         nb_shards: None,
-    //         nb_replicas: None,
-    //         langs: vec![],
-    //     };
+        let args = Args {
+            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            connection_string: elasticsearch_test_url(),
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+        };
 
-    //     let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-    //     // Now we query the index we just created. Since it's a small cosmogony file with few entries,
-    //     // we'll just list all the documents in the index, and check them.
-    //     let pool = connection_test_pool()
-    //         .await
-    //         .expect("Elasticsearch Connection Pool");
-    //     let client = pool
-    //         .conn()
-    //         .await
-    //         .expect("Elasticsearch Connection Established");
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let pool = remote::connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
 
-    //     let list_documents = ListDocuments::new(Box::new(client));
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
 
-    //     let parameters = ListDocumentsParameters {
-    //         parameters: ListParameters {
-    //             doc_type: String::from(Admin::doc_type()),
-    //         },
-    //     };
+        let admins: Vec<AdminDoc> = client
+            .list_documents()
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
 
-    //     let list_result = list_documents.execute(parameters).await;
-    //     let list: Vec<Place> = list_result
-    //         .unwrap()
-    //         .map(|json| serde_json::from_value(json).unwrap())
-    //         .collect()
-    //         .await;
-
-    //     drop(guard);
-
-    //     assert_eq!(list.len(), 8);
-    //     assert!(list.iter().all(|place| place.is_admin()));
-
-    //     let admins: Vec<Admin> = list
-    //         .into_iter()
-    //         .map(|place| match place {
-    //             Place::Admin(a) => a,
-    //             _ => unreachable!(),
-    //         })
-    //         .collect();
-    //     assert!(admins.iter().all(|admin| admin.boundary.is_some()));
-    //     assert!(admins.iter().all(|admin| admin.coord.is_valid()));
-    // }
+        assert!(admins.iter().all(|admin| admin.0.boundary.is_some()));
+        assert!(admins.iter().all(|admin| admin.0.coord.is_valid()));
+    }
 
     // #[tokio::test]
     // async fn should_correctly_index_cosmogony_with_langs() {
