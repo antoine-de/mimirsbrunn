@@ -107,7 +107,7 @@ pub enum Error {
 
     /// Internal Error
     #[snafu(display("Internal Error: {}", reason))]
-    InternalError { reason: String },
+    Internal { reason: String },
 }
 
 impl From<Exception> for Error {
@@ -464,11 +464,11 @@ impl ElasticsearchStorage {
             })
             .await;
 
-        let lock = Arc::try_unwrap(stats).map_err(|_err| Error::InternalError {
+        let lock = Arc::try_unwrap(stats).map_err(|_err| Error::Internal {
             reason: String::from("Lock has still multiple owners"),
         })?;
 
-        let res = lock.into_inner().map_err(|_err| Error::InternalError {
+        let res = lock.into_inner().map_err(|_err| Error::Internal {
             reason: String::from("Mutex cannot be unlocked"),
         })?;
 
