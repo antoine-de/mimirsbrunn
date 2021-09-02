@@ -7,6 +7,11 @@ pub trait Document: serde::Serialize {
     fn id(&self) -> String;
 }
 
+/// A type of document with a schema known at compile time and which can be used to generate an index.
+pub trait ContainerDocument: Document {
+    fn static_doc_type() -> &'static str;
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::Document;

@@ -1,28 +1,32 @@
-use crate::domain::ports::secondary::list::{Error, List, Parameters};
+use crate::domain::model::document::ContainerDocument;
+use crate::domain::model::error::Error;
+use crate::domain::ports::secondary::list::{List, Parameters};
 use async_trait::async_trait;
-use futures::stream::Stream;
-use places::MimirObject;
+use futures::stream::{Stream, StreamExt};
 
 #[async_trait]
-pub trait ListDocuments {
-    type Document;
-
+pub trait ListDocuments<D> {
     fn list_documents(
         &self,
-    ) -> Result<Box<dyn Stream<Item = Self::Document> + Send + 'static>, Error>;
+    ) -> Result<Box<dyn Stream<Item = Result<D, Error>> + Send + 'static>, Error>;
 }
 
-impl<T> ListDocuments for T
+impl<D, T> ListDocuments<D> for T
 where
+    D: ContainerDocument + serde::de::DeserializeOwned + 'static,
     T: List,
-    T::Doc: MimirObject + 'static,
+    T::Doc: Into<serde_json::Value>,
 {
-    type Document = T::Doc;
-
     fn list_documents(
         &self,
-    ) -> Result<Box<dyn Stream<Item = Self::Document> + Send + 'static>, Error> {
-        let doc_type = T::Doc::doc_type().to_string();
-        Ok(Box::new(self.list_documents(Parameters { doc_type })?))
+    ) -> Result<Box<dyn Stream<Item = Result<D, Error>> + Send + 'static>, Error> {
+        let doc_type = D::static_doc_type().to_string();
+        let raw_documents = self.list_documents(Parameters { doc_type })?;
+
+        let documents = raw_documents
+            .map(|raw| raw.into())
+            .map(|val| serde_json::from_value(val).map_err(Error::from_deserialization::<D>));
+
+        Ok(Box::new(documents))
     }
 }
