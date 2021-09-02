@@ -1,14 +1,8 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use snafu::{ResultExt, Snafu};
-// use std::collections::BTreeMap;
+use snafu::Snafu;
 use std::convert::TryFrom;
-// use std::pin::Pin;
-// use std::sync::{Arc, Mutex};
-// use tracing::{info, warn};
 
-use super::ElasticsearchStorage;
-use crate::domain::model::configuration::{self, Configuration};
+use crate::domain::model::configuration::Configuration;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
