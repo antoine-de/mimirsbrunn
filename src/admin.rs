@@ -36,7 +36,7 @@ use cosmogony::{Zone, ZoneIndex};
 use failure::{format_err, Error};
 use futures::stream::{Stream, StreamExt};
 use mimir2::{
-    adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
+    adapters::secondary::elasticsearch::{configuration::IndexConfiguration, ElasticsearchStorage},
     domain::{
         model::{
             configuration::Configuration,

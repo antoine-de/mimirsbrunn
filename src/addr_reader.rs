@@ -4,7 +4,7 @@ use flate2::read::GzDecoder;
 use futures::future;
 use futures::stream::{self, Stream, StreamExt};
 use mimir2::{
-    adapters::secondary::elasticsearch::{internal::IndexConfiguration, ElasticsearchStorage},
+    adapters::secondary::elasticsearch::{configuration::IndexConfiguration, ElasticsearchStorage},
     domain::{
         model::{configuration::Configuration, document::Document, index::IndexVisibility},
         ports::primary::generate_index::GenerateIndex,

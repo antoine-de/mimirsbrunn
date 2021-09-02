@@ -21,9 +21,10 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
+use super::configuration::IndexConfiguration;
 use super::ElasticsearchStorage;
 use crate::domain::model::{
-    configuration::{self, Configuration},
+    configuration,
     document::Document,
     index::{Index, IndexStatus},
     query::Query,
@@ -107,67 +108,6 @@ pub enum Error {
     /// Internal Error
     #[snafu(display("Internal Error: {}", reason))]
     InternalError { reason: String },
-}
-
-/// The indices create index API has 4 components, which are
-/// reproduced below:
-/// - Path parameter: The index name
-/// - Query parameters: Things like timeout, wait for active shards, ...
-/// - Request body, including
-///   - Aliases (not implemented here)
-///   - Mappings
-///   - Settings
-///   See https://www.elastic.co/guide/en/elasticsearch/reference/7.12/indices-create-index.html
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IndexConfiguration {
-    pub name: String,
-    pub parameters: IndexParameters,
-    pub settings: IndexSettings,
-    pub mappings: IndexMappings,
-}
-
-// FIXME A lot of work needs to go in there to type everything
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct IndexSettings {
-    pub value: serde_json::Value,
-}
-
-// impl IndexSettings {
-//     fn into_value(self) -> serde_json::Value {
-//         let mut settings = self.base;
-//         settings["number_of_shards"] = json!(self.nb_shards);
-//         settings["number_of_replicas"] = json!(self.nb_replicas);
-//         json!(settings)
-//     }
-// }
-
-// FIXME A lot of work needs to go in there to type everything
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct IndexMappings {
-    pub value: serde_json::Value,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename = "snake_case")]
-pub struct IndexParameters {
-    pub timeout: String,
-    pub wait_for_active_shards: String,
-}
-
-impl TryFrom<Configuration> for IndexConfiguration {
-    type Error = Error;
-
-    // FIXME Parameters not handled
-    fn try_from(configuration: Configuration) -> Result<Self, Self::Error> {
-        let Configuration { value, .. } = configuration;
-        serde_json::from_str(&value).map_err(|err| Error::InvalidConfiguration {
-            details: format!(
-                "could not deserialize index configuration: {} / {}",
-                err.to_string(),
-                value
-            ),
-        })
-    }
 }
 
 impl From<Exception> for Error {
@@ -962,7 +902,7 @@ impl ElasticsearchStorage {
 
     // Uses search after
     // pub(super) fn kjjjkkve_all_documents<D>(
-    pub(crate) fn list_documents<D>(
+    pub(super) fn list_documents<D>(
         &self,
         index: String,
     ) -> Result<Pin<Box<dyn Stream<Item = D> + Send>>, Error>
@@ -1232,7 +1172,7 @@ impl ElasticsearchStorage {
         }
     }
 
-    pub(crate) async fn explain_search<D>(
+    pub(super) async fn explain_search<D>(
         &self,
         index: String,
         query: Query,
