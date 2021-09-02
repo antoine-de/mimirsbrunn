@@ -41,7 +41,7 @@ pub enum Error {
 
     /// Elasticsearch Error
     #[snafu(display("Elasticsearch Error: {} [{}]", source, details))]
-    ElasticsearchError {
+    ElasticsearchClient {
         details: String,
         source: elasticsearch::Error,
     },
@@ -92,18 +92,18 @@ pub enum Error {
 
     /// Elasticsearch Deserialization Error
     #[snafu(display("JSON Elasticsearch Deserialization Error: {}", source))]
-    JsonDeserializationError { source: elasticsearch::Error },
+    ElasticsearchDeserialization { source: elasticsearch::Error },
 
     /// Elasticsearch Deserialization Error
     #[snafu(display("JSON Serde Deserialization Error: {}", source))]
-    Json2DeserializationError {
+    JsonDeserialization {
         source: serde_json::Error,
         details: String,
     },
 
     /// Invalid JSON Value
     #[snafu(display("JSON Deserialization Invalid: {} {:?}", details, json))]
-    JsonDeserializationInvalid { details: String, json: Value },
+    JsonInvalid { details: String, json: Value },
 
     /// Internal Error
     #[snafu(display("Internal Error: {}", reason))]
@@ -192,7 +192,7 @@ impl ElasticsearchStorage {
         );
 
         let body: serde_json::Value =
-            serde_json::from_str(&body_str).context(Json2DeserializationError {
+            serde_json::from_str(&body_str).context(JsonDeserialization {
                 details: String::from("could not deserialize index configuration"),
             })?;
 
@@ -205,7 +205,7 @@ impl ElasticsearchStorage {
             .body(body)
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!("cannot create index '{}'", config.name),
             })?;
 
@@ -216,21 +216,21 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let acknowledged = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("acknowledged")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'acknowledged'"),
                     json: json.clone(),
                 })?
                 .as_bool()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON bool"),
                     json: json.clone(),
                 })?;
@@ -262,7 +262,7 @@ impl ElasticsearchStorage {
             .delete(IndicesDeleteParts::Index(&[&index]))
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!("cannot find index '{}'", index),
             })?;
 
@@ -273,21 +273,21 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let acknowledged = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("acknowledged")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'acknowledged'"),
                     json: json.clone(),
                 })?
                 .as_bool()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON bool"),
                     json: json.clone(),
                 })?;
@@ -324,7 +324,7 @@ impl ElasticsearchStorage {
             .format("json")
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!("cannot find index '{}'", index),
             })?;
 
@@ -332,10 +332,10 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let mut indices: Vec<ElasticsearchIndex> =
-                serde_json::from_value(json).context(Json2DeserializationError {
+                serde_json::from_value(json).context(JsonDeserialization {
                     details: String::from("could not deserialize Elasticsearch indices"),
                 })?;
 
@@ -378,7 +378,7 @@ impl ElasticsearchStorage {
            .body(document)
            .send()
            .await
-           .context(ElasticsearchError {
+           .context(ElasticsearchClient {
            details: format!("cannot index document '{}'", id),
            })?;
 
@@ -399,19 +399,19 @@ impl ElasticsearchStorage {
         let json = response
         .json::<Value>()
         .await
-        .context(JsonDeserializationError)?;
+        .context(ElasticsearchDeserialization)?;
 
         let result = json
         .as_object()
-        .ok_or(Error::JsonDeserializationInvalid {
+        .ok_or(Error::JsonInvalid {
         details: String::from("expected JSON object"),
         })?
         .get("result")
-        .ok_or(Error::JsonDeserializationInvalid {
+        .ok_or(Error::JsonInvalid {
         details: String::from("expected 'result'"),
         })?
         .as_str()
-        .ok_or(Error::JsonDeserializationInvalid {
+        .ok_or(Error::JsonInvalid {
         details: String::from("expected JSON string"),
         })?;
         if result == "created" {
@@ -509,21 +509,21 @@ impl ElasticsearchStorage {
             let json = resp
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let items = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("items")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'items'"),
                     json: json.clone(),
                 })?
                 .as_array()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'items' to be an array"),
                     json: json.clone(),
                 })?;
@@ -533,27 +533,27 @@ impl ElasticsearchStorage {
                 .map(|item| {
                     let result = item
                         .as_object()
-                        .ok_or(Error::JsonDeserializationInvalid {
+                        .ok_or(Error::JsonInvalid {
                             details: String::from("expected JSON object"),
                             json: item.clone(),
                         })?
                         .get("index")
-                        .ok_or(Error::JsonDeserializationInvalid {
+                        .ok_or(Error::JsonInvalid {
                             details: String::from("expected 'index'"),
                             json: item.clone(),
                         })?
                         .as_object()
-                        .ok_or(Error::JsonDeserializationInvalid {
+                        .ok_or(Error::JsonInvalid {
                             details: String::from("expected JSON 'index' to be an object"),
                             json: item.clone(),
                         })?
                         .get("result")
-                        .ok_or(Error::JsonDeserializationInvalid {
+                        .ok_or(Error::JsonInvalid {
                             details: String::from("expected 'result'"),
                             json: item.clone(),
                         })?
                         .as_str()
-                        .ok_or(Error::JsonDeserializationInvalid {
+                        .ok_or(Error::JsonInvalid {
                             details: String::from("expected 'result' to be a string"),
                             json: item.clone(),
                         })?;
@@ -602,7 +602,7 @@ impl ElasticsearchStorage {
             .put_alias(IndicesPutAliasParts::IndexName(&indices, &alias))
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!(
                     "cannot add alias '{}' to indices '{}'",
                     alias,
@@ -617,21 +617,21 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let acknowledged = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("acknowledged")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'acknowledged'"),
                     json: json.clone(),
                 })?
                 .as_bool()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON boolean"),
                     json: json.clone(),
                 })?;
@@ -670,7 +670,7 @@ impl ElasticsearchStorage {
             .delete_alias(IndicesDeleteAliasParts::IndexName(&indices, &[&alias]))
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!(
                     "cannot remove alias '{}' to indices '{}'",
                     alias,
@@ -685,21 +685,21 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let acknowledged = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("acknowledged")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'acknowledged'"),
                     json: json.clone(),
                 })?
                 .as_bool()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON boolean"),
                     json: json.clone(),
                 })?;
@@ -740,7 +740,7 @@ impl ElasticsearchStorage {
             .get_alias(IndicesGetAliasParts::Index(&[&index]))
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!("cannot find aliases to {}", index),
             })?;
 
@@ -762,7 +762,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let aliases = json
                 .as_object()
@@ -798,7 +798,7 @@ impl ElasticsearchStorage {
 
     pub(super) async fn add_pipeline(&self, pipeline: String, name: String) -> Result<(), Error> {
         let pipeline: serde_json::Value =
-            serde_json::from_str(&pipeline).context(Json2DeserializationError {
+            serde_json::from_str(&pipeline).context(JsonDeserialization {
                 details: format!("Could not deserialize pipeline {}", name),
             })?;
         let response = self
@@ -808,7 +808,7 @@ impl ElasticsearchStorage {
             .body(pipeline)
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!("cannot add pipeline '{}'", name,),
             })?;
 
@@ -819,21 +819,21 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let acknowledged = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("acknowledged")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'acknowledged'"),
                     json: json.clone(),
                 })?
                 .as_bool()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON boolean"),
                     json: json.clone(),
                 })?;
@@ -878,7 +878,7 @@ impl ElasticsearchStorage {
             .refresh(IndicesRefreshParts::Index(&[&index]))
             .send()
             .await
-            .context(ElasticsearchError {
+            .context(ElasticsearchClient {
                 details: format!("cannot refresh index {}", index),
             })?;
 
@@ -942,7 +942,7 @@ impl ElasticsearchStorage {
                             .body(body)
                             .send()
                             .await
-                            .context(ElasticsearchError {
+                            .context(ElasticsearchClient {
                                 details: format!("cannot search index {}", index),
                             })
                             .unwrap();
@@ -1020,7 +1020,7 @@ impl ElasticsearchStorage {
                             .body(body)
                             .send()
                             .await
-                            .context(ElasticsearchError {
+                            .context(ElasticsearchClient {
                                 details: format!("cannot search index {}", index),
                             })
                             .unwrap();
@@ -1099,13 +1099,17 @@ impl ElasticsearchStorage {
         let search = self.0.search(SearchParts::Index(&indices));
 
         let response = match query {
-            Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchError {
+            Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
                 details: format!("could not search indices {}", indices.join(", ")),
             })?,
             Query::QueryDSL(json) => {
-                search.body(json).send().await.context(ElasticsearchError {
-                    details: format!("could not search indices {}", indices.join(", ")),
-                })?
+                search
+                    .body(json)
+                    .send()
+                    .await
+                    .context(ElasticsearchClient {
+                        details: format!("could not search indices {}", indices.join(", ")),
+                    })?
             }
         };
 
@@ -1113,31 +1117,31 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             let hits = json
                 .as_object()
-                .ok_or_else(|| Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("hits")
-                .ok_or_else(|| Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonInvalid {
                     details: String::from("expected 'hits'"),
                     json: json.clone(),
                 })?
                 .as_object()
-                .ok_or_else(|| Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("hits")
-                .ok_or_else(|| Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonInvalid {
                     details: String::from("expected 'hits'"),
                     json: json.clone(),
                 })?
                 .as_array()
-                .ok_or_else(|| Error::JsonDeserializationInvalid {
+                .ok_or_else(|| Error::JsonInvalid {
                     details: String::from("expected JSON array"),
                     json: json.clone(),
                 })?;
@@ -1184,7 +1188,7 @@ impl ElasticsearchStorage {
         let explain = self.0.explain(ExplainParts::IndexId(&index, &id));
 
         let response = match query {
-            Query::QueryString(q) => explain.q(&q).send().await.context(ElasticsearchError {
+            Query::QueryString(q) => explain.q(&q).send().await.context(ElasticsearchClient {
                 details: format!("could not explain document {} in index {}", id, index),
             })?,
             Query::QueryDSL(json) => {
@@ -1192,7 +1196,7 @@ impl ElasticsearchStorage {
                     .body(json)
                     .send()
                     .await
-                    .context(ElasticsearchError {
+                    .context(ElasticsearchClient {
                         details: format!("could not explain document {} in index {}", id, index),
                     })?
             }
@@ -1202,24 +1206,24 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)?;
+                .context(ElasticsearchDeserialization)?;
 
             println!("json: {:?}", json);
 
             let explanation = json
                 .as_object()
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected JSON object"),
                     json: json.clone(),
                 })?
                 .get("explanation")
-                .ok_or(Error::JsonDeserializationInvalid {
+                .ok_or(Error::JsonInvalid {
                     details: String::from("expected 'hits'"),
                     json: json.clone(),
                 })?
                 .to_owned();
             let explanation =
-                serde_json::from_value::<D>(explanation).context(Json2DeserializationError {
+                serde_json::from_value::<D>(explanation).context(JsonDeserialization {
                     details: String::from("could not deserialize explanation"),
                 })?;
             Ok(explanation)
