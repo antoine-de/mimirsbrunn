@@ -6,41 +6,63 @@ use bollard::{
     Docker,
 };
 use elasticsearch::{
-    http::transport::{
-        BuildError as TransportBuilderError, SingleNodeConnectionPool, TransportBuilder,
-    },
+    http::transport::BuildError as TransportBuilderError,
     indices::{IndicesDeleteAliasParts, IndicesDeleteIndexTemplateParts, IndicesDeleteParts},
-    Elasticsearch, Error as ElasticsearchError,
+    Error as ElasticsearchError,
 };
 use futures::stream::TryStreamExt;
 use lazy_static::lazy_static;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::time::{sleep, Duration};
-use url::Url;
+
+use crate::adapters::secondary::elasticsearch::remote::{self, Error as ElasticsearchRemoteError};
+use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
 lazy_static! {
     pub static ref AVAILABLE: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
 
-// pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
-pub async fn initialize() -> Result<(), Error> {
-    // let mtx = Arc::clone(&AVAILABLE);
+// This function takes the mutex related to the availability of the elasticsearch docker container,
+// and then creates or reset the container depending on its availability.
+// Finally, it tests if elasticsearch is available, before returning
+// the mutex guard.
+// TODO Document the usage of the mutexguard, how you should avoid running asserts
+// while holding the mutex.
+pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
+    let guard = AVAILABLE.lock().unwrap();
     let mut docker = DockerWrapper::new();
-    // let guard = AVAILABLE.lock().unwrap();
     let is_available = docker.is_container_available().await?;
     if !is_available {
-        docker.create_container().await
+        docker.create_container().await?;
     } else {
-        docker.cleanup().await
+        docker.cleanup().await?;
     }
+    let is_available = docker.is_container_available().await?;
+    if !is_available {
+        return Err(Error::Misc {
+            msg: format!("Cannot get docker {} available", docker.docker_image),
+        });
+    }
+    let pool = remote::connection_test_pool()
+        .await
+        .context(ElasticsearchPoolCreation)?;
+    let _client = pool.conn().await.context(ElasticsearchConnection)?;
+
+    Ok(guard)
 }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Connection to docker socket: {}", source))]
-    Connection { source: BollardError },
+    DockerConnection { source: BollardError },
+
+    #[snafu(display("Creation of elasticsearch pool: {}", source))]
+    ElasticsearchPoolCreation { source: ElasticsearchRemoteError },
+
+    #[snafu(display("Connection to elasticsearch: {}", source))]
+    ElasticsearchConnection { source: RemoteError },
 
     #[snafu(display("docker version: {}", source))]
     Version { source: BollardError },
@@ -51,11 +73,14 @@ pub enum Error {
     #[snafu(display("elasticsearch transport error: {}", source))]
     ElasticsearchTransport { source: TransportBuilderError },
 
-    #[snafu(display("elasticsearch transport error: {}", source))]
+    #[snafu(display("elasticsearch client error: {}", source))]
     ElasticsearchClient { source: ElasticsearchError },
 
     #[snafu(display("docker error: {}", source))]
-    DockerError { source: BollardError },
+    DockerEngine { source: BollardError },
+
+    #[snafu(display("error: {}", msg))]
+    Misc { msg: String },
 }
 
 pub struct DockerWrapper {
@@ -64,6 +89,7 @@ pub struct DockerWrapper {
     container_name: String, // ip: String,
 }
 
+// FIXME: Here we hardcode elasticsearch ports. These should be had from the ELASTICSEARCH_TEST_URL
 impl Default for DockerWrapper {
     fn default() -> Self {
         DockerWrapper {
@@ -90,7 +116,7 @@ impl DockerWrapper {
                 minor_version: 24,
             },
         )
-        .context(Connection)?;
+        .context(DockerConnection)?;
 
         let docker = &docker.negotiate_version().await.context(Version)?;
 
@@ -105,7 +131,10 @@ impl DockerWrapper {
             ..Default::default()
         });
 
-        let containers = docker.list_containers(options).await.context(DockerError)?;
+        let containers = docker
+            .list_containers(options)
+            .await
+            .context(DockerEngine)?;
 
         Ok(!containers.is_empty())
     }
@@ -121,7 +150,7 @@ impl DockerWrapper {
                 minor_version: 24,
             },
         )
-        .context(Connection)?;
+        .context(DockerConnection)?;
 
         let docker = docker.negotiate_version().await.context(Version)?;
 
@@ -136,7 +165,10 @@ impl DockerWrapper {
             ..Default::default()
         });
 
-        let containers = docker.list_containers(options).await.context(DockerError)?;
+        let containers = docker
+            .list_containers(options)
+            .await
+            .context(DockerEngine)?;
 
         if containers.is_empty() {
             let options = CreateContainerOptions {
@@ -186,37 +218,33 @@ impl DockerWrapper {
                 )
                 .try_collect::<Vec<_>>()
                 .await
-                .context(DockerError)?;
+                .context(DockerEngine)?;
 
             let _ = docker
                 .create_container(Some(options), config)
                 .await
-                .context(DockerError)?;
+                .context(DockerEngine)?;
 
             sleep(Duration::from_secs(5)).await;
         }
         let _ = docker
             .start_container(&self.container_name, None::<StartContainerOptions<String>>)
             .await
-            .context(DockerError)?;
+            .context(DockerEngine)?;
 
-        sleep(Duration::from_secs(15)).await;
+        sleep(Duration::from_secs(30)).await;
 
         Ok(())
     }
 
     async fn cleanup(&mut self) -> Result<(), Error> {
-        let port = self.ports[0].0;
-        // FIXME Hardcoded URL, need to extract it from self.
-        let url = Url::parse(&format!("http://localhost:{}", port)).context(UrlParse)?;
-        let conn_pool = SingleNodeConnectionPool::new(url);
-        let transport = TransportBuilder::new(conn_pool)
-            .disable_proxy()
-            .build()
-            .context(ElasticsearchTransport)?;
-        let client = Elasticsearch::new(transport);
+        let pool = remote::connection_test_pool()
+            .await
+            .context(ElasticsearchPoolCreation)?;
+        let client = pool.conn().await.context(ElasticsearchConnection)?;
 
         let _ = client
+            .0
             .indices()
             .delete(IndicesDeleteParts::Index(&["*"]))
             .send()
@@ -224,6 +252,7 @@ impl DockerWrapper {
             .context(ElasticsearchClient)?;
 
         let _ = client
+            .0
             .indices()
             .delete_alias(IndicesDeleteAliasParts::IndexName(&["*"], &["*"]))
             .send()
@@ -231,6 +260,7 @@ impl DockerWrapper {
             .context(ElasticsearchClient)?;
 
         let _ = client
+            .0
             .indices()
             .delete_index_template(IndicesDeleteIndexTemplateParts::Name("*"))
             .send()
@@ -238,7 +268,7 @@ impl DockerWrapper {
             .context(ElasticsearchClient)?;
 
         println!("done with cleanup");
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(5)).await;
         Ok(())
     }
 

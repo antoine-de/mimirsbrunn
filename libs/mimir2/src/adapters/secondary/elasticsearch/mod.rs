@@ -7,8 +7,11 @@ pub mod query;
 pub mod remote;
 pub mod storage;
 
+// The inner type is visible within the crate so that the
+// docker can access directly the Elasticsearch API to test
+// the elasticsearch connectivity.
 #[derive(Clone)]
-pub struct ElasticsearchStorage(Elasticsearch);
+pub struct ElasticsearchStorage(pub(crate) Elasticsearch);
 
 #[cfg(test)]
 pub mod tests {

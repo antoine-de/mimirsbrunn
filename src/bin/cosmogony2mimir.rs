@@ -163,12 +163,6 @@ mod tests {
         std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
     }
 
-    async fn initialize_elasticsearch_docker() -> std::sync::MutexGuard<'static, ()> {
-        let guard = docker::AVAILABLE.lock().unwrap();
-        docker::initialize().await.expect("initialization");
-        guard
-    }
-
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_es_url() {
         let url = String::from("http://example.com:demo");
@@ -213,7 +207,9 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_path_for_mappings() {
-        let guard = initialize_elasticsearch_docker().await;
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
 
         let args = Args {
             input: String::from("foo"),
@@ -238,7 +234,9 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_mappings() {
-        let guard = initialize_elasticsearch_docker().await;
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
 
         let args = Args {
             input: String::from("foo"),
@@ -263,7 +261,9 @@ mod tests {
 
     #[tokio::test]
     async fn should_return_an_error_when_given_an_invalid_path_for_input() {
-        let guard = initialize_elasticsearch_docker().await;
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
 
         let args = Args {
             input: String::from("./invalid.jsonl.gz"),
