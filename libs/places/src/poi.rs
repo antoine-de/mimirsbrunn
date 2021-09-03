@@ -1,3 +1,4 @@
+use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -54,6 +55,18 @@ impl From<&navitia_poi_model::PoiType> for PoiType {
             id: poi_type.id.clone(),
             name: poi_type.name.clone(),
         }
+    }
+}
+
+impl Document for Poi {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+}
+
+impl ContainerDocument for Poi {
+    fn static_doc_type() -> &'static str {
+        "poi"
     }
 }
 

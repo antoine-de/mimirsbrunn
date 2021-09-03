@@ -1,3 +1,4 @@
+use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -40,6 +41,18 @@ impl Members for Addr {
     }
     fn admins(&self) -> Vec<Arc<Admin>> {
         self.street.admins()
+    }
+}
+
+impl Document for Addr {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+}
+
+impl ContainerDocument for Addr {
+    fn static_doc_type() -> &'static str {
+        "addr"
     }
 }
 

@@ -1,3 +1,4 @@
+use common::document::{ContainerDocument, Document};
 use cosmogony::ZoneType;
 use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
@@ -72,6 +73,18 @@ pub struct Admin {
 impl Admin {
     pub fn is_city(&self) -> bool {
         matches!(self.zone_type, Some(ZoneType::City))
+    }
+}
+
+impl Document for Admin {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+}
+
+impl ContainerDocument for Admin {
+    fn static_doc_type() -> &'static str {
+        "admin"
     }
 }
 

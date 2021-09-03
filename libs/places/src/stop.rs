@@ -1,3 +1,4 @@
+use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -152,6 +153,18 @@ impl Members for Stop {
     }
     fn admins(&self) -> Vec<Arc<Admin>> {
         self.administrative_regions.clone()
+    }
+}
+
+impl Document for Stop {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+}
+
+impl ContainerDocument for Stop {
+    fn static_doc_type() -> &'static str {
+        "stop"
     }
 }
 
