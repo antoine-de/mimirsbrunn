@@ -1,5 +1,5 @@
 use async_graphql::*;
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, MimirObject};
+// use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use tokio::io::AsyncReadExt;
@@ -190,11 +190,12 @@ impl Mutation {
         let res = client
             .search_documents(
                 vec![
-                    String::from(Admin::doc_type()),
-                    String::from(Street::doc_type()),
-                    String::from(Addr::doc_type()),
-                    String::from(Stop::doc_type()),
-                    String::from(Poi::doc_type()),
+                    // TODO: implement ContainerDocument
+                    // String::from(Admin::doc_type()),
+                    // String::from(Street::doc_type()),
+                    // String::from(Addr::doc_type()),
+                    // String::from(Stop::doc_type()),
+                    // String::from(Poi::doc_type()),
                 ],
                 SearchQuery::QueryDSL(dsl),
             )

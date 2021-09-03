@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
 use std::sync::Arc;
 
 pub mod addr;
@@ -173,51 +172,9 @@ impl PlaceDocType {
     }
 }
 
-pub trait MimirObject: serde::Serialize {
-    fn is_geo_data() -> bool;
-    fn doc_type() -> &'static str; // provides the elasticsearch type name
-    fn es_id(&self) -> Option<String>; // provides the elasticsearch id
-}
-
 pub trait Members {
     fn label(&self) -> &str;
     fn admins(&self) -> Vec<Arc<Admin>>;
-}
-
-impl<'a, T: MimirObject> MimirObject for &'a T {
-    fn is_geo_data() -> bool {
-        T::is_geo_data()
-    }
-    fn doc_type() -> &'static str {
-        T::doc_type()
-    }
-    fn es_id(&self) -> Option<String> {
-        T::es_id(self)
-    }
-}
-
-impl<T: MimirObject> MimirObject for Rc<T> {
-    fn is_geo_data() -> bool {
-        T::is_geo_data()
-    }
-    fn doc_type() -> &'static str {
-        T::doc_type()
-    }
-    fn es_id(&self) -> Option<String> {
-        T::es_id(self)
-    }
-}
-
-impl<T: MimirObject> MimirObject for Arc<T> {
-    fn is_geo_data() -> bool {
-        T::is_geo_data()
-    }
-    fn doc_type() -> &'static str {
-        T::doc_type()
-    }
-    fn es_id(&self) -> Option<String> {
-        T::es_id(self)
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Default)]

@@ -11,7 +11,7 @@ use tracing::warn;
 use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
-use super::{Members, MimirObject, PlaceDocType};
+use super::Members;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(tag = "type", rename = "admin")]
@@ -173,15 +173,3 @@ impl Members for Admin {
 }
 
 impl Eq for Admin {}
-
-impl MimirObject for Admin {
-    fn is_geo_data() -> bool {
-        true
-    }
-    fn doc_type() -> &'static str {
-        PlaceDocType::Admin.as_str()
-    }
-    fn es_id(&self) -> Option<String> {
-        Some(self.id.clone())
-    }
-}

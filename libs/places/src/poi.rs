@@ -6,7 +6,7 @@ use super::admin::Admin;
 use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
-use super::{Members, MimirObject, PlaceDocType, Property};
+use super::{Members, Property};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(tag = "type", rename = "poi")]
@@ -54,18 +54,6 @@ impl From<&navitia_poi_model::PoiType> for PoiType {
             id: poi_type.id.clone(),
             name: poi_type.name.clone(),
         }
-    }
-}
-
-impl MimirObject for Poi {
-    fn is_geo_data() -> bool {
-        true
-    }
-    fn doc_type() -> &'static str {
-        PlaceDocType::Poi.as_str()
-    }
-    fn es_id(&self) -> Option<String> {
-        Some(self.id.clone())
     }
 }
 

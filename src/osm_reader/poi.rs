@@ -42,7 +42,7 @@ use places::{
     coord::Coord,
     i18n_properties::I18nProperties,
     poi::{Poi, PoiType},
-    MimirObject, Property,
+    Property,
 };
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
@@ -245,7 +245,11 @@ pub async fn add_address(backend: &impl SearchDocuments<Document = Addr>, poi: P
         poi.coord.lon(),
     );
     let documents = backend.search_documents(
-        vec![String::from(Addr::doc_type())],
+        vec![
+            // TODO: ContainerDocument
+            // String::from(Addr::doc_type())
+            "addr".to_string(),
+        ],
         Query::QueryDSL(reverse),
     );
 

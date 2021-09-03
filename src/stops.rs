@@ -33,7 +33,7 @@ use crate::{labels, utils};
 use failure::format_err;
 use failure::Error;
 use futures::stream::StreamExt;
-use places::{admin::Admin, stop::Stop, MimirObject};
+use places::{admin::Admin, stop::Stop };
 use serde::Serialize;
 
 use mimir2::{

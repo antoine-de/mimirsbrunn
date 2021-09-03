@@ -6,7 +6,7 @@ use mimir2::{
     domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Remote,
 };
-use places::{admin::Admin, MimirObject};
+// use places::admin::Admin;
 use std::path::PathBuf;
 
 #[tokio::main]
@@ -35,7 +35,13 @@ async fn main() {
     let dsl = build_query(q, filters, &["fr"], &query_settings);
 
     client
-        .search_documents(vec![String::from(Admin::doc_type())], Query::QueryDSL(dsl))
+        .search_documents(
+            vec![
+                // TODO: ContainerDocument
+                "admin".to_string(),
+            ],
+            Query::QueryDSL(dsl),
+        )
         .await
         .unwrap()
         .iter()

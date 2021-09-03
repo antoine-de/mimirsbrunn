@@ -6,7 +6,7 @@ use super::admin::Admin;
 use super::context::Context;
 use super::coord::Coord;
 use super::street::Street;
-use super::{Members, MimirObject, PlaceDocType};
+use super::Members;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", rename = "addr")]
@@ -32,18 +32,6 @@ pub struct Addr {
     pub distance: Option<u32>,
 
     pub context: Option<Context>,
-}
-
-impl MimirObject for Addr {
-    fn is_geo_data() -> bool {
-        true
-    }
-    fn doc_type() -> &'static str {
-        PlaceDocType::Addr.as_str()
-    }
-    fn es_id(&self) -> Option<String> {
-        Some(self.id.clone())
-    }
 }
 
 impl Members for Addr {
