@@ -188,6 +188,7 @@ impl DockerWrapper {
 
             let host_config = HostConfig {
                 port_bindings: Some(port_bindings),
+                memory: Some(1_000_000_000), // limit docker container to use 1GB of ram
                 ..Default::default()
             };
 

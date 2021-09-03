@@ -33,6 +33,7 @@ use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::{labels, settings::osm2mimir::Settings, utils};
+use common::document::ContainerDocument;
 use mimir2::{
     domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
 };
@@ -245,11 +246,7 @@ pub async fn add_address(backend: &impl SearchDocuments<Document = Addr>, poi: P
         poi.coord.lon(),
     );
     let documents = backend.search_documents(
-        vec![
-            // TODO: ContainerDocument
-            // String::from(Addr::doc_type())
-            "addr".to_string(),
-        ],
+        vec![Addr::static_doc_type().to_string()],
         Query::QueryDSL(reverse),
     );
 

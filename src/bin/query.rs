@@ -1,3 +1,4 @@
+use common::document::ContainerDocument;
 use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
     adapters::primary::bragi::settings::QuerySettings,
@@ -6,7 +7,7 @@ use mimir2::{
     domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Remote,
 };
-// use places::admin::Admin;
+use places::admin::Admin;
 use std::path::PathBuf;
 
 #[tokio::main]
@@ -36,10 +37,7 @@ async fn main() {
 
     client
         .search_documents(
-            vec![
-                // TODO: ContainerDocument
-                "admin".to_string(),
-            ],
+            vec![Admin::static_doc_type().to_string()],
             Query::QueryDSL(dsl),
         )
         .await
