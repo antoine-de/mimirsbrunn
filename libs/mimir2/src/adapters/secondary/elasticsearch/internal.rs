@@ -1246,6 +1246,48 @@ impl ElasticsearchStorage {
             }
         }
     }
+
+    // pub(super) async fn list_indices(&self) -> Result<Vec<Index>, Error> {
+    //     let response = self
+    //         .0
+    //         .cat()
+    //         .indices(CatIndicesParts::None)
+    //         .format("json")
+    //         .send()
+    //         .await
+    //         .context(ElasticsearchClient {
+    //             details: String::from("cannot list indices"),
+    //         })?;
+
+    //     if response.status_code().is_success() {
+    //         let json = response
+    //             .json::<Value>()
+    //             .await
+    //             .context(ElasticsearchDeserialization)?;
+
+    //         let indices: Vec<ElasticsearchIndex> =
+    //             serde_json::from_value(json).context(JsonDeserialization {
+    //                 details: String::from("could not deserialize Elasticsearch indices"),
+    //             })?;
+
+    //         indices.into_iter().map(Index::try_from).collect()
+    //     } else {
+    //         let exception = response.exception().await.ok().unwrap();
+
+    //         // We need to handle this exception carefully, so that the 'unknown index' does
+    //         // not result in an Error, but rather a Ok(None) to indicate that nothing was found.
+
+    //         match exception {
+    //             Some(exception) => {
+    //                 let err = Error::from(exception);
+    //                 Err(err)
+    //             }
+    //             None => Err(Error::ElasticsearchFailureWithoutException {
+    //                 details: String::from("Fail status without exception"),
+    //             }),
+    //         }
+    //     }
+    // }
 }
 
 /// This is the information provided by Elasticsearch CAT Indice API

@@ -53,7 +53,7 @@ global = 1.0
         # parameters through `proximity_{key}`.
         #
         # More about elasticsearch's normal decay:
-        # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-query.html#_supported_decay_functions
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-html#_supported_decay_functions
         [importance_query.proximity.decay]
         func = "exp"
         scale = 130.0

@@ -1,7 +1,7 @@
 [package]
 name = "mimirsbrunn"
 version = "1.21.0"
-authors = ["Canal TP <dt.ro@canaltp.fr>"]
+authors = ["Kisio Digital <team.core@kisio.com>", "Qwant", "Guillaume Pinot <texitoi@texitio.eu>"]
 build = "build.rs"
 autotests = false
 edition = "2018"
@@ -76,6 +76,7 @@ tracing-bunyan-formatter = { version = "0.2", default-features = false }
 tracing-log = "0.1.2"
 http = "0.2"
 warp = { version = "0.3.1" }
+
 common = { path = "libs/common" }
 mimir2 = { path = "libs/mimir2" }
 places = { path = "libs/places" }
@@ -106,6 +107,10 @@ json = "0.12"
 [[bin]]
 name = "b2"
 path = "src/b2/main.rs"
+
+[[bin]]
+name = "bragi"
+path = "src/bragi/main.rs"
 
 [[test]]
 name = "admin"

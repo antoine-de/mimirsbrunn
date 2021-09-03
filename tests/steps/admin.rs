@@ -2,7 +2,7 @@ use common::document::ContainerDocument;
 use config::Config;
 use cucumber::{t, Steps};
 use mimir2::{
-    adapters::primary::bragi::autocomplete::{build_query, Filters},
+    adapters::primary::common::{dsl::build_query, filters::Filters},
     adapters::secondary::elasticsearch,
     adapters::secondary::elasticsearch::remote::{connection_test_pool, Error as PoolError},
     domain::model::query::Query,
