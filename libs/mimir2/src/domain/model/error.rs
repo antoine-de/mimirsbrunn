@@ -1,5 +1,5 @@
-use super::document::ContainerDocument;
 use crate::domain::ports;
+use common::document::ContainerDocument;
 use snafu::Snafu;
 
 #[derive(Debug, Snafu)]

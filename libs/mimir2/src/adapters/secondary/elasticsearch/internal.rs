@@ -25,11 +25,11 @@ use super::configuration::IndexConfiguration;
 use super::ElasticsearchStorage;
 use crate::domain::model::{
     configuration,
-    document::Document,
     index::{Index, IndexStatus},
     query::Query,
     stats::InsertStats as ModelInsertStats,
 };
+use common::document::Document;
 
 static CHUNK_SIZE: usize = 100;
 

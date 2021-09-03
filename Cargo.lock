@@ -880,6 +880,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "places",
+ "serde 1.0.126",
+]
+
+[[package]]
 name = "config"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2570,6 +2578,7 @@ dependencies = [
  "async-trait",
  "bollard",
  "chrono",
+ "common",
  "criterion",
  "elasticsearch",
  "futures 0.3.15",

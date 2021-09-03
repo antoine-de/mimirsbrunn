@@ -157,7 +157,7 @@ mod tests {
     use futures::TryStreamExt;
     use mimir2::domain::ports::primary::list_documents::ListDocuments;
     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
-    use mimirsbrunn::admin::AdminDoc;
+    use places::admin::Admin;
 
     use super::*;
 
@@ -318,7 +318,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        let admins: Vec<AdminDoc> = client
+        let admins: Vec<Admin> = client
             .list_documents()
             .unwrap()
             .try_collect()
@@ -327,8 +327,8 @@ mod tests {
 
         drop(guard);
 
-        assert!(admins.iter().all(|admin| admin.0.boundary.is_some()));
-        assert!(admins.iter().all(|admin| admin.0.coord.is_valid()));
+        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
+        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
     }
 
     // #[tokio::test]

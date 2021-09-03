@@ -2,12 +2,9 @@ use async_trait::async_trait;
 use futures::stream::Stream;
 use snafu::Snafu;
 
-#[cfg(test)]
-use crate::domain::model::document::tests::Book;
-
 use crate::domain::model::configuration::Configuration;
-use crate::domain::model::document::Document;
 use crate::domain::model::index::{Index, IndexVisibility};
+use common::document::Document;
 
 #[derive(Debug, Snafu)]
 pub enum Error {

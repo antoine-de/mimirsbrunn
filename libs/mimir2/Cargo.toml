@@ -20,6 +20,7 @@ async-trait = "0.1.50"
 # Should be in dev, but cannot get cucumber to work otherwise
 bollard = "0.10.1"
 chrono = { version = "0.4", features = [ "serde" ] }
+common = { path = "../common" }
 elasticsearch = "7.12.0-alpha.1"
 futures = "0.3"
 http = "0.2"

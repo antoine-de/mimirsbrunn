@@ -15,7 +15,8 @@ readme = "README.md"
 [workspace]
 members = [
   "libs/mimir2",
-  "libs/places"
+  "libs/places",
+  "libs/common",
 ]
 
 [features]
