@@ -1,7 +1,8 @@
 use elasticsearch::Elasticsearch;
 
+pub mod configuration;
 pub mod explain;
-pub mod internal;
+pub(super) mod internal;
 pub mod list;
 pub mod query;
 pub mod remote;

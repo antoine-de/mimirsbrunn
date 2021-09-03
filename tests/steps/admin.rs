@@ -3,7 +3,7 @@ use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
     adapters::secondary::elasticsearch,
     adapters::secondary::elasticsearch::{
-        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
+        configuration::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
         remote::{connection_test_pool, Error as PoolError},
     },
     domain::model::query::Query,

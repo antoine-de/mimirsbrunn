@@ -32,7 +32,7 @@ use failure::{format_err, Error};
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
-        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
+        configuration::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
     domain::ports::secondary::remote::Remote,
 };
@@ -290,7 +290,9 @@ mod tests {
 
     #[tokio::test]
     async fn should_correctly_index_a_small_cosmogony_file() {
-        let _guard = docker::initialize().await.unwrap();
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
 
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
@@ -322,6 +324,8 @@ mod tests {
             .try_collect()
             .await
             .unwrap();
+
+        drop(guard);
 
         assert!(admins.iter().all(|admin| admin.0.boundary.is_some()));
         assert!(admins.iter().all(|admin| admin.0.coord.is_valid()));
