@@ -8,11 +8,11 @@ use super::internal;
 use super::ElasticsearchStorage;
 use crate::domain::model::{
     configuration::{self, Configuration},
-    document::Document,
     index::{Index, IndexVisibility},
     stats::InsertStats,
 };
 use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use common::document::Document;
 
 #[async_trait]
 impl Storage for ElasticsearchStorage {

@@ -1,3 +1,4 @@
+use common::document::ContainerDocument;
 use cucumber::{t, Steps};
 use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
@@ -12,7 +13,7 @@ use mimir2::{
     domain::ports::secondary::remote::Remote,
     domain::ports::secondary::storage::Storage,
 };
-use places::{admin::Admin, MimirObject};
+use places::admin::Admin;
 use snafu::{ResultExt, Snafu};
 
 use std::path::PathBuf;
@@ -71,7 +72,10 @@ pub fn steps() -> Steps<crate::MyWorld> {
 
             world.search_result = {
                 client
-                    .search_documents(vec![String::from(Admin::doc_type())], Query::QueryDSL(dsl))
+                    .search_documents(
+                        vec![Admin::static_doc_type().to_string()],
+                        Query::QueryDSL(dsl),
+                    )
                     .await
                     .unwrap()
             };

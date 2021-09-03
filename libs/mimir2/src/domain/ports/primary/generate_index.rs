@@ -1,19 +1,18 @@
 use crate::domain::model::configuration::Configuration;
-use crate::domain::model::document::Document;
 use crate::domain::model::index::{Index, IndexVisibility};
 use crate::domain::ports::secondary::import::Error as ImportError;
 use crate::domain::ports::secondary::storage::Storage;
 use async_trait::async_trait;
+use common::document::ContainerDocument;
 use futures::stream::Stream;
 use tracing::info;
 
 #[async_trait]
 pub trait GenerateIndex {
-    async fn generate_index<D: Document + Send + Sync + 'static>(
+    async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
         config: Configuration,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
-        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, ImportError>;
 }
@@ -23,11 +22,10 @@ impl<T> GenerateIndex for T
 where
     T: Storage + Send + Sync + 'static,
 {
-    async fn generate_index<D: Document + Send + Sync + 'static>(
+    async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
         config: Configuration,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
-        doc_type: &str,
         visibility: IndexVisibility,
     ) -> Result<Index, ImportError> {
         // 1. We modify the name of the index:
@@ -46,7 +44,7 @@ where
         //   2) in the parameter doc_type
 
         let config = config
-            .normalize_index_name(doc_type)
+            .normalize_index_name(D::static_doc_type())
             .map_err(|err| ImportError::IndexCreation { source: err.into() })?;
 
         let index = self

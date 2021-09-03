@@ -1,8 +1,9 @@
-use crate::domain::model::document::ContainerDocument;
 use crate::domain::model::error::Error;
 use crate::domain::ports::secondary::list::{List, Parameters};
 use async_trait::async_trait;
+use common::document::ContainerDocument;
 use futures::stream::{Stream, StreamExt};
+use serde::de::DeserializeOwned;
 use std::pin::Pin;
 
 type PinnedStream<T> = Pin<Box<dyn Stream<Item = T> + Send + 'static>>;
@@ -14,7 +15,7 @@ pub trait ListDocuments<D> {
 
 impl<D, T> ListDocuments<D> for T
 where
-    D: ContainerDocument + serde::de::DeserializeOwned + 'static,
+    D: ContainerDocument + DeserializeOwned + 'static,
     T: List,
     T::Doc: Into<serde_json::Value>,
 {

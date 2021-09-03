@@ -880,6 +880,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "serde 1.0.126",
+]
+
+[[package]]
 name = "config"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2570,6 +2577,7 @@ dependencies = [
  "async-trait",
  "bollard",
  "chrono",
+ "common",
  "criterion",
  "elasticsearch",
  "futures 0.3.15",
@@ -2609,6 +2617,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "clap",
+ "common",
  "config",
  "cosmogony",
  "csv",
@@ -3266,6 +3275,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 name = "places"
 version = "0.1.0"
 dependencies = [
+ "common",
  "cosmogony",
  "geo-types 0.7.2",
  "geojson",

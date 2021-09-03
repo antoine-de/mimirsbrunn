@@ -34,20 +34,15 @@ use crate::utils;
 use cosmogony::ZoneType::City;
 use cosmogony::{Zone, ZoneIndex};
 use failure::{format_err, Error};
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
 use mimir2::{
     adapters::secondary::elasticsearch::{configuration::IndexConfiguration, ElasticsearchStorage},
     domain::{
-        model::{
-            configuration::Configuration,
-            document::{ContainerDocument, Document},
-            index::IndexVisibility,
-        },
+        model::{configuration::Configuration, index::IndexVisibility},
         ports::primary::generate_index::GenerateIndex,
     },
 };
 use places::admin::Admin;
-use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -61,30 +56,6 @@ trait IntoAdmin {
         max_weight: f64,
         all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin;
-}
-
-// We use a new type to wrap around Addr and implement the Document trait.
-#[derive(Deserialize, Serialize)]
-#[serde(transparent)]
-pub struct AdminDoc(pub Admin);
-
-impl AdminDoc {
-    const DOC_TYPE: &'static str = "admin";
-}
-
-impl Document for AdminDoc {
-    fn doc_type(&self) -> &'static str {
-        Self::DOC_TYPE
-    }
-    fn id(&self) -> String {
-        self.0.id.clone()
-    }
-}
-
-impl ContainerDocument for AdminDoc {
-    fn static_doc_type() -> &'static str {
-        Self::DOC_TYPE
-    }
 }
 
 pub async fn import_admins<S>(
@@ -101,13 +72,11 @@ where
             err.to_string()
         )
     })?;
-    let admins = admins.map(AdminDoc);
 
     client
         .generate_index(
             Configuration { value: config },
             admins,
-            AdminDoc::DOC_TYPE,
             IndexVisibility::Public,
         )
         .await

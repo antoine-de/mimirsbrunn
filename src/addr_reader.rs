@@ -6,36 +6,17 @@ use futures::stream::{self, Stream, StreamExt};
 use mimir2::{
     adapters::secondary::elasticsearch::{configuration::IndexConfiguration, ElasticsearchStorage},
     domain::{
-        model::{configuration::Configuration, document::Document, index::IndexVisibility},
+        model::{configuration::Configuration, index::IndexVisibility},
         ports::primary::generate_index::GenerateIndex,
     },
 };
 use places::addr::Addr;
 use serde::de::DeserializeOwned;
-use serde::Serialize;
 use slog_scope::{info, warn};
 use std::io::Read;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
 use tokio::fs::File;
-
-// We use a new type to wrap around Addr and implement the Document trait.
-#[derive(Serialize)]
-struct AddrDoc(Addr);
-
-impl Document for AddrDoc {
-    fn doc_type(&self) -> &'static str {
-        Self::DOC_TYPE
-    }
-
-    fn id(&self) -> String {
-        self.0.id.clone()
-    }
-}
-
-impl AddrDoc {
-    const DOC_TYPE: &'static str = "addr";
-}
 
 async fn import_addresses<S, F, T>(
     client: ElasticsearchStorage,
@@ -53,7 +34,7 @@ where
                 warn!("Address {} has no street name and has been ignored.", a.id);
                 future::ready(None)
             } else {
-                future::ready(Some(AddrDoc(a)))
+                future::ready(Some(a))
             }
         }
         Err(err) => {
@@ -73,7 +54,6 @@ where
         .generate_index(
             Configuration { value: config },
             addrs,
-            AddrDoc::DOC_TYPE,
             IndexVisibility::Public,
         )
         .await

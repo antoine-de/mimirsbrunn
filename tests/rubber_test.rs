@@ -31,7 +31,7 @@
 use cosmogony::ZoneType;
 use geo::prelude::BoundingRect;
 use mimir::rubber::{self, IndexSettings, Rubber};
-use mimir::{Admin, Coord, MimirObject, Street};
+use mimir::{Admin, Coord, Street};
 use serde_json::{json, Value};
 
 fn check_has_elt<F: FnMut(&Value)>(es: &crate::ElasticSearchWrapper<'_>, mut fun: F) {

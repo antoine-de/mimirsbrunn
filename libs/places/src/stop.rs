@@ -1,3 +1,4 @@
+use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -8,8 +9,8 @@ use super::admin::Admin;
 use super::code::Code;
 use super::context::Context;
 use super::coord::Coord;
+use super::Members;
 use super::Property;
-use super::{Members, MimirObject, PlaceDocType};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct CommercialMode {
@@ -146,23 +147,24 @@ pub struct Stop {
     pub context: Option<Context>,
 }
 
-impl MimirObject for Stop {
-    fn is_geo_data() -> bool {
-        false
-    }
-    fn doc_type() -> &'static str {
-        PlaceDocType::Stop.as_str()
-    }
-    fn es_id(&self) -> Option<String> {
-        Some(self.id.clone())
-    }
-}
 impl Members for Stop {
     fn label(&self) -> &str {
         &self.label
     }
     fn admins(&self) -> Vec<Arc<Admin>> {
         self.administrative_regions.clone()
+    }
+}
+
+impl Document for Stop {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+}
+
+impl ContainerDocument for Stop {
+    fn static_doc_type() -> &'static str {
+        "stop"
     }
 }
 

@@ -1,0 +1,14 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["Canal TP <dt.ro@canaltp.fr>"]
+edition = "2018"
+description = "Set of tools shared between mimir packages"
+license = "AGPLv3"
+repository = "https://github.com/CanalTP/mimirsbrunn.git"
+keywords = [ "mimirsbrunn", "elasticsearch", "geocoding" ]
+categories = [ "application" ]
+readme = "README.md"
+
+[dependencies]
+serde = { version = "1.0", default_features = false }

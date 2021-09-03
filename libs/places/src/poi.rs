@@ -1,3 +1,4 @@
+use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -6,7 +7,7 @@ use super::admin::Admin;
 use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
-use super::{Members, MimirObject, PlaceDocType, Property};
+use super::{Members, Property};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(tag = "type", rename = "poi")]
@@ -57,15 +58,15 @@ impl From<&navitia_poi_model::PoiType> for PoiType {
     }
 }
 
-impl MimirObject for Poi {
-    fn is_geo_data() -> bool {
-        true
+impl Document for Poi {
+    fn id(&self) -> String {
+        self.id.clone()
     }
-    fn doc_type() -> &'static str {
-        PlaceDocType::Poi.as_str()
-    }
-    fn es_id(&self) -> Option<String> {
-        Some(self.id.clone())
+}
+
+impl ContainerDocument for Poi {
+    fn static_doc_type() -> &'static str {
+        "poi"
     }
 }
 

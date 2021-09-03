@@ -4,10 +4,10 @@ use snafu::Snafu;
 
 use crate::domain::model::{
     configuration::Configuration,
-    document::Document,
     index::{Index, IndexVisibility},
     stats::InsertStats,
 };
+use common::document::Document;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
