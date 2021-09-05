@@ -1,5 +1,5 @@
-use crate::domain::model::query::Query;
-use crate::domain::ports::secondary::explain::{Error, Explain, Parameters};
+use crate::domain::model::{error::Error as ModelError, query::Query};
+use crate::domain::ports::secondary::explain::{Explain, Parameters};
 use async_trait::async_trait;
 
 #[async_trait]
@@ -11,7 +11,7 @@ pub trait ExplainDocument {
         query: Query,
         id: String,
         doc_type: String,
-    ) -> Result<Self::Document, Error>;
+    ) -> Result<Self::Document, ModelError>;
 }
 
 #[async_trait]
@@ -26,13 +26,15 @@ where
         query: Query,
         id: String,
         doc_type: String,
-    ) -> Result<Self::Document, Error> {
+    ) -> Result<Self::Document, ModelError> {
         let explain_params = Parameters {
             doc_type,
             query,
             id,
         };
 
-        self.explain_document(explain_params).await
+        self.explain_document(explain_params)
+            .await
+            .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })
     }
 }
