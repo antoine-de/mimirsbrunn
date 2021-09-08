@@ -4,6 +4,8 @@ use serde::de::DeserializeOwned;
 use snafu::Snafu;
 use std::pin::Pin;
 
+use crate::domain::model::error::Error as ModelError;
+
 /// This port defines a method to list documents in storage
 #[derive(Debug, Clone)]
 pub struct Parameters {
@@ -24,4 +26,15 @@ pub trait List {
         &self,
         parameters: Parameters,
     ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, Error>;
+}
+
+// Conversion from secondary ports errors
+impl From<Error> for ModelError {
+    fn from(err: Error) -> ModelError {
+        match err {
+            Error::DocumentRetrievalError { source } => {
+                ModelError::DocumentRetrievalError { source }
+            }
+        }
+    }
 }

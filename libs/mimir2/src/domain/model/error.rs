@@ -1,4 +1,3 @@
-use crate::domain::ports;
 use common::document::ContainerDocument;
 use snafu::Snafu;
 
@@ -11,6 +10,21 @@ pub enum Error {
     },
     #[snafu(display("Document Retrieval Error: {}", source))]
     DocumentRetrievalError { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Index Creation Error: {}", source))]
+    IndexCreation { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Index Publication Error: {}", source))]
+    IndexPublication { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Storage Connection Error: {}", source))]
+    StorageConnection { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Document Stream Insertion Error: {}", source))]
+    DocumentStreamInsertion { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Expected Index: {}", index))]
+    ExpectedIndex { index: String },
 }
 
 impl Error {
@@ -18,18 +32,6 @@ impl Error {
         Self::Deserialization {
             target_type: T::static_doc_type(),
             source: err,
-        }
-    }
-}
-
-// Conversion from secondary ports errors
-
-impl From<ports::secondary::list::Error> for Error {
-    fn from(err: ports::secondary::list::Error) -> Self {
-        match err {
-            ports::secondary::list::Error::DocumentRetrievalError { source } => {
-                Self::DocumentRetrievalError { source }
-            }
         }
     }
 }

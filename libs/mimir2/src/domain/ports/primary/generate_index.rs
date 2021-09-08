@@ -1,6 +1,8 @@
-use crate::domain::model::configuration::Configuration;
-use crate::domain::model::index::{Index, IndexVisibility};
-use crate::domain::ports::secondary::import::Error as ImportError;
+use crate::domain::model::{
+    configuration::Configuration,
+    error::Error as ModelError,
+    index::{Index, IndexVisibility},
+};
 use crate::domain::ports::secondary::storage::Storage;
 use async_trait::async_trait;
 use common::document::ContainerDocument;
@@ -14,7 +16,7 @@ pub trait GenerateIndex {
         config: Configuration,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
         visibility: IndexVisibility,
-    ) -> Result<Index, ImportError>;
+    ) -> Result<Index, ModelError>;
 }
 
 #[async_trait]
@@ -27,7 +29,7 @@ where
         config: Configuration,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
         visibility: IndexVisibility,
-    ) -> Result<Index, ImportError> {
+    ) -> Result<Index, ModelError> {
         // 1. We modify the name of the index:
         //   currently set to the dataset, it should be something like root_doctype_dataset_timestamp
         // 2. Then we create the index
@@ -45,27 +47,27 @@ where
 
         let config = config
             .normalize_index_name(D::static_doc_type())
-            .map_err(|err| ImportError::IndexCreation { source: err.into() })?;
+            .map_err(|err| ModelError::IndexCreation { source: err.into() })?;
 
         let index = self
             .create_container(config)
             .await
-            .map_err(|err| ImportError::IndexCreation { source: err.into() })?;
+            .map_err(|err| ModelError::IndexCreation { source: err.into() })?;
 
         let stats = self
             .insert_documents(index.name.clone(), documents)
             .await
-            .map_err(|err| ImportError::DocumentStreamInsertion { source: err.into() })?;
+            .map_err(|err| ModelError::DocumentStreamInsertion { source: err.into() })?;
 
         info!("Index generation stats: {:?}", stats);
 
         self.publish_index(index.clone(), visibility)
             .await
-            .map_err(|err| ImportError::IndexPublication { source: err.into() })?;
+            .map_err(|err| ModelError::IndexPublication { source: err.into() })?;
 
         self.find_container(index.name.clone())
             .await
-            .map_err(|err| ImportError::DocumentStreamInsertion { source: err.into() })?
-            .ok_or(ImportError::ExpectedIndex { index: index.name })
+            .map_err(|err| ModelError::DocumentStreamInsertion { source: err.into() })?
+            .ok_or(ModelError::ExpectedIndex { index: index.name })
     }
 }

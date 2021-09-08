@@ -1,7 +1,8 @@
-use crate::domain::model::query::Query;
-use crate::domain::ports::secondary::search::{Error, Parameters, Search};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
+
+use crate::domain::model::{error::Error as ModelError, query::Query};
+use crate::domain::ports::secondary::search::{Parameters, Search};
 
 #[async_trait]
 pub trait SearchDocuments {
@@ -11,7 +12,7 @@ pub trait SearchDocuments {
         &self,
         doc_types: Vec<String>,
         query: Query,
-    ) -> Result<Vec<Self::Document>, Error>;
+    ) -> Result<Vec<Self::Document>, ModelError>;
 }
 
 #[async_trait]
@@ -26,7 +27,9 @@ where
         &self,
         doc_types: Vec<String>,
         query: Query,
-    ) -> Result<Vec<Self::Document>, Error> {
-        self.search_documents(Parameters { doc_types, query }).await
+    ) -> Result<Vec<Self::Document>, ModelError> {
+        self.search_documents(Parameters { doc_types, query })
+            .await
+            .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })
     }
 }
