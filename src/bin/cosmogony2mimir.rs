@@ -363,7 +363,6 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        // FIXME Maybe should get a Vec<Admin> rather than Vec<AdminDoc>
         let admins: Vec<Admin> = client
             .list_documents()
             .unwrap()
