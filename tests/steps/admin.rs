@@ -3,15 +3,15 @@ use cucumber::{t, Steps};
 use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
     adapters::secondary::elasticsearch,
-    adapters::secondary::elasticsearch::{
-        configuration::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-        remote::{connection_test_pool, Error as PoolError},
-    },
+    adapters::secondary::elasticsearch::remote::{connection_test_pool, Error as PoolError},
     domain::model::query::Query,
-    domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Error as ConnectionError,
     domain::ports::secondary::remote::Remote,
     domain::ports::secondary::storage::Storage,
+    domain::{
+        model::configuration::ContainerConfiguration,
+        ports::primary::search_documents::SearchDocuments,
+    },
 };
 use places::admin::Admin;
 use snafu::{ResultExt, Snafu};
@@ -298,54 +298,13 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
         return Ok(ProcessingStep::Skipped);
     }
     let path: &'static str = env!("CARGO_MANIFEST_DIR");
-    let config_path: PathBuf = [path, "config", "admin"].iter().collect();
-    let mut settings_path = config_path.clone();
-    settings_path.push("settings.json");
-    let settings = tokio::fs::read_to_string(&settings_path)
-        .await
-        .context(InvalidIO {
-            details: format!(
-                "could not read settings file from '{}'",
-                settings_path.display()
-            ),
-        })?;
-
-    let settings = serde_json::from_str(&settings).context(Json {
-        details: String::from("Could not deserialize settings"),
-    })?;
-
-    let mut mappings_path = config_path.clone();
-    mappings_path.push("mappings.json");
-    let mappings = tokio::fs::read_to_string(&mappings_path)
-        .await
-        .context(InvalidIO {
-            details: format!(
-                "could not read mappings file from '{}'",
-                mappings_path.display()
-            ),
-        })?;
-
-    let mappings = serde_json::from_str(&mappings).context(Json {
-        details: String::from("Could not deserialize settings"),
-    })?;
-
-    let config = IndexConfiguration {
-        name: String::from("test"),
-        parameters: IndexParameters {
-            timeout: String::from("10s"),
-            wait_for_active_shards: String::from("1"), // only the primary shard
-        },
-        settings: IndexSettings { value: settings },
-        mappings: IndexMappings { value: mappings },
-    };
-
     let mut input_path: PathBuf = [path, "tests", "data", "cosmogony"].iter().collect();
     let filename = format!("{}.jsonl.gz", region);
     input_path.push(&filename);
     mimirsbrunn::admin::index_cosmogony(
         input_path.into_os_string().into_string().unwrap(),
         vec![String::from("fr")],
-        config,
+        ContainerConfiguration::new("test".to_string()),
         client,
     )
     .await

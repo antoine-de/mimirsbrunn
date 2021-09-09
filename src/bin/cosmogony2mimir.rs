@@ -30,13 +30,9 @@
 
 use failure::{format_err, Error};
 use mimir2::{
-    adapters::secondary::elasticsearch::{
-        self,
-        configuration::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-    },
-    domain::ports::secondary::remote::Remote,
+    adapters::secondary::elasticsearch,
+    domain::{model::configuration::ContainerConfiguration, ports::secondary::remote::Remote},
 };
-use serde_json::json;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -59,18 +55,8 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
-    #[structopt(
-        parse(from_os_str),
-        long = "mappings",
-        default_value = "./config/admin/mappings.json"
-    )]
-    mappings: PathBuf,
-    #[structopt(
-        parse(from_os_str),
-        long = "settings",
-        default_value = "./config/admin/settings.json"
-    )]
-    settings: PathBuf,
+    #[structopt(short = "p", long = "config", parse(from_os_str))]
+    config_path: Option<PathBuf>,
     /// Number of shards for the es index
     #[structopt(short = "s", long = "nb-shards")]
     nb_shards: Option<usize>,
@@ -102,58 +88,10 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let settings = tokio::fs::read_to_string(args.settings.clone())
-        .await
-        .map_err(|err| {
-            format_err!(
-                "could not read settings file from '{}': {}",
-                args.settings.display(),
-                err.to_string(),
-            )
-        })?;
-
-    let mut settings: serde_json::Value = serde_json::from_str(&settings).map_err(|err| {
-        format_err!(
-            "could not deserialize settings file from '{}': {}",
-            args.settings.display(),
-            err.to_string(),
-        )
-    })?;
-
-    if let Some(nb_shards) = args.nb_shards {
-        settings["number_of_shards"] = json!(nb_shards);
-    }
-    if let Some(nb_replicas) = args.nb_replicas {
-        settings["number_of_replicas"] = json!(nb_replicas);
-    }
-
-    let mappings = tokio::fs::read_to_string(args.mappings.clone())
-        .await
-        .map_err(|err| {
-            format_err!(
-                "could not read mappings file from '{}': {}",
-                args.mappings.display(),
-                err.to_string(),
-            )
-        })?;
-
-    let mappings = serde_json::from_str(&mappings).map_err(|err| {
-        format_err!(
-            "could not deserialize mappings file from '{}': {}",
-            args.mappings.display(),
-            err.to_string(),
-        )
-    })?;
-
-    let config = IndexConfiguration {
-        name: args.dataset.clone(),
-        parameters: IndexParameters {
-            timeout: String::from("10s"),
-            wait_for_active_shards: String::from("1"), // only the primary shard
-        },
-        settings: IndexSettings { value: settings },
-        mappings: IndexMappings { value: mappings },
-    };
+    let mut config = ContainerConfiguration::new(args.dataset);
+    config.path = args.config_path.clone();
+    config.nb_shards = args.nb_shards;
+    config.nb_replicas = args.nb_replicas;
 
     mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, client)
         .await
@@ -185,8 +123,7 @@ mod tests {
             input: String::from("foo"),
             connection_string: url,
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: None,
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -206,8 +143,7 @@ mod tests {
             input: String::from("foo"),
             connection_string: url,
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: None,
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -221,17 +157,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_return_an_error_when_given_an_invalid_path_for_mappings() {
+    async fn should_return_an_error_when_given_an_invalid_path_for_config() {
         let guard = docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("foo"),
+            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: Some("./config/path_does_not_exist".into()),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -244,7 +179,7 @@ mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("could not read mappings file from"));
+            .contains("Elasticsearch Index Configuration not found at"));
     }
 
     #[tokio::test]
@@ -254,11 +189,10 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("foo"),
+            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./README.md"), // exists, but not json
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: Some("./tests/fixtures/config/invalid".into()),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -268,10 +202,8 @@ mod tests {
 
         drop(guard);
 
-        assert!(res
-            .unwrap_err()
-            .to_string()
-            .contains("could not deserialize mappings file from"));
+        assert!(dbg!(res.unwrap_err().to_string())
+            .contains("Invalid Elasticsearch Index Configuration"));
     }
 
     #[tokio::test]
@@ -284,8 +216,7 @@ mod tests {
             input: String::from("./invalid.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: None,
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -311,8 +242,7 @@ mod tests {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: Some("./config/admin".into()),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -355,8 +285,7 @@ mod tests {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: None,
             nb_shards: None,
             nb_replicas: None,
             langs: vec!["fr".into(), "en".into()],
@@ -398,8 +327,7 @@ mod tests {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            config_path: None,
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],

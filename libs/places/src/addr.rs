@@ -54,6 +54,14 @@ impl ContainerDocument for Addr {
     fn static_doc_type() -> &'static str {
         "addr"
     }
+
+    fn default_es_settings() -> &'static str {
+        include_str!("../../../config/addr/settings.json")
+    }
+
+    fn default_es_mappings() -> &'static str {
+        include_str!("../../../config/addr/mappings.json")
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

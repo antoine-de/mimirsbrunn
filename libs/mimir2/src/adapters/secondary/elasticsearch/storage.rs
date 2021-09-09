@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use common::document::ContainerDocument;
 use futures::future::TryFutureExt;
 use futures::stream::Stream;
 use std::convert::TryFrom;
@@ -6,8 +7,9 @@ use std::convert::TryFrom;
 use super::configuration::IndexConfiguration;
 use super::internal;
 use super::ElasticsearchStorage;
+use crate::domain::model::configuration::ContainerConfiguration;
 use crate::domain::model::{
-    configuration::{self, Configuration},
+    configuration,
     index::{Index, IndexVisibility},
     stats::InsertStats,
 };
@@ -18,7 +20,10 @@ use common::document::Document;
 impl Storage for ElasticsearchStorage {
     // This function delegates to elasticsearch the creation of the index. But since this
     // function returns nothing, we follow with a find index to return some details to the caller.
-    async fn create_container(&self, config: Configuration) -> Result<Index, StorageError> {
+    async fn create_container<D: ContainerDocument>(
+        &self,
+        config: ContainerConfiguration<D>,
+    ) -> Result<Index, StorageError> {
         let config = IndexConfiguration::try_from(config).map_err(|err| {
             StorageError::ContainerCreationError {
                 source: Box::new(err),

@@ -166,6 +166,14 @@ impl ContainerDocument for Stop {
     fn static_doc_type() -> &'static str {
         "stop"
     }
+
+    fn default_es_settings() -> &'static str {
+        include_str!("../../../config/stop/settings.json")
+    }
+
+    fn default_es_mappings() -> &'static str {
+        include_str!("../../../config/stop/mappings.json")
+    }
 }
 
 // This function reformat the id by removing spaces, and prepending a prefix

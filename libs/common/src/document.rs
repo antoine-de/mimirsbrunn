@@ -13,4 +13,10 @@ pub trait Document: Serialize {
 /// be used to generate a container.
 pub trait ContainerDocument: Document {
     fn static_doc_type() -> &'static str;
+
+    /// Default settings for Elasticsearch.
+    fn default_es_settings() -> &'static str;
+
+    /// Default mappings for Elasticsearch.
+    fn default_es_mappings() -> &'static str;
 }

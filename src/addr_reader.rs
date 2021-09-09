@@ -3,12 +3,10 @@ use failure::format_err;
 use flate2::read::GzDecoder;
 use futures::future;
 use futures::stream::{self, Stream, StreamExt};
+use mimir2::domain::model::configuration::ContainerConfiguration;
 use mimir2::{
-    adapters::secondary::elasticsearch::{configuration::IndexConfiguration, ElasticsearchStorage},
-    domain::{
-        model::{configuration::Configuration, index::IndexVisibility},
-        ports::primary::generate_index::GenerateIndex,
-    },
+    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
 use places::addr::Addr;
 use serde::de::DeserializeOwned;
@@ -20,7 +18,7 @@ use tokio::fs::File;
 
 async fn import_addresses<S, F, T>(
     client: ElasticsearchStorage,
-    config: IndexConfiguration,
+    config: ContainerConfiguration<Addr>,
     records: S,
     into_addr: F,
 ) -> Result<(), Error>
@@ -43,19 +41,8 @@ where
         }
     });
 
-    let config = serde_json::to_string(&config).map_err(|err| {
-        format_err!(
-            "could not serialize index configuration: {}",
-            err.to_string()
-        )
-    })?;
-
     client
-        .generate_index(
-            Configuration { value: config },
-            addrs,
-            IndexVisibility::Public,
-        )
+        .generate_index(config, addrs, IndexVisibility::Public)
         .await
         .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
 
@@ -96,7 +83,7 @@ where
 
 pub async fn import_addresses_from_reads<T, F>(
     client: ElasticsearchStorage,
-    config: IndexConfiguration,
+    config: ContainerConfiguration<Addr>,
     has_headers: bool,
     _nb_threads: usize,
     inputs: Vec<impl Read + Send + Sync + 'static>,
@@ -126,7 +113,7 @@ where
 
 pub async fn import_addresses_from_files<T, F>(
     client: ElasticsearchStorage,
-    config: IndexConfiguration,
+    config: ContainerConfiguration<Addr>,
     has_headers: bool,
     nb_threads: usize,
     files: impl IntoIterator<Item = PathBuf>,
@@ -165,7 +152,7 @@ where
 
 pub async fn import_addresses_from_file<F, T>(
     client: ElasticsearchStorage,
-    config: IndexConfiguration,
+    config: ContainerConfiguration<Addr>,
     file: PathBuf,
     into_addr: F,
 ) -> Result<(), Error>

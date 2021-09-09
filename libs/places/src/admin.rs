@@ -86,6 +86,14 @@ impl ContainerDocument for Admin {
     fn static_doc_type() -> &'static str {
         "admin"
     }
+
+    fn default_es_settings() -> &'static str {
+        include_str!("../../../config/admin/settings.json")
+    }
+
+    fn default_es_mappings() -> &'static str {
+        include_str!("../../../config/admin/mappings.json")
+    }
 }
 
 fn custom_multi_polygon_serialize<S>(

@@ -1,5 +1,5 @@
 use crate::domain::model::{
-    configuration::Configuration,
+    configuration::ContainerConfiguration,
     error::Error as ModelError,
     index::{Index, IndexVisibility},
 };
@@ -13,7 +13,7 @@ use tracing::info;
 pub trait GenerateIndex {
     async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
-        config: Configuration,
+        config: ContainerConfiguration<D>,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
         visibility: IndexVisibility,
     ) -> Result<Index, ModelError>;
@@ -26,7 +26,7 @@ where
 {
     async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
-        config: Configuration,
+        config: ContainerConfiguration<D>,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
         visibility: IndexVisibility,
     ) -> Result<Index, ModelError> {
@@ -44,11 +44,6 @@ where
         // there:
         //   1) in the document type
         //   2) in the parameter doc_type
-
-        let config = config
-            .normalize_index_name(D::static_doc_type())
-            .map_err(|err| ModelError::IndexCreation { source: err.into() })?;
-
         let index = self
             .create_container(config)
             .await

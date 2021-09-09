@@ -68,6 +68,14 @@ impl ContainerDocument for Poi {
     fn static_doc_type() -> &'static str {
         "poi"
     }
+
+    fn default_es_settings() -> &'static str {
+        include_str!("../../../config/poi/settings.json")
+    }
+
+    fn default_es_mappings() -> &'static str {
+        include_str!("../../../config/poi/mappings.json")
+    }
 }
 
 impl Members for Poi {

@@ -61,6 +61,14 @@ impl ContainerDocument for Street {
     fn static_doc_type() -> &'static str {
         "street"
     }
+
+    fn default_es_settings() -> &'static str {
+        include_str!("../../../config/street/settings.json")
+    }
+
+    fn default_es_mappings() -> &'static str {
+        include_str!("../../../config/street/mappings.json")
+    }
 }
 
 pub trait Incr: Clone {
