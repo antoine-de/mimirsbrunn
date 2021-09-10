@@ -900,36 +900,43 @@ impl ElasticsearchStorage {
         }
     }
 
-    // Uses search after
-    // pub(super) fn kjjjkkve_all_documents<D>(
-    pub(super) fn list_documents<D>(
+    pub(super) async fn list_documents<D>(
         &self,
         index: String,
     ) -> Result<Pin<Box<dyn Stream<Item = D> + Send>>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
+        let client = &self.0;
+        let pit: String = {
+            let response = client
+                .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
+                .keep_alive("1m")
+                .send()
+                .await
+                .unwrap()
+                .error_for_status_code()
+                .context(ElasticsearchClient {
+                    details: format!("cannot list index {}", index),
+                })?;
+            let response_body = response.json::<Value>().await.unwrap();
+            response_body
+                .get("id")
+                .expect("response has id")
+                .as_str()
+                .unwrap()
+                .into()
+        };
+
         let client = self.0.clone();
         let stream = stream::unfold(State::Start, move |state| {
             let client = client.clone();
             let index = index.clone();
+            let pit = pit.clone();
             async move {
                 match state {
                     State::Start => {
                         // We're starting, so we get a pit, and make a first requestj
-                        let response = client
-                            .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
-                            .keep_alive("1m")
-                            .send()
-                            .await
-                            .unwrap();
-                        let response_body = response.json::<Value>().await.unwrap();
-                        let pit = response_body
-                            .get("id")
-                            .expect("response has id")
-                            .as_str()
-                            .unwrap();
-
                         let body = json!({
                             "query": { "match_all": {}},
                             "pit": {"id": pit, "keep_alive": "1m" },

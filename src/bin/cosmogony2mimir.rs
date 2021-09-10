@@ -59,9 +59,17 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
-    #[structopt(parse(from_os_str), default_value = "./config/admin/mappings.json")]
+    #[structopt(
+        parse(from_os_str),
+        long = "mappings",
+        default_value = "./config/admin/mappings.json"
+    )]
     mappings: PathBuf,
-    #[structopt(parse(from_os_str), default_value = "./config/admin/settings.json")]
+    #[structopt(
+        parse(from_os_str),
+        long = "settings",
+        default_value = "./config/admin/settings.json"
+    )]
     settings: PathBuf,
     /// Number of shards for the es index
     #[structopt(short = "s", long = "nb-shards")]
@@ -113,10 +121,10 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
     })?;
 
     if let Some(nb_shards) = args.nb_shards {
-        settings["index"]["number_of_shards"] = json!(nb_shards);
+        settings["number_of_shards"] = json!(nb_shards);
     }
     if let Some(nb_replicas) = args.nb_replicas {
-        settings["index"]["number_of_replicas"] = json!(nb_replicas);
+        settings["number_of_replicas"] = json!(nb_replicas);
     }
 
     let mappings = tokio::fs::read_to_string(args.mappings.clone())
@@ -325,6 +333,7 @@ mod tests {
 
         let admins: Vec<Admin> = client
             .list_documents()
+            .await
             .unwrap()
             .try_collect()
             .await
@@ -365,6 +374,7 @@ mod tests {
 
         let admins: Vec<Admin> = client
             .list_documents()
+            .await
             .unwrap()
             .try_collect()
             .await

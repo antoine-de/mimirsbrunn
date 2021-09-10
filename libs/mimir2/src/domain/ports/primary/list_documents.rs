@@ -10,18 +10,19 @@ type PinnedStream<T> = Pin<Box<dyn Stream<Item = T> + Send + 'static>>;
 
 #[async_trait]
 pub trait ListDocuments<D> {
-    fn list_documents(&self) -> Result<PinnedStream<Result<D, ModelError>>, ModelError>;
+    async fn list_documents(&self) -> Result<PinnedStream<Result<D, ModelError>>, ModelError>;
 }
 
+#[async_trait]
 impl<D, T> ListDocuments<D> for T
 where
     D: ContainerDocument + DeserializeOwned + 'static,
-    T: List,
+    T: List + Send + Sync,
     T::Doc: Into<serde_json::Value>,
 {
-    fn list_documents(&self) -> Result<PinnedStream<Result<D, ModelError>>, ModelError> {
+    async fn list_documents(&self) -> Result<PinnedStream<Result<D, ModelError>>, ModelError> {
         let doc_type = D::static_doc_type().to_string();
-        let raw_documents = self.list_documents(Parameters { doc_type })?;
+        let raw_documents = self.list_documents(Parameters { doc_type }).await?;
 
         let documents = raw_documents
             .map(|raw| raw.into())

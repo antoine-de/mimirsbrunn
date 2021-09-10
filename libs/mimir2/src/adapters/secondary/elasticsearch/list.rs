@@ -9,11 +9,12 @@ use std::pin::Pin;
 impl List for ElasticsearchStorage {
     type Doc = serde_json::Value;
 
-    fn list_documents(
+    async fn list_documents(
         &self,
         parameters: Parameters,
     ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, Error> {
         self.list_documents(root_doctype(&parameters.doc_type))
+            .await
             .map_err(|err| Error::DocumentRetrievalError {
                 source: Box::new(err),
             })
