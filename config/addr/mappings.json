@@ -23,18 +23,21 @@
           "path_match": "^label($|s\\.\\w+)",
           "mapping": {
               "type": "text",
+              "index_options": "docs",
               "analyzer": "word",
               "copy_to": "full_label",
               "norms": false,
               "fields": {
                   "prefix": {
                       "type": "text",
+                      "index_options": "docs",
                       "analyzer": "prefix",
                       "search_analyzer": "word",
                       "norms": false
                   },
                   "ngram": {
                       "type": "text",
+                      "index_options": "docs",
                       "analyzer": "ngram",
                       "search_analyzer": "ngram",
                       "norms": false
@@ -63,6 +66,9 @@
     }
   ],
   "properties": {
+    "administrative_regions": {
+      "enabled": false
+    },
     "approx_coord": {
       "type": "geo_shape"
     },
@@ -107,6 +113,9 @@
     "street": {
       "enabled": false
     },
+    "type": {
+      "type": "constant_keyword"
+    },
     "weight": {
       "type": "double"
     },
@@ -115,9 +124,6 @@
       "index_options": "docs",
       "analyzer": "word",
       "copy_to": "full_label"
-    },
-    "type": {
-      "type": "constant_keyword"
     }
   }
 }
