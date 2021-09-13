@@ -157,6 +157,13 @@ pub fn poi2mimir_sample_test(es_wrapper: crate::ElasticSearchWrapper<'_>) {
         vec!["Livry-sur-Seine"]
     );
 
+    // We test that the poi_type has been normalized (ie its poi_type id has been prefixed by
+    // 'poi_type'
+    match agence_du_four {
+        mimir::Place::Poi(ref poi) => assert_eq!(poi.poi_type.id, "poi_type:TCL:AGE"),
+        _ => panic!("should have been a poi"),
+    }
+
     // If the POI has a city admin, then its weight is that of the city (or at least != 0.0)
     assert_relative_ne!(
         agence_du_four.poi().unwrap().weight,

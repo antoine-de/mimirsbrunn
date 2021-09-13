@@ -305,7 +305,7 @@ pub struct PoiType {
 impl From<&navitia_poi_model::PoiType> for PoiType {
     fn from(poi_type: &navitia_poi_model::PoiType) -> PoiType {
         PoiType {
-            id: poi_type.id.clone(),
+            id: normalize_id("poi_type", &poi_type.id.clone()),
             name: poi_type.name.clone(),
         }
     }
