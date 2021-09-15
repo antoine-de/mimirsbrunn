@@ -32,21 +32,20 @@ use failure::format_err;
 use futures::stream::StreamExt;
 
 use lazy_static::lazy_static;
+use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::{
     adapters::secondary::elasticsearch::{
         self,
-        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
+        configuration::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
     },
-    domain::ports::{list::ListParameters, remote::Remote},
-    domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
-    domain::usecases::UseCase,
+    domain::ports::secondary::remote::Remote,
 };
 use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
-use places::{admin::Admin, MimirObject};
 use serde::{Deserialize, Serialize};
-use slog_scope::info;
+use serde_json::json;
+use slog_scope::{info, warn};
 use std::io::stdin;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -191,15 +190,70 @@ struct Args {
     #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
     nb_insert_threads: usize,
     /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "5")]
-    nb_shards: usize,
+    #[structopt(short = "s", long = "nb-shards")]
+    nb_shards: Option<usize>,
     /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
-    nb_replicas: usize,
+    #[structopt(short = "r", long = "nb-replicas")]
+    nb_replicas: Option<usize>,
+    #[structopt(
+        parse(from_os_str),
+        long = "mappings",
+        default_value = "./config/addr/mappings.json"
+    )]
+    mappings: PathBuf,
+    #[structopt(
+        parse(from_os_str),
+        long = "settings",
+        default_value = "./config/addr/settings.json"
+    )]
+    settings: PathBuf,
 }
 
 async fn run(args: Args) -> Result<(), failure::Error> {
     info!("importing open addresses into Mimir");
+
+    let mappings = tokio::fs::read_to_string(args.mappings.clone())
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not read mappings file from '{}': {}",
+                args.mappings.display(),
+                err.to_string(),
+            )
+        })?;
+
+    let mappings = serde_json::from_str(&mappings).map_err(|err| {
+        format_err!(
+            "could not deserialize mappings file from '{}': {}",
+            args.mappings.display(),
+            err.to_string(),
+        )
+    })?;
+
+    let settings = tokio::fs::read_to_string(args.settings.clone())
+        .await
+        .map_err(|err| {
+            format_err!(
+                "could not read settings file from '{}': {}",
+                args.settings.display(),
+                err.to_string(),
+            )
+        })?;
+
+    let mut settings: serde_json::Value = serde_json::from_str(&settings).map_err(|err| {
+        format_err!(
+            "could not deserialize settings file from '{}': {}",
+            args.settings.display(),
+            err.to_string(),
+        )
+    })?;
+
+    if let Some(nb_shards) = args.nb_shards {
+        settings["number_of_shards"] = json!(nb_shards);
+    }
+    if let Some(nb_replicas) = args.nb_replicas {
+        settings["number_of_replicas"] = json!(nb_replicas);
+    }
 
     let config = IndexConfiguration {
         name: args.dataset.clone(),
@@ -207,14 +261,8 @@ async fn run(args: Args) -> Result<(), failure::Error> {
             timeout: String::from("10s"),
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
-        settings: IndexSettings {
-            base: serde_json::from_str(include_str!("../../config/addr/settings.json")).expect("invalid JSON file"),
-            nb_shards: args.nb_shards,
-            nb_replicas: args.nb_replicas,
-        },
-        mappings: IndexMappings {
-            value: String::from(include_str!("../../config/addr/mappings.json")),
-        },
+        settings: IndexSettings { value: settings },
+        mappings: IndexMappings { value: mappings },
     };
 
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
@@ -233,25 +281,19 @@ async fn run(args: Args) -> Result<(), failure::Error> {
 
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let search_documents = ListDocuments::new(Box::new(client.clone()));
-        let parameters = ListDocumentsParameters {
-            parameters: ListParameters {
-                doc_type: String::from(Admin::doc_type()),
-            },
+        let admins_geofinder = match client.list_documents().await {
+            Ok(stream) => {
+                stream
+                    .map(|admin| admin.expect("could not parse admin"))
+                    .collect()
+                    .await
+            }
+            Err(err) => {
+                warn!("administratives regions not found in es db. {:?}", err);
+                std::iter::empty().collect()
+            }
         };
-        let admin_stream = search_documents
-            .execute(parameters)
-            .await
-            .map_err(|err| format_err!("could not retrieve admins: {}", err.to_string()))?;
-
-        let admins = admin_stream
-            .map(|v| serde_json::from_value(v).expect("cannot deserialize admin"))
-            .collect::<Vec<Admin>>()
-            .await;
-
-        let admins_geofinder = admins.into_iter().collect();
         let id_precision = args.id_precision;
-
         move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
     };
 
@@ -304,4 +346,103 @@ async fn run(args: Args) -> Result<(), failure::Error> {
 #[tokio::main]
 async fn main() {
     mimirsbrunn::utils::launch_async(Box::new(run)).await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::document::ContainerDocument;
+    use futures::TryStreamExt;
+    use mimir2::domain::model::query::Query;
+    use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::domain::ports::primary::search_documents::SearchDocuments;
+    use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
+    use places::{addr::Addr, Place};
+
+    fn elasticsearch_test_url() -> String {
+        std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
+    }
+
+    #[tokio::test]
+    async fn should_correctly_index_oa_file() {
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let args = Args {
+            input: Some(PathBuf::from("./tests/fixtures/sample-oa.csv")),
+            connection_string: elasticsearch_test_url(),
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/addr/mappings.json"),
+            settings: PathBuf::from("./config/addr/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            id_precision: 5,
+            nb_threads: 2,
+            nb_insert_threads: 2,
+        };
+
+        let _res = mimirsbrunn::utils::launch_async_args(run, args).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let pool = remote::connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let search = |query: &str| {
+            let client = client.clone();
+            let query: String = query.into();
+            async move {
+                client
+                    .search_documents(
+                        vec![String::from(Addr::static_doc_type())],
+                        Query::QueryString(format!("full_label.prefix:({})", query)),
+                    )
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json).unwrap())
+                    .map(|place| match place {
+                        Place::Addr(addr) => addr,
+                        _ => panic!("should only have admins"),
+                    })
+                    .collect::<Vec<Addr>>()
+            }
+        };
+
+        let addresses: Vec<Addr> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        drop(guard);
+
+        assert_eq!(addresses.len(), 11);
+
+        let results = search("Otto-Braun-Straße 72").await;
+        assert_eq!(results.len(), 1);
+        let result = &results[0];
+        assert_eq!(result.id, "addr:13.41931;52.52354:72");
+
+        // We look for postcode 11111 which should have been filtered since the street name is empty
+        let results = search("11111").await;
+        assert_eq!(results.len(), 0);
+
+        // Check that addresses containing multiple postcodes are read correctly
+        let results = search("Rue Foncet").await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].zip_codes,
+            vec!["06000", "06100", "06200", "06300"]
+        )
+    }
 }

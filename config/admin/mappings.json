@@ -37,6 +37,7 @@
                   },
                   "ngram": {
                       "type": "text",
+                      "index_options": "docs",
                       "analyzer": "ngram",
                       "search_analyzer": "ngram",
                       "norms": false
@@ -65,25 +66,23 @@
     }
   ],
   "properties": {
-    "id": {
-      "type": "keyword",
-      "index": false
+    "administrative_regions": {
+      "enabled": false
     },
-    "level": {
-      "type": "long",
-      "index": false
+    "approx_coord": {
+      "type": "geo_shape"
     },
-    "zip_codes": {
-      "type": "text",
-      "index_options": "docs",
-      "analyzer": "word",
-      "copy_to": "full_label"
+    "boundary": {
+      "enabled": false
+    },
+    "codes": {
+      "type": "flattened"
     },
     "coord": {
       "type": "geo_point"
     },
-    "approx_coord": {
-      "type": "geo_shape"
+    "country_codes": {
+      "type": "keyword"
     },
     "full_label": {
       "type": "text",
@@ -106,38 +105,37 @@
         }
       }
     },
-    "weight": {
-      "type": "double"
-    },
-    "zone_type": {
-      "type": "keyword"
+    "id": {
+      "type": "keyword",
+      "index": false
     },
     "indexed_at": {
       "type": "date"
     },
-    "administrative_regions": {
-      "enabled": false
-    },
-    "boundary": {
-      "enabled": false
-    },
-    "country_codes": {
-      "type": "keyword"
-    },
     "insee": {
       "type": "keyword"
+    },
+    "level": {
+      "type": "long",
+      "index": false
     },
     "parent_id": {
       "type": "keyword"
     },
-    "codes": {
-      "type": "flattened"
-    },
     "type": {
       "type": "constant_keyword"
     },
-    "name": {
-      "type": "text"
+    "weight": {
+      "type": "double"
+    },
+    "zip_codes": {
+      "type": "text",
+      "index_options": "docs",
+      "analyzer": "word",
+      "copy_to": "full_label"
+    },
+     "zone_type": {
+      "type": "keyword"
     }
   }
 }

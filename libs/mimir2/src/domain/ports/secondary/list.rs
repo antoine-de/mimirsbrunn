@@ -22,7 +22,7 @@ pub enum Error {
 pub trait List {
     type Doc: DeserializeOwned + Send + Sync + 'static;
 
-    fn list_documents(
+    async fn list_documents(
         &self,
         parameters: Parameters,
     ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, Error>;

@@ -1,4 +1,6 @@
 {
+  "number_of_shards": "1",
+  "number_of_replicas": "0",
   "refresh_interval": "60s",
   "analysis": {
     "filter": {
@@ -46,10 +48,6 @@
         "filter": [ "lowercase", "asciifolding", "elision_filter", "prefix_filter" ],
         "char_filter" : [ ]
       },
-      "autocomplete": {
-        "tokenizer": "autocomplete",
-        "filter": [ "lowercase", "asciifolding", "elision_filter" ]
-      },
       "autocomplete_search": {
         "tokenizer": "standard",
         "filter": [ "lowercase", "asciifolding", "elision_filter" ]
@@ -61,14 +59,6 @@
       "ngram_as_prefix_search": {
         "tokenizer": "standard",
         "filter": [ "lowercase", "asciifolding", "first_ngram_truncate_words"]
-      }
-    },
-    "tokenizer": {
-      "autocomplete": {
-        "type": "edge_ngram",
-        "min_gram": "2",
-        "max_gram": "10",
-        "token_chars": [ "letter", "digit" ]
       }
     }
   },
