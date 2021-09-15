@@ -4,7 +4,6 @@ SHELL=/bin/bash
 # Configuration
 .PHONY: check docker-build-bragi-release docker-build-bragi-master dockerhub-login push-bragi-image-master push-bragi-image-release wipe-useless-images help
 .DEFAULT_GOAL := help
-ELASTICSEARCH_TEST_URL=http://localhost:9201
 
 check: pre-build ## Runs several tests (alias for pre-build)
 pre-build: fmt lint test
@@ -55,3 +54,7 @@ test: ## Launch all tests
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package mimir2
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package common
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package places
+
+.PHONY: version
+version: ## display version of bragi
+	@echo $(BRAGI_VERSION)
