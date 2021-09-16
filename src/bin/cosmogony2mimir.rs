@@ -28,11 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use config::Config;
 use failure::{format_err, Error};
-use mimir2::{
-    adapters::secondary::elasticsearch,
-    domain::{model::configuration::ContainerConfiguration, ports::secondary::remote::Remote},
-};
+use mimir2::common::container_config::DefaultEsContainerConfig;
+use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -55,8 +54,10 @@ struct Args {
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset", default_value = "fr")]
     dataset: String,
-    #[structopt(short = "p", long = "config", parse(from_os_str))]
-    config_path: Option<PathBuf>,
+    #[structopt(parse(from_os_str), default_value = "./config/admin/mappings.json")]
+    mappings: PathBuf,
+    #[structopt(parse(from_os_str), default_value = "./config/admin/settings.json")]
+    settings: PathBuf,
     /// Number of shards for the es index
     #[structopt(short = "s", long = "nb-shards")]
     nb_shards: Option<usize>,
@@ -88,14 +89,31 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let mut config = ContainerConfiguration::new(args.dataset);
-    config.path = args.config_path.clone();
-    config.nb_shards = args.nb_shards;
-    config.nb_replicas = args.nb_replicas;
+    let mut config_builder = Config::builder()
+        .add_source(places::admin::Admin::default_es_container_config())
+        .add_source(config::File::from(args.mappings))
+        .add_source(config::File::from(args.settings));
+
+    if let Some(nb_shards) = args.nb_shards {
+        config_builder = config_builder
+            .set_override("elasticsearch.settings.nb_shards", nb_shards.to_string())
+            .expect("could not set setting nb_shards");
+    }
+
+    if let Some(nb_replicas) = args.nb_replicas {
+        config_builder = config_builder
+            .set_override(
+                "elasticsearch.settings.nb_replicas",
+                nb_replicas.to_string(),
+            )
+            .expect("could not set setting nb_replicas");
+    }
+
+    let config = config_builder.build()?;
 
     mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, client)
         .await
-        .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string(),))
+        .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string()))
 }
 
 #[cfg(test)]
@@ -123,7 +141,8 @@ mod tests {
             input: String::from("foo"),
             connection_string: url,
             dataset: String::from("dataset"),
-            config_path: None,
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -143,7 +162,8 @@ mod tests {
             input: String::from("foo"),
             connection_string: url,
             dataset: String::from("dataset"),
-            config_path: None,
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -163,10 +183,11 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            config_path: Some("./config/path_does_not_exist".into()),
+            mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -179,7 +200,7 @@ mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("Elasticsearch Index Configuration not found at"));
+            .contains(r#"configuration file "./config/invalid.json" not found"#));
     }
 
     #[tokio::test]
@@ -189,10 +210,11 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            config_path: Some("./tests/fixtures/config/invalid".into()),
+            mappings: PathBuf::from("./README.md"), // exists, but not json
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -202,8 +224,7 @@ mod tests {
 
         drop(guard);
 
-        assert!(dbg!(res.unwrap_err().to_string())
-            .contains("Invalid Elasticsearch Index Configuration"));
+        assert!(dbg!(res.unwrap_err().to_string()).contains("is not of a registered file format"));
     }
 
     #[tokio::test]
@@ -216,7 +237,8 @@ mod tests {
             input: String::from("./invalid.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            config_path: None,
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -242,7 +264,8 @@ mod tests {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            config_path: Some("./config/admin".into()),
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
@@ -285,7 +308,8 @@ mod tests {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            config_path: None,
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec!["fr".into(), "en".into()],
@@ -327,7 +351,8 @@ mod tests {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            config_path: None,
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],

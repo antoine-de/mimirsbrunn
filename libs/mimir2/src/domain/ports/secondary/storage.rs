@@ -1,13 +1,13 @@
 use async_trait::async_trait;
+use config::Config;
 use futures::stream::Stream;
 use snafu::Snafu;
 
 use crate::domain::model::{
-    configuration::ContainerConfiguration,
     index::{Index, IndexVisibility},
     stats::InsertStats,
 };
-use common::document::{ContainerDocument, Document};
+use common::document::Document;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -30,10 +30,7 @@ pub enum Error {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait Storage {
-    async fn create_container<D: ContainerDocument>(
-        &self,
-        config: ContainerConfiguration<D>,
-    ) -> Result<Index, Error>;
+    async fn create_container(&self, config: Config) -> Result<Index, Error>;
 
     async fn delete_container(&self, index: String) -> Result<(), Error>;
 
@@ -56,10 +53,7 @@ impl<'a, T: ?Sized> Storage for Box<T>
 where
     T: Storage + Send + Sync,
 {
-    async fn create_container<D: ContainerDocument>(
-        &self,
-        config: ContainerConfiguration<D>,
-    ) -> Result<Index, Error> {
+    async fn create_container(&self, config: Config) -> Result<Index, Error> {
         (**self).create_container(config).await
     }
 

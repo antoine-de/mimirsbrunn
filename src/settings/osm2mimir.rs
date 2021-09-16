@@ -65,6 +65,7 @@ pub struct Settings {
     pub admin: Option<Admin>,
 }
 
+#[allow(deprecated)] // TODO
 impl Settings {
     // To create settings, we first retrieve default settings, merge in specific settings if
     // needed, and finally override them with command line arguments.
@@ -72,7 +73,7 @@ impl Settings {
         let config_dir = args.config_dir.clone();
         let settings = args.settings.clone();
 
-        let mut config = Config::new();
+        let mut config = Config::default();
         // let config_dir = config_dir.clone();
         match config_dir {
             Some(mut dir) => {

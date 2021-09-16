@@ -166,15 +166,9 @@ impl ContainerDocument for Stop {
     fn static_doc_type() -> &'static str {
         "stop"
     }
-
-    fn default_es_settings() -> &'static str {
-        include_str!("../../../config/stop/settings.json")
-    }
-
-    fn default_es_mappings() -> &'static str {
-        include_str!("../../../config/stop/mappings.json")
-    }
 }
+
+crate::impl_default_es_settings!(Stop, "stop");
 
 // This function reformat the id by removing spaces, and prepending a prefix
 pub fn normalize_id(prefix: &str, id: &str) -> String {

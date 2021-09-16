@@ -1,11 +1,11 @@
 use crate::domain::model::{
-    configuration::ContainerConfiguration,
     error::Error as ModelError,
     index::{Index, IndexVisibility},
 };
 use crate::domain::ports::secondary::storage::Storage;
 use async_trait::async_trait;
 use common::document::ContainerDocument;
+use config::Config;
 use futures::stream::Stream;
 use tracing::info;
 
@@ -13,7 +13,7 @@ use tracing::info;
 pub trait GenerateIndex {
     async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
-        config: ContainerConfiguration<D>,
+        config: Config,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
         visibility: IndexVisibility,
     ) -> Result<Index, ModelError>;
@@ -26,7 +26,7 @@ where
 {
     async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
-        config: ContainerConfiguration<D>,
+        config: Config,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
         visibility: IndexVisibility,
     ) -> Result<Index, ModelError> {

@@ -86,15 +86,9 @@ impl ContainerDocument for Admin {
     fn static_doc_type() -> &'static str {
         "admin"
     }
-
-    fn default_es_settings() -> &'static str {
-        include_str!("../../../config/admin/settings.json")
-    }
-
-    fn default_es_mappings() -> &'static str {
-        include_str!("../../../config/admin/mappings.json")
-    }
 }
+
+crate::impl_default_es_settings!(Admin, "admin");
 
 fn custom_multi_polygon_serialize<S>(
     multi_polygon_option: &Option<MultiPolygon<f64>>,

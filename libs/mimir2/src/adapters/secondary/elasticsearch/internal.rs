@@ -86,6 +86,10 @@ pub enum Error {
     #[snafu(display("Elasticsearch Unknown Setting: {}", setting))]
     ElasticsearchUnknownSetting { setting: String },
 
+    /// Elasticsearch Failed To Parse
+    #[snafu(display("Elasticsearch Failed to Parse Index Settings: {}", reason))]
+    ElasticsearchInvalidIndexSettings { reason: String },
+
     /// Elasticsearch Index Conversion
     #[snafu(display("Index Conversion Error: {}", details))]
     IndexConversion { details: String },

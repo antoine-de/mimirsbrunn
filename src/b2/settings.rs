@@ -76,15 +76,10 @@ impl Settings {
         })?;
 
         let config_dir = Path::new(config_dir);
-
-        let mut s = Config::new();
-
         let default_path = config_dir.join("default").with_extension("toml");
 
         // Start off by merging in the "default" configuration file
-        s.merge(File::from(default_path)).context(ConfigMerge {
-            msg: String::from("Could not merge default configuration"),
-        })?;
+        let mut s = Config::builder().add_source(File::from(default_path));
 
         // We use the RUN_MODE environment variable, and if not, the command line
         // argument. If neither is present, we return an error.
@@ -99,24 +94,15 @@ impl Settings {
 
         let settings_path = config_dir.join(&settings).with_extension("toml");
 
-        s.merge(File::from(settings_path).required(true))
-            .context(ConfigMerge {
-                msg: format!("Could not merge {} configuration", settings),
-            })?;
+        s = s.add_source(File::from(settings_path).required(true));
 
         // Add in a local configuration file
         // This file shouldn't be checked in to git
-        s.merge(File::with_name("config/local").required(false))
-            .context(ConfigMerge {
-                msg: String::from("Could not merge local configuration"),
-            })?;
+        s = s.add_source(File::with_name("config/local").required(false));
 
         // Add in settings from the environment (with a prefix of APP)
         // Eg.. `APP_DEBUG=1 ./target/app` would set the `debug` key
-        s.merge(Environment::with_prefix("app"))
-            .context(ConfigMerge {
-                msg: String::from("Could not merge configuration from environment variables"),
-            })?;
+        s = s.add_source(Environment::with_prefix("app"));
 
         // Now we take care of the elasticsearch.url, which can be had from environment variables.
         let key = match settings.as_str() {
@@ -125,21 +111,21 @@ impl Settings {
         };
 
         if let Ok(es_url) = env::var(key) {
-            s.set("elasticsearch.url", es_url).context(ConfigExtract {
-                msg: String::from("Could not set elasticsearch url from environment variable"),
-            })?;
+            s = s
+                .set_override("elasticsearch.url", es_url)
+                .context(ConfigExtract {
+                    msg: String::from("Could not set elasticsearch url from environment variable"),
+                })?;
         }
         // For the port, the value by default is the one in the configuration file. But it
         // gets overwritten by the environment variable STOCKS_GRAPHQL_PORT.
-        let default_port = s.get_int("service.port").context(ConfigExtract {
-            msg: String::from("Could not get default port"),
-        })?;
-
-        // config crate support i64, not u16
-        let default_port = u16::try_from(default_port).context(ConfigValue {
-            //map_err(|err| error::Error::MiscError {
-            msg: String::from("Could not get u16 port"),
-        })?;
+        let default_port: u16 = s
+            .build_cloned()
+            .expect("could not build intermediate settings")
+            .get("service.port")
+            .context(ConfigExtract {
+                msg: String::from("Could not get default port"),
+            })?;
 
         // We retrieve the port, first as a string, which must be turned into an u16, because
         // thats a correct port number. But then it should be cast into an i64 in the config,
@@ -152,13 +138,20 @@ impl Settings {
 
         let port = i64::try_from(port).unwrap(); // infaillible
 
-        s.set("service.port", port).context(ConfigExtract {
-            msg: String::from("Could not set service port"),
-        })?;
+        s = s
+            .set_override("service.port", port)
+            .context(ConfigExtract {
+                msg: String::from("Could not set service port"),
+            })?;
 
         // You can deserialize (and thus freeze) the entire configuration as
-        s.try_into().context(ConfigMerge {
-            msg: String::from("Could not generate settings from configuration"),
-        })
+        s.build()
+            .context(ConfigExtract {
+                msg: String::from("could not build config"),
+            })?
+            .try_into()
+            .context(ConfigMerge {
+                msg: String::from("Could not generate settings from configuration"),
+            })
     }
 }

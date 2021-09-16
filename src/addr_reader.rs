@@ -1,9 +1,9 @@
 use crate::Error;
+use config::Config;
 use failure::format_err;
 use flate2::read::GzDecoder;
 use futures::future;
 use futures::stream::{self, Stream, StreamExt};
-use mimir2::domain::model::configuration::ContainerConfiguration;
 use mimir2::{
     adapters::secondary::elasticsearch::ElasticsearchStorage,
     domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
@@ -18,7 +18,7 @@ use tokio::fs::File;
 
 async fn import_addresses<S, F, T>(
     client: ElasticsearchStorage,
-    config: ContainerConfiguration<Addr>,
+    config: Config,
     records: S,
     into_addr: F,
 ) -> Result<(), Error>
@@ -83,7 +83,7 @@ where
 
 pub async fn import_addresses_from_reads<T, F>(
     client: ElasticsearchStorage,
-    config: ContainerConfiguration<Addr>,
+    config: Config,
     has_headers: bool,
     _nb_threads: usize,
     inputs: Vec<impl Read + Send + Sync + 'static>,
@@ -113,7 +113,7 @@ where
 
 pub async fn import_addresses_from_files<T, F>(
     client: ElasticsearchStorage,
-    config: ContainerConfiguration<Addr>,
+    config: Config,
     has_headers: bool,
     nb_threads: usize,
     files: impl IntoIterator<Item = PathBuf>,
@@ -152,7 +152,7 @@ where
 
 pub async fn import_addresses_from_file<F, T>(
     client: ElasticsearchStorage,
-    config: ContainerConfiguration<Addr>,
+    config: Config,
     file: PathBuf,
     into_addr: F,
 ) -> Result<(), Error>

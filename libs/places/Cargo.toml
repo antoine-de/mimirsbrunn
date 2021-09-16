@@ -20,3 +20,8 @@ transit_model = "0.31.4"
 typed_index_collection = "1.1"
 navitia-poi-model = "0.3"
 common = { path = "../common" }
+
+[dependencies.config]
+git = "https://github.com/mehcode/config-rs.git"
+branch = "master"
+default_features = false

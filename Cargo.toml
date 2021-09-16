@@ -23,7 +23,6 @@ members = [
 db-storage = [ "rusqlite" ]
 
 [dependencies]
-config = "0.10"
 log = { version = "0.4", features = ["release_max_level_debug"] }
 slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
 slog-scope = "4.3"
@@ -77,10 +76,15 @@ tracing-bunyan-formatter = { version = "0.2", default-features = false }
 tracing-log = "0.1.2"
 http = "0.2"
 warp = { version = "0.3.1" }
-
 common = { path = "libs/common" }
 mimir2 = { path = "libs/mimir2" }
 places = { path = "libs/places" }
+
+[dependencies.config]
+git = "https://github.com/mehcode/config-rs.git"
+branch = "master"
+default_features = false
+features = ["json", "toml"]
 
 [lib]
 name = "mimirsbrunn"

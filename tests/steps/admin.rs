@@ -1,17 +1,16 @@
+use common::container_config::DefaultEsContainerConfig;
 use common::document::ContainerDocument;
+use config::Config;
 use cucumber::{t, Steps};
 use mimir2::{
     adapters::primary::bragi::autocomplete::{build_query, Filters},
     adapters::secondary::elasticsearch,
     adapters::secondary::elasticsearch::remote::{connection_test_pool, Error as PoolError},
     domain::model::query::Query,
+    domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Error as ConnectionError,
     domain::ports::secondary::remote::Remote,
     domain::ports::secondary::storage::Storage,
-    domain::{
-        model::configuration::ContainerConfiguration,
-        ports::primary::search_documents::SearchDocuments,
-    },
 };
 use places::admin::Admin;
 use snafu::{ResultExt, Snafu};
@@ -27,9 +26,7 @@ pub fn steps() -> Steps<crate::MyWorld> {
         "osm file has been downloaded for (.*)",
         t!(|mut world, ctx| {
             let region = ctx.matches[1].clone();
-            world
-                .processing_step
-                .insert(download_osm(&region).await.unwrap());
+            world.processing_step = Some(download_osm(&region).await.unwrap());
             world
         }),
     );
@@ -39,9 +36,7 @@ pub fn steps() -> Steps<crate::MyWorld> {
         t!(|mut world, ctx| {
             let region = ctx.matches[1].clone();
             let previous = world.processing_step.clone().unwrap(); // we must have done something before, file either skipped or downloaded.
-            world
-                .processing_step
-                .insert(generate_cosmogony(&region, previous).await.unwrap());
+            world.processing_step = Some(generate_cosmogony(&region, previous).await.unwrap());
             world
         }),
     );
@@ -51,9 +46,7 @@ pub fn steps() -> Steps<crate::MyWorld> {
         t!(|mut world, ctx| {
             let region = ctx.matches[1].clone();
             let previous = world.processing_step.clone().unwrap(); // we must have done something before, file either skipped or downloaded.
-            world
-                .processing_step
-                .insert(index_cosmogony(&region, previous).await.unwrap());
+            world.processing_step = Some(index_cosmogony(&region, previous).await.unwrap());
             world
         }),
     );
@@ -304,7 +297,12 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
     mimirsbrunn::admin::index_cosmogony(
         input_path.into_os_string().into_string().unwrap(),
         vec![String::from("fr")],
-        ContainerConfiguration::new("test".to_string()),
+        Config::builder()
+            .add_source(Admin::default_es_container_config())
+            .set_override("name", "test_admin")
+            .expect("failed to set index name in config")
+            .build()
+            .expect("failed to build configuration"),
         client,
     )
     .await

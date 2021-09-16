@@ -31,16 +31,14 @@
 use crate::osm_reader::admin;
 use crate::osm_reader::osm_utils;
 use crate::utils;
+use config::Config;
 use cosmogony::ZoneType::City;
 use cosmogony::{Zone, ZoneIndex};
 use failure::{format_err, Error};
 use futures::stream::Stream;
 use mimir2::{
     adapters::secondary::elasticsearch::ElasticsearchStorage,
-    domain::{
-        model::{configuration::ContainerConfiguration, index::IndexVisibility},
-        ports::primary::generate_index::GenerateIndex,
-    },
+    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
 use places::admin::Admin;
 use slog_scope::{info, warn};
@@ -60,7 +58,7 @@ trait IntoAdmin {
 
 pub async fn import_admins<S>(
     client: ElasticsearchStorage,
-    config: ContainerConfiguration<Admin>,
+    config: Config,
     admins: S,
 ) -> Result<(), Error>
 where
@@ -169,7 +167,7 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 pub async fn index_cosmogony(
     input: String,
     langs: Vec<String>,
-    config: ContainerConfiguration<Admin>,
+    config: Config,
     client: ElasticsearchStorage,
 ) -> Result<(), Error> {
     info!("building map cosmogony id => osm id");
