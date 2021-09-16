@@ -29,9 +29,9 @@
 // www.navitia.io
 
 use common::config::config_from_args;
+use common::document::ContainerDocument;
 use config::Config;
 use failure::{format_err, Error};
-use mimir2::common::container_config::DefaultEsContainerConfig;
 use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use std::path::PathBuf;
 use structopt::StructOpt;

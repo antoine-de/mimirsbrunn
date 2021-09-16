@@ -1,4 +1,4 @@
-use common::document::{ContainerDocument, Document};
+use common::document::Document;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -64,13 +64,7 @@ impl Document for Poi {
     }
 }
 
-impl ContainerDocument for Poi {
-    fn static_doc_type() -> &'static str {
-        "poi"
-    }
-}
-
-crate::impl_default_es_settings!(Poi, "poi");
+crate::impl_container_document!(Poi, "poi");
 
 impl Members for Poi {
     fn label(&self) -> &str {

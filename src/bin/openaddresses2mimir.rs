@@ -32,7 +32,7 @@ use failure::format_err;
 use futures::stream::StreamExt;
 
 use common::config::config_from_args;
-use common::container_config::DefaultEsContainerConfig;
+use common::document::ContainerDocument;
 use config::Config;
 use lazy_static::lazy_static;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;

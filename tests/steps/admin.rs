@@ -1,4 +1,3 @@
-use common::container_config::DefaultEsContainerConfig;
 use common::document::ContainerDocument;
 use config::Config;
 use cucumber::{t, Steps};

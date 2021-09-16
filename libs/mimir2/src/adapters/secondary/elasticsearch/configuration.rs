@@ -36,7 +36,6 @@ pub struct IndexConfiguration {
     pub mappings: IndexMappings,
 }
 
-// FIXME A lot of work needs to go in there to type everything
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct IndexSettings(serde_json::Value);
 
@@ -46,7 +45,6 @@ impl std::fmt::Display for IndexSettings {
     }
 }
 
-// FIXME A lot of work needs to go in there to type everything
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct IndexMappings(serde_json::Value);
 
