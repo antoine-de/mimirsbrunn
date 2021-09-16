@@ -1,119 +1,123 @@
 {
-  "dynamic_templates": [
-    {
-      "i18n_names": {
-          "match_pattern": "regex",
-          "path_match": "^name($|s\\.\\w+)",
-          "mapping": {
-              "type": "text",
-              "analyzer": "word",
-              "fields": {
-                  "prefix": {
-                      "type": "text",
-                      "analyzer": "prefix",
-                      "search_analyzer": "word"
-                  }
-              }
-          }
-      }
-    },
-    {
-      "i18n_labels": {
-          "match_pattern": "regex",
-          "path_match": "^label($|s\\.\\w+)",
-          "mapping": {
-              "type": "text",
-              "analyzer": "word",
-              "copy_to": "full_label",
-              "norms": false,
-              "fields": {
-                  "prefix": {
-                      "type": "text",
-                      "analyzer": "prefix",
-                      "search_analyzer": "word",
-                      "norms": false
-                  },
-                  "ngram": {
-                      "type": "text",
-                      "analyzer": "ngram",
-                      "search_analyzer": "ngram",
-                      "norms": false
-                  }
-              }
-          }
+    "elasticsearch": {
+        "mappings": {
+            "dynamic_templates": [
+                {
+                    "i18n_names": {
+                        "match_pattern": "regex",
+                        "path_match": "^name($|s\\.\\w+)",
+                        "mapping": {
+                            "type": "text",
+                            "analyzer": "word",
+                            "fields": {
+                                "prefix": {
+                                    "type": "text",
+                                    "analyzer": "prefix",
+                                    "search_analyzer": "word"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "i18n_labels": {
+                        "match_pattern": "regex",
+                        "path_match": "^label($|s\\.\\w+)",
+                        "mapping": {
+                            "type": "text",
+                            "analyzer": "word",
+                            "copy_to": "full_label",
+                            "norms": false,
+                            "fields": {
+                                "prefix": {
+                                    "type": "text",
+                                    "analyzer": "prefix",
+                                    "search_analyzer": "word",
+                                    "norms": false
+                                },
+                                "ngram": {
+                                    "type": "text",
+                                    "analyzer": "ngram",
+                                    "search_analyzer": "ngram",
+                                    "norms": false
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "dynamic_objects": {
+                        "match_mapping_type": "object",
+                        "mapping": {
+                            "dynamic": true
+                        }
+                    }
+                },
+                {
+                    "disable_other_dynamic_fields": {
+                        "match_mapping_type": "*",
+                        "mapping": {
+                            "type": "object",
+                            "dynamic": false,
+                            "enabled": false
+                        }
+                    }
+                }
+            ],
+            "properties": {
+                "administrative_regions": {
+                    "enabled": false
+                },
+                "approx_coord": {
+                    "type": "geo_shape"
+                },
+                "coord": {
+                    "type": "geo_point"
+                },
+                "country_codes": {
+                    "type": "keyword"
+                },
+                "full_label": {
+                    "type": "text",
+                    "index": false,
+                    "norms": false,
+                    "fields": {
+                        "prefix": {
+                            "type": "text",
+                            "index_options": "docs",
+                            "analyzer": "prefix_elision",
+                            "search_analyzer": "word_elision",
+                            "norms": false
+                        },
+                        "ngram": {
+                            "type": "text",
+                            "index_options": "docs",
+                            "analyzer": "ngram",
+                            "search_analyzer": "ngram",
+                            "norms": false
+                        }
+                    }
+                },
+                "id": {
+                    "type": "keyword",
+                    "index": false
+                },
+                "indexed_at": {
+                    "type": "date"
+                },
+                "weight": {
+                    "type": "double"
+                },
+                "zip_codes": {
+                    "type": "text",
+                    "index_options": "docs",
+                    "analyzer": "word",
+                    "copy_to": "full_label"
+                },
+                "type": {
+                    "type": "constant_keyword"
+                }
+            }
         }
-    },
-    {
-      "dynamic_objects": {
-        "match_mapping_type": "object",
-        "mapping": {
-          "dynamic": true
-        }
-      }
-    },
-    {
-      "disable_other_dynamic_fields": {
-          "match_mapping_type": "*",
-          "mapping": {
-            "type": "object",
-            "dynamic": false,
-            "enabled": false
-          }
-      }
     }
-  ],
-  "properties": {
-    "administrative_regions": {
-      "enabled": false
-    },
-    "approx_coord": {
-      "type": "geo_shape"
-    },
-    "coord": {
-      "type": "geo_point"
-    },
-    "country_codes": {
-      "type": "keyword"
-    },
-    "full_label": {
-      "type": "text",
-      "index": false,
-      "norms": false,
-      "fields": {
-        "prefix": {
-          "type": "text",
-          "index_options": "docs",
-          "analyzer": "prefix_elision",
-          "search_analyzer": "word_elision",
-          "norms": false
-        },
-        "ngram": {
-          "type": "text",
-          "index_options": "docs",
-          "analyzer": "ngram",
-          "search_analyzer": "ngram",
-          "norms": false
-        }
-      }
-    },
-    "id": {
-      "type": "keyword",
-      "index": false
-    },
-    "indexed_at": {
-      "type": "date"
-    },
-    "weight": {
-      "type": "double"
-    },
-    "zip_codes": {
-      "type": "text",
-      "index_options": "docs",
-      "analyzer": "word",
-      "copy_to": "full_label"
-    },
-    "type": {
-      "type": "constant_keyword"
-    }
-  }
 }

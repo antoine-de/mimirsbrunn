@@ -1,66 +1,101 @@
 {
-  "number_of_shards": "1",
-  "number_of_replicas": "0",
-  "refresh_interval": "60s",
-  "analysis": {
-    "filter": {
-      "prefix_filter": {
-        "type": "edge_ngram",
-        "min_gram": 1,
-        "max_gram": 20
-      },
-      "elision_filter" : {
-        "type" : "elision",
-        "articles" : ["l", "d"]
-      },
-      "ngram_truncate_words": {
-        "type": "truncate",
-        "length": 10
-      },
-      "first_ngram_truncate_words": {
-        "type": "truncate",
-        "length": 3
-      },
-      "ngram_fuzzy": {
-        "type": "ngram",
-        "min_gram": 3,
-        "max_gram": 3
-      }
-    },
-    "analyzer": {
-      "word": {
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding" ],
-        "char_filter" : [ ]
-      },
-      "word_elision": {
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "elision_filter", "asciifolding" ],
-        "char_filter" : [ ]
-      },
-      "prefix": {
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding", "prefix_filter" ],
-        "char_filter" : [ ]
-      },
-      "prefix_elision": {
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding", "elision_filter", "prefix_filter" ],
-        "char_filter" : [ ]
-      },
-      "autocomplete_search": {
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding", "elision_filter" ]
-      },
-      "ngram": {
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding", "ngram_truncate_words", "ngram_fuzzy"]
-      },
-      "ngram_as_prefix_search": {
-        "tokenizer": "standard",
-        "filter": [ "lowercase", "asciifolding", "first_ngram_truncate_words"]
-      }
+    "elasticsearch": {
+        "settings": {
+            "number_of_shards": "1",
+            "number_of_replicas": "0",
+            "refresh_interval": "60s",
+            "analysis": {
+                "filter": {
+                    "prefix_filter": {
+                        "type": "edge_ngram",
+                        "min_gram": 1,
+                        "max_gram": 20
+                    },
+                    "elision_filter": {
+                        "type": "elision",
+                        "articles": [
+                            "l",
+                            "d"
+                        ]
+                    },
+                    "ngram_truncate_words": {
+                        "type": "truncate",
+                        "length": 10
+                    },
+                    "first_ngram_truncate_words": {
+                        "type": "truncate",
+                        "length": 3
+                    },
+                    "ngram_fuzzy": {
+                        "type": "ngram",
+                        "min_gram": 3,
+                        "max_gram": 3
+                    }
+                },
+                "analyzer": {
+                    "word": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "asciifolding"
+                        ],
+                        "char_filter": []
+                    },
+                    "word_elision": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "elision_filter",
+                            "asciifolding"
+                        ],
+                        "char_filter": []
+                    },
+                    "prefix": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "asciifolding",
+                            "prefix_filter"
+                        ],
+                        "char_filter": []
+                    },
+                    "prefix_elision": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "asciifolding",
+                            "elision_filter",
+                            "prefix_filter"
+                        ],
+                        "char_filter": []
+                    },
+                    "autocomplete_search": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "asciifolding",
+                            "elision_filter"
+                        ]
+                    },
+                    "ngram": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "asciifolding",
+                            "ngram_truncate_words",
+                            "ngram_fuzzy"
+                        ]
+                    },
+                    "ngram_as_prefix_search": {
+                        "tokenizer": "standard",
+                        "filter": [
+                            "lowercase",
+                            "asciifolding",
+                            "first_ngram_truncate_words"
+                        ]
+                    }
+                }
+            }
+        }
     }
-  },
-  "index.default_pipeline": "indexed_at"
 }

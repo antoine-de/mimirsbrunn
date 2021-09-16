@@ -1,14 +1,22 @@
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
-use std::convert::TryFrom;
-
-use crate::domain::model::configuration::Configuration;
+use std::path::PathBuf;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
     #[snafu(display("Invalid Elasticsearch Index Configuration: {}", details))]
     InvalidConfiguration { details: String },
+    #[snafu(display("Elasticsearch Index Configuration not found at {}", path.display()))]
+    InvalidPath { path: PathBuf },
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(source: serde_json::Error) -> Self {
+        Self::InvalidConfiguration {
+            details: source.to_string(),
+        }
+    }
 }
 
 /// The indices create index API has 4 components, which are
@@ -28,16 +36,22 @@ pub struct IndexConfiguration {
     pub mappings: IndexMappings,
 }
 
-// FIXME A lot of work needs to go in there to type everything
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct IndexSettings {
-    pub value: serde_json::Value,
+pub struct IndexSettings(serde_json::Value);
+
+impl std::fmt::Display for IndexSettings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        self.0.fmt(f)
+    }
 }
 
-// FIXME A lot of work needs to go in there to type everything
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct IndexMappings {
-    pub value: serde_json::Value,
+pub struct IndexMappings(serde_json::Value);
+
+impl std::fmt::Display for IndexMappings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        self.0.fmt(f)
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -45,20 +59,4 @@ pub struct IndexMappings {
 pub struct IndexParameters {
     pub timeout: String,
     pub wait_for_active_shards: String,
-}
-
-impl TryFrom<Configuration> for IndexConfiguration {
-    type Error = Error;
-
-    // FIXME Parameters not handled
-    fn try_from(configuration: Configuration) -> Result<Self, Self::Error> {
-        let Configuration { value, .. } = configuration;
-        serde_json::from_str(&value).map_err(|err| Error::InvalidConfiguration {
-            details: format!(
-                "could not deserialize index configuration: {} / {}",
-                err.to_string(),
-                value
-            ),
-        })
-    }
 }

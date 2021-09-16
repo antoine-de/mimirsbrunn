@@ -28,21 +28,13 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use common::config::config_from_args;
+use common::document::ContainerDocument;
+use config::Config;
 use failure::{format_err, Error};
-use mimir2::{
-    adapters::secondary::elasticsearch::{
-        self,
-        configuration::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-    },
-    domain::ports::secondary::remote::Remote,
-};
-use serde_json::json;
+use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-// #[cfg(test)]
-// #[macro_use]
-// extern crate approx;
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -56,9 +48,6 @@ struct Args {
         default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset", default_value = "fr")]
-    dataset: String,
     #[structopt(
         parse(from_os_str),
         long = "mappings",
@@ -71,15 +60,12 @@ struct Args {
         default_value = "./config/admin/settings.json"
     )]
     settings: PathBuf,
-    /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards")]
-    nb_shards: Option<usize>,
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas")]
-    nb_replicas: Option<usize>,
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
+    /// Override value of settings using syntax `key.subkey=val`
+    #[structopt(name = "setting", short = "v", long)]
+    override_settings: Vec<String>,
 }
 
 #[tokio::main]
@@ -102,62 +88,19 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let settings = tokio::fs::read_to_string(args.settings.clone())
-        .await
-        .map_err(|err| {
-            format_err!(
-                "could not read settings file from '{}': {}",
-                args.settings.display(),
-                err.to_string(),
-            )
-        })?;
-
-    let mut settings: serde_json::Value = serde_json::from_str(&settings).map_err(|err| {
-        format_err!(
-            "could not deserialize settings file from '{}': {}",
-            args.settings.display(),
-            err.to_string(),
-        )
-    })?;
-
-    if let Some(nb_shards) = args.nb_shards {
-        settings["number_of_shards"] = json!(nb_shards);
-    }
-    if let Some(nb_replicas) = args.nb_replicas {
-        settings["number_of_replicas"] = json!(nb_replicas);
-    }
-
-    let mappings = tokio::fs::read_to_string(args.mappings.clone())
-        .await
-        .map_err(|err| {
-            format_err!(
-                "could not read mappings file from '{}': {}",
-                args.mappings.display(),
-                err.to_string(),
-            )
-        })?;
-
-    let mappings = serde_json::from_str(&mappings).map_err(|err| {
-        format_err!(
-            "could not deserialize mappings file from '{}': {}",
-            args.mappings.display(),
-            err.to_string(),
-        )
-    })?;
-
-    let config = IndexConfiguration {
-        name: args.dataset.clone(),
-        parameters: IndexParameters {
-            timeout: String::from("10s"),
-            wait_for_active_shards: String::from("1"), // only the primary shard
-        },
-        settings: IndexSettings { value: settings },
-        mappings: IndexMappings { value: mappings },
-    };
+    let config =
+        Config::builder()
+            .add_source(places::admin::Admin::default_es_container_config())
+            .add_source(config::File::from(args.mappings))
+            .add_source(config::File::from(args.settings))
+            .add_source(config_from_args(args.override_settings).map_err(|err| {
+                format_err!("could not apply settings override: {}", err.to_string())
+            })?)
+            .build()?;
 
     mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, client)
         .await
-        .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string(),))
+        .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string()))
 }
 
 #[cfg(test)]
@@ -184,12 +127,10 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -205,12 +146,10 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -221,7 +160,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_return_an_error_when_given_an_invalid_path_for_mappings() {
+    async fn should_return_an_error_when_given_an_invalid_path_for_config() {
         let guard = docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
@@ -229,12 +168,10 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -244,7 +181,7 @@ mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("could not read mappings file from"));
+            .contains(r#"configuration file "./config/invalid.json" not found"#));
     }
 
     #[tokio::test]
@@ -256,22 +193,17 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
-            mappings: PathBuf::from("./README.md"), // exists, but not json
+            mappings: PathBuf::from("./tests/fixtures/config/invalid/mappings.json"), // exists, but not json
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
         drop(guard);
 
-        assert!(res
-            .unwrap_err()
-            .to_string()
-            .contains("could not deserialize mappings file from"));
+        assert!(dbg!(res.unwrap_err().to_string()).contains("expected value at line 1 column 1"));
     }
 
     #[tokio::test]
@@ -283,12 +215,10 @@ mod tests {
         let args = Args {
             input: String::from("./invalid.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -302,6 +232,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn should_return_an_error_when_given_an_invalid_setting_override() {
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let args = Args {
+            input: String::from("foo"),
+            connection_string: elasticsearch_test_url(),
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
+            langs: vec![],
+            override_settings: vec!["no-value".to_string()],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+
+        drop(guard);
+
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("could not apply settings override"));
+    }
+
+    #[tokio::test]
     async fn should_correctly_index_a_small_cosmogony_file() {
         let guard = docker::initialize()
             .await
@@ -310,12 +265,10 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -354,12 +307,10 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec!["fr".into(), "en".into()],
+            override_settings: vec![],
         };
 
         let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -397,12 +348,10 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;

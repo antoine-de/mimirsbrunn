@@ -1,4 +1,4 @@
-use common::document::{ContainerDocument, Document};
+use common::document::Document;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -162,11 +162,7 @@ impl Document for Stop {
     }
 }
 
-impl ContainerDocument for Stop {
-    fn static_doc_type() -> &'static str {
-        "stop"
-    }
-}
+crate::impl_container_document!(Stop, "stop");
 
 // This function reformat the id by removing spaces, and prepending a prefix
 pub fn normalize_id(prefix: &str, id: &str) -> String {

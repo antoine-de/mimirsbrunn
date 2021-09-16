@@ -12,3 +12,8 @@ readme = "README.md"
 
 [dependencies]
 serde = { version = "1.0", default_features = false }
+
+[dependencies.config]
+git = "https://github.com/mehcode/config-rs.git"
+branch = "master"
+default_features = false

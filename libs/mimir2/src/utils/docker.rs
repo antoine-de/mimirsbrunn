@@ -31,7 +31,10 @@ lazy_static! {
 // TODO Document the usage of the mutexguard, how you should avoid running asserts
 // while holding the mutex.
 pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
-    let guard = AVAILABLE.lock().unwrap();
+    let guard = AVAILABLE
+        .lock()
+        .unwrap_or_else(|_| panic!("aborted because of other test"));
+
     let mut docker = DockerWrapper::new();
     let is_available = docker.is_container_available().await?;
     if !is_available {

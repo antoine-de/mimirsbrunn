@@ -11,6 +11,8 @@ pub mod poi;
 pub mod stop;
 pub mod street;
 
+pub mod utils;
+
 use addr::Addr;
 use admin::Admin;
 use poi::Poi;

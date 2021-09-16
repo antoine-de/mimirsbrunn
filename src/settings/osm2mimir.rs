@@ -72,8 +72,8 @@ impl Settings {
         let config_dir = args.config_dir.clone();
         let settings = args.settings.clone();
 
-        let mut config = Config::new();
-        // let config_dir = config_dir.clone();
+        let mut config = Config::builder();
+
         match config_dir {
             Some(mut dir) => {
                 // Start off by merging in the "default" configuration file
@@ -84,24 +84,12 @@ impl Settings {
                     // Now if the file exists, we read it, otherwise, we
                     // read from the compiled version.
                     if dir.exists() {
-                        config.merge(File::with_name(path)).with_context(|e| {
-                            format!(
-                                "Could not merge default configuration from file {}: {}",
-                                path, e
-                            )
-                        })?;
+                        config = config.add_source(File::with_name(path));
                     } else {
-                        config
-                            .merge(File::from_str(
-                                include_str!("../../config/osm2mimir-default.toml"),
-                                FileFormat::Toml,
-                            ))
-                            .with_context(|e| {
-                                format!(
-                                    "Could not merge default configuration from file {}: {}",
-                                    path, e
-                                )
-                            })?;
+                        config = config.add_source(File::from_str(
+                            include_str!("../../config/osm2mimir-default.toml"),
+                            FileFormat::Toml,
+                        ));
                     }
                 } else {
                     return Err(failure::err_msg(format!(
@@ -117,14 +105,7 @@ impl Settings {
 
                     if let Some(path) = dir.to_str() {
                         info!("using configuration from {}", path);
-                        config
-                            .merge(File::with_name(path).required(true))
-                            .with_context(|e| {
-                                format!(
-                                    "Could not merge {} configuration in file {}: {}",
-                                    settings, path, e
-                                )
-                            })?;
+                        config = config.add_source(File::with_name(path).required(true));
                     } else {
                         return Err(failure::err_msg(format!(
                             "Could not read configuration for '{}'",
@@ -145,32 +126,28 @@ impl Settings {
                         "Could not build program settings",
                     )));
                 }
-                config
-                    .merge(File::from_str(
-                        include_str!("../../config/osm2mimir-default.toml"),
-                        FileFormat::Toml,
-                    ))
-                    .with_context(|e| {
-                        format!(
-                            "Could not merge default configuration from file at compile time: {}",
-                            e
-                        )
-                    })?;
+                config = config.add_source(File::from_str(
+                    include_str!("../../config/osm2mimir-default.toml"),
+                    FileFormat::Toml,
+                ));
             }
         }
 
         // Now override with command line values
-        config
-            .merge(args)
-            .with_context(|e| format!("Could not merge arguments into configuration: {}", e))?;
+        config = config.add_source(args);
+        // .with_context(|e| format!("Could not merge arguments into configuration: {}", e))?;
 
         // You can deserialize (and thus freeze) the entire configuration as
-        config.try_into().map_err(|e| {
-            failure::err_msg(format!(
-                "Could not generate settings from configuration: {}",
-                e
-            ))
-        })
+        config
+            .build()
+            .with_context(|e| format!("could not build configuration: {}", e))?
+            .try_into()
+            .map_err(|e| {
+                failure::err_msg(format!(
+                    "Could not generate settings from configuration: {}",
+                    e
+                ))
+            })
     }
 }
 

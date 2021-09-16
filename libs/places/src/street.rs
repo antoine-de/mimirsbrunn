@@ -1,4 +1,4 @@
-use common::document::{ContainerDocument, Document};
+use common::document::Document;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -57,11 +57,7 @@ impl Document for Street {
     }
 }
 
-impl ContainerDocument for Street {
-    fn static_doc_type() -> &'static str {
-        "street"
-    }
-}
+crate::impl_container_document!(Street, "street");
 
 pub trait Incr: Clone {
     fn id(&self) -> &str;

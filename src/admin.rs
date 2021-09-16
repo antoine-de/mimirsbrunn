@@ -31,16 +31,14 @@
 use crate::osm_reader::admin;
 use crate::osm_reader::osm_utils;
 use crate::utils;
+use config::Config;
 use cosmogony::ZoneType::City;
 use cosmogony::{Zone, ZoneIndex};
 use failure::{format_err, Error};
 use futures::stream::Stream;
 use mimir2::{
-    adapters::secondary::elasticsearch::{configuration::IndexConfiguration, ElasticsearchStorage},
-    domain::{
-        model::{configuration::Configuration, index::IndexVisibility},
-        ports::primary::generate_index::GenerateIndex,
-    },
+    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
 use places::admin::Admin;
 use slog_scope::{info, warn};
@@ -60,25 +58,14 @@ trait IntoAdmin {
 
 pub async fn import_admins<S>(
     client: ElasticsearchStorage,
-    config: IndexConfiguration,
+    config: Config,
     admins: S,
 ) -> Result<(), Error>
 where
     S: Stream<Item = Admin> + Send + Sync + Unpin + 'static,
 {
-    let config = serde_json::to_string(&config).map_err(|err| {
-        format_err!(
-            "could not serialize index configuration: {}",
-            err.to_string()
-        )
-    })?;
-
     client
-        .generate_index(
-            Configuration { value: config },
-            admins,
-            IndexVisibility::Public,
-        )
+        .generate_index(config, admins, IndexVisibility::Public)
         .await
         .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
 
@@ -180,7 +167,7 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
 pub async fn index_cosmogony(
     input: String,
     langs: Vec<String>,
-    config: IndexConfiguration,
+    config: Config,
     client: ElasticsearchStorage,
 ) -> Result<(), Error> {
     info!("building map cosmogony id => osm id");

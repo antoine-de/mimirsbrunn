@@ -1,29 +1,55 @@
 use async_trait::async_trait;
+use config::Config;
 use futures::future::TryFutureExt;
 use futures::stream::Stream;
-use std::convert::TryFrom;
 
 use super::configuration::IndexConfiguration;
 use super::internal;
 use super::ElasticsearchStorage;
+use crate::domain::model::configuration::root_doctype_dataset_ts;
 use crate::domain::model::{
-    configuration::{self, Configuration},
+    configuration,
     index::{Index, IndexVisibility},
     stats::InsertStats,
 };
 use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use common::document::Document;
 
+fn build_config_error(err: impl std::error::Error) -> StorageError {
+    StorageError::ContainerCreationError {
+        source: {
+            internal::Error::ElasticsearchInvalidIndexSettings {
+                reason: err.to_string(),
+            }
+            .into()
+        },
+    }
+}
+
 #[async_trait]
 impl Storage for ElasticsearchStorage {
     // This function delegates to elasticsearch the creation of the index. But since this
     // function returns nothing, we follow with a find index to return some details to the caller.
-    async fn create_container(&self, config: Configuration) -> Result<Index, StorageError> {
-        let config = IndexConfiguration::try_from(config).map_err(|err| {
-            StorageError::ContainerCreationError {
-                source: Box::new(err),
-            }
-        })?;
+    async fn create_container(&self, config: Config) -> Result<Index, StorageError> {
+        let config = Config::builder()
+            .set_default(
+                "elasticsearch.name",
+                root_doctype_dataset_ts(
+                    &config
+                        .get_string("container.name")
+                        .map_err(build_config_error)?,
+                    &config
+                        .get_string("container.dataset")
+                        .map_err(build_config_error)?,
+                ),
+            )
+            .map_err(build_config_error)?
+            .add_source(config)
+            .build()
+            .map_err(build_config_error)?;
+
+        let config: IndexConfiguration = config.get("elasticsearch").map_err(build_config_error)?;
+
         let name = config.name.clone();
         self.create_index(config)
             .and_then(|_| {

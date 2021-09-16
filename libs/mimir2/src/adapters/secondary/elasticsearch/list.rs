@@ -15,8 +15,6 @@ impl List for ElasticsearchStorage {
     ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, Error> {
         self.list_documents(root_doctype(&parameters.doc_type))
             .await
-            .map_err(|err| Error::DocumentRetrievalError {
-                source: Box::new(err),
-            })
+            .map_err(|err| Error::DocumentRetrievalError { source: err.into() })
     }
 }

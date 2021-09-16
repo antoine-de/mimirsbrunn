@@ -86,6 +86,10 @@ pub enum Error {
     #[snafu(display("Elasticsearch Unknown Setting: {}", setting))]
     ElasticsearchUnknownSetting { setting: String },
 
+    /// Elasticsearch Failed To Parse
+    #[snafu(display("Elasticsearch Failed to Parse Index Settings: {}", reason))]
+    ElasticsearchInvalidIndexSettings { reason: String },
+
     /// Elasticsearch Index Conversion
     #[snafu(display("Index Conversion Error: {}", details))]
     IndexConversion { details: String },
@@ -185,16 +189,7 @@ impl ElasticsearchStorage {
     }
 
     pub(super) async fn create_index(&self, config: IndexConfiguration) -> Result<(), Error> {
-        let body_str = format!(
-            r#"{{ "mappings": {mappings}, "settings": {settings} }}"#,
-            mappings = config.mappings.value,
-            settings = config.settings.value,
-        );
-
-        let body: serde_json::Value =
-            serde_json::from_str(&body_str).context(JsonDeserialization {
-                details: String::from("could not deserialize index configuration"),
-            })?;
+        let body = json!({ "mappings": config.mappings, "settings": config.settings });
 
         let response = self
             .0
