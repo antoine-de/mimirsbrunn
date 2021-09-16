@@ -31,20 +31,16 @@
 use failure::format_err;
 use futures::stream::StreamExt;
 
+use common::config::config_from_args;
+use common::container_config::DefaultEsContainerConfig;
+use config::Config;
 use lazy_static::lazy_static;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::{
-    adapters::secondary::elasticsearch::{
-        self,
-        configuration::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-    },
-    domain::ports::secondary::remote::Remote,
-};
+use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use slog_scope::{info, warn};
 use std::io::stdin;
 use std::ops::Deref;
@@ -175,9 +171,6 @@ struct Args {
         default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset", default_value = "fr")]
-    dataset: String,
     /// Number of threads to use
     #[structopt(
         short = "t",
@@ -189,12 +182,6 @@ struct Args {
     /// to handle values that are too high.
     #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
     nb_insert_threads: usize,
-    /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards")]
-    nb_shards: Option<usize>,
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas")]
-    nb_replicas: Option<usize>,
     #[structopt(
         parse(from_os_str),
         long = "mappings",
@@ -207,63 +194,23 @@ struct Args {
         default_value = "./config/addr/settings.json"
     )]
     settings: PathBuf,
+    /// Override value of settings using syntax `key.subkey=val`
+    #[structopt(name = "setting", short = "v", long)]
+    override_settings: Vec<String>,
 }
 
 async fn run(args: Args) -> Result<(), failure::Error> {
     info!("importing open addresses into Mimir");
 
-    let mappings = tokio::fs::read_to_string(args.mappings.clone())
-        .await
-        .map_err(|err| {
-            format_err!(
-                "could not read mappings file from '{}': {}",
-                args.mappings.display(),
-                err.to_string(),
-            )
-        })?;
-
-    let mappings = serde_json::from_str(&mappings).map_err(|err| {
-        format_err!(
-            "could not deserialize mappings file from '{}': {}",
-            args.mappings.display(),
-            err.to_string(),
-        )
-    })?;
-
-    let settings = tokio::fs::read_to_string(args.settings.clone())
-        .await
-        .map_err(|err| {
-            format_err!(
-                "could not read settings file from '{}': {}",
-                args.settings.display(),
-                err.to_string(),
-            )
-        })?;
-
-    let mut settings: serde_json::Value = serde_json::from_str(&settings).map_err(|err| {
-        format_err!(
-            "could not deserialize settings file from '{}': {}",
-            args.settings.display(),
-            err.to_string(),
-        )
-    })?;
-
-    if let Some(nb_shards) = args.nb_shards {
-        settings["number_of_shards"] = json!(nb_shards);
-    }
-    if let Some(nb_replicas) = args.nb_replicas {
-        settings["number_of_replicas"] = json!(nb_replicas);
-    }
-
-    let config = IndexConfiguration {
-        name: args.dataset.clone(),
-        parameters: IndexParameters {
-            timeout: String::from("10s"),
-            wait_for_active_shards: String::from("1"), // only the primary shard
-        },
-        settings: IndexSettings { value: settings },
-        mappings: IndexMappings { value: mappings },
-    };
+    let config =
+        Config::builder()
+            .add_source(places::addr::Addr::default_es_container_config())
+            .add_source(config::File::from(args.mappings))
+            .add_source(config::File::from(args.settings))
+            .add_source(config_from_args(args.override_settings).map_err(|err| {
+                format_err!("couldn't apply settings override: {}", err.to_string())
+            })?)
+            .build()?;
 
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
@@ -372,14 +319,12 @@ mod tests {
         let args = Args {
             input: Some(PathBuf::from("./tests/fixtures/sample-oa.csv")),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/addr/mappings.json"),
             settings: PathBuf::from("./config/addr/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             id_precision: 5,
             nb_threads: 2,
             nb_insert_threads: 2,
+            override_settings: vec![],
         };
 
         let _res = mimirsbrunn::utils::launch_async_args(run, args).await;

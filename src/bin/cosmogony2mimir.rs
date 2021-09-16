@@ -36,10 +36,6 @@ use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remot
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-// #[cfg(test)]
-// #[macro_use]
-// extern crate approx;
-
 #[derive(StructOpt, Debug)]
 struct Args {
     /// cosmogony file
@@ -52,19 +48,18 @@ struct Args {
         default_value = "http://localhost:9200/munin"
     )]
     connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset", default_value = "fr")]
-    dataset: String,
-    #[structopt(parse(from_os_str), default_value = "./config/admin/mappings.json")]
+    #[structopt(
+        parse(from_os_str),
+        long = "mappings",
+        default_value = "./config/admin/mappings.json"
+    )]
     mappings: PathBuf,
-    #[structopt(parse(from_os_str), default_value = "./config/admin/settings.json")]
+    #[structopt(
+        parse(from_os_str),
+        long = "settings",
+        default_value = "./config/admin/settings.json"
+    )]
     settings: PathBuf,
-    /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards")]
-    nb_shards: Option<usize>,
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas")]
-    nb_replicas: Option<usize>,
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
@@ -93,30 +88,15 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let mut config_builder = Config::builder()
-        .add_source(places::admin::Admin::default_es_container_config())
-        .add_source(config::File::from(args.mappings))
-        .add_source(config::File::from(args.settings))
-        .add_source(config_from_args(args.override_settings).map_err(|err| {
-            format_err!("could not apply settings override: {}", err.to_string())
-        })?);
-
-    if let Some(nb_shards) = args.nb_shards {
-        config_builder = config_builder
-            .set_override("elasticsearch.settings.nb_shards", nb_shards.to_string())
-            .expect("could not set setting nb_shards");
-    }
-
-    if let Some(nb_replicas) = args.nb_replicas {
-        config_builder = config_builder
-            .set_override(
-                "elasticsearch.settings.nb_replicas",
-                nb_replicas.to_string(),
-            )
-            .expect("could not set setting nb_replicas");
-    }
-
-    let config = config_builder.build()?;
+    let config =
+        Config::builder()
+            .add_source(places::admin::Admin::default_es_container_config())
+            .add_source(config::File::from(args.mappings))
+            .add_source(config::File::from(args.settings))
+            .add_source(config_from_args(args.override_settings).map_err(|err| {
+                format_err!("could not apply settings override: {}", err.to_string())
+            })?)
+            .build()?;
 
     mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, client)
         .await
@@ -147,11 +127,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -169,11 +146,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -194,11 +168,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -222,11 +193,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./tests/fixtures/config/invalid/mappings.json"), // exists, but not json
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -247,11 +215,8 @@ mod tests {
         let args = Args {
             input: String::from("./invalid.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -275,11 +240,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec!["no-value".to_string()],
         };
@@ -303,11 +265,8 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -348,11 +307,8 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec!["fr".into(), "en".into()],
             override_settings: vec![],
         };
@@ -392,11 +348,8 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            dataset: String::from("dataset"),
             mappings: PathBuf::from("./config/admin/mappings.json"),
             settings: PathBuf::from("./config/admin/settings.json"),
-            nb_shards: None,
-            nb_replicas: None,
             langs: vec![],
             override_settings: vec![],
         };
