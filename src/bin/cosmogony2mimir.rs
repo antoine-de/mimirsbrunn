@@ -28,6 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use common::config::config_from_args;
 use config::Config;
 use failure::{format_err, Error};
 use mimir2::common::container_config::DefaultEsContainerConfig;
@@ -67,6 +68,9 @@ struct Args {
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
+    /// Override value of settings using syntax `key.subkey=val`
+    #[structopt(name = "setting", short = "v", long)]
+    override_settings: Vec<String>,
 }
 
 #[tokio::main]
@@ -92,7 +96,10 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
     let mut config_builder = Config::builder()
         .add_source(places::admin::Admin::default_es_container_config())
         .add_source(config::File::from(args.mappings))
-        .add_source(config::File::from(args.settings));
+        .add_source(config::File::from(args.settings))
+        .add_source(config_from_args(args.override_settings).map_err(|err| {
+            format_err!("could not apply settings override: {}", err.to_string())
+        })?);
 
     if let Some(nb_shards) = args.nb_shards {
         config_builder = config_builder
@@ -146,6 +153,7 @@ mod tests {
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -167,6 +175,7 @@ mod tests {
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -191,6 +200,7 @@ mod tests {
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -213,18 +223,19 @@ mod tests {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("dataset"),
-            mappings: PathBuf::from("./README.md"), // exists, but not json
+            mappings: PathBuf::from("./tests/fixtures/config/invalid/mappings.json"), // exists, but not json
             settings: PathBuf::from("./config/admin/settings.json"),
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
         drop(guard);
 
-        assert!(dbg!(res.unwrap_err().to_string()).contains("is not of a registered file format"));
+        assert!(dbg!(res.unwrap_err().to_string()).contains("expected value at line 1 column 1"));
     }
 
     #[tokio::test]
@@ -242,6 +253,7 @@ mod tests {
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -252,6 +264,34 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("could not index cosmogony: No such file or directory"));
+    }
+
+    #[tokio::test]
+    async fn should_return_an_error_when_given_an_invalid_setting_override() {
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let args = Args {
+            input: String::from("foo"),
+            connection_string: elasticsearch_test_url(),
+            dataset: String::from("dataset"),
+            mappings: PathBuf::from("./config/admin/mappings.json"),
+            settings: PathBuf::from("./config/admin/settings.json"),
+            nb_shards: None,
+            nb_replicas: None,
+            langs: vec![],
+            override_settings: vec!["no-value".to_string()],
+        };
+
+        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+
+        drop(guard);
+
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("could not apply settings override"));
     }
 
     #[tokio::test]
@@ -269,6 +309,7 @@ mod tests {
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -313,6 +354,7 @@ mod tests {
             nb_shards: None,
             nb_replicas: None,
             langs: vec!["fr".into(), "en".into()],
+            override_settings: vec![],
         };
 
         let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
@@ -356,6 +398,7 @@ mod tests {
             nb_shards: None,
             nb_replicas: None,
             langs: vec![],
+            override_settings: vec![],
         };
 
         let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
