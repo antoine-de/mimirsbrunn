@@ -222,7 +222,7 @@ pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
 }
 
 pub fn read_insee(tags: &osmpbfreader::Tags) -> Option<&str> {
-    tags.get("ref:INSEE").map(|v| v.trim_start_matches('0'))
+    tags.get("ref:INSEE").map(|v| v.as_str())
 }
 
 #[cfg(test)]
