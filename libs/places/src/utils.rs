@@ -12,7 +12,7 @@ macro_rules! impl_container_document {
                 config::Config::builder()
                     .set_default("container.name", Self::static_doc_type())
                     .unwrap()
-                    .set_default("container.dataset", "munin")
+                    .set_default("container.dataset", "default")
                     .unwrap()
                     .set_default("elasticsearch.parameters.timeout", "10s")
                     .unwrap()
