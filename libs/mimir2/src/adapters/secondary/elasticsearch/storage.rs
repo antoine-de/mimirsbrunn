@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use config::Config;
 use futures::future::TryFutureExt;
 use futures::stream::Stream;
+use snafu::ResultExt;
 
 use super::configuration::IndexConfiguration;
 use super::internal;
@@ -15,15 +16,54 @@ use crate::domain::model::{
 use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use common::document::Document;
 
-fn build_config_error(err: impl std::error::Error) -> StorageError {
-    StorageError::ContainerCreationError {
-        source: {
-            internal::Error::ElasticsearchInvalidIndexSettings {
-                reason: err.to_string(),
-            }
-            .into()
-        },
-    }
+fn build_index_configuration(config: Config) -> Result<IndexConfiguration, StorageError> {
+    let container_name = config
+        .get_string("container.name")
+        .context(internal::InvalidConfiguration {
+            details: String::from("could not get key 'container.name' from configuration"),
+        })
+        .map_err(|err| StorageError::ContainerCreationError {
+            source: Box::new(err),
+        })?;
+    let container_dataset = config
+        .get_string("container.dataset")
+        .context(internal::InvalidConfiguration {
+            details: String::from("could not get key 'container.dataset' from configuration"),
+        })
+        .map_err(|err| StorageError::ContainerCreationError {
+            source: Box::new(err),
+        })?;
+    let elasticsearch_name = root_doctype_dataset_ts(&container_name, &container_dataset);
+    let builder = Config::builder()
+        .set_default("elasticsearch.name", elasticsearch_name.clone())
+        .context(internal::InvalidConfiguration {
+            details: format!(
+                "could not set key 'elasticsearch.name' to {}",
+                elasticsearch_name
+            ),
+        })
+        .map_err(|err| StorageError::ContainerCreationError {
+            source: Box::new(err),
+        })?;
+
+    let config = builder
+        .add_source(config)
+        .build()
+        .context(internal::InvalidConfiguration {
+            details: String::from("could not build configuration from builder"),
+        })
+        .map_err(|err| StorageError::ContainerCreationError {
+            source: Box::new(err),
+        })?;
+
+    config
+        .get("elasticsearch")
+        .context(internal::InvalidConfiguration {
+            details: String::from("could not get key 'elasticsearch' from configuration"),
+        })
+        .map_err(|err| StorageError::ContainerCreationError {
+            source: Box::new(err),
+        })
 }
 
 #[async_trait]
@@ -31,25 +71,7 @@ impl Storage for ElasticsearchStorage {
     // This function delegates to elasticsearch the creation of the index. But since this
     // function returns nothing, we follow with a find index to return some details to the caller.
     async fn create_container(&self, config: Config) -> Result<Index, StorageError> {
-        let config = Config::builder()
-            .set_default(
-                "elasticsearch.name",
-                root_doctype_dataset_ts(
-                    &config
-                        .get_string("container.name")
-                        .map_err(build_config_error)?,
-                    &config
-                        .get_string("container.dataset")
-                        .map_err(build_config_error)?,
-                ),
-            )
-            .map_err(build_config_error)?
-            .add_source(config)
-            .build()
-            .map_err(build_config_error)?;
-
-        let config: IndexConfiguration = config.get("elasticsearch").map_err(build_config_error)?;
-
+        let config = build_index_configuration(config)?;
         let name = config.name.clone();
         self.create_index(config)
             .and_then(|_| {

@@ -2,6 +2,8 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use snafu::Snafu;
 
+// FIXME The code in this module should probably not be in 'configuration.rs'
+//
 /// Prefix used for all indexes that mimir interacts with.
 pub const INDEX_ROOT: &str = "munin";
 
