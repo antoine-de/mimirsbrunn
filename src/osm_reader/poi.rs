@@ -43,7 +43,6 @@ use places::{
     coord::Coord,
     i18n_properties::I18nProperties,
     poi::{Poi, PoiType},
-    Property,
 };
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
@@ -129,12 +128,9 @@ impl PoiConfig {
     }
 }
 
-fn make_properties(tags: &osmpbfreader::Tags) -> Vec<Property> {
+fn make_properties(tags: &osmpbfreader::Tags) -> BTreeMap<String, String> {
     tags.iter()
-        .map(|property| Property {
-            key: property.0.to_string(),
-            value: property.1.to_string(),
-        })
+        .map(|(tag, value)| (tag.as_str().into(), value.as_str().into()))
         .collect()
 }
 
@@ -255,7 +251,7 @@ pub async fn add_address(backend: &impl SearchDocuments<Document = Addr>, poi: P
         // Ok(res) => match serde_json::from_value(res) {
         Ok(addresses) => match addresses.into_iter().next() {
             Some(a) => Poi {
-                address: Some(a),
+                address: Some(places::Address::Addr(a)),
                 ..poi
             },
             None => {

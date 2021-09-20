@@ -51,7 +51,7 @@ itertools = "0.9"
 transit_model = "0.31.4"
 typed_index_collection = "1.1"
 failure = "0.1"
-cosmogony = "0.10"
+cosmogony = "0.10.3"
 par-map = "0.1.4"
 lazy_static = "1.4"
 num_cpus = "1.13"
@@ -119,6 +119,3 @@ harness = false # Allows Cucumber to print output instead of libtest
 # [[test]]
 # name = "integration"
 # harness = false # Allows Cucumber to print output instead of libtest
-
-[patch.crates-io]
-cosmogony = { git = "https://github.com/osm-without-borders/cosmogony", branch = "read-send-sync"}
