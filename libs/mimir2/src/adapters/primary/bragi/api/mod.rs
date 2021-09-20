@@ -1,10 +1,11 @@
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use crate::adapters::primary::common::coord::Coord;
 use crate::adapters::primary::common::filters::Filters;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InputQuery {
     pub q: String,
@@ -48,13 +49,16 @@ impl warp::Reply for InputQuery {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SearchResponseBody {
-    pub docs: Vec<JsonValue>,
+pub struct SearchResponseBody<D> {
+    pub docs: Vec<D>,
     pub docs_count: usize,
 }
 
-impl From<Vec<JsonValue>> for SearchResponseBody {
-    fn from(values: Vec<JsonValue>) -> Self {
+impl<D> From<Vec<D>> for SearchResponseBody<D>
+where
+    D: DeserializeOwned,
+{
+    fn from(values: Vec<D>) -> Self {
         SearchResponseBody {
             docs_count: values.len(),
             docs: values,

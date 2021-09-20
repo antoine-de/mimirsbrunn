@@ -3,7 +3,7 @@ use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::InputQuery;
 use crate::adapters::primary::common::settings::QuerySettings;
-use crate::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use crate::domain::ports::primary::search_documents::SearchDocuments;
 
 /// This function defines the base path for Bragi's REST API
 fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
@@ -19,10 +19,11 @@ pub fn forward_geocoder() -> impl Filter<Extract = (InputQuery,), Error = Reject
         .and(forward_geocoder_query())
 }
 
-pub fn with_client(
-    client: ElasticsearchStorage,
-) -> impl Filter<Extract = (ElasticsearchStorage,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || client.clone())
+pub fn with_client<S>(s: S) -> impl Filter<Extract = (S,), Error = std::convert::Infallible> + Clone
+where
+    S: SearchDocuments + Send + Sync + Clone,
+{
+    warp::any().map(move || s.clone())
 }
 
 pub fn with_settings(
