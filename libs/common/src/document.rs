@@ -15,7 +15,7 @@ pub trait Document: Serialize {
 pub trait ContainerDocument: Document {
     fn static_doc_type() -> &'static str;
 
-    /// Default configuration for an ElasticSearch container containing given type of document.
+    /// Default configuration for an Elasticsearch container containing given type of document.
     ///
     /// Such a configuration is structured as follows:
     ///  - name: index name (string)

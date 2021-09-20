@@ -45,6 +45,12 @@ impl std::fmt::Display for IndexSettings {
     }
 }
 
+impl IndexSettings {
+    pub fn new(value: serde_json::Value) -> IndexSettings {
+        IndexSettings(value)
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct IndexMappings(serde_json::Value);
 
@@ -54,9 +60,15 @@ impl std::fmt::Display for IndexMappings {
     }
 }
 
+impl IndexMappings {
+    pub fn new(value: serde_json::Value) -> IndexMappings {
+        IndexMappings(value)
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename = "snake_case")]
 pub struct IndexParameters {
-    pub timeout: String,
-    pub wait_for_active_shards: String,
+    pub timeout: String,                // TODO How should we set this value
+    pub wait_for_active_shards: String, // TODO How should we set this value
 }

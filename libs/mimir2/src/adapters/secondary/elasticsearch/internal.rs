@@ -36,8 +36,11 @@ static CHUNK_SIZE: usize = 100;
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
-    #[snafu(display("Invalid Elasticsearch Index Configuration: {}", details))]
-    InvalidConfiguration { details: String },
+    #[snafu(display("Invalid Elasticsearch Index Configuration: {} [{}]", source, details))]
+    InvalidConfiguration {
+        details: String,
+        source: config::ConfigError,
+    },
 
     /// Elasticsearch Error
     #[snafu(display("Elasticsearch Error: {} [{}]", source, details))]

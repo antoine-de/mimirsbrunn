@@ -17,30 +17,42 @@ pub struct ElasticsearchStorage(pub(crate) Elasticsearch);
 #[cfg(test)]
 pub mod tests {
 
-    use futures::stream::StreamExt;
+    use config::Config;
     use serde::Serialize;
-    use serde_json::json;
-    use std::convert::TryFrom;
-    use std::sync::Arc;
 
     use super::*;
 
-    use crate::domain::model::configuration::Configuration;
-    use crate::domain::model::document::Document;
     use crate::domain::ports::secondary::remote::Remote;
     use crate::domain::ports::secondary::storage::Storage;
     use crate::utils::docker;
+    use common::document::{ContainerDocument, Document};
 
-    #[test]
-    fn should_return_invalid_configuration() {
-        let config = Configuration {
-            value: String::from("invalid"),
-        };
-        let res = internal::IndexConfiguration::try_from(config);
+    // In this test we present an invalid configuration (its actually empty) to the
+    // create_container function, and expect the error message to be meaningful
+    #[tokio::test]
+    async fn should_return_invalid_configuration() {
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let pool = remote::connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let config = Config::builder().build().expect("build empty config");
+
+        let res = client.create_container(config).await;
+
+        drop(guard);
+
         assert!(res
             .unwrap_err()
             .to_string()
-            .starts_with("Invalid Elasticsearch Index Configuration"));
+            .contains("Invalid Elasticsearch Index Configuration"));
     }
 
     #[tokio::test]
@@ -54,9 +66,10 @@ pub mod tests {
 
     #[tokio::test]
     async fn should_connect_to_elasticsearch() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let _guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
         let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
@@ -64,13 +77,14 @@ pub mod tests {
             .conn()
             .await
             .expect("Elasticsearch Connection Established");
+        drop(guard);
     }
 
     #[tokio::test]
     async fn should_create_index_with_valid_configuration() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
         let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
@@ -78,72 +92,48 @@ pub mod tests {
             .conn()
             .await
             .expect("Elasticsearch Connection Established");
-        let config = internal::IndexConfiguration {
-            name: String::from("root_obj_dataset_test-index"),
-            parameters: internal::IndexParameters {
-                timeout: String::from("10s"),
-                wait_for_active_shards: String::from("1"), // only the primary shard
-            },
-            settings: internal::IndexSettings {
-                value: json!({ "index": { "number_of_shards": 1, "number_of_replicas": 1 } }),
-            },
-            mappings: internal::IndexMappings {
-                value: json!({ "properties": { "value": { "type": "text" } } }),
-            },
-        };
-        let config = Configuration {
-            value: serde_json::to_string(&config).expect("config"),
-        };
+        let config = config::Config::builder()
+            .add_source(config::File::from_str(
+                r#"{
+                    "container": {
+                        "name": "foo",
+                        "dataset": "bar"
+                    },
+                    "elasticsearch": {
+                        "parameters": {
+                            "timeout": "10s",
+                            "wait_for_active_shards": "1"
+                        },
+                        "settings": {
+                            "index": {
+                                "number_of_shards": 1,
+                                "number_of_replicas": 1
+                            }
+                        },
+                        "mappings": {
+                            "properties": {
+                                "value": {
+                                    "type": "text"
+                                }
+                            }
+                        }
+                    }
+                }"#,
+                config::FileFormat::Json,
+            ))
+            .build()
+            .expect("valid configuration");
         let res = client.create_container(config).await;
         drop(guard);
         assert!(res.is_ok());
     }
 
     #[tokio::test]
-    async fn should_correctly_report_duplicate_index_when_creating_twice_the_same_index() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
-            .conn()
-            .await
-            .expect("Elasticsearch Connection Established");
-        let config = internal::IndexConfiguration {
-            name: String::from("root_obj_dataset_test-index-duplicate"),
-            parameters: internal::IndexParameters {
-                timeout: String::from("10s"),
-                wait_for_active_shards: String::from("1"), // only the primary shard
-            },
-            settings: internal::IndexSettings {
-                value: json!({ "index": { "number_of_shards": 1, "number_of_replicas": 1 } }),
-            },
-            mappings: internal::IndexMappings {
-                value: json!({ "properties": { "value": { "type": "text" } } }),
-            },
-        };
-        let config = Configuration {
-            value: serde_json::to_string(&config).expect("config"),
-        };
-        client
-            .create_container(config.clone())
-            .await
-            .expect("container creation");
-        let res = client.create_container(config).await;
-        drop(guard);
-        assert!(res
-            .unwrap_err()
-            .to_string()
-            .contains("Elasticsearch Duplicate Index"));
-    }
-
-    #[tokio::test]
     async fn should_correctly_report_invalid_configuration() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
         let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
@@ -151,22 +141,37 @@ pub mod tests {
             .conn()
             .await
             .expect("Elasticsearch Connection Established");
-        let config = internal::IndexConfiguration {
-            name: String::from("root_obj_dataset_test-index-invalid-conf"),
-            parameters: internal::IndexParameters {
-                timeout: String::from("10s"),
-                wait_for_active_shards: String::from("1"), // only the primary shard
-            },
-            settings: internal::IndexSettings {
-                value: json!({ "index": "foo" }), // <<=== Invalid Settings
-            },
-            mappings: internal::IndexMappings {
-                value: json!({ "properties": { "value": { "type": "text" } } }),
-            },
-        };
-        let config = Configuration {
-            value: serde_json::to_string(&config).expect("config"),
-        };
+        let config = config::Config::builder()
+            .add_source(config::File::from_str(
+                r#"{
+                    "container": {
+                        "name": "foo",
+                        "dataset": "bar"
+                    },
+                    "elasticsearch": {
+                        "parameters": {
+                            "timeout": "10s",
+                            "wait_for_active_shards": "1"
+                        },
+                        "settings": {
+                            "indx": {
+                                "number_of_shards": 1,
+                                "number_of_replicas": 1
+                            }
+                        },
+                        "mappings": {
+                            "properties": {
+                                "value": {
+                                    "type": "text"
+                                }
+                            }
+                        }
+                    }
+                }"#,
+                config::FileFormat::Json,
+            ))
+            .build()
+            .expect("valid configuration");
         let res = client.create_container(config).await;
         drop(guard);
         assert!(res
@@ -181,20 +186,44 @@ pub mod tests {
     }
 
     impl Document for TestObj {
-        fn doc_type(&self) -> &'static str {
-            "test-obj"
-        }
-
         fn id(&self) -> String {
             self.value.clone()
         }
     }
 
+    impl ContainerDocument for TestObj {
+        fn static_doc_type() -> &'static str {
+            "test-obj"
+        }
+        fn default_es_container_config() -> config::Config {
+            config::Config::builder()
+                .set_default("container.name", Self::static_doc_type())
+                .unwrap()
+                .set_default("container.dataset", "default")
+                .unwrap()
+                .set_default("elasticsearch.parameters.timeout", "10s")
+                .unwrap()
+                .set_default("elasticsearch.parameters.wait_for_active_shards", "1")
+                .unwrap()
+                .add_source(config::File::from_str(
+                    r#"{ "elasticsearch": { "settings": { "index": { "number_of_shards": 1, "number_of_replicas": 1 } } } }"#,
+                    config::FileFormat::Json,
+                ))
+                .add_source(config::File::from_str(
+                    r#"{ "elasticsearch": { "mappings": { "properties": { "value": { "type": "text" } } } } }"#,
+                    config::FileFormat::Json,
+                ))
+                .build()
+                .expect("invalid container configuration for TestObj")
+        }
+    }
+
     #[tokio::test]
     async fn should_correctly_insert_multiple_documents() {
-        let mtx = Arc::clone(&docker::AVAILABLE);
-        let guard = mtx.lock().unwrap();
-        docker::initialize().await.expect("initialization");
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
         let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
@@ -202,26 +231,12 @@ pub mod tests {
             .conn()
             .await
             .expect("Elasticsearch Connection Established");
-        let config = internal::IndexConfiguration {
-            name: String::from("root_obj_dataset_test-index-bulk-insert"),
-            parameters: internal::IndexParameters {
-                timeout: String::from("10s"),
-                wait_for_active_shards: String::from("1"), // only the primary shard
-            },
-            settings: internal::IndexSettings {
-                value: json!({ "index": { "number_of_shards": 1, "number_of_replicas": 1 } }),
-            },
-            mappings: internal::IndexMappings {
-                value: json!({ "properties": { "value": { "type": "text" } } }),
-            },
-        };
-        let config = Configuration {
-            value: serde_json::to_string(&config).expect("config"),
-        };
+
         client
-            .create_container(config)
+            .create_container(TestObj::default_es_container_config())
             .await
             .expect("container creation");
+
         let documents = vec![
             TestObj {
                 value: String::from("obj1"),

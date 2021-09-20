@@ -52,3 +52,6 @@ lint: ## Check quality of the code
 
 test: ## Launch all tests
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --all-targets
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package mimir2
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package common
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package places
