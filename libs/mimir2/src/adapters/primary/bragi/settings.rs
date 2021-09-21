@@ -83,10 +83,16 @@ pub struct ImportanceQueryBoosts {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct ReverseQuery {
+    pub distance: u32, // search radius in meters
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct QuerySettings {
     pub type_query: TypeQueryBoosts,
     pub string_query: StringQuery,
     pub importance_query: ImportanceQueryBoosts,
+    pub reverse_query: ReverseQuery,
 }
 
 impl QuerySettings {

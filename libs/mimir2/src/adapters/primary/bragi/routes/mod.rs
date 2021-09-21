@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
-use crate::adapters::primary::bragi::api::InputQuery;
+use crate::adapters::primary::bragi::api::{ForwardGeocoderQuery, ReverseGeocoderQuery};
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 
@@ -12,11 +12,22 @@ fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 
 /// This function reads the input parameters on a get request, makes a summary validation
 /// of the parameters, and returns them.
-pub fn forward_geocoder() -> impl Filter<Extract = (InputQuery,), Error = Rejection> + Clone {
+pub fn forward_geocoder(
+) -> impl Filter<Extract = (ForwardGeocoderQuery,), Error = Rejection> + Clone {
     warp::get()
         .and(path_prefix())
         .and(warp::path("autocomplete"))
         .and(forward_geocoder_query())
+}
+
+/// This function reads the input parameters on a get request, makes a summary validation
+/// of the parameters, and returns them.
+pub fn reverse_geocoder(
+) -> impl Filter<Extract = (ReverseGeocoderQuery,), Error = Rejection> + Clone {
+    warp::get()
+        .and(path_prefix())
+        .and(warp::path("reverse"))
+        .and(reverse_geocoder_query())
 }
 
 pub fn with_client<S>(s: S) -> impl Filter<Extract = (S,), Error = std::convert::Infallible> + Clone
@@ -32,12 +43,19 @@ pub fn with_settings(
     warp::any().map(move || settings.clone())
 }
 
+pub fn with_elasticsearch(
+    url: String, // elasticsearch url
+) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || url.clone())
+}
+
 #[derive(Debug)]
 struct InvalidRequest;
 impl Reject for InvalidRequest {}
 
-pub fn forward_geocoder_query() -> impl Filter<Extract = (InputQuery,), Error = Rejection> + Copy {
-    warp::filters::query::query().and_then(|query: InputQuery| async move {
+pub fn forward_geocoder_query(
+) -> impl Filter<Extract = (ForwardGeocoderQuery,), Error = Rejection> + Copy {
+    warp::filters::query::query().and_then(|query: ForwardGeocoderQuery| async move {
         // TODO Write actual code to validate the request.
         if query.q.is_empty() {
             Err(warp::reject::custom(InvalidRequest))
@@ -45,6 +63,11 @@ pub fn forward_geocoder_query() -> impl Filter<Extract = (InputQuery,), Error = 
             Ok(query)
         }
     })
+}
+
+pub fn reverse_geocoder_query(
+) -> impl Filter<Extract = (ReverseGeocoderQuery,), Error = Rejection> + Copy {
+    warp::filters::query::query()
 }
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
@@ -100,6 +123,19 @@ mod tests {
         let filter = forward_geocoder();
         let resp = warp::test::request()
             .path("/api/v1/autocomplete?q=paris")
+            .reply(&filter);
+        assert_eq!(
+            resp.await.status(),
+            warp::http::status::StatusCode::OK,
+            "Valid Query Parameter"
+        );
+    }
+
+    #[tokio::test]
+    async fn should_report_valid_reverse() {
+        let filter = reverse_geocoder();
+        let resp = warp::test::request()
+            .path("/api/v1/reverse?lat=48.85406&lon=2.33027")
             .reply(&filter);
         assert_eq!(
             resp.await.status(),

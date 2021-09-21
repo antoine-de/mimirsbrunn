@@ -60,3 +60,5 @@
       scale = 130.0
       offset = 20.0
       decay = 0.4
+  [query.reverse_query]
+    radius = 1000 # search radius in meters.
