@@ -49,38 +49,6 @@ where
     Ok(())
 }
 
-/* pub async fn import_addresses_from_stream<T, F>(
-    client: ElasticsearchStorage,
-    config: IndexConfiguration,
-    has_headers: bool,
-    nb_threads: usize,
-    streams: impl Iterator<Item = impl AsyncRead + Unpin + Sync + Send + 'static>,
-    into_addr: F,
-) -> Result<(), Error>
-where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
-    T: DeserializeOwned + Send + Sync + 'static,
-{
-
-    let iter = streams
-        .map(|stream| {
-            csv_async::AsyncReaderBuilder::new()
-                .has_headers(has_headers)
-                .create_deserializer(stream)
-                .into_deserialize::<T>()
-        });
-        //.collect::<Vec<_>>();
-
-    let addrs = futures::stream::iter(iter)
-        .flatten()
-        .filter_map(|line| {
-            future::ready(line.map_err(|e| warn!("Impossible to read line, error: {}", e))
-                .ok())
-        });
-
-    import_addresses(client, config, addrs, into_addr).await
-}*/
-
 pub async fn import_addresses_from_reads<T, F>(
     client: ElasticsearchStorage,
     config: Config,

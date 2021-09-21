@@ -38,7 +38,8 @@ use mimirsbrunn::bano::Bano;
 use mimirsbrunn::utils::DEFAULT_NB_THREADS;
 use places::addr::Addr;
 use places::admin::Admin;
-use slog_scope::info;
+use slog_scope::{info, warn};
+use std::io::stdin;
 use std::path::PathBuf;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -52,9 +53,6 @@ struct Args {
     /// Elasticsearch parameters.
     #[structopt(short = "c", long, default_value = "http://localhost:9200/munin")]
     connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long, default_value = "fr")]
-    dataset: String,
     /// Number of threads to use
     #[structopt(short = "t", long, default_value = &DEFAULT_NB_THREADS)]
     nb_threads: usize,
@@ -62,12 +60,6 @@ struct Args {
     /// to handle values that are too high.
     #[structopt(short = "T", long, default_value = "1")]
     nb_insert_threads: usize,
-    /// Number of shards for the es index
-    #[structopt(short = "s", long, default_value = "5")]
-    nb_shards: usize,
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long, default_value = "1")]
-    nb_replicas: usize,
     /// If set to true, the number inside the address won't be used for the index generation,
     /// therefore, different addresses with the same position will disappear.
     #[structopt(long)]
@@ -104,20 +96,23 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     // TODO There might be an opportunity for optimization here:
     // Lets say we're indexing a bano department.... we don't need to retrieve
     // the admins for other regions!
-    // Fetch and index admins for `into_addr`
     let into_addr = {
-        let admins: Vec<Admin> = client
-            .list_documents()
-            .await
-            .expect("administratives regions not found in es db")
-            .map(|admin| admin.expect("could not parse admin"))
-            .collect()
-            .await;
-
-        let admins_geofinder = admins.iter().cloned().collect();
+        let admins: Vec<Admin> = match client.list_documents().await {
+            Ok(admins) => {
+                admins
+                    .map(|admin| admin.expect("could not parse admin"))
+                    .collect()
+                    .await
+            }
+            Err(err) => {
+                warn!("administratives regions not found in es db. {:?}", err);
+                Vec::new()
+            }
+        };
 
         let admins_by_insee = admins
-            .into_iter()
+            .iter()
+            .cloned()
             .filter(|a| !a.insee.is_empty())
             .map(|mut a| {
                 a.boundary = None; // to save some space we remove the admin boundary
@@ -125,6 +120,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             })
             .collect();
 
+        let admins_geofinder = admins.into_iter().collect();
         let use_old_index_format = args.use_old_index_format;
         move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, use_old_index_format)
     };
@@ -133,11 +129,107 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         mimirsbrunn::addr_reader::import_addresses_from_file(client, config, input_path, into_addr)
             .await
     } else {
-        Ok(())
+        mimirsbrunn::addr_reader::import_addresses_from_reads(
+            client,
+            config,
+            true,
+            args.nb_threads,
+            vec![stdin()],
+            into_addr,
+        )
+        .await
     }
 }
 
 #[tokio::main]
 async fn main() {
     mimirsbrunn::utils::launch_async(Box::new(run)).await;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use common::document::ContainerDocument;
+    use futures::TryStreamExt;
+    use mimir2::domain::model::query::Query;
+    use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::domain::ports::primary::search_documents::SearchDocuments;
+    use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
+    use places::{addr::Addr, Place};
+
+    fn elasticsearch_test_url() -> String {
+        std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
+    }
+
+    #[tokio::test]
+    async fn should_correctly_index_bano_file() {
+        let _guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let args = Args {
+            input: Some("./tests/fixtures/sample-bano.csv".into()),
+            connection_string: elasticsearch_test_url(),
+            mappings: Some("./config/addr/mappings.json".into()),
+            settings: Some("./config/addr/settings.json".into()),
+            use_old_index_format: false,
+            nb_threads: 2,
+            nb_insert_threads: 2,
+            override_settings: vec![],
+        };
+
+        let _res = mimirsbrunn::utils::launch_async_args(run, args).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let pool = remote::connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let search = |query: &str| {
+            let client = client.clone();
+            let query: String = query.into();
+            async move {
+                client
+                    .search_documents(
+                        vec![String::from(Addr::static_doc_type())],
+                        Query::QueryString(format!("full_label.prefix:({})", query)),
+                    )
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json).unwrap())
+                    .map(|place| match place {
+                        Place::Addr(addr) => addr,
+                        _ => panic!("should only have admins"),
+                    })
+                    .collect::<Vec<Addr>>()
+            }
+        };
+
+        let addresses: Vec<Addr> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        assert_eq!(addresses.len(), 35);
+
+        let results = search("10 Place de la Mairie").await;
+        assert_eq!(results[0].id, "addr:1.378886;43.668175:10");
+
+        // Check that addresses containing multiple postcodes are read correctly
+        let results = search("Rue Foncet").await;
+        assert_eq!(
+            results[0].zip_codes,
+            vec!["06000", "06100", "06200", "06300"]
+        )
+    }
 }

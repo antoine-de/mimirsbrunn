@@ -209,7 +209,7 @@ async fn run(args: Args) -> Result<(), failure::Error> {
             }
             Err(err) => {
                 warn!("administratives regions not found in es db. {:?}", err);
-                std::iter::empty().collect()
+                Default::default()
             }
         };
         let id_precision = args.id_precision;
@@ -289,10 +289,10 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: Some(PathBuf::from("./tests/fixtures/sample-oa.csv")),
+            input: Some("./tests/fixtures/sample-oa.csv".into()),
             connection_string: elasticsearch_test_url(),
-            mappings: Some(PathBuf::from("./config/addr/mappings.json")),
-            settings: Some(PathBuf::from("./config/addr/settings.json")),
+            mappings: Some("./config/addr/mappings.json".into()),
+            settings: Some("./config/addr/settings.json".into()),
             id_precision: 5,
             nb_threads: 2,
             nb_insert_threads: 2,
