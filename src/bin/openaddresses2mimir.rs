@@ -31,10 +31,10 @@
 use failure::format_err;
 use futures::stream::StreamExt;
 
+use crate::utils::DEFAULT_NB_THREADS;
 use common::config::config_from_args;
 use common::document::ContainerDocument;
 use config::Config;
-use lazy_static::lazy_static;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
@@ -46,10 +46,6 @@ use std::io::stdin;
 use std::ops::Deref;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-lazy_static! {
-    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
-}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -182,18 +178,10 @@ struct Args {
     /// to handle values that are too high.
     #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
     nb_insert_threads: usize,
-    #[structopt(
-        parse(from_os_str),
-        long = "mappings",
-        default_value = "./config/addr/mappings.json"
-    )]
-    mappings: PathBuf,
-    #[structopt(
-        parse(from_os_str),
-        long = "settings",
-        default_value = "./config/addr/settings.json"
-    )]
-    settings: PathBuf,
+    #[structopt(parse(from_os_str), long = "mappings")]
+    mappings: Option<PathBuf>,
+    #[structopt(parse(from_os_str), long = "settings")]
+    settings: Option<PathBuf>,
     /// Override value of settings using syntax `key.subkey=val`
     #[structopt(name = "setting", short = "v", long)]
     override_settings: Vec<String>,
@@ -202,11 +190,19 @@ struct Args {
 async fn run(args: Args) -> Result<(), failure::Error> {
     info!("importing open addresses into Mimir");
 
+    let mut cfg_builder =
+        Config::builder().add_source(places::addr::Addr::default_es_container_config());
+
+    if let Some(mappings) = args.mappings {
+        cfg_builder = cfg_builder.add_source(config::File::from(mappings))
+    }
+
+    if let Some(settings) = args.settings {
+        cfg_builder = cfg_builder.add_source(config::File::from(settings));
+    }
+
     let config =
-        Config::builder()
-            .add_source(places::addr::Addr::default_es_container_config())
-            .add_source(config::File::from(args.mappings))
-            .add_source(config::File::from(args.settings))
+        cfg_builder
             .add_source(config_from_args(args.override_settings).map_err(|err| {
                 format_err!("couldn't apply settings override: {}", err.to_string())
             })?)
@@ -319,8 +315,8 @@ mod tests {
         let args = Args {
             input: Some(PathBuf::from("./tests/fixtures/sample-oa.csv")),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/addr/mappings.json"),
-            settings: PathBuf::from("./config/addr/settings.json"),
+            mappings: Some(PathBuf::from("./config/addr/mappings.json")),
+            settings: Some(PathBuf::from("./config/addr/settings.json")),
             id_precision: 5,
             nb_threads: 2,
             nb_insert_threads: 2,
