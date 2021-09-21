@@ -10,7 +10,7 @@ use warp::Filter;
 
 use super::settings::{Error as SettingsError, Settings as CSettings};
 use mimir2::{
-    adapters::primary::bragi::{api::forward_geocoder, handlers, routes},
+    adapters::primary::bragi::{api::forward_geocoder, api::status, handlers, routes},
     adapters::secondary::elasticsearch::remote::connection_test_pool,
     domain::ports::secondary::remote::Remote,
 };
@@ -64,7 +64,8 @@ pub async fn run_server(settings: CSettings) -> Result<(), Error> {
         .await
         .expect("Elasticsearch Connection Established");
 
-    let api = forward_geocoder!(client, settings.query)
+    let api = forward_geocoder!(client.clone(), settings.query)
+        .or(status!(client))
         .recover(routes::report_invalid)
         .with(warp::trace::request());
 

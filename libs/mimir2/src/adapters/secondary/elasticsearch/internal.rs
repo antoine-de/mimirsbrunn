@@ -1,4 +1,5 @@
 use elasticsearch::cat::CatIndicesParts;
+use elasticsearch::cluster::ClusterHealthParts;
 use elasticsearch::http::response::Exception;
 use elasticsearch::indices::{
     IndicesCreateParts, IndicesDeleteAliasParts, IndicesDeleteParts, IndicesGetAliasParts,
@@ -28,6 +29,7 @@ use crate::domain::model::{
     index::{Index, IndexStatus},
     query::Query,
     stats::InsertStats as ModelInsertStats,
+    status::{StorageHealth, StorageVersion},
 };
 use common::document::Document;
 
@@ -115,6 +117,10 @@ pub enum Error {
     /// Internal Error
     #[snafu(display("Internal Error: {}", reason))]
     Internal { reason: String },
+
+    /// Elasticsearch Unhandled Status
+    #[snafu(display("Elasticsearch Unhandled Status: {}", details))]
+    ElasticsearchUnhandledStatus { details: String },
 }
 
 impl From<Exception> for Error {
@@ -1247,47 +1253,122 @@ impl ElasticsearchStorage {
         }
     }
 
-    // pub(super) async fn list_indices(&self) -> Result<Vec<Index>, Error> {
-    //     let response = self
-    //         .0
-    //         .cat()
-    //         .indices(CatIndicesParts::None)
-    //         .format("json")
-    //         .send()
-    //         .await
-    //         .context(ElasticsearchClient {
-    //             details: String::from("cannot list indices"),
-    //         })?;
+    pub(super) async fn cluster_health(&self) -> Result<StorageHealth, Error> {
+        let response = self
+            .0
+            .cluster()
+            .health(ClusterHealthParts::None)
+            .send()
+            .await
+            .context(ElasticsearchClient {
+                details: String::from("cannot query cluster health"),
+            })?;
 
-    //     if response.status_code().is_success() {
-    //         let json = response
-    //             .json::<Value>()
-    //             .await
-    //             .context(ElasticsearchDeserialization)?;
+        if response.status_code().is_success() {
+            // Response similar to:
+            // Object({"cluster_name": "foo", "status": "yellow", ...})
+            let json = response
+                .json::<Value>()
+                .await
+                .context(ElasticsearchDeserialization)?;
 
-    //         let indices: Vec<ElasticsearchIndex> =
-    //             serde_json::from_value(json).context(JsonDeserialization {
-    //                 details: String::from("could not deserialize Elasticsearch indices"),
-    //             })?;
+            let health = json
+                .as_object()
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected JSON object"),
+                    json: json.clone(),
+                })?
+                .get("status")
+                .ok_or_else(|| Error::JsonInvalid {
+                    details: String::from("expected 'status'"),
+                    json: json.clone(),
+                })?
+                .as_str()
+                .ok_or_else(|| Error::JsonInvalid {
+                    details: String::from("expected JSON string"),
+                    json: json.clone(),
+                })?;
 
-    //         indices.into_iter().map(Index::try_from).collect()
-    //     } else {
-    //         let exception = response.exception().await.ok().unwrap();
+            match health {
+                "green" | "yellow" => Ok(StorageHealth::OK),
+                "red" => Ok(StorageHealth::FAIL),
+                _ => Err(Error::ElasticsearchUnhandledStatus {
+                    details: health.to_string(),
+                }),
+            }
+        } else {
+            let exception = response.exception().await.ok().unwrap();
 
-    //         // We need to handle this exception carefully, so that the 'unknown index' does
-    //         // not result in an Error, but rather a Ok(None) to indicate that nothing was found.
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
+    }
 
-    //         match exception {
-    //             Some(exception) => {
-    //                 let err = Error::from(exception);
-    //                 Err(err)
-    //             }
-    //             None => Err(Error::ElasticsearchFailureWithoutException {
-    //                 details: String::from("Fail status without exception"),
-    //             }),
-    //         }
-    //     }
-    // }
+    pub(super) async fn cluster_version(&self) -> Result<StorageVersion, Error> {
+        // In the following, we specify the list of columns we're interested in ("v" for version).
+        // Refer to https://www.elastic.co/guide/en/elasticsearch/reference/current/cat-nodes.html
+        // to explicitely set the list of columns
+        let response = self
+            .0
+            .cat()
+            .nodes()
+            .h(&["v"]) // We only want the version
+            .format("json")
+            .send()
+            .await
+            .context(ElasticsearchClient {
+                details: String::from("cannot query cluster health"),
+            })?;
+
+        if response.status_code().is_success() {
+            let json = response
+                .json::<Value>()
+                .await
+                .context(ElasticsearchDeserialization)?;
+
+            let version = json
+                .as_array()
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected JSON array"),
+                    json: json.clone(),
+                })?
+                .get(0)
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("empty list of node information"),
+                    json: json.clone(),
+                })?
+                .get("v")
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected 'v' (version)"),
+                    json: json.clone(),
+                })?
+                .as_str()
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected JSON string"),
+                    json: json.clone(),
+                })?;
+            Ok(version.to_string())
+        } else {
+            let exception = response.exception().await.ok().unwrap();
+
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
+    }
 }
 
 /// This is the information provided by Elasticsearch CAT Indice API
@@ -1381,6 +1462,17 @@ impl From<InsertStats> for ModelInsertStats {
             created,
             updated,
             error,
+        }
+    }
+}
+
+impl TryFrom<String> for StorageHealth {
+    type Error = Error;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.as_str() {
+            "green" | "yellow" => Ok(StorageHealth::OK),
+            "red" => Ok(StorageHealth::FAIL),
+            _ => Err(Error::ElasticsearchUnhandledStatus { details: value }),
         }
     }
 }

@@ -61,6 +61,10 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
     }
 }
 
+pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    warp::get().and(path_prefix()).and(warp::path("status"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

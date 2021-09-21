@@ -1,9 +1,11 @@
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use crate::adapters::primary::common::coord::Coord;
 use crate::adapters::primary::common::filters::Filters;
+use crate::domain::model::status::StorageStatus;
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,10 +56,7 @@ pub struct SearchResponseBody<D> {
     pub docs_count: usize,
 }
 
-impl<D> From<Vec<D>> for SearchResponseBody<D>
-where
-    D: DeserializeOwned,
-{
+impl<D> From<Vec<D>> for SearchResponseBody<D> {
     fn from(values: Vec<D>) -> Self {
         SearchResponseBody {
             docs_count: values.len(),
@@ -78,6 +77,24 @@ impl From<JsonValue> for ExplainResponseBody {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatusResponseBody {
+    pub status: String,
+    pub elasticsearch_version: String,
+    pub bragi_version: String,
+}
+
+impl From<StorageStatus> for StatusResponseBody {
+    fn from(status: StorageStatus) -> Self {
+        StatusResponseBody {
+            status: status.health.to_string(),
+            elasticsearch_version: status.version,
+            bragi_version: String::from(VERSION),
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! forward_geocoder {
     ($cl:expr, $st:expr) => {
@@ -88,3 +105,13 @@ macro_rules! forward_geocoder {
     };
 }
 pub use forward_geocoder;
+
+#[macro_export]
+macro_rules! status {
+    ($cl:expr) => {
+        routes::status()
+            .and(routes::with_client($cl))
+            .and_then(handlers::status)
+    };
+}
+pub use status;
