@@ -28,15 +28,19 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use crate::logger::logger_init;
 use crate::Error;
 use futures::future::Future;
+use lazy_static::lazy_static;
 use slog_scope::error;
 use std::collections::BTreeMap;
 use std::process::exit;
 use std::sync::Arc;
 use structopt::StructOpt;
 
-use crate::logger::logger_init;
+lazy_static! {
+    pub static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
+}
 
 pub fn get_zip_codes_from_admins(admins: &[Arc<places::admin::Admin>]) -> Vec<String> {
     let level = admins.iter().fold(0, |level, adm| {

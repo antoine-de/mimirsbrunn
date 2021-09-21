@@ -32,14 +32,13 @@ use failure::format_err;
 use futures::stream::StreamExt;
 
 use crate::utils::DEFAULT_NB_THREADS;
-use common::config::config_from_args;
-use common::document::ContainerDocument;
-use config::Config;
+use common::config::load_es_config_for;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
+use places::addr::Addr;
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
 use std::io::stdin;
@@ -67,7 +66,7 @@ impl OpenAddress {
         self,
         admins_geofinder: &AdminGeoFinder,
         id_precision: usize,
-    ) -> Result<places::addr::Addr, mimirsbrunn::Error> {
+    ) -> Result<Addr, mimirsbrunn::Error> {
         let street_id = format!("street:{}", self.id); // TODO check if thats ok
         let admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
@@ -133,7 +132,7 @@ impl OpenAddress {
             }
         };
 
-        Ok(places::addr::Addr {
+        Ok(Addr {
             id,
             name: addr_name,
             label: addr_label,
@@ -154,33 +153,25 @@ impl OpenAddress {
 struct Args {
     /// OpenAddresses files. Can be either a directory or a file.
     /// If this is left empty, addresses are read from standard input.
-    #[structopt(short = "i", long = "input", parse(from_os_str))]
+    #[structopt(short = "i", long, parse(from_os_str))]
     input: Option<PathBuf>,
     /// Float precision for coordinates used to define the `id` field of addresses.
     /// Set to 0 to use exact coordinates.
-    #[structopt(short = "p", long = "id-precision", default_value = "6")]
+    #[structopt(short = "p", long, default_value = "6")]
     id_precision: usize,
     /// Elasticsearch parameters.
-    #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
-    )]
+    #[structopt(short = "c", long, default_value = "http://localhost:9200/munin")]
     connection_string: String,
     /// Number of threads to use
-    #[structopt(
-        short = "t",
-        long = "nb-threads",
-        default_value = &DEFAULT_NB_THREADS
-    )]
+    #[structopt(short = "t", long, default_value = &DEFAULT_NB_THREADS)]
     nb_threads: usize,
     /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
     /// to handle values that are too high.
-    #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
+    #[structopt(short = "T", long, default_value = "1")]
     nb_insert_threads: usize,
-    #[structopt(parse(from_os_str), long = "mappings")]
+    #[structopt(parse(from_os_str), long)]
     mappings: Option<PathBuf>,
-    #[structopt(parse(from_os_str), long = "settings")]
+    #[structopt(parse(from_os_str), long)]
     settings: Option<PathBuf>,
     /// Override value of settings using syntax `key.subkey=val`
     #[structopt(name = "setting", short = "v", long)]
@@ -190,23 +181,8 @@ struct Args {
 async fn run(args: Args) -> Result<(), failure::Error> {
     info!("importing open addresses into Mimir");
 
-    let mut cfg_builder =
-        Config::builder().add_source(places::addr::Addr::default_es_container_config());
-
-    if let Some(mappings) = args.mappings {
-        cfg_builder = cfg_builder.add_source(config::File::from(mappings))
-    }
-
-    if let Some(settings) = args.settings {
-        cfg_builder = cfg_builder.add_source(config::File::from(settings));
-    }
-
-    let config =
-        cfg_builder
-            .add_source(config_from_args(args.override_settings).map_err(|err| {
-                format_err!("couldn't apply settings override: {}", err.to_string())
-            })?)
-            .build()?;
+    let config = load_es_config_for::<Addr>(args.mappings, args.settings, args.override_settings)
+        .map_err(|err| format_err!("could not load configuration: {}", err))?;
 
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await

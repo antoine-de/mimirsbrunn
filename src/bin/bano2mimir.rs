@@ -28,72 +28,64 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use common::config::load_es_config_for;
 use failure::format_err;
 use futures::stream::StreamExt;
-use lazy_static::lazy_static;
-use mimir2::{
-    adapters::secondary::elasticsearch::{
-        self,
-        internal::{IndexConfiguration, IndexMappings, IndexParameters, IndexSettings},
-    },
-    domain::ports::{list::ListParameters, remote::Remote},
-    domain::usecases::list_documents::{ListDocuments, ListDocumentsParameters},
-    domain::usecases::UseCase,
-};
+use mimir2::adapters::secondary::elasticsearch;
+use mimir2::domain::ports::primary::list_documents::ListDocuments;
+use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::bano::Bano;
-use places::{admin::Admin, MimirObject};
+use mimirsbrunn::utils::DEFAULT_NB_THREADS;
+use places::addr::Addr;
+use places::admin::Admin;
 use slog_scope::info;
 use std::path::PathBuf;
 use std::sync::Arc;
 use structopt::StructOpt;
 
-lazy_static! {
-    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
-}
-
 #[derive(StructOpt, Debug)]
 struct Args {
     /// Bano files. Can be either a directory or a file.
     /// If this is left empty, addresses are read from standard input.
-    #[structopt(short = "i", long = "input", parse(from_os_str))]
+    #[structopt(short = "i", long, parse(from_os_str))]
     input: Option<PathBuf>,
     /// Elasticsearch parameters.
-    #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
-    )]
+    #[structopt(short = "c", long, default_value = "http://localhost:9200/munin")]
     connection_string: String,
     /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset", default_value = "fr")]
+    #[structopt(short = "d", long, default_value = "fr")]
     dataset: String,
     /// Number of threads to use
-    #[structopt(
-        short = "t",
-        long = "nb-threads",
-        default_value = &DEFAULT_NB_THREADS
-    )]
+    #[structopt(short = "t", long, default_value = &DEFAULT_NB_THREADS)]
     nb_threads: usize,
     /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
     /// to handle values that are too high.
-    #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
+    #[structopt(short = "T", long, default_value = "1")]
     nb_insert_threads: usize,
     /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "5")]
+    #[structopt(short = "s", long, default_value = "5")]
     nb_shards: usize,
     /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
+    #[structopt(short = "r", long, default_value = "1")]
     nb_replicas: usize,
     /// If set to true, the number inside the address won't be used for the index generation,
     /// therefore, different addresses with the same position will disappear.
-    #[structopt(long = "use-old-index-format")]
+    #[structopt(long)]
     use_old_index_format: bool,
+    #[structopt(parse(from_os_str), long)]
+    mappings: Option<PathBuf>,
+    #[structopt(parse(from_os_str), long)]
+    settings: Option<PathBuf>,
+    /// Override value of settings using syntax `key.subkey=val`
+    #[structopt(name = "setting", short = "v", long)]
+    override_settings: Vec<String>,
 }
 
 async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     info!("importing bano into Mimir");
 
-    let dataset = args.dataset;
+    let config = load_es_config_for::<Addr>(args.mappings, args.settings, args.override_settings)
+        .map_err(|err| format_err!("could not load configuration: {}", err))?;
 
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
@@ -109,41 +101,17 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let config = IndexConfiguration {
-        name: dataset.clone(),
-        parameters: IndexParameters {
-            timeout: String::from("10s"),
-            wait_for_active_shards: String::from("1"), // only the primary shard
-        },
-        settings: IndexSettings {
-            base: serde_json::from_str(include_str!("../../config/addr/settings.json")).expect("invalid JSON file"),
-            nb_shards: args.nb_shards,
-            nb_replicas: args.nb_replicas,
-        },
-        mappings: IndexMappings {
-            value: String::from(include_str!("../../config/addr/mappings.json")),
-        },
-    };
-
     // TODO There might be an opportunity for optimization here:
     // Lets say we're indexing a bano department.... we don't need to retrieve
     // the admins for other regions!
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let search_documents = ListDocuments::new(Box::new(client.clone()));
-        let parameters = ListDocumentsParameters {
-            parameters: ListParameters {
-                doc_type: String::from(Admin::doc_type()),
-            },
-        };
-        let admin_stream = search_documents
-            .execute(parameters)
+        let admins: Vec<Admin> = client
+            .list_documents()
             .await
-            .map_err(|err| format_err!("could not retrieve admins: {}", err.to_string()))?;
-
-        let admins = admin_stream
-            .map(|v| serde_json::from_value(v).expect("cannot deserialize admin"))
-            .collect::<Vec<Admin>>()
+            .expect("administratives regions not found in es db")
+            .map(|admin| admin.expect("could not parse admin"))
+            .collect()
             .await;
 
         let admins_geofinder = admins.iter().cloned().collect();
