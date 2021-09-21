@@ -105,7 +105,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     if import_streets_enabled {
         info!("Extracting streets from osm");
-        let mut streets = streets(&mut osm_reader, &admins_geofinder, &settings)?;
+        let mut streets = streets(&mut osm_reader, &admins_geofinder, settings)?;
 
         info!("computing street weight");
         compute_street_weight(&mut streets);
