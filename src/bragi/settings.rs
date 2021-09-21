@@ -4,7 +4,7 @@ use serde::Deserialize;
 use snafu::ResultExt;
 use snafu::Snafu;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use mimir2::adapters::primary::common::settings::QuerySettings;
 
@@ -92,7 +92,7 @@ impl Settings {
             msg: String::from("no config dir"),
         })?;
 
-        let config_dir = Path::new(config_dir);
+        let config_dir = Path::new(config_dir).join("bragi");
 
         let mut builder = Config::builder();
 
@@ -156,9 +156,7 @@ impl Settings {
         // FIXME Here we assume the query is stored in query/default.toml, but
         // we should merge also a query/[RUN_MODE].toml to override the default.
 
-        let query_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let query_path = query_path
-            .join("config")
+        let query_path = config_dir
             .join("query")
             .join("default")
             .with_extension("toml");
