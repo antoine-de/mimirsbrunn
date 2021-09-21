@@ -12,7 +12,7 @@ use super::settings::{Error as SettingsError, Settings as CSettings};
 use mimir2::{
     adapters::primary::bragi::api::{forward_geocoder, reverse_geocoder, status},
     adapters::primary::bragi::{handlers, routes},
-    adapters::secondary::elasticsearch::remote::connection_test_pool,
+    adapters::secondary::elasticsearch::remote::connection_pool_url,
     domain::ports::secondary::remote::Remote,
 };
 
@@ -36,8 +36,6 @@ pub async fn run<'a>(matches: &ArgMatches<'a>) -> Result<(), Error> {
     let settings = CSettings::new(matches).context(Settings)?;
     LogTracer::init().expect("Unable to setup log tracer!");
 
-    println!("Config: {:?}", settings);
-
     // following code mostly from https://betterprogramming.pub/production-grade-logging-in-rust-applications-2c7fffd108a6
     let app_name = concat!(env!("CARGO_PKG_NAME"), "-", env!("CARGO_PKG_VERSION")).to_string();
 
@@ -56,7 +54,7 @@ pub async fn run<'a>(matches: &ArgMatches<'a>) -> Result<(), Error> {
 
 #[instrument(skip(settings))]
 pub async fn run_server(settings: CSettings) -> Result<(), Error> {
-    let pool = connection_test_pool()
+    let pool = connection_pool_url(&settings.elasticsearch.url)
         .await
         .expect("Elasticsearch Connection Pool");
 
