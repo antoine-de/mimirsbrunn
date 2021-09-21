@@ -291,6 +291,9 @@ pub mod tests {
 
         drop(guard);
 
-        assert_eq!(client.unwrap_err().to_string(), "Container Creation Error",);
+        assert!(client
+            .unwrap_err()
+            .to_string()
+            .contains("Elasticsearch Invalid version"));
     }
 }

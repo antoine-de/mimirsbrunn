@@ -73,14 +73,17 @@ impl Remote for SingleNodeConnectionPool {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```rust,no_run
     /// // You can have rust code between fences inside the comments
     /// // If you pass --test to `rustdoc`, it will even test it for you!
     /// use mimir2::domain::ports::secondary::remote::Remote;
     /// use mimir2::adapters::secondary::elasticsearch;
     ///
-    /// let pool = elasticsearch::remote::connection_pool().await.unwrap();
-    /// let client = pool.conn(50u64).await.unwrap();
+    /// #[tokio::main]
+    /// async fn main() {
+    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
+    ///   let client = pool.conn(50u64, ">=7.10.0").await.unwrap();
+    /// }
     ///
     /// ```
     async fn conn(self, timeout: u64, version_req: &str) -> Result<Self::Conn, RemoteError> {

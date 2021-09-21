@@ -1,6 +1,5 @@
 use config::{Config, ConfigError, File, FileFormat, Source, Value};
-// TODO Remove failure
-use failure::ResultExt;
+use failure::{format_err, ResultExt};
 use serde::Deserialize;
 use slog_scope::{info, warn};
 use std::collections::HashMap;
@@ -10,6 +9,8 @@ use structopt::StructOpt;
 
 use crate::osm_reader::poi;
 use crate::Error;
+use common::config::config_from_args;
+use common::document::ContainerDocument;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct StreetExclusion {
@@ -47,12 +48,6 @@ pub struct Database {
 pub struct Elasticsearch {
     pub connection_string: String,
     pub insert_thread_count: usize,
-    pub streets_shards: usize,
-    pub streets_replicas: usize,
-    pub admins_shards: usize,
-    pub admins_replicas: usize,
-    pub pois_shards: usize,
-    pub pois_replicas: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -163,45 +158,39 @@ pub struct Args {
     /// OSM PBF file.
     #[structopt(short = "i", long = "input", parse(from_os_str))]
     pub input: PathBuf,
-    /// Admin levels to keep.
-    #[structopt(short = "l", long = "level")]
-    level: Option<Vec<u32>>,
-    /// City level to  calculate weight.
-    #[structopt(short = "C", long = "city-level")]
-    city_level: Option<u32>,
     /// Elasticsearch parameters.
     #[structopt(short = "c", long = "connection-string")]
     connection_string: Option<String>,
     /// Import ways.
     #[structopt(short = "w", long = "import-way")]
     import_way: Option<bool>,
-    /// Import admins.
-    #[structopt(short = "a", long = "import-admin")]
-    import_admin: Option<bool>,
     /// Import POIs.
     #[structopt(short = "p", long = "import-poi")]
     import_poi: Option<bool>,
     /// Name of the dataset.
     #[structopt(short = "d", long = "dataset")]
     pub dataset: Option<String>,
-    /// Number of shards for the admin es index
-    #[structopt(long = "nb-admin-shards")]
-    nb_admin_shards: Option<usize>,
-    /// Number of replicas for the es index
-    #[structopt(long = "nb-admin-replicas")]
-    nb_admin_replicas: Option<usize>,
-    /// Number of shards for the street es index
-    #[structopt(long = "nb-street-shards")]
-    nb_street_shards: Option<usize>,
-    /// Number of replicas for the street es index
-    #[structopt(long = "nb-street-replicas")]
-    nb_street_replicas: Option<usize>,
-    /// Number of shards for the es index
-    #[structopt(long = "nb-poi-shards")]
-    nb_poi_shards: Option<usize>,
-    /// Number of replicas for the es index
-    #[structopt(long = "nb-poi-replicas")]
-    nb_poi_replicas: Option<usize>,
+
+    /// Mappings file for Street documents
+    #[structopt(parse(from_os_str), long = "street-mappings")]
+    street_mappings: Option<PathBuf>,
+    /// Settings file for Street documents
+    #[structopt(parse(from_os_str), long = "street-settings")]
+    street_settings: Option<PathBuf>,
+    /// Override config for streets import using syntax `key.subkey=val`
+    #[structopt(name = "street-setting", long)]
+    override_street_settings: Vec<String>,
+
+    /// Mappings file for Poi documents
+    #[structopt(parse(from_os_str), long = "poi-mappings")]
+    poi_mappings: Option<PathBuf>,
+    /// Settings file for Poi documents
+    #[structopt(parse(from_os_str), long = "poi-settings")]
+    poi_settings: Option<PathBuf>,
+    /// Override config for POIs import using syntax `key.subkey=val`
+    #[structopt(name = "poi-setting", long)]
+    override_poi_settings: Vec<String>,
+
     /// If you use this option by providing a filename, then we
     /// will use a SQlite database that will be persisted. You
     /// can only do that if osm2mimir was compiled with the
@@ -215,6 +204,7 @@ pub struct Args {
     #[cfg(feature = "db-storage")]
     #[structopt(long = "db-buffer-size")]
     pub db_buffer_size: Option<usize>,
+
     /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
     /// to handle values that are too high.
     #[structopt(short = "T", long = "nb-insert-threads")]
@@ -249,44 +239,6 @@ impl Source for Args {
             m.insert(String::from("dataset"), Value::new(None, dataset));
         }
 
-        // ADMIN
-        if let Some(import_admin) = self.import_admin {
-            m.insert(String::from("admin.import"), Value::new(None, import_admin));
-        }
-
-        if let Some(city_level) = self.city_level {
-            m.insert(
-                String::from("admin.city_level"),
-                Value::new(
-                    None,
-                    i64::try_from(city_level).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert admin city_level to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-        if let Some(level) = self.level.clone() {
-            m.insert(
-                String::from("admin.levels"),
-                Value::new(
-                    None,
-                    level.into_iter().try_fold(Vec::new(), |mut acc, l| {
-                        let i = i64::try_from(l).map_err(|e| {
-                            ConfigError::Message(format!(
-                                "Could not convert admin city_level to integer: {}",
-                                e
-                            ))
-                        })?;
-                        acc.push(i);
-                        Ok(acc)
-                    })?,
-                ),
-            );
-        }
-
         // WAY
         if let Some(import_way) = self.import_way {
             m.insert(String::from("street.import"), Value::new(None, import_way));
@@ -303,96 +255,6 @@ impl Source for Args {
             m.insert(
                 String::from("elasticsearch.connection_string"),
                 Value::new(None, connection_string),
-            );
-        }
-
-        if let Some(nb_way_shards) = self.nb_street_shards {
-            m.insert(
-                String::from("elasticsearch.streets_shards"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_way_shards).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of streets shards to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_way_replicas) = self.nb_street_replicas {
-            m.insert(
-                String::from("elasticsearch.streets_replicas"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_way_replicas).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of way replicas to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_poi_shards) = self.nb_poi_shards {
-            m.insert(
-                String::from("elasticsearch.pois_shards"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_poi_shards).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of poi shards to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_poi_replicas) = self.nb_poi_replicas {
-            m.insert(
-                String::from("elasticsearch.pois_replicas"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_poi_replicas).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of poi replicas to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_admin_shards) = self.nb_admin_shards {
-            m.insert(
-                String::from("elasticsearch.admins_shards"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_admin_shards).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of admin shards to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_admin_replicas) = self.nb_admin_replicas {
-            m.insert(
-                String::from("elasticsearch.admins_replicas"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_admin_replicas).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of admin replicas to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
             );
         }
 
@@ -437,5 +299,57 @@ impl Source for Args {
         }
 
         Ok(m)
+    }
+}
+
+impl Args {
+    pub fn get_street_config(&self) -> Result<Config, Error> {
+        let mut config =
+            Config::builder().add_source(places::street::Street::default_es_container_config());
+
+        if let Some(mappings) = &self.street_mappings {
+            config = config.add_source(config::File::from(mappings.clone()));
+        }
+
+        if let Some(settings) = &self.street_settings {
+            config = config.add_source(config::File::from(settings.clone()));
+        }
+
+        if let Some(dataset) = &self.dataset {
+            config = config.set_override("container.dataset", dataset.clone())?;
+        }
+
+        let config = config
+            .add_source(
+                config_from_args(self.override_street_settings.clone()).map_err(|err| {
+                    format_err!("could not apply settings override: {}", err.to_string())
+                })?,
+            )
+            .build()?;
+
+        Ok(config)
+    }
+
+    pub fn get_poi_config(&self) -> Result<Config, Error> {
+        let mut config =
+            Config::builder().add_source(places::poi::Poi::default_es_container_config());
+
+        if let Some(mappings) = &self.poi_mappings {
+            config = config.add_source(config::File::from(mappings.clone()));
+        }
+
+        if let Some(settings) = &self.poi_settings {
+            config = config.add_source(config::File::from(settings.clone()));
+        }
+
+        let config = config
+            .add_source(
+                config_from_args(self.override_poi_settings.clone()).map_err(|err| {
+                    format_err!("could not apply settings override: {}", err.to_string())
+                })?,
+            )
+            .build()?;
+
+        Ok(config)
     }
 }

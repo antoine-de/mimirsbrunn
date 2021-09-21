@@ -39,10 +39,10 @@ use mimir2::{
 };
 use osm_boundaries_utils::build_boundary;
 use places::{
-    addr::Addr,
     coord::Coord,
     i18n_properties::I18nProperties,
     poi::{Poi, PoiType},
+    Address,
 };
 use serde::{Deserialize, Serialize};
 use slog_scope::{info, warn};
@@ -221,7 +221,7 @@ pub fn pois(
         .collect()
 }
 
-pub async fn compute_weight(poi: Poi) -> Poi {
+pub fn compute_weight(poi: Poi) -> Poi {
     let weight = poi
         .administrative_regions
         .iter()
@@ -234,24 +234,39 @@ pub async fn compute_weight(poi: Poi) -> Poi {
 }
 
 // FIXME Return a Result
-pub async fn add_address(backend: &impl SearchDocuments<Document = Addr>, poi: Poi) -> Poi {
+pub async fn add_address<T>(backend: &T, poi: Poi) -> Poi
+where
+    T: SearchDocuments,
+    T::Document: Into<serde_json::Value>,
+{
     // FIXME 1km automagick
     let reverse = mimir2::adapters::primary::common::dsl::build_reverse_query(
         "1km",
         poi.coord.lat(),
         poi.coord.lon(),
     );
-    let documents = backend.search_documents(
-        vec![Addr::static_doc_type().to_string()],
-        Query::QueryDSL(reverse),
-    );
+    let documents = backend
+        .search_documents(
+            vec![
+                places::addr::Addr::static_doc_type().to_string(),
+                places::street::Street::static_doc_type().to_string(),
+            ],
+            Query::QueryDSL(reverse),
+        )
+        .await
+        .map(|results| {
+            results
+                .into_iter()
+                .map(|json| serde_json::from_value::<Address>(json.into()).unwrap())
+                .collect::<Vec<Address>>()
+        });
 
     // FIXME ladder code, should use Result<(), Error> and combinators
-    match documents.await {
+    match documents {
         // Ok(res) => match serde_json::from_value(res) {
         Ok(addresses) => match addresses.into_iter().next() {
             Some(a) => Poi {
-                address: Some(places::Address::Addr(a)),
+                address: Some(a),
                 ..poi
             },
             None => {

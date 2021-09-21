@@ -26,12 +26,15 @@ pub trait Remote {
     /// The following example creates a connection pool, and then uses that connection pool to
     /// create a client for Elasticsearch, making sure that the version is greater than 7.11.0
     ///
-    /// ```
+    /// ```rust,no_run
     /// use mimir2::domain::ports::secondary::remote::Remote;
     /// use mimir2::adapters::secondary::elasticsearch;
     ///
-    /// let pool = elasticsearch::remote::connection_pool().await.unwrap();
-    /// let client = pool.conn(50u64, ">=7.11.0").await.unwrap();
+    /// #[tokio::main]
+    /// async fn main() {
+    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
+    ///   let client = pool.conn(50u64, ">=7.11.0").await.unwrap();
+    /// }
     ///
     /// ```
     async fn conn(self, timeout: u64, version_req: &str) -> Result<Self::Conn, Error>;
