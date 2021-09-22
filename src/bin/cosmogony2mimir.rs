@@ -28,11 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use common::config::config_from_args;
-use common::document::ContainerDocument;
-use config::Config;
+use common::config::load_es_config_for;
 use failure::{format_err, Error};
 use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use places::admin::Admin;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -42,24 +41,12 @@ struct Args {
     #[structopt(short = "i", long = "input")]
     input: String,
     /// Elasticsearch parameters.
-    #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
-    )]
+    #[structopt(short = "c", long, default_value = "http://localhost:9200/munin")]
     connection_string: String,
-    #[structopt(
-        parse(from_os_str),
-        long = "mappings",
-        default_value = "./config/admin/mappings.json"
-    )]
-    mappings: PathBuf,
-    #[structopt(
-        parse(from_os_str),
-        long = "settings",
-        default_value = "./config/admin/settings.json"
-    )]
-    settings: PathBuf,
+    #[structopt(parse(from_os_str), long)]
+    mappings: Option<PathBuf>,
+    #[structopt(parse(from_os_str), long)]
+    settings: Option<PathBuf>,
     /// Languages codes, used to build i18n names and labels
     #[structopt(name = "lang", short, long)]
     langs: Vec<String>,
@@ -88,15 +75,8 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let config =
-        Config::builder()
-            .add_source(places::admin::Admin::default_es_container_config())
-            .add_source(config::File::from(args.mappings))
-            .add_source(config::File::from(args.settings))
-            .add_source(config_from_args(args.override_settings).map_err(|err| {
-                format_err!("could not apply settings override: {}", err.to_string())
-            })?)
-            .build()?;
+    let config = load_es_config_for::<Admin>(args.mappings, args.settings, args.override_settings)
+        .map_err(|err| format_err!("could not load configuration: {}", err))?;
 
     mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, client)
         .await
@@ -127,8 +107,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: Some("./config/admin/mappings.json".into()),
+            settings: Some("./config/admin/settings.json".into()),
             langs: vec![],
             override_settings: vec![],
         };
@@ -146,8 +126,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: None,
+            settings: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -168,8 +148,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/invalid.json"), // a file that does not exists
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: None,
+            settings: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -181,7 +161,7 @@ mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains(r#"configuration file "./config/invalid.json" not found"#));
+            .contains("Unable to detect the file format"));
     }
 
     #[tokio::test]
@@ -193,8 +173,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./tests/fixtures/config/invalid/mappings.json"), // exists, but not json
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: Some("./tests/fixtures/config/invalid/mappings.json".into()), // exists, but not json
+            settings: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -215,8 +195,8 @@ mod tests {
         let args = Args {
             input: String::from("./invalid.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: None,
+            settings: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -240,8 +220,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: None,
+            settings: None,
             langs: vec![],
             override_settings: vec!["no-value".to_string()],
         };
@@ -253,7 +233,7 @@ mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("could not apply settings override"));
+            .contains("couldn't override settings"));
     }
 
     #[tokio::test]
@@ -265,8 +245,8 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: None,
+            settings: None,
             langs: vec![],
             override_settings: vec![],
         };
@@ -307,8 +287,8 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: None,
+            settings: None,
             langs: vec!["fr".into(), "en".into()],
             override_settings: vec![],
         };
@@ -348,8 +328,8 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/admin/mappings.json"),
-            settings: PathBuf::from("./config/admin/settings.json"),
+            mappings: PathBuf::from("./config/admin/mappings.json").into(),
+            settings: PathBuf::from("./config/admin/settings.json").into(),
             langs: vec![],
             override_settings: vec![],
         };

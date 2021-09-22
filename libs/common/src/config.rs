@@ -1,6 +1,8 @@
+use crate::document::ContainerDocument;
 use config::Config;
+use std::path::PathBuf;
 
-pub fn config_from_args(
+fn config_from_args(
     args: impl IntoIterator<Item = String>,
 ) -> Result<Config, Box<dyn std::error::Error>> {
     let mut config = Config::builder();
@@ -24,4 +26,27 @@ pub fn config_from_args(
     }
 
     Ok(config.build()?)
+}
+
+pub fn load_es_config_for<D: ContainerDocument>(
+    mappings: Option<PathBuf>,
+    settings: Option<PathBuf>,
+    args_override: Vec<String>,
+) -> Result<Config, Box<dyn std::error::Error>> {
+    let mut cfg_builder = Config::builder().add_source(D::default_es_container_config());
+
+    if let Some(mappings) = mappings {
+        cfg_builder = cfg_builder.add_source(config::File::from(mappings))
+    }
+
+    if let Some(settings) = settings {
+        cfg_builder = cfg_builder.add_source(config::File::from(settings));
+    }
+
+    Ok(cfg_builder
+        .add_source(
+            config_from_args(args_override)
+                .map_err(|err| format!("couldn't override settings: {}", err))?,
+        )
+        .build()?)
 }
