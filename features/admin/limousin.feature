@@ -22,5 +22,3 @@ Feature: Baseline
             | Haute-Vienne      | admin:osm:relation:7418   |
             | Limoges           | admin:osm:relation:114172 |
             | Saint-Junien      | admin:osm:relation:116547 |
-
-

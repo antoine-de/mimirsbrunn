@@ -110,8 +110,8 @@ mod tests {
         let args = Args {
             input: String::from("foo"),
             connection_string: url,
-            mappings: Some("./config/admin/mappings.json".into()),
-            settings: Some("./config/admin/settings.json".into()),
+            mappings: Some("./config/elasticsearch/admin/mappings.json".into()),
+            settings: Some("./config/elasticsearch/admin/settings.json".into()),
             langs: vec![],
             override_settings: vec![],
         };
@@ -331,8 +331,8 @@ mod tests {
         let args = Args {
             input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
             connection_string: elasticsearch_test_url(),
-            mappings: PathBuf::from("./config/admin/mappings.json").into(),
-            settings: PathBuf::from("./config/admin/settings.json").into(),
+            mappings: PathBuf::from("./config/elasticsearch/admin/mappings.json").into(),
+            settings: PathBuf::from("./config/elasticsearch/admin/settings.json").into(),
             langs: vec![],
             override_settings: vec![],
         };

@@ -172,8 +172,8 @@ mod tests {
         let args = Args {
             input: Some("./tests/fixtures/sample-bano.csv".into()),
             connection_string: elasticsearch_test_url(),
-            mappings: Some("./config/addr/mappings.json".into()),
-            settings: Some("./config/addr/settings.json".into()),
+            mappings: Some("./config/elasticsearch/addr/mappings.json".into()),
+            settings: Some("./config/elasticsearch/addr/settings.json".into()),
             use_old_index_format: false,
             nb_threads: 2,
             nb_insert_threads: 2,

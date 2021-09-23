@@ -19,11 +19,23 @@ macro_rules! impl_container_document {
                     .set_default("elasticsearch.parameters.wait_for_active_shards", "1")
                     .unwrap()
                     .add_source(config::File::from_str(
-                        include_str!(concat!("../../../config/", $doc_type, "/settings.json")),
+                        include_str!(concat!(
+                            "../../../config/elasticsearch/",
+                            $doc_type,
+                            "/settings.json"
+                        )),
                         config::FileFormat::Json,
                     ))
                     .add_source(config::File::from_str(
-                        include_str!(concat!("../../../config/", $doc_type, "/mappings.json")),
+                        include_str!(concat!(
+                            "../../../config/elasticsearch/",
+                            $doc_type,
+                            "/mappings.json"
+                        )),
+                        config::FileFormat::Json,
+                    ))
+                    .add_source(config::File::from_str(
+                        include_str!("../../../config/elasticsearch/synonyms_settings.json"),
                         config::FileFormat::Json,
                     ))
                     .build()
