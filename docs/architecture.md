@@ -29,6 +29,7 @@ Currently Mimirsbrunn contains the following components:
 The context diagram showing these two components is seen below:
 
 ![Context Diagram](./img/architecture/context-diagram.svg)
+<img src="./img/architecture/context-diagram.svg"/>
 
 ## Hexagonal Architecture
 
@@ -52,6 +53,7 @@ customary to represent primary port on the left, and secondary port on the
 right, as seen in the picture below.
 
 ![Hexagonal Architecture 1](./img/architecture/hexagon-generic-1.2.svg)
+<img src="./img/architecture/hexagon-generic-1.2.svg"/>
 
 The user, however, may use one of several mechanism to interact with a single
 port: A graphical user interface, a REST interface, are but a few examples. We
@@ -71,6 +73,7 @@ Secondary adapters, on the other hand, directly implement a secondary port's int
 The following diagram shows these components interacting together:
 
 ![Hexagonal Architecture 2](./img/architecture/hexagon-generic-2.2.svg)
+<img src="./img/architecture/hexagon-generic-2.2.svg"/>
 
 The main program will do the following:
 1. Create an instance of the secondary adapter.
