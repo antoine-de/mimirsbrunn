@@ -92,6 +92,7 @@ name = "mimirsbrunn"
 path = "src/lib.rs"
 
 [dev-dependencies]
+async-trait = "0.1.50"
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 url = "2.2.2"
 approx = "0.5"
@@ -112,7 +113,7 @@ name = "bragi"
 path = "src/bragi/main.rs"
 
 [[test]]
-name = "admin"
+name = "end_to_end"
 harness = false # Allows Cucumber to print output instead of libtest
 
 # [[test]]

@@ -2165,6 +2165,7 @@ dependencies = [
  "assert_float_eq",
  "async-graphql",
  "async-graphql-warp",
+ "async-trait",
  "bincode",
  "chrono",
  "chrono-tz",
