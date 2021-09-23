@@ -20,6 +20,9 @@ use tokio::time::{sleep, Duration};
 use crate::adapters::secondary::elasticsearch::remote::{self, Error as ElasticsearchRemoteError};
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
+pub const DOCKER_ES_VERSION: &str = "7.13.0";
+pub const DOCKER_ES_TIMEOUT: u64 = 50;
+
 lazy_static! {
     pub static ref AVAILABLE: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
 }
@@ -51,7 +54,11 @@ pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
     let pool = remote::connection_test_pool()
         .await
         .context(ElasticsearchPoolCreation)?;
-    let _client = pool.conn().await.context(ElasticsearchConnection)?;
+    let version_req = format!(">={}", DOCKER_ES_VERSION);
+    let _client = pool
+        .conn(DOCKER_ES_TIMEOUT, &version_req)
+        .await
+        .context(ElasticsearchConnection)?;
 
     Ok(guard)
 }
@@ -95,9 +102,13 @@ pub struct DockerWrapper {
 // FIXME: Here we hardcode elasticsearch ports. These should be had from the ELASTICSEARCH_TEST_URL
 impl Default for DockerWrapper {
     fn default() -> Self {
+        let docker_image = format!(
+            "docker.elastic.co/elasticsearch/elasticsearch:{}",
+            DOCKER_ES_VERSION
+        );
         DockerWrapper {
             ports: vec![(9201, 9200), (9301, 9300)],
-            docker_image: String::from("docker.elastic.co/elasticsearch/elasticsearch:7.13.0"),
+            docker_image,
             container_name: String::from("mimir-test-elasticsearch"),
         }
     }
@@ -245,28 +256,35 @@ impl DockerWrapper {
         let pool = remote::connection_test_pool()
             .await
             .context(ElasticsearchPoolCreation)?;
-        let client = pool.conn().await.context(ElasticsearchConnection)?;
+        let version_req = format!(">={}", DOCKER_ES_VERSION);
+        let storage = pool
+            .conn(DOCKER_ES_TIMEOUT, &version_req)
+            .await
+            .context(ElasticsearchConnection)?;
 
-        let _ = client
-            .0
+        let _ = storage
+            .client
             .indices()
             .delete(IndicesDeleteParts::Index(&["*"]))
+            .request_timeout(storage.timeout)
             .send()
             .await
             .context(ElasticsearchClient)?;
 
-        let _ = client
-            .0
+        let _ = storage
+            .client
             .indices()
             .delete_alias(IndicesDeleteAliasParts::IndexName(&["*"], &["*"]))
+            .request_timeout(storage.timeout)
             .send()
             .await
             .context(ElasticsearchClient)?;
 
-        let _ = client
-            .0
+        let _ = storage
+            .client
             .indices()
             .delete_index_template(IndicesDeleteIndexTemplateParts::Name("*"))
+            .request_timeout(storage.timeout)
             .send()
             .await
             .context(ElasticsearchClient)?;

@@ -1,4 +1,5 @@
 use elasticsearch::Elasticsearch;
+use std::time::Duration;
 
 pub mod configuration;
 pub mod explain;
@@ -9,11 +10,14 @@ pub mod remote;
 pub mod status;
 pub mod storage;
 
-// The inner type is visible within the crate so that the
-// docker can access directly the Elasticsearch API to test
-// the elasticsearch connectivity.
+/// A structure wrapping around the elasticsearch's client.
 #[derive(Clone)]
-pub struct ElasticsearchStorage(pub(crate) Elasticsearch);
+pub struct ElasticsearchStorage {
+    /// Elasticsearch client
+    pub(crate) client: Elasticsearch,
+    /// Timeout used by every call to the server.
+    pub timeout: Duration,
+}
 
 #[cfg(test)]
 pub mod tests {

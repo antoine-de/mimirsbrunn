@@ -74,7 +74,13 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .await
         .context(ElasticsearchConnectionPoolCreation)?;
 
-    let client = pool.conn().await.context(ElasticsearchConnection)?;
+    let client = pool
+        .conn(
+            settings.elasticsearch.timeout,
+            &settings.elasticsearch.version_req,
+        )
+        .await
+        .context(ElasticsearchConnection)?;
 
     let api = reverse_geocoder!(client.clone(), settings.query.clone())
         .or(forward_geocoder!(client.clone(), settings.query))

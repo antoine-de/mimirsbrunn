@@ -5,10 +5,10 @@ use elasticsearch::http::transport::{
 };
 use elasticsearch::http::Method;
 use elasticsearch::Elasticsearch;
-use lazy_static::lazy_static;
 use semver::{Version, VersionReq};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
+use std::time::Duration;
 use url::Url;
 
 use super::ElasticsearchStorage;
@@ -16,7 +16,6 @@ use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
 pub const ES_KEY: &str = "ELASTICSEARCH_URL";
 pub const ES_TEST_KEY: &str = "ELASTICSEARCH_TEST_URL";
-pub const ES_VERSION_REQ: &str = ">=7.11.0";
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -50,14 +49,48 @@ pub enum Error {
     /// Invalid JSON Value
     #[snafu(display("JSON Deserialization Invalid: {} {:?}", details, json))]
     JsonDeserializationInvalid { details: String, json: Value },
+
+    /// Invalid Version Requirements
+    #[snafu(display("Invalid Version Requirement Specification {}: {}", details, source))]
+    VersionRequirementInvalid {
+        details: String,
+        source: semver::Error,
+    },
 }
 
 #[async_trait]
 impl Remote for SingleNodeConnectionPool {
     type Conn = ElasticsearchStorage;
 
-    /// Use the connection to create a client.
-    async fn conn(self) -> Result<Self::Conn, RemoteError> {
+    /// Returns an Elasticsearch client
+    ///
+    /// This function verifies that the Elasticsearch server's version matches the requirements.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - Expressed in milliseconds.
+    /// * `version_req` - Elasticsearch version requirements, eg '>=7.11.0'
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // You can have rust code between fences inside the comments
+    /// // If you pass --test to `rustdoc`, it will even test it for you!
+    /// use mimir2::domain::ports::secondary::remote::Remote;
+    /// use mimir2::adapters::secondary::elasticsearch;
+    ///
+    /// let pool = elasticsearch::remote::connection_pool().await.unwrap();
+    /// let client = pool.conn(50u64).await.unwrap();
+    ///
+    /// ```
+    async fn conn(self, timeout: u64, version_req: &str) -> Result<Self::Conn, RemoteError> {
+        let version_req = VersionReq::parse(version_req)
+            .context(VersionRequirementInvalid {
+                details: version_req,
+            })
+            .map_err(|err| RemoteError::Connection {
+                source: Box::new(err),
+            })?;
         let transport = TransportBuilder::new(self)
             .build()
             .context(ElasticsearchTransportError)
@@ -65,8 +98,17 @@ impl Remote for SingleNodeConnectionPool {
                 source: Box::new(err),
             })?;
 
+        let timeout = Duration::from_millis(timeout);
+
         let response = transport
-            .send::<String, String>(Method::Get, "/", HeaderMap::new(), None, None, None)
+            .send::<String, String>(
+                Method::Get,
+                "/",
+                HeaderMap::new(),
+                None, /* query_string */
+                None, /* body */
+                Some(timeout),
+            )
             .await
             .context(ElasticsearchConnectionError)
             .map_err(|err| RemoteError::Connection {
@@ -137,21 +179,18 @@ impl Remote for SingleNodeConnectionPool {
                     source: Box::new(err),
                 })?;
             let version = Version::parse(version_number).unwrap();
-            lazy_static! {
-                static ref VERSION_REQ: VersionReq = VersionReq::parse(ES_VERSION_REQ).unwrap();
-            }
-            if !VERSION_REQ.matches(&version) {
+            if !version_req.matches(&version) {
                 Err(RemoteError::Connection {
                     source: Box::new(Error::ElasticsearchException {
                         msg: format!(
                             "Elasticsearch Invalid version: Expected '{}', got '{}'",
-                            ES_VERSION_REQ, version
+                            version_req, version
                         ),
                     }),
                 })
             } else {
                 let client = Elasticsearch::new(transport);
-                Ok(ElasticsearchStorage::new(client))
+                Ok(ElasticsearchStorage { client, timeout })
             }
         } else {
             Err(RemoteError::Connection {
