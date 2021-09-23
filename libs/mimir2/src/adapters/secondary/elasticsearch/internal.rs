@@ -1289,13 +1289,7 @@ impl ElasticsearchStorage {
                     json: json.clone(),
                 })?;
 
-            match health {
-                "green" | "yellow" => Ok(StorageHealth::OK),
-                "red" => Ok(StorageHealth::FAIL),
-                _ => Err(Error::ElasticsearchUnhandledStatus {
-                    details: health.to_string(),
-                }),
-            }
+            StorageHealth::try_from(health)
         } else {
             let exception = response.exception().await.ok().unwrap();
 
@@ -1466,13 +1460,15 @@ impl From<InsertStats> for ModelInsertStats {
     }
 }
 
-impl TryFrom<String> for StorageHealth {
+impl<'a> TryFrom<&'a str> for StorageHealth {
     type Error = Error;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        match value.as_str() {
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value {
             "green" | "yellow" => Ok(StorageHealth::OK),
             "red" => Ok(StorageHealth::FAIL),
-            _ => Err(Error::ElasticsearchUnhandledStatus { details: value }),
+            _ => Err(Error::ElasticsearchUnhandledStatus {
+                details: value.to_string(),
+            }),
         }
     }
 }

@@ -1,4 +1,3 @@
-use clap::ArgMatches;
 use snafu::{ResultExt, Snafu};
 use std::net::ToSocketAddrs;
 use tracing::{info, instrument};
@@ -8,21 +7,26 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::{EnvFilter, Registry};
 use warp::Filter;
 
-use super::settings::{Error as SettingsError, Settings as CSettings};
+use super::settings::{Error as SettingsError, Opts, Settings};
 use mimir2::{
     adapters::primary::bragi::api::{forward_geocoder, reverse_geocoder, status},
     adapters::primary::bragi::{handlers, routes},
-    adapters::secondary::elasticsearch::remote::connection_pool_url,
-    domain::ports::secondary::remote::Remote,
+    adapters::secondary::elasticsearch::remote::{
+        connection_pool_url, Error as ElasticsearchRemoteError,
+    },
+    domain::ports::secondary::remote::{Error as PortRemoteError, Remote},
 };
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Could not get connection pool: {}", source))]
-    Connection { source: Box<dyn std::error::Error> },
+    #[snafu(display("Could not create an Elasticsearch Connection Pool: {}", source))]
+    ElasticsearchConnectionPoolCreation { source: ElasticsearchRemoteError },
+
+    #[snafu(display("Could not establish Elasticsearch Connection: {}", source))]
+    ElasticsearchConnection { source: PortRemoteError },
 
     #[snafu(display("Could not generate settings: {}", source))]
-    Settings { source: SettingsError },
+    SettingsProcessing { source: SettingsError },
 
     #[snafu(display("Socket Addr Error {}", source))]
     SockAddr { source: std::io::Error },
@@ -32,8 +36,8 @@ pub enum Error {
 }
 
 #[allow(clippy::needless_lifetimes)]
-pub async fn run<'a>(matches: &ArgMatches<'a>) -> Result<(), Error> {
-    let settings = CSettings::new(matches).context(Settings)?;
+pub async fn run(opts: &Opts) -> Result<(), Error> {
+    let settings = Settings::new(opts).context(SettingsProcessing)?;
     LogTracer::init().expect("Unable to setup log tracer!");
 
     // following code mostly from https://betterprogramming.pub/production-grade-logging-in-rust-applications-2c7fffd108a6
@@ -53,19 +57,28 @@ pub async fn run<'a>(matches: &ArgMatches<'a>) -> Result<(), Error> {
 }
 
 #[instrument(skip(settings))]
-pub async fn run_server(settings: CSettings) -> Result<(), Error> {
-    let pool = connection_pool_url(&settings.elasticsearch.url)
-        .await
-        .expect("Elasticsearch Connection Pool");
+pub async fn run_server(settings: Settings) -> Result<(), Error> {
+    let host = settings.elasticsearch.host;
+    let port = settings.elasticsearch.port;
+    let addr = (host.as_str(), port);
+    let addr = addr
+        .to_socket_addrs()
+        .context(SockAddr)?
+        .next()
+        .ok_or(Error::AddrResolution {
+            msg: String::from("Cannot resolve elasticsearch addr"),
+        })?;
+    let elasticsearch_url = addr.to_string();
 
-    let client = pool
-        .conn()
+    let pool = connection_pool_url(&elasticsearch_url)
         .await
-        .expect("Elasticsearch Connection Established");
+        .context(ElasticsearchConnectionPoolCreation)?;
+
+    let client = pool.conn().await.context(ElasticsearchConnection)?;
 
     let api = reverse_geocoder!(client.clone(), settings.query.clone())
         .or(forward_geocoder!(client.clone(), settings.query))
-        .or(status!(client, settings.elasticsearch.url))
+        .or(status!(client, elasticsearch_url))
         .recover(routes::report_invalid)
         .with(warp::trace::request());
 

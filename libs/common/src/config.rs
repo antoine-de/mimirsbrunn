@@ -2,7 +2,7 @@ use crate::document::ContainerDocument;
 use config::Config;
 use std::path::PathBuf;
 
-fn config_from_args(
+pub fn config_from_args(
     args: impl IntoIterator<Item = String>,
 ) -> Result<Config, Box<dyn std::error::Error>> {
     let mut config = Config::builder();

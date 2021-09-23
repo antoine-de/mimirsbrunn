@@ -1,12 +1,16 @@
-use clap::ArgMatches;
 use config::{Config, Environment, File};
 use serde::Deserialize;
 use snafu::ResultExt;
 use snafu::Snafu;
 use std::env;
-use std::path::Path;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
+use common::config::config_from_args;
 use mimir2::adapters::primary::common::settings::QuerySettings;
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -45,7 +49,8 @@ pub struct Logging {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Elasticsearch {
-    pub url: String,
+    pub host: String,
+    pub port: u16,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,13 +61,42 @@ pub struct Service {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
-    pub debug: bool,
-    pub testing: bool,
     pub mode: String,
     pub logging: Logging,
     pub elasticsearch: Elasticsearch,
     pub query: QuerySettings,
     pub service: Service,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(
+    name = "bragi",
+    about = "REST API for querying Elasticsearch",
+    version = VERSION,
+    author = AUTHORS
+    )]
+pub struct Opts {
+    /// Defines the config directory
+    #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
+    pub config_dir: PathBuf,
+
+    /// Defines the run mode in {testing, dev, prod, ...}
+    #[structopt(short = "m", long = "run-mode")]
+    pub run_mode: String,
+
+    /// Defines settings values
+    #[structopt(short = "s", long = "setting")]
+    pub settings: Vec<String>,
+
+    #[structopt(subcommand)]
+    pub cmd: Command,
+}
+
+#[derive(Debug, StructOpt)]
+pub enum Command {
+    Run,
+    Test,
+    Config,
 }
 
 // TODO Parameterize the config directory
@@ -83,48 +117,36 @@ impl Settings {
     //   - Elasticsearch URL, which is specified by ELASTICSEARCH_URL or ELASTICSEARCH_TEST_URL
     //   - Bragi's web server's port and listening address can be specified by command line
     //     arguments.
-    pub fn new<'a, T: Into<Option<&'a ArgMatches<'a>>>>(matches: T) -> Result<Self, Error> {
-        let matches = matches.into().ok_or(Error::ArgMatch {
-            msg: String::from("no matches"),
-        })?;
-
-        let config_dir = matches.value_of("config dir").ok_or(Error::ArgMissing {
-            msg: String::from("no config dir"),
-        })?;
-
-        let config_dir = Path::new(config_dir).join("bragi");
+    // pub fn new<'a, T: Into<Option<&'a ArgMatches<'a>>>>(matches: T) -> Result<Self, Error> {
+    pub fn new(opts: &Opts) -> Result<Self, Error> {
+        let bragi_config_dir = opts.config_dir.join("bragi");
 
         let mut builder = Config::builder();
 
-        let default_path = config_dir.join("default").with_extension("toml");
+        let default_path = bragi_config_dir.join("default").with_extension("toml");
 
         // Start off by merging in the "default" configuration file
         builder = builder.add_source(File::from(default_path));
 
         // We use the RUN_MODE environment variable, and if not, the command line
-        // argument. If neither is present, we return an error.
-        let settings = env::var("RUN_MODE").or_else(|_| {
-            matches
-                .value_of("run mode")
-                .ok_or_else(|| Error::ArgMissing {
-                    msg: String::from(
-                        "no run mode, you need to set one at the command line with -m",
-                    ),
-                })
-                .map(ToOwned::to_owned)
-        })?;
+        // argument.
+        let settings = env::var("RUN_MODE").unwrap_or_else(|_| opts.run_mode.clone());
 
-        let settings_path = config_dir.join(&settings).with_extension("toml");
+        let settings_path = bragi_config_dir.join(&settings).with_extension("toml");
 
         builder = builder.add_source(File::from(settings_path).required(true));
 
         // Add in a local configuration file
         // This file shouldn't be checked in to git
+        // FIXME Check it works
         builder = builder.add_source(File::with_name("config/local").required(false));
 
-        // Add in settings from the environment (with a prefix of APP)
-        // Eg.. `APP_DEBUG=1 ./target/app` would set the `debug` key
-        builder = builder.add_source(Environment::with_prefix("app"));
+        builder =
+            builder.add_source(config_from_args(opts.settings.clone()).expect("from settings"));
+
+        // Add in settings from the environment (with a prefix of BRAGI)
+        // Eg.. `BRAGI_DEBUG=1 ./target/app` would set the `debug` key
+        builder = builder.add_source(Environment::with_prefix("BRAGI").separator("_"));
 
         // Now we take care of the elasticsearch.url, which can be had from environment variables.
         let key = match settings.as_str() {
@@ -142,21 +164,11 @@ impl Settings {
             builder
         };
 
-        builder = if let Ok(es_url) = env::var("BRAGI_SERVICE_PORT") {
-            builder
-                .set_override("service.port", es_url)
-                .context(ConfigExtract {
-                    msg: String::from("Could not set bragi service port from environment variable"),
-                })?
-        } else {
-            builder
-        };
-
         // The query is stored in a separate config file.
         // FIXME Here we assume the query is stored in query/default.toml, but
         // we should merge also a query/[RUN_MODE].toml to override the default.
-
-        let query_path = config_dir
+        let query_path = opts
+            .config_dir
             .join("query")
             .join("default")
             .with_extension("toml");
@@ -170,5 +182,65 @@ impl Settings {
         config.try_into().context(ConfigMerge {
             msg: String::from("Cannot merge bragi settings"),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_return_ok_with_default_config_dir() {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
+        let opts = Opts {
+            config_dir,
+            run_mode: String::from("testing"),
+            settings: vec![],
+            cmd: Command::Run,
+        };
+        let settings = Settings::new(&opts);
+        assert!(
+            settings.is_ok(),
+            "Expected Ok, Got an Err: {}",
+            settings.unwrap_err().to_string()
+        );
+        assert_eq!(settings.unwrap().mode, String::from("testing"));
+    }
+
+    #[test]
+    fn should_override_elasticsearch_port_with_command_line() {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
+        let opts = Opts {
+            config_dir,
+            run_mode: String::from("testing"),
+            settings: vec![String::from("elasticsearch.port=9999")],
+            cmd: Command::Run,
+        };
+        let settings = Settings::new(&opts);
+        assert!(
+            settings.is_ok(),
+            "Expected Ok, Got an Err: {}",
+            settings.unwrap_err().to_string()
+        );
+        assert_eq!(settings.unwrap().elasticsearch.port, 9999);
+    }
+
+    #[test]
+    fn should_override_elasticsearch_port_environment_variable() {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
+        std::env::set_var("BRAGI_ELASTICSEARCH_PORT", "9999");
+        let opts = Opts {
+            config_dir,
+            run_mode: String::from("testing"),
+            settings: vec![],
+            cmd: Command::Run,
+        };
+        let settings = Settings::new(&opts);
+        assert!(
+            settings.is_ok(),
+            "Expected Ok, Got an Err: {}",
+            settings.unwrap_err().to_string()
+        );
+        assert_eq!(settings.unwrap().elasticsearch.port, 9999);
     }
 }

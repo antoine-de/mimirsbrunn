@@ -6,8 +6,25 @@ use crate::domain::ports::secondary::status::{Error as StatusError, Status};
 
 #[async_trait]
 impl Status for ElasticsearchStorage {
-    // This function delegates to elasticsearch the creation of the index. But since this
-    // function returns nothing, we follow with a find index to return some details to the caller.
+    /// Returns the status of the Elasticsearch Backend
+    ///
+    /// The status is a combination of the cluster's health, and its version.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use mimir2::domain::ports::secondary::remote::Remote;
+    /// use mimir2::adapters::secondary::elasticsearch;
+    /// use mimir2::domain::ports::primary::status::Status;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
+    ///   let client = pool.conn().await.unwrap();
+    ///
+    ///   let status = client.status().await.unwrap();
+    /// }
+    /// ```
     async fn status(&self) -> Result<StorageStatus, StatusError> {
         let cluster_health =
             self.cluster_health()
