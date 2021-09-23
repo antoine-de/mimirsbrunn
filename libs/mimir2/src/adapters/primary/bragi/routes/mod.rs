@@ -109,7 +109,7 @@ mod tests {
     async fn should_report_invalid_request_with_invalid_query() {
         let filter = forward_geocoder();
         let resp = warp::test::request()
-            .path("/api/v1/autocomplete?place=paris") // place is unknown?
+            .path("/api/v1/autocomplete?place=paris") // place is an unknown key
             .reply(&filter);
         assert_eq!(
             resp.await.status(),
@@ -123,11 +123,14 @@ mod tests {
         let filter = forward_geocoder();
         let resp = warp::test::request()
             .path("/api/v1/autocomplete?q=paris")
-            .reply(&filter);
+            .reply(&filter)
+            .await;
         assert_eq!(
-            resp.await.status(),
+            resp.status(),
             warp::http::status::StatusCode::OK,
-            "Valid Query Parameter"
+            "Expected Status::OK, Got {}: Error Message: {}",
+            resp.status(),
+            String::from_utf8(resp.body().to_vec()).unwrap()
         );
     }
 
@@ -136,11 +139,14 @@ mod tests {
         let filter = reverse_geocoder();
         let resp = warp::test::request()
             .path("/api/v1/reverse?lat=48.85406&lon=2.33027")
-            .reply(&filter);
+            .reply(&filter)
+            .await;
         assert_eq!(
-            resp.await.status(),
+            resp.status(),
             warp::http::status::StatusCode::OK,
-            "Valid Query Parameter"
+            "Expected Status::OK, Got {}: Error Message: {}",
+            resp.status(),
+            String::from_utf8(resp.body().to_vec()).unwrap()
         );
     }
 }
