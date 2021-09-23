@@ -130,7 +130,7 @@ Only one docker is spawn, so the ES db is cleaned before each test.
 # More documentation
 
 For more precise documentation on use, troubleshooting, development please check the [documentation
-directory](documentation/readme.md).
+directory](docs/readme.md).
 
 # Contributing
 
