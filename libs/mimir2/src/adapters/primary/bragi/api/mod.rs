@@ -15,7 +15,6 @@ pub struct ForwardGeocoderQuery {
     pub datasets: Option<Vec<String>>,
     pub zone_types: Option<Vec<String>>,
     pub poi_types: Option<Vec<String>>,
-    pub timeout: u32, // timeout to Elasticsearch in milliseconds
 }
 
 impl From<ForwardGeocoderQuery> for Filters {
@@ -52,7 +51,6 @@ impl warp::Reply for ForwardGeocoderQuery {
 pub struct ReverseGeocoderQuery {
     pub lat: f64,
     pub lon: f64,
-    pub timeout: u32, // timeout in milliseconds
 }
 
 // For the purpose of testing, we want to be able to test a filter which
