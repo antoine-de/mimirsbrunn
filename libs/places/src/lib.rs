@@ -68,6 +68,16 @@ impl Place {
         }
     }
 
+    pub fn id(&self) -> &str {
+        match *self {
+            Place::Admin(ref o) => &o.id,
+            Place::Street(ref o) => &o.id,
+            Place::Addr(ref o) => &o.id,
+            Place::Poi(ref o) => &o.id,
+            Place::Stop(ref o) => &o.id,
+        }
+    }
+
     pub fn label(&self) -> &str {
         match *self {
             Place::Admin(ref o) => o.label(),

@@ -308,7 +308,7 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
             .expect("failed to set index name in config")
             .build()
             .expect("failed to build configuration"),
-        client,
+        &client,
     )
     .await
     .map_err(|err| Error::Indexing {

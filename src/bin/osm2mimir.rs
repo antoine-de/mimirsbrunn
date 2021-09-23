@@ -178,3 +178,177 @@ fn validate_args(args: &Args) -> Result<(), mimirsbrunn::Error> {
 async fn main() {
     mimirsbrunn::utils::launch_async(Box::new(run)).await;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::elasticsearch::ElasticsearchStorage;
+    use common::config::load_es_config_for;
+    use common::document::ContainerDocument;
+    use futures::TryStreamExt;
+    use mimir2::domain::model::query::Query;
+    use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::domain::ports::primary::search_documents::SearchDocuments;
+    use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
+    use mimirsbrunn::admin::index_cosmogony;
+    use places::{admin::Admin, street::Street, Place};
+    use structopt::StructOpt;
+
+    fn elasticsearch_test_url() -> String {
+        std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
+    }
+
+    async fn index_cosmogony_admins(client: &ElasticsearchStorage) {
+        index_cosmogony(
+            "./tests/fixtures/cosmogony.json".into(),
+            vec![],
+            load_es_config_for::<Admin>(
+                None,
+                None,
+                vec!["container.dataset=osm2mimir-test".into()],
+            )
+            .unwrap(),
+            client,
+        )
+        .await
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn should_correctly_index_osm_streets_and_pois() {
+        let _guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let pool = remote::connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+
+        let client = pool
+            .conn()
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        index_cosmogony_admins(&client).await;
+
+        let storage_args = if cfg!(feature = "db-storage") {
+            vec!["--db-file=test-db.sqlite3", "--db-buffer-size=10"]
+        } else {
+            vec![]
+        };
+
+        let args = Args::from_iter(
+            [
+                "osm2mimir",
+                "--input=./tests/fixtures/osm_fixture.osm.pbf",
+                "--dataset=osm2mimir-test",
+                "--import-way=true",
+                "--import-poi=true",
+                &format!("-c={}", elasticsearch_test_url()),
+            ]
+            .iter()
+            .copied()
+            .chain(storage_args),
+        );
+
+        let _res = mimirsbrunn::utils::launch_async_args(run, args).await;
+
+        let search = |query: &str| {
+            let client = client.clone();
+            let query: String = query.into();
+            async move {
+                client
+                    .search_documents(
+                        vec![
+                            Street::static_doc_type().into(),
+                            Poi::static_doc_type().into(),
+                        ],
+                        Query::QueryString(format!("full_label.prefix:({})", query)),
+                    )
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json).unwrap())
+                    .collect::<Vec<Place>>()
+            }
+        };
+
+        let streets: Vec<Street> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+        assert_eq!(streets.len(), 13);
+
+        // Basic street search
+        let results = search("Rue des Près").await;
+        assert_eq!(results[0].label(), "Rue des Près (Livry-sur-Seine)");
+        assert_eq!(
+            results
+                .iter()
+                .filter(
+                    |place| place.is_street() && place.label() == "Rue des Près (Livry-sur-Seine)"
+                )
+                .count(),
+            1,
+            "Only 1 'Rue des Près' is expected"
+        );
+
+        // All ways with same name in the same city are merged into a single street
+        let results = search("Rue du Four à Chaux").await;
+        assert_eq!(
+            results.iter()
+                .filter(|place| place.label() == "Rue du Four à Chaux (Livry-sur-Seine)")
+                .count(),
+            1,
+            "Only 1 'Rue du Four à Chaux' is expected as all ways the same name should be merged into 1 street."
+        );
+        assert_eq!(
+            results[0].id(),
+            "street:osm:way:40812939",
+            "The way with minimum way_id should be used as street id."
+        );
+
+        // Street admin is based on a middle node.
+        // (Here the first node is located outside Melun)
+        let results = search("Rue Marcel Houdet").await;
+        assert_eq!(results[0].label(), "Rue Marcel Houdet (Melun)");
+        assert!(results[0]
+            .admins()
+            .iter()
+            .filter(|a| a.is_city())
+            .any(|a| a.name == "Melun"));
+
+        // Basic search for Poi by label
+        let res = search("Le-Mée-sur-Seine Courtilleraies").await;
+        assert_eq!(
+            res[0].poi().expect("Place should be a poi").poi_type.id,
+            "poi_type:amenity:post_office"
+        );
+
+        // highway=bus_stop should not be indexed
+        let res = search("Grand Châtelet").await;
+        assert!(
+            res.is_empty(),
+            "'Grand Châtelet' (highway=bus_stop) should not be found."
+        );
+
+        // "Rue de Villiers" is at the exact neighborhood between two cities, a
+        // document must be added for both.
+        let results = search("Rue de Villiers").await;
+        assert!(["Neuilly-sur-Seine", "Levallois-Perret"]
+            .iter()
+            .all(|city| {
+                results.iter().any(|poi| {
+                    poi.admins()
+                        .iter()
+                        .filter(|a| a.is_city())
+                        .any(|admin| &admin.name == city)
+                })
+            }));
+    }
+}

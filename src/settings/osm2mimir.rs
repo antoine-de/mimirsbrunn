@@ -9,8 +9,7 @@ use structopt::StructOpt;
 
 use crate::osm_reader::poi;
 use crate::Error;
-use common::config::config_from_args;
-use common::document::ContainerDocument;
+use common::config::load_es_config_for;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct StreetExclusion {
@@ -304,51 +303,37 @@ impl Source for Args {
 
 impl Args {
     pub fn get_street_config(&self) -> Result<Config, Error> {
-        let mut config =
-            Config::builder().add_source(places::street::Street::default_es_container_config());
-
-        if let Some(mappings) = &self.street_mappings {
-            config = config.add_source(config::File::from(mappings.clone()));
-        }
-
-        if let Some(settings) = &self.street_settings {
-            config = config.add_source(config::File::from(settings.clone()));
-        }
+        let mut config = load_es_config_for::<places::street::Street>(
+            self.street_mappings.clone(),
+            self.street_settings.clone(),
+            self.override_street_settings.clone(),
+        )
+        .map_err(|err| format_err!("could not load street configuration: {}", err))?;
 
         if let Some(dataset) = &self.dataset {
-            config = config.set_override("container.dataset", dataset.clone())?;
+            config = Config::builder()
+                .add_source(config)
+                .set_override("container.dataset", dataset.clone())?
+                .build()?;
         }
-
-        let config = config
-            .add_source(
-                config_from_args(self.override_street_settings.clone()).map_err(|err| {
-                    format_err!("could not apply settings override: {}", err.to_string())
-                })?,
-            )
-            .build()?;
 
         Ok(config)
     }
 
     pub fn get_poi_config(&self) -> Result<Config, Error> {
-        let mut config =
-            Config::builder().add_source(places::poi::Poi::default_es_container_config());
+        let mut config = load_es_config_for::<places::poi::Poi>(
+            self.poi_mappings.clone(),
+            self.poi_settings.clone(),
+            self.override_poi_settings.clone(),
+        )
+        .map_err(|err| format_err!("could not load poi configuration: {}", err))?;
 
-        if let Some(mappings) = &self.poi_mappings {
-            config = config.add_source(config::File::from(mappings.clone()));
+        if let Some(dataset) = &self.dataset {
+            config = Config::builder()
+                .add_source(config)
+                .set_override("container.dataset", dataset.clone())?
+                .build()?;
         }
-
-        if let Some(settings) = &self.poi_settings {
-            config = config.add_source(config::File::from(settings.clone()));
-        }
-
-        let config = config
-            .add_source(
-                config_from_args(self.override_poi_settings.clone()).map_err(|err| {
-                    format_err!("could not apply settings override: {}", err.to_string())
-                })?,
-            )
-            .build()?;
 
         Ok(config)
     }

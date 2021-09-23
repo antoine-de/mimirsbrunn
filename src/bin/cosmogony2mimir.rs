@@ -81,7 +81,7 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
     let config = load_es_config_for::<Admin>(args.mappings, args.settings, args.override_settings)
         .map_err(|err| format_err!("could not load configuration: {}", err))?;
 
-    mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, client)
+    mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, &client)
         .await
         .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string()))
 }
