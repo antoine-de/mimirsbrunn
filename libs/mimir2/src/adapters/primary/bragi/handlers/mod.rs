@@ -1,3 +1,4 @@
+use geojson::Geometry;
 use serde::Serialize;
 use warp::http::StatusCode;
 use warp::reply::{json, with_status};
@@ -19,6 +20,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub async fn forward_geocoder<S>(
     params: ForwardGeocoderQuery,
+    geometry: Option<Geometry>,
     client: S,
     settings: settings::QuerySettings,
 ) -> Result<impl warp::Reply, warp::Rejection>
@@ -27,7 +29,7 @@ where
     S::Document: Serialize,
 {
     let q = params.q.clone();
-    let filters = filters::Filters::from(params);
+    let filters = filters::Filters::from((params, geometry));
 
     let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
 

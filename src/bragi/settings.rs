@@ -57,8 +57,12 @@ pub struct Elasticsearch {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Service {
+    /// Host on which we expose bragi. Example: 'http://localhost', '0.0.0.0'
     pub host: String,
+    /// Port on which we expose bragi.
     pub port: u16,
+    /// Used on POST request to set an upper limit on the size of the body (in bytes)
+    pub content_length_limit: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

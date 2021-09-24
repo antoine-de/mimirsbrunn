@@ -104,41 +104,63 @@ TODO How to specify negative long lat ?
 
 <table>
 <colgroup>
-<col style="width: 17%" />
-<col style="width: 29%" />
-<col style="width: 28%" />
-<col style="width: 25%" />
+<col style="width: 12%" />
+<col style="width: 18%" />
+<col style="width: 41%" />
+<col style="width: 27%" />
 </colgroup>
+<thead>
+<tr class="header">
+<th>name</th>
+<th>type</th>
+<th>description</th>
+<th>example</th>
+</tr>
+</thead>
 <tbody>
 <tr class="odd">
-<td>name</td>
-<td>type</td>
-<td>description</td>
-<td>example</td>
-</tr>
-<tr class="even">
 <td>q</td>
 <td>string</td>
 <td>query string</td>
-<td>lond</td>
+<td><code>q=lond</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>lat</td>
 <td>double (optional)</td>
 <td>latitude. Used to boost results in the vicinity</td>
-<td>45.3456</td>
-</tr>
-<tr class="even">
-<td>lon</td>
-<td>double (optional)</td>
-<td>longitude.</td>
-<td>2.4554</td>
+<td><code>lat=45.3456</code></td>
 </tr>
 <tr class="odd">
+<td>lon</td>
+<td>double (optional)</td>
+<td>longitude. Note that if you specify lat or lon, you must specify the converse.</td>
+<td><code>lon=2.4554</code></td>
+</tr>
+<tr class="even">
 <td>datasets</td>
-<td>strings, comma separated (optional)</td>
-<td>restrics the search to the given datasets. (1)</td>
-<td></td>
+<td>list of strings (optional)</td>
+<td><p>restrics the search to the given datasets.</p>
+<p>Valid datasets values are specified at index time</p>
+<p>See <a href="/docs/concepts.md">dataset</a> for an explanation of datasets.</p></td>
+<td><code>datatasets[]=fr&amp;</code> <code>datasets[]=be</code></td>
+</tr>
+<tr class="odd">
+<td>type</td>
+<td>list of strings (optional)</td>
+<td>restrics the search to the given place types. (2)</td>
+<td><code>type[]=streets&amp;</code> <code>type[]=zone</code></td>
+</tr>
+<tr class="even">
+<td>zone_type</td>
+<td>list of strings (optional)</td>
+<td>restrics the search to the given zone types. (1)</td>
+<td><code>zone_type[]=city&amp;</code> <code>zone_type[]=city_district</code></td>
+</tr>
+<tr class="odd">
+<td>shape_scope</td>
+<td>list of strings</td>
+<td>restrics the shape filter to the types listed in shape_scope.</td>
+<td><code>shape_scope[]=street&amp;</code> <code>shape_scope[]=zone</code></td>
 </tr>
 </tbody>
 </table>

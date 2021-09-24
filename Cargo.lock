@@ -966,7 +966,7 @@ dependencies = [
  "failure",
  "flate2",
  "geo-types 0.7.2",
- "geojson",
+ "geojson 0.22.2",
  "log",
  "osmpbfreader",
  "serde",
@@ -1809,6 +1809,18 @@ dependencies = [
 
 [[package]]
 name = "geojson"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da98686bca3298df46f3957c78166cfbf0fa399e9efcdac0cb7ff2cfed1fd2ab"
+dependencies = [
+ "geo-types 0.6.2",
+ "num-traits",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "geojson"
 version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c209e446d28d9142fb23127808bef2a1485924e7b42cd8c9407ea7cbfe09ccc"
@@ -2615,9 +2627,11 @@ dependencies = [
  "chrono",
  "common",
  "config",
+ "cosmogony",
  "criterion",
  "elasticsearch",
  "futures 0.3.17",
+ "geojson 0.19.0",
  "http 0.2.5",
  "lazy_static",
  "mockall",
@@ -2627,6 +2641,7 @@ dependencies = [
  "semver 1.0.4",
  "serde",
  "serde_json",
+ "serde_qs",
  "snafu",
  "tokio 1.12.0",
  "toml",
@@ -3308,7 +3323,7 @@ dependencies = [
  "config",
  "cosmogony",
  "geo-types 0.7.2",
- "geojson",
+ "geojson 0.22.2",
  "navitia-poi-model",
  "serde",
  "tracing",
@@ -3966,7 +3981,7 @@ name = "rs-es"
 version = "0.12.3"
 source = "git+https://github.com/canaltp/rs-es#d379033daa600b51c0f91bcf23f2c5fefdb5dddb"
 dependencies = [
- "geojson",
+ "geojson 0.22.2",
  "log",
  "reqwest 0.10.10",
  "serde",
@@ -4186,6 +4201,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "serde_qs"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8a72808528a89fa9eca23bbb6a1eb92cb639b881357269b6510f11e50c0f8a9"
+dependencies = [
+ "percent-encoding 2.1.0",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
