@@ -22,21 +22,45 @@ This will create several executable in `./target/release/{osm2mimir, cosmogony2m
 The following table shows what binary and source of data you need depending on the type of data
 you want to index:
 
-| type              | binary               | data source          |
-| ----------------- | -------------------- | -------------------- |
-| administrative    | cosmogony2mimir      | cosmogony            |
-| regions (admins)  |                      |                      |
-| ----------------- | -------------------- | -------------------- |
-| streets           | osm2mimir            | OSM                  |
-| ----------------- | -------------------- | -------------------- |
-| addresses         | bano2mimir /         | BANO (France)        |
-|                   | openaddress2mimir    |                      |
-| ----------------- | -------------------- | -------------------- |
-| public points of  | osm2mimir            | OSM                  |
-| interests (POI)   |                      |                      |
-| ----------------- | -------------------- | -------------------- |
-| private points of | poi2mimir            |                      |
-| interests (POI)   |                      |                      |
+<table style="width:92%;">
+<colgroup>
+<col style="width: 27%" />
+<col style="width: 31%" />
+<col style="width: 31%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td>type</td>
+<td>binary</td>
+<td>data source</td>
+</tr>
+<tr class="even">
+<td>administrative regions (admins)</td>
+<td>cosmogony2mimir</td>
+<td>cosmogony</td>
+</tr>
+<tr class="odd">
+<td>streets</td>
+<td>osm2mimir</td>
+<td>OSM</td>
+</tr>
+<tr class="even">
+<td>addresses</td>
+<td>bano2mimir / openaddress2mimir</td>
+<td>BANO (France)</td>
+</tr>
+<tr class="odd">
+<td>public points of interests (POI)</td>
+<td>osm2mimir</td>
+<td>OSM</td>
+</tr>
+<tr class="even">
+<td>private points of interests (POI)</td>
+<td>poi2mimir</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 
 If you want to index all of those data types for a given geographical regions, your process will 
 involve the following, which will be described below:
