@@ -10,8 +10,11 @@ pub mod remote;
 pub mod status;
 pub mod storage;
 
+pub const ES_DEFAULT_TIMEOUT: u64 = 100; // milliseconds
+pub const ES_DEFAULT_VERSION_REQ: &str = ">=7.13.0";
+
 /// A structure wrapping around the elasticsearch's client.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ElasticsearchStorage {
     /// Elasticsearch client
     pub(crate) client: Elasticsearch,
@@ -44,7 +47,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -79,7 +82,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let _client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
         drop(guard);
@@ -94,7 +97,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
         let config = config::Config::builder()
@@ -143,7 +146,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
         let config = config::Config::builder()
@@ -233,7 +236,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -273,5 +276,21 @@ pub mod tests {
         drop(guard);
 
         assert_eq!(res.expect("insertion stats").created, 6);
+    }
+
+    #[tokio::test]
+    async fn should_detect_invalid_elasticsearch_version() {
+        let guard = docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let pool = remote::connection_test_pool()
+            .await
+            .expect("Elasticsearch Connection Pool");
+        let client = pool.conn(ES_DEFAULT_TIMEOUT, ">=9.99.99").await;
+
+        drop(guard);
+
+        assert_eq!(client.unwrap_err().to_string(), "Container Creation Error",);
     }
 }
