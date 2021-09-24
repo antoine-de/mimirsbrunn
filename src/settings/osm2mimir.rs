@@ -1,4 +1,5 @@
 use config::{Config, ConfigError, File, FileFormat, Source, Value};
+// TODO Remove failure
 use failure::ResultExt;
 use serde::Deserialize;
 use slog_scope::{info, warn};
@@ -72,48 +73,53 @@ impl Settings {
         let config_dir = args.config_dir.clone();
         let settings = args.settings.clone();
 
-        let mut config = Config::builder();
+        let mut builder = Config::builder();
 
-        match config_dir {
+        builder = match config_dir {
             Some(mut dir) => {
                 // Start off by merging in the "default" configuration file
                 dir.push("osm2mimir-default");
 
-                if let Some(path) = dir.to_str() {
+                let builder = if let Some(path) = dir.to_str() {
                     info!("using configuration from {}", path);
                     // Now if the file exists, we read it, otherwise, we
                     // read from the compiled version.
                     if dir.exists() {
-                        config = config.add_source(File::with_name(path));
+                        builder.add_source(File::with_name(path))
                     } else {
-                        config = config.add_source(File::from_str(
+                        builder.add_source(File::from_str(
                             include_str!("../../config/osm2mimir-default.toml"),
                             FileFormat::Toml,
-                        ));
+                        ))
                     }
                 } else {
                     return Err(failure::err_msg(format!(
                         "Could not read default settings in '{}'",
                         dir.display()
                     )));
-                }
+                };
 
                 dir.pop(); // remove the default
-                           // If we provided a special configuration, merge it.
-                if let Some(settings) = settings {
+
+                // If we provided a special configuration, merge it.
+                let builder = if let Some(settings) = settings {
                     dir.push(&settings);
 
-                    if let Some(path) = dir.to_str() {
+                    let builder = if let Some(path) = dir.to_str() {
                         info!("using configuration from {}", path);
-                        config = config.add_source(File::with_name(path).required(true));
+                        builder.add_source(File::with_name(path).required(true))
                     } else {
                         return Err(failure::err_msg(format!(
                             "Could not read configuration for '{}'",
                             settings,
                         )));
-                    }
+                    };
                     dir.pop();
-                }
+                    builder
+                } else {
+                    builder
+                };
+                builder
             }
             None => {
                 if settings.is_some() {
@@ -126,19 +132,20 @@ impl Settings {
                         "Could not build program settings",
                     )));
                 }
-                config = config.add_source(File::from_str(
+                builder = builder.add_source(File::from_str(
                     include_str!("../../config/osm2mimir-default.toml"),
                     FileFormat::Toml,
                 ));
+                builder
             }
-        }
+        };
 
         // Now override with command line values
-        config = config.add_source(args);
+        builder = builder.add_source(args);
         // .with_context(|e| format!("Could not merge arguments into configuration: {}", e))?;
 
         // You can deserialize (and thus freeze) the entire configuration as
-        config
+        builder
             .build()
             .with_context(|e| format!("could not build configuration: {}", e))?
             .try_into()

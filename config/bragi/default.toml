@@ -1,0 +1,10 @@
+[logging]
+path = "./logs"
+
+[elasticsearch]
+host = "http://localhost"
+port = 9200
+
+[service]
+host = "0.0.0.0"
+port = "5000"

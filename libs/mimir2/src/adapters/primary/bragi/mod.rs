@@ -1,4 +1,3 @@
-pub mod autocomplete;
-pub mod gql;
-pub mod reverse;
-pub mod settings;
+pub mod api;
+pub mod handlers;
+pub mod routes;

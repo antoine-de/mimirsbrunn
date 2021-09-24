@@ -1,0 +1,4 @@
+mode = "testing"
+
+[elasticsearch]
+port = 9201

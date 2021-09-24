@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::path::Path;
 use tokio::io::AsyncReadExt;
@@ -12,7 +12,7 @@ pub enum Error {
     InvalidFileContent { source: toml::de::Error },
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Types {
     pub address: f64,
     pub admin: f64,
@@ -21,13 +21,13 @@ pub struct Types {
     pub street: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TypeQueryBoosts {
     pub global: f64,
     pub boosts: Types,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StringQueryBoosts {
     pub name: f64,
     pub label: f64,
@@ -38,20 +38,13 @@ pub struct StringQueryBoosts {
     pub label_ngram: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StringQuery {
     pub global: f64,
     pub boosts: StringQueryBoosts,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct Proximity {
-    pub weight: f64,
-    pub weight_fuzzy: f64,
-    pub decay: Decay,
-}
-
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Decay {
     pub func: String,
     pub scale: f64,
@@ -59,14 +52,21 @@ pub struct Decay {
     pub decay: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Proximity {
+    pub weight: f64,
+    pub weight_fuzzy: f64,
+    pub decay: Decay,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BuildWeight {
     pub admin: f64,
     pub factor: f64,
     pub missing: f64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Weights {
     pub radius_range: (f64, f64),
     pub max_radius: BuildWeight,
@@ -76,18 +76,18 @@ pub struct Weights {
     pub types: Types,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ImportanceQueryBoosts {
     pub proximity: Proximity,
     pub weights: Weights,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ReverseQuery {
-    pub distance: u32, // search radius in meters
+    pub radius: u32, // search radius in meters
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct QuerySettings {
     pub type_query: TypeQueryBoosts,
     pub string_query: StringQuery,
@@ -95,9 +95,17 @@ pub struct QuerySettings {
     pub reverse_query: ReverseQuery,
 }
 
+// This wrapper is used because the configuration file should
+// have the query settings definition in an object under the key 'query'
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct QuerySettingsWrapper {
+    pub query: QuerySettings,
+}
+
 impl QuerySettings {
     pub fn new(settings: &str) -> Result<QuerySettings, Error> {
-        toml::from_str(settings).context(InvalidFileContent)
+        let wrapper: QuerySettingsWrapper = toml::from_str(settings).context(InvalidFileContent)?;
+        Ok(wrapper.query)
     }
 
     pub async fn new_from_file<P>(path: P) -> Result<QuerySettings, Error>
@@ -111,5 +119,24 @@ impl QuerySettings {
             .await
             .context(InvalidFileOpen)?;
         QuerySettings::new(&settings_content)
+    }
+}
+
+impl Default for QuerySettings {
+    fn default() -> Self {
+        let settings = include_str!("../../../../../../config/query/default.toml");
+        QuerySettings::new(settings)
+            .expect("could not create default query settings. Check config/query/default.toml")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[tokio::test]
+    async fn should_get_default_query_settings() {
+        let _settings = QuerySettings::default();
     }
 }

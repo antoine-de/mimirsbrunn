@@ -6,6 +6,7 @@ pub(super) mod internal;
 pub mod list;
 pub mod query;
 pub mod remote;
+pub mod status;
 pub mod storage;
 
 // The inner type is visible within the crate so that the

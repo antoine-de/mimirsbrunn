@@ -240,7 +240,7 @@ pub async fn compute_weight(poi: Poi) -> Poi {
 // FIXME Return a Result
 pub async fn add_address(backend: &impl SearchDocuments<Document = Addr>, poi: Poi) -> Poi {
     // FIXME 1km automagick
-    let reverse = mimir2::adapters::primary::bragi::reverse::build_reverse_query(
+    let reverse = mimir2::adapters::primary::common::dsl::build_reverse_query(
         "1km",
         poi.coord.lat(),
         poi.coord.lon(),

@@ -25,6 +25,9 @@ pub enum Error {
 
     #[snafu(display("Expected Index: {}", index))]
     ExpectedIndex { index: String },
+
+    #[snafu(display("Status Error: {}", source))]
+    Status { source: Box<dyn std::error::Error> },
 }
 
 impl Error {

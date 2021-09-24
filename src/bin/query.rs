@@ -1,14 +1,13 @@
 use common::document::ContainerDocument;
 use mimir2::{
-    adapters::primary::bragi::autocomplete::{build_query, Filters},
-    adapters::primary::bragi::settings::QuerySettings,
+    adapters::primary::common::settings::QuerySettings,
+    adapters::primary::common::{dsl::build_query, filters::Filters},
     adapters::secondary::elasticsearch::remote::connection_test_pool,
     domain::model::query::Query,
     domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Remote,
 };
 use places::admin::Admin;
-use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() {
@@ -25,15 +24,9 @@ async fn main() {
 
     let filters = Filters::default();
 
-    let mut query_settings_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    query_settings_file.push("config");
-    query_settings_file.push("query");
-    query_settings_file.push("settings.toml");
-    let query_settings = QuerySettings::new_from_file(query_settings_file)
-        .await
-        .expect("query settings");
+    let settings = QuerySettings::default();
 
-    let dsl = build_query(q, filters, &["fr"], &query_settings);
+    let dsl = build_query(q, filters, &["fr"], &settings);
 
     client
         .search_documents(
