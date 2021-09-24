@@ -4,6 +4,7 @@ use mimir2::adapters::primary::common::settings::QuerySettings;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
 use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
 use mimir2::domain::ports::secondary::remote::Remote;
+use mimir2::utils::docker;
 use std::convert::Infallible;
 
 mod steps;
@@ -31,6 +32,9 @@ impl World for MyWorld {
 
 #[tokio::main]
 async fn main() {
+    let _guard = docker::initialize()
+        .await
+        .expect("elasticsearch docker initialization");
     let pool = connection_test_pool().await.unwrap();
 
     Cucumber::<MyWorld>::new()
