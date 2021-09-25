@@ -31,7 +31,9 @@
 use common::config::load_es_config_for;
 use failure::format_err;
 use futures::stream::StreamExt;
-use mimir2::adapters::secondary::elasticsearch;
+use mimir2::adapters::secondary::elasticsearch::{
+    self, ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ,
+};
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::bano::Bano;
@@ -89,7 +91,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         })?;
 
     let client = pool
-        .conn()
+        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
@@ -187,7 +189,7 @@ mod tests {
             .expect("Elasticsearch Connection Pool");
 
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 

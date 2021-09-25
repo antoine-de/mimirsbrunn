@@ -30,7 +30,10 @@
 
 use common::config::load_es_config_for;
 use failure::{format_err, Error};
-use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use mimir2::{
+    adapters::secondary::elasticsearch::{self, ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ},
+    domain::ports::secondary::remote::Remote,
+};
 use places::admin::Admin;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -71,7 +74,7 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         })?;
 
     let client = pool
-        .conn()
+        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
@@ -260,7 +263,7 @@ mod tests {
             .expect("Elasticsearch Connection Pool");
 
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -299,7 +302,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -342,7 +345,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 

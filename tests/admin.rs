@@ -2,6 +2,7 @@ use cucumber::{async_trait, criteria::feature, futures::FutureExt, Context, Cucu
 use elasticsearch::http::transport::SingleNodeConnectionPool;
 use mimir2::adapters::primary::common::settings::QuerySettings;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
 use mimir2::domain::ports::secondary::remote::Remote;
 use std::convert::Infallible;
 
@@ -45,7 +46,10 @@ async fn main() {
             // Should we create the client here?
             let pool = ctx.get::<SingleNodeConnectionPool>().unwrap().clone();
             async move {
-                let _client = pool.conn().await.unwrap();
+                let _client = pool
+                    .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+                    .await
+                    .unwrap();
             }
             .boxed()
         })

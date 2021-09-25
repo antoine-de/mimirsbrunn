@@ -911,7 +911,7 @@ impl ElasticsearchStorage {
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let client = &self.client;
-        let timeout = self.timeout.clone();
+        let timeout = self.timeout;
         let pit: String = {
             let response = client
                 .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))

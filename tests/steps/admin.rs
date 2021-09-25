@@ -277,9 +277,12 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
         details: String::from("Could not retrieve Elasticsearch test pool"),
     })?;
 
-    let client = pool.conn().await.context(ElasticsearchConnection {
-        details: String::from("Could not establish connection to Elasticsearch"),
-    })?;
+    let client = pool
+        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+        .await
+        .context(ElasticsearchConnection {
+            details: String::from("Could not establish connection to Elasticsearch"),
+        })?;
 
     let index = client
         .find_container(String::from("munin_admin"))

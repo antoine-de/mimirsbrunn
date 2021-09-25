@@ -10,7 +10,7 @@ pub mod remote;
 pub mod status;
 pub mod storage;
 
-pub const ES_DEFAULT_TIMEOUT: u64 = 100; // milliseconds
+pub const ES_DEFAULT_TIMEOUT: u64 = 1000; // milliseconds
 pub const ES_DEFAULT_VERSION_REQ: &str = ">=7.13.0";
 
 /// A structure wrapping around the elasticsearch's client.

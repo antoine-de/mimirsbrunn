@@ -34,7 +34,10 @@ use futures::stream::StreamExt;
 use crate::utils::DEFAULT_NB_THREADS;
 use common::config::load_es_config_for;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use mimir2::{
+    adapters::secondary::elasticsearch::{self, ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ},
+    domain::ports::secondary::remote::Remote,
+};
 use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_reads};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::{labels, utils};
@@ -194,7 +197,7 @@ async fn run(args: Args) -> Result<(), failure::Error> {
         })?;
 
     let client = pool
-        .conn()
+        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
@@ -308,7 +311,7 @@ mod tests {
             .expect("Elasticsearch Connection Pool");
 
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 
