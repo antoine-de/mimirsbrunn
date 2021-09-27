@@ -17,11 +17,13 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 use tokio::time::{sleep, Duration};
 
-use crate::adapters::secondary::elasticsearch::remote::{self, Error as ElasticsearchRemoteError};
+use crate::adapters::secondary::elasticsearch::{
+    remote::{self, Error as ElasticsearchRemoteError},
+    ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ,
+};
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
-pub const DOCKER_ES_VERSION: &str = "7.13.0";
-pub const DOCKER_ES_TIMEOUT: u64 = 50;
+const DOCKER_ES_VERSION: &str = "7.13.0";
 
 lazy_static! {
     pub static ref AVAILABLE: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
@@ -54,9 +56,8 @@ pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
     let pool = remote::connection_test_pool()
         .await
         .context(ElasticsearchPoolCreation)?;
-    let version_req = format!(">={}", DOCKER_ES_VERSION);
     let _client = pool
-        .conn(DOCKER_ES_TIMEOUT, &version_req)
+        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
         .await
         .context(ElasticsearchConnection)?;
 
@@ -256,9 +257,8 @@ impl DockerWrapper {
         let pool = remote::connection_test_pool()
             .await
             .context(ElasticsearchPoolCreation)?;
-        let version_req = format!(">={}", DOCKER_ES_VERSION);
         let storage = pool
-            .conn(DOCKER_ES_TIMEOUT, &version_req)
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .context(ElasticsearchConnection)?;
 
