@@ -78,7 +78,10 @@ Here is an example:
 path = "./logs"
 
 [elasticsearch]
-url = "http://localhost:9201"
+host = "http://localhost"
+port = 9200
+timeout = 500 # ms
+version_req = ">=7.12.0"
 
 [service]
 host = "0.0.0.0"
@@ -98,20 +101,47 @@ Get a list of places (administrative regions, streets, ...) that best match your
 **Query Parameters**
 
 TODO How to specify negative long lat ?
-+---------------+--------------------------+-------------------------+----------------------+
-| name          | type                     | description             | example              |
-+---------------+--------------------------+-------------------------+----------------------+
-| q             | string                   | query string            | lond                 |
-+---------------+--------------------------+-------------------------+----------------------+
-| lat           | double (optional)        | latitude. Used to boost | 45.3456              |
-|               |                          | results in the vicinity |                      |
-+---------------+--------------------------+-------------------------+----------------------+
-| lon           | double (optional)        | longitude.              | 2.4554               |
-+---------------+--------------------------+-------------------------+----------------------+
-| datasets      | strings, comma separated | restrics the search to  |                      |
-|               | (optional)               | the given datasets. (1) |                      |
-+---------------+--------------------------+-------------------------+----------------------+
 
+<table>
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 29%" />
+<col style="width: 28%" />
+<col style="width: 25%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td>type</td>
+<td>description</td>
+<td>example</td>
+</tr>
+<tr class="even">
+<td>q</td>
+<td>string</td>
+<td>query string</td>
+<td>lond</td>
+</tr>
+<tr class="odd">
+<td>lat</td>
+<td>double (optional)</td>
+<td>latitude. Used to boost results in the vicinity</td>
+<td>45.3456</td>
+</tr>
+<tr class="even">
+<td>lon</td>
+<td>double (optional)</td>
+<td>longitude.</td>
+<td>2.4554</td>
+</tr>
+<tr class="odd">
+<td>datasets</td>
+<td>strings, comma separated (optional)</td>
+<td>restrics the search to the given datasets. (1)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 TODO Finish
 
 pub shape: Option<String>,
@@ -159,6 +189,9 @@ For a user with ID 4321 on the local database but no details have been set yet.
 
 ### Features
 
+## Testing
+
+TODO
 
 ## Architecture
 
