@@ -123,12 +123,12 @@ pub async fn import_stops(
             wait_for_active_shards: String::from("1"), // only the primary shard
         },
         settings: IndexSettings {
-            base: serde_json::from_str(include_str!("../config/stop/settings.json")).expect("invalid json file"),
+            base: serde_json::from_str(include_str!("../config/elasticsearch/stop/settings.json")).expect("invalid json file"),
             nb_shards,
             nb_replicas,
         },
         mappings: IndexMappings {
-            value: String::from(include_str!("../config/stop/mappings.json")),
+            value: String::from(include_str!("../config/elasticsearch/stop/mappings.json")),
         },
     };
 
