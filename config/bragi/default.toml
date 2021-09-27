@@ -4,6 +4,8 @@ path = "./logs"
 [elasticsearch]
 host = "http://localhost"
 port = 9200
+timeout = 100
+version_req = ">=7.13.0"
 
 [service]
 host = "0.0.0.0"

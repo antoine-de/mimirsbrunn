@@ -1,71 +1,127 @@
 {
     "elasticsearch": {
         "mappings": {
-            "properties": {
-                "address": {
-                    "enabled": false,
-                    "type": "object"
+            "dynamic_templates": [
+                {
+                    "i18n_names": {
+                        "match_pattern": "regex",
+                        "path_match": "^name($|s\\.\\w+)",
+                        "mapping": {
+                            "type": "text",
+                            "analyzer": "word",
+                            "fields": {
+                                "prefix": {
+                                    "type": "text",
+                                    "analyzer": "prefix",
+                                    "search_analyzer": "word"
+                                }
+                            }
+                        }
+                    }
                 },
+                {
+                    "i18n_labels": {
+                        "match_pattern": "regex",
+                        "path_match": "^label($|s\\.\\w+)",
+                        "mapping": {
+                            "type": "text",
+                            "index_options": "docs",
+                            "analyzer": "word",
+                            "copy_to": "full_label",
+                            "norms": false,
+                            "fields": {
+                                "prefix": {
+                                    "type": "text",
+                                    "index_options": "docs",
+                                    "analyzer": "prefix",
+                                    "search_analyzer": "word",
+                                    "norms": false
+                                },
+                                "ngram": {
+                                    "type": "text",
+                                    "index_options": "docs",
+                                    "analyzer": "ngram",
+                                    "search_analyzer": "ngram",
+                                    "norms": false
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "dynamic_objects": {
+                        "match_mapping_type": "object",
+                        "mapping": {
+                            "dynamic": true
+                        }
+                    }
+                },
+                {
+                    "disable_other_dynamic_fields": {
+                        "match_mapping_type": "*",
+                        "mapping": {
+                            "type": "object",
+                            "dynamic": false,
+                            "enabled": false
+                        }
+                    }
+                }
+            ],
+            "properties": {
                 "administrative_regions": {
-                    "enabled": false,
-                    "type": "object"
+                    "enabled": false
                 },
                 "approx_coord": {
                     "type": "geo_shape"
-                },
-                "context": {
-                    "enabled": false,
-                    "type": "object"
                 },
                 "coord": {
                     "type": "geo_point"
                 },
                 "country_codes": {
-                    "index": false,
-                    "type": "text"
+                    "type": "keyword"
                 },
                 "full_label": {
                     "type": "text",
-                    "analyzer": "prefix_elision"
+                    "index": false,
+                    "norms": false,
+                    "fields": {
+                        "prefix": {
+                            "type": "text",
+                            "index_options": "docs",
+                            "analyzer": "prefix_elision",
+                            "search_analyzer": "word_elision",
+                            "norms": false
+                        },
+                        "ngram": {
+                            "type": "text",
+                            "index_options": "docs",
+                            "analyzer": "ngram",
+                            "search_analyzer": "ngram",
+                            "norms": false
+                        }
+                    }
                 },
                 "id": {
-                    "type": "text",
+                    "type": "keyword",
                     "index": false
                 },
                 "indexed_at": {
                     "type": "date"
                 },
-                "label": {
-                    "type": "text",
-                    "analyzer": "autocomplete",
-                    "search_analyzer": "autocomplete_search",
-                    "copy_to": "full_label"
-                },
-                "labels": {
-                    "enabled": false,
-                    "type": "object"
-                },
-                "name": {
-                    "type": "text",
-                    "index": false
-                },
-                "names": {
-                    "type": "text",
-                    "index": false
-                },
                 "poi_type": {
                     "properties": {
+                        "id": {
+                            "type": "keyword"
+                        },
                         "name": {
                             "type": "text",
                             "index_options": "docs",
-                            "analyzer": "word",
-                            "copy_to": "full_label"
+                            "analyzer": "word"
                         }
                     }
                 },
                 "properties": {
-                    "enabled": false,
-                    "type": "object"
+                    "type": "flattened"
                 },
                 "weight": {
                     "type": "double"

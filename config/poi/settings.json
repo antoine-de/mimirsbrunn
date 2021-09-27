@@ -1,6 +1,6 @@
 {
     "elasticsearch": {
-        "mappings": {
+        "settings": {
             "number_of_shards": "1",
             "number_of_replicas": "0",
             "refresh_interval": "60s",
@@ -69,14 +69,6 @@
                         ],
                         "char_filter": []
                     },
-                    "autocomplete": {
-                        "tokenizer": "autocomplete",
-                        "filter": [
-                            "lowercase",
-                            "asciifolding",
-                            "elision_filter"
-                        ]
-                    },
                     "autocomplete_search": {
                         "tokenizer": "standard",
                         "filter": [
@@ -102,20 +94,8 @@
                             "first_ngram_truncate_words"
                         ]
                     }
-                },
-                "tokenizer": {
-                    "autocomplete": {
-                        "type": "edge_ngram",
-                        "min_gram": "2",
-                        "max_gram": "10",
-                        "token_chars": [
-                            "letter",
-                            "digit"
-                        ]
-                    }
                 }
-            },
-            "index.default_pipeline": "indexed_at"
+            }
         }
     }
 }

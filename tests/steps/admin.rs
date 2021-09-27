@@ -3,8 +3,8 @@ use config::Config;
 use cucumber::{t, Steps};
 use mimir2::{
     adapters::primary::common::{dsl::build_query, filters::Filters},
-    adapters::secondary::elasticsearch,
     adapters::secondary::elasticsearch::remote::{connection_test_pool, Error as PoolError},
+    adapters::secondary::elasticsearch::{self, ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ},
     domain::model::query::Query,
     domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Error as ConnectionError,
@@ -54,7 +54,10 @@ pub fn steps() -> Steps<crate::MyWorld> {
         "the user searches for \"(.*)\"",
         t!(|mut world, ctx| {
             let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
-            let client = pool.conn().await.unwrap();
+            let client = pool
+                .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+                .await
+                .unwrap();
             let dsl = build_query(
                 &ctx.matches[1],
                 Filters::default(),
@@ -274,9 +277,12 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
         details: String::from("Could not retrieve Elasticsearch test pool"),
     })?;
 
-    let client = pool.conn().await.context(ElasticsearchConnection {
-        details: String::from("Could not establish connection to Elasticsearch"),
-    })?;
+    let client = pool
+        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+        .await
+        .context(ElasticsearchConnection {
+            details: String::from("Could not establish connection to Elasticsearch"),
+        })?;
 
     let index = client
         .find_container(String::from("munin_admin"))
@@ -302,7 +308,7 @@ async fn index_cosmogony(region: &str, previous: ProcessingStep) -> Result<Proce
             .expect("failed to set index name in config")
             .build()
             .expect("failed to build configuration"),
-        client,
+        &client,
     )
     .await
     .map_err(|err| Error::Indexing {

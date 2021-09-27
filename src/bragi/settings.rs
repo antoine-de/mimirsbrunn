@@ -51,6 +51,8 @@ pub struct Logging {
 pub struct Elasticsearch {
     pub host: String,
     pub port: u16,
+    pub version_req: String,
+    pub timeout: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

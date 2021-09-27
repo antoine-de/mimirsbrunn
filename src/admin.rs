@@ -57,7 +57,7 @@ trait IntoAdmin {
 }
 
 pub async fn import_admins<S>(
-    client: ElasticsearchStorage,
+    client: &ElasticsearchStorage,
     config: Config,
     admins: S,
 ) -> Result<(), Error>
@@ -168,7 +168,7 @@ pub async fn index_cosmogony(
     input: String,
     langs: Vec<String>,
     config: Config,
-    client: ElasticsearchStorage,
+    client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     info!("building map cosmogony id => osm id");
     let mut cosmogony_id_to_osm_id = BTreeMap::new();

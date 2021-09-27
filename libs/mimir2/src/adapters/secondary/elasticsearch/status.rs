@@ -20,7 +20,7 @@ impl Status for ElasticsearchStorage {
     /// #[tokio::main]
     /// async fn main() {
     ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
-    ///   let client = pool.conn().await.unwrap();
+    ///   let client = pool.conn(500u64, ">=7.13.0").await.unwrap();
     ///
     ///   let status = client.status().await.unwrap();
     /// }

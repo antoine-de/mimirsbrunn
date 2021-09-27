@@ -69,14 +69,6 @@
                         ],
                         "char_filter": []
                     },
-                    "autocomplete": {
-                        "tokenizer": "autocomplete",
-                        "filter": [
-                            "lowercase",
-                            "asciifolding",
-                            "elision_filter"
-                        ]
-                    },
                     "autocomplete_search": {
                         "tokenizer": "standard",
                         "filter": [
@@ -100,17 +92,6 @@
                             "lowercase",
                             "asciifolding",
                             "first_ngram_truncate_words"
-                        ]
-                    }
-                },
-                "tokenizer": {
-                    "autocomplete": {
-                        "type": "edge_ngram",
-                        "min_gram": "2",
-                        "max_gram": "10",
-                        "token_chars": [
-                            "letter",
-                            "digit"
                         ]
                     }
                 }

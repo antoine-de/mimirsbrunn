@@ -7,17 +7,6 @@ dataset = "fr"
 [elasticsearch]
   connection_string = "http://localhost:9200/munin"
   insert_thread_count = 1
-  streets_shards = 2
-  streets_replicas = 1
-  admins_shards = 1
-  admins_replicas = 1
-  pois_shards = 1
-  pois_replicas = 1
-
-[admin]
-  import = false
-  city_level = 8
-  levels = []
 
 [street]
   import = false

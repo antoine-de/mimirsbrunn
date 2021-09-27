@@ -1,13 +1,15 @@
 use common::document::Document;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use super::admin::Admin;
 use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
-use super::{Members, Property};
+use super::Members;
+use crate::Address;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(tag = "type", rename = "poi")]
@@ -24,9 +26,8 @@ pub struct Poi {
     pub weight: f64,
     pub zip_codes: Vec<String>,
     pub poi_type: PoiType,
-    pub properties: Vec<Property>,
-    // pub address: Option<Address>,
-    pub address: Option<super::addr::Addr>,
+    pub properties: BTreeMap<String, String>,
+    pub address: Option<Address>,
     #[serde(default)]
     pub country_codes: Vec<String>,
 

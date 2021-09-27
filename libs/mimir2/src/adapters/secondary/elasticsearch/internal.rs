@@ -6,9 +6,7 @@ use elasticsearch::indices::{
     IndicesPutAliasParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
-use elasticsearch::{
-    BulkOperation, BulkParts, Elasticsearch, ExplainParts, OpenPointInTimeParts, SearchParts,
-};
+use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
 use futures::stream::{self, Stream, StreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -193,18 +191,13 @@ impl From<Exception> for Error {
 }
 
 impl ElasticsearchStorage {
-    pub fn new(client: Elasticsearch) -> ElasticsearchStorage {
-        ElasticsearchStorage(client)
-    }
-
     pub(super) async fn create_index(&self, config: IndexConfiguration) -> Result<(), Error> {
         let body = json!({ "mappings": config.mappings, "settings": config.settings });
-
         let response = self
-            .0
+            .client
             .indices()
             .create(IndicesCreateParts::Index(&config.name))
-            .timeout(&config.parameters.timeout)
+            .request_timeout(self.timeout)
             .wait_for_active_shards(&config.parameters.wait_for_active_shards)
             .body(body)
             .send()
@@ -261,9 +254,10 @@ impl ElasticsearchStorage {
 
     pub(super) async fn delete_index(&self, index: String) -> Result<(), Error> {
         let response = self
-            .0
+            .client
             .indices()
             .delete(IndicesDeleteParts::Index(&[&index]))
+            .request_timeout(self.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -322,9 +316,10 @@ impl ElasticsearchStorage {
     // FIXME Move details to impl ElasticsearchStorage.
     pub(super) async fn find_index(&self, index: String) -> Result<Option<Index>, Error> {
         let response = self
-            .0
+            .client
             .cat()
             .indices(CatIndicesParts::Index(&[&index]))
+            .request_timeout(self.timeout)
             .format("json")
             .send()
             .await
@@ -377,7 +372,7 @@ impl ElasticsearchStorage {
            D: Serialize + Send + Sync + 'static,
            {
            let response = self
-           .0
+           .client
            .index(IndexParts::IndexId(&index, &id))
            .body(document)
            .send()
@@ -448,7 +443,6 @@ impl ElasticsearchStorage {
         documents: S,
     ) -> Result<InsertStats, Error>
     where
-        //D: Document + Send + Sync + 'static,
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + Unpin + 'static,
     {
@@ -500,10 +494,10 @@ impl ElasticsearchStorage {
             let value = serde_json::to_value(doc).expect("to json value");
             ops.push(BulkOperation::index(value).id(doc_id).into());
         });
-        // FIXME Missing Error Handling
         let resp = self
-            .0
+            .client
             .bulk(BulkParts::Index(index.as_str()))
+            .request_timeout(self.timeout)
             .body(ops)
             .send()
             .await
@@ -601,9 +595,10 @@ impl ElasticsearchStorage {
     pub(super) async fn add_alias(&self, indices: Vec<String>, alias: String) -> Result<(), Error> {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
         let response = self
-            .0
+            .client
             .indices()
             .put_alias(IndicesPutAliasParts::IndexName(&indices, &alias))
+            .request_timeout(self.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -669,9 +664,10 @@ impl ElasticsearchStorage {
     ) -> Result<(), Error> {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
         let response = self
-            .0
+            .client
             .indices()
             .delete_alias(IndicesDeleteAliasParts::IndexName(&indices, &[&alias]))
+            .request_timeout(self.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -739,9 +735,10 @@ impl ElasticsearchStorage {
         // the aliases of eg 'fr', you would also find the aliases for 'fr-ne'.
         let index = format!("{}_*", index);
         let response = self
-            .0
+            .client
             .indices()
             .get_alias(IndicesGetAliasParts::Index(&[&index]))
+            .request_timeout(self.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -806,9 +803,10 @@ impl ElasticsearchStorage {
                 details: format!("Could not deserialize pipeline {}", name),
             })?;
         let response = self
-            .0
+            .client
             .ingest()
             .put_pipeline(IngestPutPipelineParts::Id(&name))
+            .request_timeout(self.timeout)
             .body(pipeline)
             .send()
             .await
@@ -877,9 +875,10 @@ impl ElasticsearchStorage {
 
     pub(super) async fn refresh_index(&self, index: String) -> Result<(), Error> {
         let response = self
-            .0
+            .client
             .indices()
             .refresh(IndicesRefreshParts::Index(&[&index]))
+            .request_timeout(self.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -911,10 +910,12 @@ impl ElasticsearchStorage {
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
-        let client = &self.0;
+        let client = &self.client;
+        let timeout = self.timeout;
         let pit: String = {
             let response = client
                 .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
+                .request_timeout(timeout)
                 .keep_alive("1m")
                 .send()
                 .await
@@ -932,7 +933,7 @@ impl ElasticsearchStorage {
                 .into()
         };
 
-        let client = self.0.clone();
+        let client = self.client.clone();
         let stream = stream::unfold(State::Start, move |state| {
             let client = client.clone();
             let index = index.clone();
@@ -950,6 +951,7 @@ impl ElasticsearchStorage {
 
                         let response = client
                             .search(SearchParts::None)
+                            .request_timeout(timeout)
                             .body(body)
                             .send()
                             .await
@@ -1028,6 +1030,7 @@ impl ElasticsearchStorage {
 
                         let response = client
                             .search(SearchParts::None)
+                            .request_timeout(timeout)
                             .body(body)
                             .send()
                             .await
@@ -1106,8 +1109,10 @@ impl ElasticsearchStorage {
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
-
-        let search = self.0.search(SearchParts::Index(&indices));
+        let search = self
+            .client
+            .search(SearchParts::Index(&indices))
+            .request_timeout(self.timeout);
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
@@ -1196,7 +1201,10 @@ impl ElasticsearchStorage {
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
-        let explain = self.0.explain(ExplainParts::IndexId(&index, &id));
+        let explain = self
+            .client
+            .explain(ExplainParts::IndexId(&index, &id))
+            .request_timeout(self.timeout);
 
         let response = match query {
             Query::QueryString(q) => explain.q(&q).send().await.context(ElasticsearchClient {
@@ -1255,9 +1263,10 @@ impl ElasticsearchStorage {
 
     pub(super) async fn cluster_health(&self) -> Result<StorageHealth, Error> {
         let response = self
-            .0
+            .client
             .cluster()
             .health(ClusterHealthParts::None)
+            .request_timeout(self.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -1310,9 +1319,10 @@ impl ElasticsearchStorage {
         // Refer to https://www.elastic.co/guide/en/elasticsearch/reference/current/cat-nodes.html
         // to explicitely set the list of columns
         let response = self
-            .0
+            .client
             .cat()
             .nodes()
+            .request_timeout(self.timeout)
             .h(&["v"]) // We only want the version
             .format("json")
             .send()

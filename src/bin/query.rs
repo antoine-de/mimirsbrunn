@@ -18,7 +18,7 @@ async fn main() {
         .await
         .expect("Elasticsearch Connection Pool");
     let client = pool
-        .conn()
+        .conn(100, ">=7.13.0")
         .await
         .expect("Elasticsearch Connection Established");
 
