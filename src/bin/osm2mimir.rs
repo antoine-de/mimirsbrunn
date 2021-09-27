@@ -227,7 +227,7 @@ mod tests {
             .expect("Elasticsearch Connection Pool");
 
         let client = pool
-            .conn()
+            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 
