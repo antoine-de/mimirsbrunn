@@ -151,13 +151,10 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::document::ContainerDocument;
     use futures::TryStreamExt;
-    use mimir2::domain::model::query::Query;
     use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    use mimir2::domain::ports::primary::search_documents::SearchDocuments;
     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
-    use places::{addr::Addr, Place};
+    use places::addr::Addr;
 
     fn elasticsearch_test_url() -> String {
         std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
@@ -165,7 +162,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_correctly_index_bano_file() {
-        let _guard = docker::initialize()
+        let guard = docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -193,27 +190,6 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        let search = |query: &str| {
-            let client = client.clone();
-            let query: String = query.into();
-            async move {
-                client
-                    .search_documents(
-                        vec![String::from(Addr::static_doc_type())],
-                        Query::QueryString(format!("full_label.prefix:({})", query)),
-                    )
-                    .await
-                    .unwrap()
-                    .into_iter()
-                    .map(|json| serde_json::from_value::<Place>(json).unwrap())
-                    .map(|place| match place {
-                        Place::Addr(addr) => addr,
-                        _ => panic!("should only have admins"),
-                    })
-                    .collect::<Vec<Addr>>()
-            }
-        };
-
         let addresses: Vec<Addr> = client
             .list_documents()
             .await
@@ -222,16 +198,22 @@ mod tests {
             .await
             .unwrap();
 
+        drop(guard);
+
         assert_eq!(addresses.len(), 35);
 
-        let results = search("10 Place de la Mairie").await;
-        assert_eq!(results[0].id, "addr:1.378886;43.668175:10");
+        let addr1 = addresses
+            .iter()
+            .find(|&addr| addr.name == "10 Place de la Mairie")
+            .unwrap();
 
-        // Check that addresses containing multiple postcodes are read correctly
-        let results = search("Rue Foncet").await;
-        assert_eq!(
-            results[0].zip_codes,
-            vec!["06000", "06100", "06200", "06300"]
-        )
+        assert_eq!(addr1.id, "addr:1.378886;43.668175:10");
+
+        let addr2 = addresses
+            .iter()
+            .find(|&addr| addr.name == "999 Rue Foncet")
+            .unwrap();
+
+        assert_eq!(addr2.zip_codes, vec!["06000", "06100", "06200", "06300"]);
     }
 }

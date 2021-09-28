@@ -253,6 +253,7 @@ impl DockerWrapper {
         Ok(())
     }
 
+    /// This function cleans up the Elasticsearch
     async fn cleanup(&mut self) -> Result<(), Error> {
         let pool = remote::connection_test_pool()
             .await
@@ -289,7 +290,6 @@ impl DockerWrapper {
             .await
             .context(ElasticsearchClient)?;
 
-        println!("done with cleanup");
         sleep(Duration::from_secs(5)).await;
         Ok(())
     }
