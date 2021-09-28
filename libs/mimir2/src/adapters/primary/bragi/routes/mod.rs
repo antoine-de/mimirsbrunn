@@ -204,8 +204,8 @@ pub async fn validate_geojson_shape(json: JsonParam) -> Result<Option<Geometry>,
     match json.shape {
         GeoJson::Feature(f) => f
             .geometry
-            .ok_or(warp::reject::custom(InvalidPostBody))
-            .map(|g| Some(g)),
+            .ok_or_else(|| warp::reject::custom(InvalidPostBody))
+            .map(Some),
         _ => Err(warp::reject::custom(InvalidPostBody)),
     }
 }
@@ -218,7 +218,7 @@ pub fn reverse_geocoder_query(
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
     let reply = warp::reply::reply();
 
-    if let Some(_) = rejection.find::<warp::reject::InvalidQuery>() {
+    if rejection.find::<warp::reject::InvalidQuery>().is_some() {
         Ok(warp::reply::with_status(reply, StatusCode::BAD_REQUEST))
     } else if let Some(_invalid_request) = rejection.find::<InvalidRequest>() {
         Ok(warp::reply::with_status(reply, StatusCode::BAD_REQUEST))
