@@ -90,6 +90,7 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
 mod tests {
     use approx::assert_relative_eq;
     use futures::TryStreamExt;
+    use serial_test::serial;
 
     use super::*;
     use common::document::ContainerDocument;
@@ -143,8 +144,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_path_for_config() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -159,8 +161,6 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-        drop(guard);
-
         assert!(res
             .unwrap_err()
             .to_string()
@@ -168,8 +168,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_mappings() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -184,14 +185,13 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-        drop(guard);
-
         assert!(dbg!(res.unwrap_err().to_string()).contains("expected value at line 1 column 1"));
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_path_for_input() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -206,8 +206,6 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-        drop(guard);
-
         assert!(res
             .unwrap_err()
             .to_string()
@@ -215,8 +213,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_setting_override() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -231,8 +230,6 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
 
-        drop(guard);
-
         assert!(res
             .unwrap_err()
             .to_string()
@@ -240,8 +237,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_correctly_index_a_small_cosmogony_file() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -275,15 +273,14 @@ mod tests {
             .await
             .unwrap();
 
-        drop(guard);
-
         assert!(admins.iter().all(|admin| admin.boundary.is_some()));
         assert!(admins.iter().all(|admin| admin.coord.is_valid()));
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_correctly_index_cosmogony_with_langs() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -314,8 +311,6 @@ mod tests {
             .await
             .unwrap();
 
-        drop(guard);
-
         let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
         assert_eq!(brittany.names.get("fr"), Some("Bretagne"));
         assert_eq!(brittany.names.get("en"), Some("Brittany"));
@@ -323,8 +318,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_index_cosmogony_with_correct_values() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -363,8 +359,6 @@ mod tests {
                 _ => panic!("should only have admins"),
             })
             .collect();
-
-        drop(guard);
 
         let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
         assert_eq!(brittany.id, "admin:osm:relation:102740");

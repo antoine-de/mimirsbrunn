@@ -11,10 +11,9 @@ use elasticsearch::{
     Error as ElasticsearchError,
 };
 use futures::stream::TryStreamExt;
-use lazy_static::lazy_static;
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+
 use tokio::time::{sleep, Duration};
 
 use crate::adapters::secondary::elasticsearch::{
@@ -25,21 +24,7 @@ use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
 const DOCKER_ES_VERSION: &str = "7.13.0";
 
-lazy_static! {
-    pub static ref AVAILABLE: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-}
-
-// This function takes the mutex related to the availability of the elasticsearch docker container,
-// and then creates or reset the container depending on its availability.
-// Finally, it tests if elasticsearch is available, before returning
-// the mutex guard.
-// TODO Document the usage of the mutexguard, how you should avoid running asserts
-// while holding the mutex.
-pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
-    let guard = AVAILABLE
-        .lock()
-        .unwrap_or_else(|_| panic!("aborted because of other test"));
-
+pub async fn initialize() -> Result<(), Error> {
     let mut docker = DockerWrapper::new();
     let is_available = docker.is_container_available().await?;
     if !is_available {
@@ -60,8 +45,7 @@ pub async fn initialize() -> Result<MutexGuard<'static, ()>, Error> {
         .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
         .await
         .context(ElasticsearchConnection)?;
-
-    Ok(guard)
+    Ok(())
 }
 
 #[derive(Debug, Snafu)]

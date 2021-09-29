@@ -5,6 +5,7 @@ use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
 use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimir2::utils::docker;
+use serial_test::serial;
 use std::convert::Infallible;
 
 mod steps;
@@ -31,8 +32,9 @@ impl World for MyWorld {
 }
 
 #[tokio::main]
+#[serial]
 async fn main() {
-    let _guard = docker::initialize()
+    docker::initialize()
         .await
         .expect("elasticsearch docker initialization");
     let pool = connection_test_pool().await.unwrap();
