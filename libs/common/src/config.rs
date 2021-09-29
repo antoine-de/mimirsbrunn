@@ -2,6 +2,8 @@ use crate::document::ContainerDocument;
 use config::Config;
 use std::path::PathBuf;
 
+// FIXME We need an error type here
+
 /// Create a new configuration source from a list of assignments key=value
 ///
 /// The function iterates over the list, and for each element, it tries to
@@ -37,8 +39,17 @@ pub fn load_es_config_for<D: ContainerDocument>(
     mappings: Option<PathBuf>,
     settings: Option<PathBuf>,
     args_override: Vec<String>,
+    dataset: String,
 ) -> Result<Config, Box<dyn std::error::Error>> {
     let mut cfg_builder = Config::builder().add_source(D::default_es_container_config());
+
+    let config_dataset = config::Config::builder()
+        .set_override("container.dataset", dataset)
+        .unwrap()
+        .build()
+        .expect("cannot create container.dataset config source");
+
+    cfg_builder = cfg_builder.add_source(config_dataset);
 
     if let Some(mappings) = mappings {
         cfg_builder = cfg_builder.add_source(config::File::from(mappings))

@@ -207,6 +207,7 @@ mod tests {
                 None,
                 None,
                 vec!["container.dataset=osm2mimir-test".into()],
+                String::from("fr"),
             )
             .unwrap(),
             client,

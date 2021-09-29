@@ -1,16 +1,18 @@
-use common::document::Document;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::sync::Arc;
+use tracing::warn;
 use transit_model::objects::Rgb;
 use typed_index_collection::Idx;
 
-use super::admin::Admin;
 use super::code::Code;
 use super::context::Context;
 use super::coord::Coord;
 use super::Members;
 use super::Property;
+use crate::admin::Admin;
+use common::document::Document;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct CommercialMode {
@@ -173,5 +175,125 @@ pub fn normalize_id(prefix: &str, id: &str) -> String {
             &id.replacen("StopArea:", "", 1).replace(" ", "")
         ),
         _ => format!("{}:{}", prefix, &id.replace(" ", "")),
+    }
+}
+
+fn get_lines(
+    idx: Idx<transit_model::objects::StopArea>,
+    navitia: &transit_model::Model,
+) -> Vec<Line> {
+    // use FromTransitModel;
+    let mut lines: Vec<_> = navitia
+        .get_corresponding_from_idx(idx)
+        .into_iter()
+        .map(|l_idx| Line::from_transit_model(l_idx, navitia))
+        .collect();
+
+    // we want the lines to be sorted in a way where
+    // line-3 is before line-11, so be use a human_sort
+    lines.sort_by(|lhs, rhs| {
+        match (&lhs.sort_order, &rhs.sort_order) {
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(s), Some(o)) => s.cmp(o),
+            (None, None) => Ordering::Equal,
+        }
+        .then_with(|| match (&lhs.code, &rhs.code) {
+            (Some(l), Some(r)) => human_sort::compare(l, r),
+            _ => Ordering::Equal,
+        })
+        .then_with(|| human_sort::compare(&lhs.name, &rhs.name))
+    });
+    lines
+}
+
+pub fn to_mimir(
+    idx: Idx<transit_model::objects::StopArea>,
+    stop_area: &transit_model::objects::StopArea,
+    navitia: &transit_model::Model,
+) -> Stop {
+    let commercial_modes = navitia
+        .get_corresponding_from_idx(idx)
+        .into_iter()
+        .map(|cm_idx| CommercialMode {
+            id: normalize_id("commercial_mode", &navitia.commercial_modes[cm_idx].id),
+            name: navitia.commercial_modes[cm_idx].name.clone(),
+        })
+        .collect();
+    let physical_modes = navitia
+        .get_corresponding_from_idx(idx)
+        .into_iter()
+        .map(|pm_idx| PhysicalMode {
+            id: normalize_id("physical_mode", &navitia.physical_modes[pm_idx].id),
+            name: navitia.physical_modes[pm_idx].name.clone(),
+        })
+        .collect();
+    let comments = stop_area
+        .comment_links
+        .iter()
+        .filter_map(|comment_id| {
+            let res = navitia.comments.get(comment_id);
+            if res.is_none() {
+                warn!("Could not retrieve comments for id {}", comment_id);
+            }
+            res
+        })
+        .map(|comment| Comment {
+            name: comment.name.clone(),
+        })
+        .collect();
+    let feed_publishers = navitia
+        .get_corresponding_from_idx(idx)
+        .into_iter()
+        .map(|contrib_idx| FeedPublisher {
+            id: navitia.contributors[contrib_idx].id.clone(),
+            name: navitia.contributors[contrib_idx].name.clone(),
+            license: navitia.contributors[contrib_idx]
+                .license
+                .clone()
+                .unwrap_or_else(|| "".into()),
+            url: navitia.contributors[contrib_idx]
+                .website
+                .clone()
+                .unwrap_or_else(|| "".into()),
+        })
+        .collect();
+    let coord = Coord::new(stop_area.coord.lon, stop_area.coord.lat);
+
+    let lines = get_lines(idx, navitia);
+
+    Stop {
+        id: normalize_id("stop_area", &stop_area.id),
+        label: stop_area.name.clone(),
+        name: stop_area.name.clone(),
+        coord,
+        approx_coord: Some(coord.into()),
+        commercial_modes,
+        physical_modes,
+        lines,
+        comments,
+        timezone: stop_area
+            .timezone
+            .map(chrono_tz::Tz::name)
+            .map(str::to_owned)
+            .unwrap_or_default(),
+        codes: stop_area
+            .codes
+            .iter()
+            .map(|&(ref t, ref v)| Code {
+                name: t.clone(),
+                value: v.clone(),
+            })
+            .collect(),
+        properties: stop_area
+            .object_properties
+            .iter()
+            .map(|(ref k, ref v)| Property {
+                key: k.to_string(),
+                value: v.to_string(),
+            })
+            .collect(),
+        feed_publishers,
+        ..Default::default()
     }
 }

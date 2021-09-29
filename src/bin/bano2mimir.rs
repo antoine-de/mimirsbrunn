@@ -55,6 +55,9 @@ struct Args {
     /// Elasticsearch parameters.
     #[structopt(short = "c", long, default_value = "http://localhost:9200/munin")]
     connection_string: String,
+    /// Name of the dataset
+    #[structopt(short = "d", long, default_value = "fr")]
+    dataset: String,
     /// Number of threads to use
     #[structopt(short = "t", long, default_value = &DEFAULT_NB_THREADS)]
     nb_threads: usize,
@@ -78,8 +81,13 @@ struct Args {
 async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     info!("importing bano into Mimir");
 
-    let config = load_es_config_for::<Addr>(args.mappings, args.settings, args.override_settings)
-        .map_err(|err| format_err!("could not load configuration: {}", err))?;
+    let config = load_es_config_for::<Addr>(
+        args.mappings,
+        args.settings,
+        args.override_settings,
+        args.dataset,
+    )
+    .map_err(|err| format_err!("could not load configuration: {}", err))?;
 
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
@@ -173,6 +181,7 @@ mod tests {
         let args = Args {
             input: Some("./tests/fixtures/sample-bano.csv".into()),
             connection_string: elasticsearch_test_url(),
+            dataset: String::from("test"),
             mappings: Some("./config/elasticsearch/addr/mappings.json".into()),
             settings: Some("./config/elasticsearch/addr/settings.json".into()),
             use_old_index_format: false,

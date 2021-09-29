@@ -56,6 +56,7 @@ trait IntoAdmin {
     ) -> Admin;
 }
 
+// FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
 pub async fn import_admins<S>(
     client: &ElasticsearchStorage,
     config: Config,
@@ -164,6 +165,7 @@ fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
         .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok()))
 }
 
+// FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
 pub async fn index_cosmogony(
     input: String,
     langs: Vec<String>,
