@@ -34,6 +34,18 @@ impl State {
         Ok(status)
     }
 
+    /// Execute a step and update state accordingly if and only if it has not
+    /// been executed before.
+    pub async fn execute_once<S: Step + PartialEq>(
+        &mut self,
+        step: S,
+    ) -> Result<StepStatus, Error> {
+        match self.status_of(&step) {
+            Some(status) => Ok(status),
+            None => self.execute(step).await,
+        }
+    }
+
     /// Check if given step has already been performed according to current state
     /// and return the status of last run.
     pub fn status_of<S: Step + PartialEq>(&self, step: &S) -> Option<StepStatus> {
@@ -66,10 +78,11 @@ async fn main() {
 
     Cucumber::<State>::new()
         // Specifies where our feature files exist
-        .features(&["./features/admin"])
+        .features(&["./features/admin", "./features/addresses"])
         // Adds the implementation of our steps to the runner
         .steps(steps::download::steps())
         .steps(steps::admin::steps())
+        .steps(steps::address::steps())
         .steps(steps::search::steps())
         // Add some global context for all the tests, like databases.
         .context(Context::new().add(pool))

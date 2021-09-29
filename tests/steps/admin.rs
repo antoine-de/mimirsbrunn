@@ -23,7 +23,7 @@ pub fn steps() -> Steps<State> {
             let region = ctx.matches[1].clone();
 
             state
-                .execute(GenerateCosmogony(region))
+                .execute_once(GenerateCosmogony(region))
                 .await
                 .expect("failed to generate cosmogony file");
 
@@ -37,7 +37,7 @@ pub fn steps() -> Steps<State> {
             let region = ctx.matches[1].clone();
 
             state
-                .execute(IndexCosmogony(region))
+                .execute_once(IndexCosmogony(region))
                 .await
                 .expect("failed to index cosmogony file");
 
@@ -60,7 +60,7 @@ pub fn steps() -> Steps<State> {
 ///  2. If the output file is found and the previous step is 'downloaded' (that is it's probably a
 ///     new OSM file and we need to generate a new cosmogony file.
 #[derive(PartialEq)]
-pub struct GenerateCosmogony(String);
+pub struct GenerateCosmogony(pub String);
 
 #[async_trait(?Send)]
 impl Step for GenerateCosmogony {
@@ -118,7 +118,7 @@ impl Step for GenerateCosmogony {
 ///
 /// This assumes that a cosmogony file has already been generated before.
 #[derive(PartialEq)]
-pub struct IndexCosmogony(String);
+pub struct IndexCosmogony(pub String);
 
 #[async_trait(?Send)]
 impl Step for IndexCosmogony {
@@ -140,7 +140,7 @@ impl Step for IndexCosmogony {
             .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .context(error::ElasticsearchConnection {
-                details: String::from("Could not establish connection to Elasticsearch"),
+                details: "Could not establish connection to Elasticsearch".to_string(),
             })?;
 
         // Check if the admin index already exists

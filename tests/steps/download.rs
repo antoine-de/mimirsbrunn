@@ -19,7 +19,7 @@ pub fn steps() -> Steps<State> {
             let region = ctx.matches[1].clone();
 
             state
-                .execute(DownloadOsm(region))
+                .execute_once(DownloadOsm(region))
                 .await
                 .expect("failed to download OSM file");
 

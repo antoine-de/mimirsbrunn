@@ -1,4 +1,4 @@
-Feature: Baseline
+Feature: Admins
     Some scenarios for testing admins in Limousin, France.
     The reason for picking Limousin is that the size of the OSM file
     is less than 100Mb, which is the upper file size limit for github.
