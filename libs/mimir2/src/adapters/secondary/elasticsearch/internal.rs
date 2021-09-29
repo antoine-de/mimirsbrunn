@@ -621,7 +621,8 @@ impl ElasticsearchStorage {
             return Ok(());
         }
 
-        self.client
+        let response = self
+            .client
             .indices()
             .update_aliases()
             .request_timeout(self.timeout)
@@ -633,7 +634,18 @@ impl ElasticsearchStorage {
                 details: format!("cannot update alias '{}'", alias),
             })?;
 
-        Ok(())
+        let json = response
+            .json::<Value>()
+            .await
+            .context(ElasticsearchDeserialization)?;
+
+        if json["acknowledged"] == true {
+            Ok(())
+        } else {
+            Err(Error::NotAcknowledged {
+                details: format!("cannot update alias '{}'", alias),
+            })
+        }
     }
 
     pub(super) async fn find_aliases(
