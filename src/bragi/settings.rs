@@ -1,5 +1,5 @@
 use config::{Config, Environment, File};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use snafu::Snafu;
 use std::env;
@@ -42,12 +42,12 @@ pub enum Error {
     },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Logging {
     pub path: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Elasticsearch {
     pub host: String,
     pub port: u16,
@@ -55,7 +55,7 @@ pub struct Elasticsearch {
     pub timeout: u64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Service {
     /// Host on which we expose bragi. Example: 'http://localhost', '0.0.0.0'
     pub host: String,
@@ -65,7 +65,7 @@ pub struct Service {
     pub content_length_limit: u64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: String,
     pub logging: Logging,
@@ -92,7 +92,7 @@ pub struct Opts {
 
     /// Defines settings values
     #[structopt(short = "s", long = "setting")]
-    pub settings: Vec<String>,
+    settings: Vec<String>,
 
     #[structopt(subcommand)]
     pub cmd: Command,
@@ -102,7 +102,10 @@ pub struct Opts {
 pub enum Command {
     Run,
     Test,
-    Config,
+    Config {
+        #[structopt(short = "s", long = "setting")]
+        setting: Option<String>,
+    },
 }
 
 // TODO Parameterize the config directory
