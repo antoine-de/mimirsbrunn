@@ -6,10 +6,8 @@ use crate::utils::{create_dir_if_not_exists, file_exists};
 use async_trait::async_trait;
 use common::document::ContainerDocument;
 use config::Config;
-use cucumber::{t, Steps};
-use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
-use mimir2::domain::ports::secondary::remote::Remote;
+use cucumber::{t, StepContext, Steps};
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir2::domain::ports::secondary::storage::Storage;
 use places::admin::Admin;
 use snafu::ResultExt;
@@ -24,7 +22,7 @@ pub fn steps() -> Steps<State> {
             let region = ctx.matches[1].clone();
 
             state
-                .execute_once(GenerateCosmogony(region))
+                .execute_once(GenerateCosmogony(region), &ctx)
                 .await
                 .expect("failed to generate cosmogony file");
 
@@ -38,7 +36,7 @@ pub fn steps() -> Steps<State> {
             let region = ctx.matches[1].clone();
 
             state
-                .execute_once(IndexCosmogony(region))
+                .execute_once(IndexCosmogony(region), &ctx)
                 .await
                 .expect("failed to index cosmogony file");
 
@@ -65,7 +63,7 @@ pub struct GenerateCosmogony(pub String);
 
 #[async_trait(?Send)]
 impl Step for GenerateCosmogony {
-    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self(region) = self;
 
         let download_state = state
@@ -123,26 +121,13 @@ pub struct IndexCosmogony(pub String);
 
 #[async_trait(?Send)]
 impl Step for IndexCosmogony {
-    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self(region) = self;
+        let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 
         let gen_status = state
             .status_of(&GenerateCosmogony(region.to_string()))
             .expect("can't generate cosmogony file without downloading from OSM first");
-
-        // Connect to Elasticsearch
-        let pool = connection_test_pool()
-            .await
-            .context(error::ElasticsearchPool {
-                details: String::from("Could not retrieve Elasticsearch test pool"),
-            })?;
-
-        let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
-            .await
-            .context(error::ElasticsearchConnection {
-                details: "Could not establish connection to Elasticsearch".to_string(),
-            })?;
 
         // Check if the admin index already exists
         let index = client
@@ -169,7 +154,7 @@ impl Step for IndexCosmogony {
                 .expect("failed to set index name in config")
                 .build()
                 .expect("failed to build configuration"),
-            &client,
+            client,
         )
         .await
         .map_err(|err| Error::Indexing {

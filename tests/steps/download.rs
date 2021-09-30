@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use crate::utils::{create_dir_if_not_exists_rec, file_exists};
 use async_trait::async_trait;
-use cucumber::{t, Steps};
+use cucumber::{t, StepContext, Steps};
 use snafu::ResultExt;
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -20,7 +20,7 @@ pub fn steps() -> Steps<State> {
             let region = ctx.matches[1].clone();
 
             state
-                .execute_once(DownloadOsm(region))
+                .execute_once(DownloadOsm(region), &ctx)
                 .await
                 .expect("failed to download OSM file");
 
@@ -75,7 +75,7 @@ pub struct DownloadOsm(pub String);
 
 #[async_trait(?Send)]
 impl Step for DownloadOsm {
-    async fn execute(&mut self, _state: &State) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, _state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self(region) = self;
 
         // Try to see if there is already a file with the expected name in tests/data/osm, in which

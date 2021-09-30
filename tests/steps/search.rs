@@ -2,15 +2,13 @@ use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use async_trait::async_trait;
 use common::document::ContainerDocument;
-use cucumber::{t, Steps};
+use cucumber::{t, StepContext, Steps};
 use mimir2::adapters::primary::common::dsl::build_query;
 use mimir2::adapters::primary::common::filters::Filters;
 use mimir2::adapters::primary::common::settings::QuerySettings;
-use mimir2::adapters::secondary::elasticsearch;
-use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir2::domain::model::query::Query;
 use mimir2::domain::ports::primary::search_documents::SearchDocuments;
-use mimir2::domain::ports::secondary::remote::Remote;
 use places::addr::Addr;
 use places::admin::Admin;
 
@@ -23,7 +21,7 @@ pub fn steps() -> Steps<State> {
             let query = ctx.matches[1].clone();
 
             state
-                .execute(Search::new(query))
+                .execute(Search::new(query), &ctx)
                 .await
                 .expect("failed to index cosmogony file");
 
@@ -37,7 +35,7 @@ pub fn steps() -> Steps<State> {
             let id = ctx.matches[1].clone();
 
             state
-                .execute(HasDocument { id, max_rank: 1 })
+                .execute(HasDocument { id, max_rank: 1 }, &ctx)
                 .await
                 .expect("failed to index cosmogony file");
 
@@ -65,14 +63,8 @@ impl Search {
 
 #[async_trait(?Send)]
 impl Step for Search {
-    async fn execute(&mut self, _state: &State) -> Result<StepStatus, Error> {
-        // Connect to elasticsearch
-        let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
-
-        let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
-            .await
-            .unwrap();
+    async fn execute(&mut self, _state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
+        let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 
         // Build ES query
         let dsl = build_query(
@@ -110,7 +102,7 @@ pub struct HasDocument {
 
 #[async_trait(?Send)]
 impl Step for HasDocument {
-    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
         let (search, _) = state
             .steps_for::<Search>()
             .next_back()

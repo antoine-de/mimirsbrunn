@@ -1,6 +1,6 @@
 use crate::error::Error;
 use async_trait::async_trait;
-use cucumber::World;
+use cucumber::{StepContext, World};
 use std::any::Any;
 use std::convert::Infallible;
 
@@ -14,7 +14,7 @@ pub enum StepStatus {
 /// A step which can be run from current state.
 #[async_trait(?Send)]
 pub trait Step: Sized + 'static {
-    async fn execute(&mut self, world: &State) -> Result<StepStatus, Error>;
+    async fn execute(&mut self, world: &State, ctx: &StepContext) -> Result<StepStatus, Error>;
 }
 
 /// Register the steps that have been executed so far.
@@ -27,8 +27,12 @@ pub struct State(Vec<(Box<dyn Any>, StepStatus)>);
 
 impl State {
     /// Execute a step and update state accordingly.
-    pub async fn execute<S: Step>(&mut self, mut step: S) -> Result<StepStatus, Error> {
-        let status = step.execute(self).await?;
+    pub async fn execute<S: Step>(
+        &mut self,
+        mut step: S,
+        ctx: &StepContext,
+    ) -> Result<StepStatus, Error> {
+        let status = step.execute(self, ctx).await?;
         self.0.push((Box::new(step), status));
         Ok(status)
     }
@@ -38,10 +42,11 @@ impl State {
     pub async fn execute_once<S: Step + PartialEq>(
         &mut self,
         step: S,
+        ctx: &StepContext,
     ) -> Result<StepStatus, Error> {
         match self.status_of(&step) {
             Some(status) => Ok(status),
-            None => self.execute(step).await,
+            None => self.execute(step, ctx).await,
         }
     }
 

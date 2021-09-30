@@ -1,22 +1,18 @@
-use crate::error;
 use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
 use async_trait::async_trait;
 use common::document::ContainerDocument;
 use config::Config;
-use cucumber::{t, Steps};
+use cucumber::{t, StepContext, Steps};
 use futures::stream::StreamExt;
-use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::domain::ports::secondary::remote::Remote;
 use mimir2::domain::ports::secondary::storage::Storage;
 use mimirsbrunn::addr_reader::import_addresses_from_file;
 use mimirsbrunn::bano::Bano;
 use places::addr::Addr;
 use places::admin::Admin;
-use snafu::ResultExt;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -29,7 +25,7 @@ pub fn steps() -> Steps<State> {
             let region = ctx.matches[1].clone();
 
             state
-                .execute(IndexBano(region))
+                .execute(IndexBano(region), &ctx)
                 .await
                 .expect("failed to index Bano file");
 
@@ -48,26 +44,13 @@ pub struct IndexBano(String);
 
 #[async_trait(?Send)]
 impl Step for IndexBano {
-    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self(region) = self;
+        let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 
         state
             .status_of(&IndexCosmogony(region.to_string()))
             .expect("You must index admins before indexing addresses");
-
-        // Connect to Elasticsearch
-        let pool = connection_test_pool()
-            .await
-            .context(error::ElasticsearchPool {
-                details: "Could not retrieve Elasticsearch test pool".to_string(),
-            })?;
-
-        let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
-            .await
-            .context(error::ElasticsearchConnection {
-                details: "Could not establish connection to Elasticsearch".to_string(),
-            })?;
 
         // Check if the address index already exists
         let index = client

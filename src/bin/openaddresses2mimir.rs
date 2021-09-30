@@ -238,11 +238,18 @@ async fn run(args: Args) -> Result<(), failure::Error> {
                     f
                 });
 
-            import_addresses_from_files(client, config, true, args.nb_threads, path_iter, into_addr)
-                .await
+            import_addresses_from_files(
+                &client,
+                config,
+                true,
+                args.nb_threads,
+                path_iter,
+                into_addr,
+            )
+            .await
         } else {
             import_addresses_from_files(
-                client,
+                &client,
                 config,
                 true,
                 args.nb_threads,
@@ -254,7 +261,7 @@ async fn run(args: Args) -> Result<(), failure::Error> {
     } else {
         // Import from stdin
         import_addresses_from_reads(
-            client,
+            &client,
             config,
             true,
             args.nb_threads,
