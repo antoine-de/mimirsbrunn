@@ -1,5 +1,6 @@
 use cucumber::{Context, Cucumber};
 use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir2::utils::docker;
 
 mod error;
 mod state;
@@ -8,6 +9,10 @@ mod utils;
 
 #[tokio::main]
 async fn main() {
+    let _guard = docker::initialize()
+        .await
+        .expect("elasticsearch docker initialization");
+
     let pool = connection_test_pool().await.unwrap();
 
     Cucumber::<state::State>::new()
