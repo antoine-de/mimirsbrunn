@@ -1,4 +1,5 @@
 use super::{filters, settings};
+use common::document::ContainerDocument;
 use serde_json::json;
 
 pub fn build_query(
@@ -49,8 +50,61 @@ fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::
 }
 
 fn build_importance_query(_q: &str, settings: &settings::QuerySettings) -> serde_json::Value {
-    // TODO: in production, admins are boosted by their weight only in prefix mode.
-    json!([build_admin_weight_query(&settings.importance_query)])
+    json!([
+        build_with_weight(
+            &settings.importance_query.weights.max_radius, // TODO: take distance into account
+            &settings.importance_query.weights.types // TODO: in production, admins are boosted by their weight only in prefix mode.
+        ),
+        build_admin_weight_query(&settings.importance_query)
+    ])
+}
+
+fn build_with_weight(
+    build_weight: &settings::BuildWeight,
+    types: &settings::Types,
+) -> serde_json::Value {
+    let weighted = |doc_type, weight| {
+        json!({
+            "filter": { "term": { "type": doc_type } },
+            "weight": weight,
+            "field_value_factor": {
+                "field": "weight",
+                "factor": build_weight.factor,
+                "missing": build_weight.missing
+            }
+        })
+    };
+
+    // let weighted = |doc_type, weight| {
+    //     FilteredFunction::build_filtered_function(
+    //         Query::build_term("_type", doc_type).build(),
+    //         Function::build_field_value_factor("weight")
+    //             .with_factor(build_weight.factor)
+    //             .with_missing(build_weight.missing)
+    //             .build(),
+    //         Function::build_weight(weight),
+    //     )
+    // };
+
+    // Query::build_function_score()
+    //     .with_functions(vec![
+    //         weighted(Stop::doc_type(), types.stop),
+    //         weighted(Addr::doc_type(), types.address),
+    //         weighted(Admin::doc_type(), types.admin),
+    //         weighted(Poi::doc_type(), types.poi),
+    //         weighted(Street::doc_type(), types.street),
+    //     ])
+    //     .with_boost_mode(BoostMode::Replace)
+    //     .build()
+    json!({
+        "function_score": {
+            "boost_mode": "replace",
+            "functions": [
+                weighted(places::admin::Admin::static_doc_type(), types.admin),
+                weighted(places::addr::Addr::static_doc_type(), types.address)
+            ]
+        }
+    })
 }
 
 fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde_json::Value {
