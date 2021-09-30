@@ -55,3 +55,7 @@ test: ## Launch all tests
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package mimir2
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package common
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package places
+
+.PHONY: version
+version: ## display version of bragi
+	@echo $(BRAGI_VERSION)

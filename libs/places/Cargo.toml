@@ -16,8 +16,8 @@ serde = { version = "1", features = ["rc"]}
 geo-types = "0.7"
 geojson = { version = "0.22", features = ["geo-types"] }
 cosmogony = "0.10"
-transit_model = "0.31.4"
-typed_index_collection = "1.1"
+transit_model = "0.39"
+typed_index_collection = "2.0"
 navitia-poi-model = "0.3"
 common = { path = "../common" }
 
