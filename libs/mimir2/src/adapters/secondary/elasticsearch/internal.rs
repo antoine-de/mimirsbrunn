@@ -2,8 +2,7 @@ use elasticsearch::cat::CatIndicesParts;
 use elasticsearch::cluster::ClusterHealthParts;
 use elasticsearch::http::response::Exception;
 use elasticsearch::indices::{
-    IndicesCreateParts, IndicesDeleteAliasParts, IndicesDeleteParts, IndicesGetAliasParts,
-    IndicesPutAliasParts, IndicesRefreshParts,
+    IndicesCreateParts, IndicesDeleteParts, IndicesGetAliasParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
@@ -592,137 +591,60 @@ impl ElasticsearchStorage {
         }
     }
 
-    pub(super) async fn add_alias(&self, indices: Vec<String>, alias: String) -> Result<(), Error> {
-        let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
-        let response = self
-            .client
-            .indices()
-            .put_alias(IndicesPutAliasParts::IndexName(&indices, &alias))
-            .request_timeout(self.timeout)
-            .send()
-            .await
-            .context(ElasticsearchClient {
-                details: format!(
-                    "cannot add alias '{}' to indices '{}'",
-                    alias,
-                    indices.join(" ")
-                ),
-            })?;
-
-        if response.status_code().is_success() {
-            // Response similar to:
-            // Object({"acknowledged": Bool(true)})
-            // We verify that acknowledge is true, then add the cat indices API to get the full index.
-            let json = response
-                .json::<Value>()
-                .await
-                .context(ElasticsearchDeserialization)?;
-
-            let acknowledged = json
-                .as_object()
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected JSON object"),
-                    json: json.clone(),
-                })?
-                .get("acknowledged")
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected 'acknowledged'"),
-                    json: json.clone(),
-                })?
-                .as_bool()
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected JSON boolean"),
-                    json: json.clone(),
-                })?;
-
-            if acknowledged {
-                Ok(())
-            } else {
-                Err(Error::NotAcknowledged {
-                    details: format!("alias {} creation", alias),
-                })
-            }
-        } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
-        }
-    }
-
-    pub(super) async fn remove_alias(
+    pub(super) async fn update_alias(
         &self,
-        indices: Vec<String>,
         alias: String,
+        indices_to_add: &[String],
+        indices_to_remove: &[String],
     ) -> Result<(), Error> {
-        let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
+        let mut actions = vec![];
+
+        if !indices_to_add.is_empty() {
+            actions.push(json!({
+                "add": {
+                    "alias": alias,
+                    "indices": indices_to_add,
+                }
+            }));
+        };
+
+        if !indices_to_remove.is_empty() {
+            actions.push(json!({
+                "remove": {
+                    "alias": alias,
+                    "indices": indices_to_remove,
+                }
+            }));
+        };
+
+        if actions.is_empty() {
+            return Ok(());
+        }
+
         let response = self
             .client
             .indices()
-            .delete_alias(IndicesDeleteAliasParts::IndexName(&indices, &[&alias]))
+            .update_aliases()
             .request_timeout(self.timeout)
+            .body(json!({ "actions": actions }))
             .send()
             .await
+            .and_then(|res| res.error_for_status_code())
             .context(ElasticsearchClient {
-                details: format!(
-                    "cannot remove alias '{}' to indices '{}'",
-                    alias,
-                    indices.join(" ")
-                ),
+                details: format!("cannot update alias '{}'", alias),
             })?;
 
-        if response.status_code().is_success() {
-            // Response similar to:
-            // Object({"acknowledged": Bool(true)})
-            // We verify that acknowledge is true, then add the cat indices API to get the full index.
-            let json = response
-                .json::<Value>()
-                .await
-                .context(ElasticsearchDeserialization)?;
+        let json = response
+            .json::<Value>()
+            .await
+            .context(ElasticsearchDeserialization)?;
 
-            let acknowledged = json
-                .as_object()
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected JSON object"),
-                    json: json.clone(),
-                })?
-                .get("acknowledged")
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected 'acknowledged'"),
-                    json: json.clone(),
-                })?
-                .as_bool()
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected JSON boolean"),
-                    json: json.clone(),
-                })?;
-
-            if acknowledged {
-                Ok(())
-            } else {
-                Err(Error::NotAcknowledged {
-                    details: format!("alias {} deletion", alias),
-                })
-            }
+        if json["acknowledged"] == true {
+            Ok(())
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(Error::NotAcknowledged {
+                details: format!("cannot update alias '{}'", alias),
+            })
         }
     }
 

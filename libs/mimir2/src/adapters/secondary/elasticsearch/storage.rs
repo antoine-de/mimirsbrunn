@@ -149,45 +149,32 @@ impl Storage for ElasticsearchStorage {
             }
         })?;
 
-        let base_index = configuration::root_doctype_dataset(&index.doc_type, &index.dataset);
+        let doctype_dataset_alias =
+            configuration::root_doctype_dataset(&index.doc_type, &index.dataset);
+        self.update_alias(
+            doctype_dataset_alias,
+            &[index.name.clone()],
+            &previous_indices,
+        )
+        .await
+        .map_err(|err| StorageError::IndexPublicationError {
+            source: Box::new(err),
+        })?;
 
-        if !previous_indices.is_empty() {
-            self.remove_alias(previous_indices.clone(), base_index.clone())
-                .await
-                .map_err(|err| StorageError::IndexPublicationError {
-                    source: Box::new(err),
-                })?;
-        }
-        self.add_alias(vec![index.name.clone()], base_index.clone())
+        if visibility == IndexVisibility::Public {
+            let doctype_alias = configuration::root_doctype(&index.doc_type);
+            self.update_alias(
+                doctype_alias.clone(),
+                &[index.name.clone()],
+                &previous_indices,
+            )
             .await
             .map_err(|err| StorageError::IndexPublicationError {
                 source: Box::new(err),
             })?;
 
-        if visibility == IndexVisibility::Public {
-            let base_index = configuration::root_doctype(&index.doc_type);
-            if !previous_indices.is_empty() {
-                self.remove_alias(previous_indices.clone(), base_index.clone())
-                    .await
-                    .map_err(|err| StorageError::IndexPublicationError {
-                        source: Box::new(err),
-                    })?;
-            }
-            self.add_alias(vec![index.name.clone()], base_index.clone())
-                .await
-                .map_err(|err| StorageError::IndexPublicationError {
-                    source: Box::new(err),
-                })?;
-
-            let base_index = configuration::root();
-            if !previous_indices.is_empty() {
-                self.remove_alias(previous_indices.clone(), base_index.clone())
-                    .await
-                    .map_err(|err| StorageError::IndexPublicationError {
-                        source: Box::new(err),
-                    })?;
-            }
-            self.add_alias(vec![index.name.clone()], base_index.clone())
+            let root_alias = configuration::root();
+            self.update_alias(root_alias, &[index.name.clone()], &previous_indices)
                 .await
                 .map_err(|err| StorageError::IndexPublicationError {
                     source: Box::new(err),
