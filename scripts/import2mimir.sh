@@ -191,8 +191,6 @@ restart_docker_es() {
   docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 -e "discovery.type=single-node" -d ${ES_IMAGE} > /dev/null 2>&1
   log_info "Waiting for Elasticsearch to be up and running"
   sleep 15
-  # curl "http://localhost:${ES_PORT_1}"
-  # [[ $? != 0 ]] && { log_error "Could not connect to Elasticsearch at 'http://localhost:${ES_PORT_1}'. Aborting"; return 1; }
   return $?
 }
 
@@ -219,7 +217,6 @@ generate_cosmogony() {
       log_info "${OUTPUT} already exists, skipping cosmogony generation"
       return 0
   fi
-  # "${COSMOGONY}" --country-code FR --input "${INPUT}" --output "${OUTPUT}" > /dev/null 2>&1
   "${COSMOGONY}" --country-code FR --input "${INPUT}" --output "${OUTPUT}"
   [[ $? != 0 ]] && { log_error "Could not generate cosmogony data for ${OSM_REGION}. Aborting"; return 1; }
   return 0
@@ -244,7 +241,6 @@ import_osm() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   [[ -f "${INPUT}" ]] || { log_error "osm2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  # "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))" > /dev/null 2>&1
   "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))"
   [[ $? != 0 ]] && { log_error "Could not import OSM PBF data for ${OSM_REGION} into mimir. Aborting"; return 1; }
   return 0
