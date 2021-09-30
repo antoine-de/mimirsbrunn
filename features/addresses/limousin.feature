@@ -14,5 +14,7 @@ Feature: Admins
         Then he finds "<id>" as the first result
 
         Examples:
-            | query                      | id                         |
-            | 14 Place Allègre, Allassac | addr:1.475761;45.257879:14 |
+            | query                           | id                            |
+            | 14 Place Allègre, Allassac      | addr:1.475761;45.257879:14    |
+            | 1470 Rue du Puy Grasset         | addr:1.938496;45.093038:1470  |
+            | 32BIS Avenue du Limousin 19230  | addr:1.385946;45.399633:32BIS |

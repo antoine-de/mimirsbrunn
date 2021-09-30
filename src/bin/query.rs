@@ -7,6 +7,7 @@ use mimir2::{
     domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Remote,
 };
+use places::addr::Addr;
 use places::admin::Admin;
 
 #[tokio::main]
@@ -30,7 +31,10 @@ async fn main() {
 
     client
         .search_documents(
-            vec![Admin::static_doc_type().to_string()],
+            vec![
+                Admin::static_doc_type().to_string(),
+                Addr::static_doc_type().to_string(),
+            ],
             Query::QueryDSL(dsl),
         )
         .await

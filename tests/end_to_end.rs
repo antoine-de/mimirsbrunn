@@ -23,6 +23,10 @@ pub trait Step: Sized + 'static {
 }
 
 /// Register the steps that have been executed so far.
+///
+/// This acts as a very generic history used to query what steps have been
+/// executed before, filtered by kind (using `steps_for`) or exact match (using
+/// `status_of`).
 #[derive(Default)]
 pub struct State(Vec<(Box<dyn Any>, StepStatus)>);
 

@@ -10,6 +10,7 @@ use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
 use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::domain::ports::secondary::remote::Remote;
+use mimir2::domain::ports::secondary::storage::Storage;
 use mimirsbrunn::addr_reader::import_addresses_from_file;
 use mimirsbrunn::bano::Bano;
 use places::addr::Addr;
@@ -66,6 +67,18 @@ impl Step for IndexBano {
             .context(error::ElasticsearchConnection {
                 details: "Could not establish connection to Elasticsearch".to_string(),
             })?;
+
+        // Check if the address index already exists
+        let index = client
+            .find_container(String::from("munin_addr"))
+            .await
+            .expect("Looking up munin_address");
+
+        // TODO: change this logic to check immutably what appends?
+        // If the previous step has been skipped, then we don't need to index BANO file.
+        if index.is_some() {
+            return Ok(StepStatus::Skipped);
+        }
 
         // TODO: there might be some factorisation to do with bano2mimir?
         let into_addr = {

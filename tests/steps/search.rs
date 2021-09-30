@@ -11,8 +11,8 @@ use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_
 use mimir2::domain::model::query::Query;
 use mimir2::domain::ports::primary::search_documents::SearchDocuments;
 use mimir2::domain::ports::secondary::remote::Remote;
+use places::addr::Addr;
 use places::admin::Admin;
-use std::path::PathBuf;
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
@@ -66,17 +66,6 @@ impl Search {
 #[async_trait(?Send)]
 impl Step for Search {
     async fn execute(&mut self, _state: &State) -> Result<StepStatus, Error> {
-        // Build query settings
-        let base_path = env!("CARGO_MANIFEST_DIR");
-
-        let query_settings_file: PathBuf = [base_path, "config", "query", "settings.toml"]
-            .iter()
-            .collect();
-
-        let query_settings = QuerySettings::new_from_file(query_settings_file)
-            .await
-            .expect("query settings");
-
         // Connect to elasticsearch
         let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
 
@@ -86,13 +75,21 @@ impl Step for Search {
             .unwrap();
 
         // Build ES query
-        let dsl = build_query(&self.query, Filters::default(), &["fr"], &query_settings);
+        let dsl = build_query(
+            &self.query,
+            Filters::default(),
+            &["fr"],
+            &QuerySettings::default(),
+        );
 
         // Fetch documents
         self.results = {
             client
                 .search_documents(
-                    vec![Admin::static_doc_type().to_string()],
+                    vec![
+                        Admin::static_doc_type().to_string(),
+                        Addr::static_doc_type().to_string(),
+                    ],
                     Query::QueryDSL(dsl),
                 )
                 .await
