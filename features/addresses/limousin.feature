@@ -1,4 +1,4 @@
-Feature: Admins
+Feature: Addresses
     Some scenarios for testing addresses in Limousin, France.
 
     Background:
@@ -19,14 +19,14 @@ Feature: Admins
             | 1470 Rue du Puy Grasset         | addr:1.938496;45.093038:1470  |
             | 32BIS Avenue du Limousin 19230  | addr:1.385946;45.399633:32BIS |
 
-    # When using aliases, we should still fetch tje query at the top of the
+    # When using aliases, we should still fetch the query at the top of the
     # result.
     Scenario Outline: With Aliases
         When the user searches for "<query>"
         Then he finds "<id>" as the first result
 
         Examples:
-            | query                           | id                            |
-            | 14 p Allègre, Allassac      | addr:1.475761;45.257879:14    |
-            | 1470 r du Puy Grasset         | addr:1.938496;45.093038:1470  |
-            | 32BIS av du Limousin 19230  | addr:1.385946;45.399633:32BIS |
+            | query                      | id                            |
+            | 14 p Allègre, Allassac     | addr:1.475761;45.257879:14    |
+            | 1470 r du Puy Grasset      | addr:1.938496;45.093038:1470  |
+            | 32BIS av du Limousin 19230 | addr:1.385946;45.399633:32BIS |

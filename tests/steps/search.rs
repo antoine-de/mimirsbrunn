@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::{State, Step, StepStatus};
+use crate::state::{State, Step, StepStatus};
 use async_trait::async_trait;
 use common::document::ContainerDocument;
 use cucumber::{t, Steps};

@@ -1,6 +1,7 @@
+use crate::error;
 use crate::error::Error;
+use crate::state::{State, Step, StepStatus};
 use crate::utils::{create_dir_if_not_exists_rec, file_exists};
-use crate::{error, State, Step, StepStatus};
 use async_trait::async_trait;
 use cucumber::{t, Steps};
 use snafu::ResultExt;

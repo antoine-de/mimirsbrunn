@@ -1,7 +1,8 @@
+use crate::error;
 use crate::error::Error;
+use crate::state::{State, Step, StepStatus};
 use crate::steps::download::DownloadOsm;
 use crate::utils::{create_dir_if_not_exists, file_exists};
-use crate::{error, State, Step, StepStatus};
 use async_trait::async_trait;
 use common::document::ContainerDocument;
 use config::Config;
