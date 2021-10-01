@@ -27,6 +27,7 @@ pub mod tests {
 
     use config::Config;
     use serde::Serialize;
+    use serial_test::serial;
 
     use super::*;
 
@@ -38,8 +39,9 @@ pub mod tests {
     // In this test we present an invalid configuration (its actually empty) to the
     // create_container function, and expect the error message to be meaningful
     #[tokio::test]
+    #[serial]
     async fn should_return_invalid_configuration() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -54,8 +56,6 @@ pub mod tests {
         let config = Config::builder().build().expect("build empty config");
 
         let res = client.create_container(config).await;
-
-        drop(guard);
 
         assert!(res
             .unwrap_err()
@@ -73,8 +73,9 @@ pub mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_connect_to_elasticsearch() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -85,12 +86,12 @@ pub mod tests {
             .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
-        drop(guard);
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_create_index_with_valid_configuration() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
         let pool = remote::connection_test_pool()
@@ -132,13 +133,13 @@ pub mod tests {
             .build()
             .expect("valid configuration");
         let res = client.create_container(config).await;
-        drop(guard);
         assert!(res.is_ok());
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_correctly_report_invalid_configuration() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -181,7 +182,6 @@ pub mod tests {
             .build()
             .expect("valid configuration");
         let res = client.create_container(config).await;
-        drop(guard);
         assert!(res
             .unwrap_err()
             .to_string()
@@ -227,8 +227,9 @@ pub mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_correctly_insert_multiple_documents() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -273,14 +274,14 @@ pub mod tests {
                 documents,
             )
             .await;
-        drop(guard);
 
         assert_eq!(res.expect("insertion stats").created, 6);
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_detect_invalid_elasticsearch_version() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -288,8 +289,6 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool.conn(ES_DEFAULT_TIMEOUT, ">=9.99.99").await;
-
-        drop(guard);
 
         assert!(client
             .unwrap_err()

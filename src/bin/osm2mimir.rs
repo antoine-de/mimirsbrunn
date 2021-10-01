@@ -192,6 +192,7 @@ mod tests {
     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
     use mimirsbrunn::admin::index_cosmogony;
     use places::{admin::Admin, street::Street, Place};
+    use serial_test::serial;
     use structopt::StructOpt;
 
     fn elasticsearch_test_url() -> String {
@@ -215,8 +216,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_correctly_index_osm_streets_and_pois() {
-        let _guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 

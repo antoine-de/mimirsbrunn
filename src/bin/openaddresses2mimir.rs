@@ -280,14 +280,16 @@ mod tests {
     use mimir2::domain::ports::primary::search_documents::SearchDocuments;
     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
     use places::{addr::Addr, Place};
+    use serial_test::serial;
 
     fn elasticsearch_test_url() -> String {
         std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_correctly_index_oa_file() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -343,8 +345,6 @@ mod tests {
             .try_collect()
             .await
             .unwrap();
-
-        drop(guard);
 
         assert_eq!(addresses.len(), 11);
 
