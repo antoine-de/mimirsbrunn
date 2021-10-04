@@ -7,6 +7,7 @@ use config::Config;
 use cucumber::{t, StepContext, Steps};
 use futures::stream::StreamExt;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir2::domain::model::configuration::root_doctype_dataset;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::domain::ports::secondary::storage::Storage;
 use mimirsbrunn::addr_reader::import_addresses_from_file;
@@ -53,12 +54,13 @@ impl Step for IndexBano {
             .expect("You must index admins before indexing addresses");
 
         // Check if the address index already exists
-        let index = client
-            .find_container(String::from("munin_addr"))
-            .await
-            .expect("Looking up munin_address");
+        let container = root_doctype_dataset(Addr::static_doc_type(), region);
 
-        // TODO: change this logic to check immutably what appends?
+        let index = client
+            .find_container(container)
+            .await
+            .expect("failed at looking up for container");
+
         // If the previous step has been skipped, then we don't need to index BANO file.
         if index.is_some() {
             return Ok(StepStatus::Skipped);
@@ -88,8 +90,8 @@ impl Step for IndexBano {
         // Load file
         let config = Config::builder()
             .add_source(Addr::default_es_container_config())
-            .set_override("name", "test_addr")
-            .expect("failed to set index name in config")
+            .set_override("container.dataset", region.to_string())
+            .expect("failed to set dataset name")
             .build()
             .expect("failed to build configuration");
 

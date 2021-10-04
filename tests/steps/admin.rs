@@ -8,6 +8,7 @@ use common::document::ContainerDocument;
 use config::Config;
 use cucumber::{t, StepContext, Steps};
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir2::domain::model::configuration::root_doctype_dataset;
 use mimir2::domain::ports::secondary::storage::Storage;
 use places::admin::Admin;
 use snafu::ResultExt;
@@ -130,13 +131,15 @@ impl Step for IndexCosmogony {
             .expect("can't generate cosmogony file without downloading from OSM first");
 
         // Check if the admin index already exists
-        let index = client
-            .find_container(String::from("munin_admin"))
-            .await
-            .expect("Looking up munin_admin");
+        let container = root_doctype_dataset(Admin::static_doc_type(), region);
 
-        // TODO: change this logic to check immutably what appends?
-        // If the previous step has been skipped, then we don't need to index the cosmogony file.
+        let index = client
+            .find_container(container.clone())
+            .await
+            .expect("failed at looking up for container");
+
+        // If the previous step has been skipped, then we don't need to index the
+        // cosmogony file.
         if gen_status == StepStatus::Skipped && index.is_some() {
             return Ok(StepStatus::Skipped);
         }
@@ -150,8 +153,8 @@ impl Step for IndexCosmogony {
             vec!["fr".to_string()],
             Config::builder()
                 .add_source(Admin::default_es_container_config())
-                .set_override("name", "test_admin")
-                .expect("failed to set index name in config")
+                .set_override("container.dataset", region.to_string())
+                .expect("failed to set dataset name")
                 .build()
                 .expect("failed to build configuration"),
             client,
