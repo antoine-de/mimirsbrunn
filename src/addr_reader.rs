@@ -1,14 +1,7 @@
-use crate::Error;
-use config::Config;
 use failure::format_err;
 use flate2::read::GzDecoder;
 use futures::future;
-use futures::stream::{self, Stream, StreamExt};
-use mimir2::{
-    adapters::secondary::elasticsearch::ElasticsearchStorage,
-    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
-};
-use places::addr::Addr;
+use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use serde::de::DeserializeOwned;
 use slog_scope::{info, warn};
 use std::io::Read;
@@ -16,8 +9,16 @@ use std::marker::{Send, Sync};
 use std::path::PathBuf;
 use tokio::fs::File;
 
+use crate::Error;
+use config::Config;
+use mimir2::{
+    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
+};
+use places::addr::Addr;
+
 async fn import_addresses<S, F, T>(
-    client: &ElasticsearchStorage,
+    client: ElasticsearchStorage,
     config: Config,
     records: S,
     into_addr: F,
@@ -50,7 +51,7 @@ where
 }
 
 pub async fn import_addresses_from_reads<T, F>(
-    client: &ElasticsearchStorage,
+    client: ElasticsearchStorage,
     config: Config,
     has_headers: bool,
     _nb_threads: usize,
@@ -80,7 +81,7 @@ where
 }
 
 pub async fn import_addresses_from_files<T, F>(
-    client: &ElasticsearchStorage,
+    client: ElasticsearchStorage,
     config: Config,
     has_headers: bool,
     nb_threads: usize,
@@ -118,8 +119,8 @@ where
     import_addresses_from_reads(client, config, has_headers, nb_threads, files, into_addr).await
 }
 
-pub async fn import_addresses_from_file<F, T>(
-    client: &ElasticsearchStorage,
+pub async fn import_addresses_from_input_path<F, T>(
+    client: ElasticsearchStorage,
     config: Config,
     file: PathBuf,
     into_addr: F,
@@ -128,13 +129,74 @@ where
     F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    let reader = File::open(file).await.expect("file open");
+    if file.is_dir() {
+        let files = dir_to_stream(file).await?;
+        let records = files.try_filter_map(|file| async move {
+            let records = stream_records_from_file(file).await;
+            match records {
+                Ok(records) => Ok(Some(records.filter_map(|rec| future::ready(rec.ok())))),
+                Err(_) => Ok(None),
+            }
+        });
+        let records = records.try_flatten();
+        import_addresses(client, config, records, into_addr).await
+    } else {
+        let records = stream_records_from_file(file).await?;
+        let records = records.filter_map(|rec| future::ready(rec.ok()));
+        import_addresses(client, config, records, into_addr).await
+    }
+}
+
+// Turns a stream of PathBuf into a stream of rec>ords, by reading the records for each
+// PathBuf, and then flattening the stream of streams.
+// pub fn file_stream_record<T>(
+//     files: impl Stream<Item = Result<PathBuf, Error>> + Send + Sync + Unpin + 'static,
+// ) -> impl Stream<Item = Result<T, Error>> + Send + Sync + Unpin + 'static
+// where
+//     T: DeserializeOwned + Send + Sync + 'static,
+// {
+//     files
+//         .try_filter_map(|file| async move {
+//             stream_records_from_file(file)
+//                 .await
+//                 .map(|stream| Some(stream))
+//         })
+//         .try_flatten()
+// }
+
+// Turns a directory into a Stream of PathBuf
+async fn dir_to_stream(dir: PathBuf) -> Result<impl Stream<Item = Result<PathBuf, Error>>, Error> {
+    let entries = tokio::fs::read_dir(dir).await.unwrap();
+
+    let stream = tokio_stream::wrappers::ReadDirStream::new(entries);
+
+    Ok(stream.map(|entry| match entry {
+        Ok(entry) => Ok(entry.path()),
+        Err(err) => Err(format_err!("could not read dir entry: {}", err.to_string())),
+    }))
+}
+
+// Turns a file into a Stream of PathBuf via stream::once
+// async fn file_to_stream(
+//     file: PathBuf,
+// ) -> Result<impl Stream<Item = Result<PathBuf, Error>> + Send + Sync + Unpin + 'static, Error> {
+//     Ok(stream::once(async { Ok(file) }))
+// }
+
+async fn stream_records_from_file<T>(
+    file: PathBuf,
+) -> Result<impl Stream<Item = Result<T, Error>> + Send + Sync + Unpin + 'static, Error>
+where
+    T: DeserializeOwned + Send + Sync + 'static,
+{
+    let reader = File::open(file)
+        .await
+        .map_err(|err| format_err!("file open {}", err.to_string()))?;
+
     let csv_reader = csv_async::AsyncReaderBuilder::new()
         .has_headers(false)
         .create_deserializer(reader);
-    let records = csv_reader
+    Ok(csv_reader
         .into_deserialize::<T>()
-        .filter_map(|rec| future::ready(rec.ok()));
-
-    import_addresses(client, config, records, into_addr).await
+        .map_err(|err| format_err!("could not read record: {}", err.to_string())))
 }
