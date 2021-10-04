@@ -12,7 +12,7 @@ Feature: Admins
     # result because the query exactly matches the name / label of the target.
     # These queries are for varying levels of administrative regions (city,
     # department, ...).
-    Scenario Outline: Exact Match
+    Scenario Outline: Admins exact match
         When the user searches for "<query>"
         Then he finds "<id>" as the first result
 
