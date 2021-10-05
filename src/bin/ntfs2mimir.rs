@@ -101,15 +101,12 @@ async fn index_ntfs(args: Args) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use futures::stream::TryStreamExt;
+    use serial_test::serial;
 
     use super::*;
-    // use common::document::ContainerDocument;
-    // use mimir2::domain::model::query::Query;
     use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    // use mimir2::domain::ports::primary::search_documents::SearchDocuments;
     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
     use places::stop::Stop;
-    // use places::Place;
 
     fn elasticsearch_test_url() -> String {
         std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
@@ -154,8 +151,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_path_for_config() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -170,8 +168,6 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
-        drop(guard);
-
         assert!(res
             .unwrap_err()
             .to_string()
@@ -179,8 +175,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_mappings() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -195,14 +192,13 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
-        drop(guard);
-
         assert!(dbg!(res.unwrap_err().to_string()).contains("expected value at line 1 column 1"));
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_path_for_input() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -217,8 +213,6 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
-        drop(guard);
-
         assert!(res
             .unwrap_err()
             .to_string()
@@ -226,8 +220,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_return_an_error_when_given_an_invalid_setting_override() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -242,8 +237,6 @@ mod tests {
 
         let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
-        drop(guard);
-
         assert!(res
             .unwrap_err()
             .to_string()
@@ -251,8 +244,9 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_correctly_index_a_small_ntfs_() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -286,15 +280,14 @@ mod tests {
             .await
             .unwrap();
 
-        drop(guard);
-
         assert!(stops.iter().all(|stop| stop.id.starts_with("stop_area")));
         assert!(stops.iter().all(|stop| stop.weight != 0f64));
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_index_ntfs_with_correct_values() {
-        let guard = docker::initialize()
+        docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
@@ -326,13 +319,8 @@ mod tests {
             .await
             .unwrap();
 
-        drop(guard);
-
         assert_eq!(stops.len(), 6);
 
-        for stop in &stops {
-            println!("stop: {}", stop.name);
-        }
         let stop1 = stops.iter().find(|&stop| stop.name == "Châtelet").unwrap();
 
         assert_eq!(stop1.id, "stop_area:CHA");
