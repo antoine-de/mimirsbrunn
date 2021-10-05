@@ -443,7 +443,7 @@ impl ElasticsearchStorage {
     ) -> Result<InsertStats, Error>
     where
         D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+        S: Stream<Item = D> + Send + Sync + 'static,
     {
         let stats = Arc::new(Mutex::new(InsertStats::default()));
 

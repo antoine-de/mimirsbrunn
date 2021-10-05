@@ -25,7 +25,7 @@ async fn import_addresses<S, F, T>(
 ) -> Result<(), Error>
 where
     F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
-    S: Stream<Item = T> + Send + Sync + Unpin + 'static,
+    S: Stream<Item = T> + Send + Sync + 'static,
 {
     let addrs = records.map(into_addr).filter_map(|ra| match ra {
         Ok(a) => {
@@ -59,7 +59,7 @@ pub async fn import_addresses_from_reads<T, F>(
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
     let iter = inputs
@@ -89,7 +89,7 @@ pub async fn import_addresses_from_files<T, F>(
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + Unpin + 'static,
+    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
     let files = files
@@ -131,14 +131,28 @@ where
 {
     if file.is_dir() {
         let files = dir_to_stream(file).await?;
-        let records = files.try_filter_map(|file| async move {
-            let records = stream_records_from_file(file).await;
-            match records {
-                Ok(records) => Ok(Some(records.filter_map(|rec| future::ready(rec.ok())))),
-                Err(_) => Ok(None),
-            }
-        });
-        let records = records.try_flatten();
+        let records = files
+            .filter_map(move |file| async move {
+                match file {
+                    Ok(file) => match stream_records_from_file(file.clone()).await {
+                        Ok(records) => Some(records.filter_map(|rec| future::ready(rec.ok()))),
+                        Err(err) => {
+                            warn!(
+                                "could not stream records from {}: {}",
+                                file.display(),
+                                err.to_string()
+                            );
+                            None
+                        }
+                    },
+                    Err(err) => {
+                        warn!("directory entry error: {}", err.to_string());
+                        None
+                    }
+                }
+            })
+            .flatten();
+
         import_addresses(client, config, records, into_addr).await
     } else {
         let records = stream_records_from_file(file).await?;
@@ -147,25 +161,10 @@ where
     }
 }
 
-// Turns a stream of PathBuf into a stream of rec>ords, by reading the records for each
-// PathBuf, and then flattening the stream of streams.
-// pub fn file_stream_record<T>(
-//     files: impl Stream<Item = Result<PathBuf, Error>> + Send + Sync + Unpin + 'static,
-// ) -> impl Stream<Item = Result<T, Error>> + Send + Sync + Unpin + 'static
-// where
-//     T: DeserializeOwned + Send + Sync + 'static,
-// {
-//     files
-//         .try_filter_map(|file| async move {
-//             stream_records_from_file(file)
-//                 .await
-//                 .map(|stream| Some(stream))
-//         })
-//         .try_flatten()
-// }
-
 // Turns a directory into a Stream of PathBuf
-async fn dir_to_stream(dir: PathBuf) -> Result<impl Stream<Item = Result<PathBuf, Error>>, Error> {
+async fn dir_to_stream(
+    dir: PathBuf,
+) -> Result<impl Stream<Item = Result<PathBuf, Error>> + Unpin, Error> {
     let entries = tokio::fs::read_dir(dir).await.unwrap();
 
     let stream = tokio_stream::wrappers::ReadDirStream::new(entries);
@@ -175,13 +174,6 @@ async fn dir_to_stream(dir: PathBuf) -> Result<impl Stream<Item = Result<PathBuf
         Err(err) => Err(format_err!("could not read dir entry: {}", err.to_string())),
     }))
 }
-
-// Turns a file into a Stream of PathBuf via stream::once
-// async fn file_to_stream(
-//     file: PathBuf,
-// ) -> Result<impl Stream<Item = Result<PathBuf, Error>> + Send + Sync + Unpin + 'static, Error> {
-//     Ok(stream::once(async { Ok(file) }))
-// }
 
 async fn stream_records_from_file<T>(
     file: PathBuf,

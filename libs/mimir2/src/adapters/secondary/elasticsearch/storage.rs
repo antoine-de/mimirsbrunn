@@ -111,7 +111,7 @@ impl Storage for ElasticsearchStorage {
     ) -> Result<InsertStats, StorageError>
     where
         D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + Unpin + 'static,
+        S: Stream<Item = D> + Send + Sync + 'static,
     {
         self.add_pipeline(
             String::from(include_str!(

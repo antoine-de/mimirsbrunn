@@ -10,7 +10,7 @@ use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir2::domain::model::configuration::root_doctype_dataset;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::domain::ports::secondary::storage::Storage;
-use mimirsbrunn::addr_reader::import_addresses_from_file;
+use mimirsbrunn::addr_reader::import_addresses_from_input_path;
 use mimirsbrunn::bano::Bano;
 use places::addr::Addr;
 use places::admin::Admin;
@@ -99,7 +99,7 @@ impl Step for IndexBano {
         let input_dir: PathBuf = [base_path, "tests", "data", "bano"].iter().collect();
         let input_file = input_dir.join(format!("{}.csv", region));
 
-        import_addresses_from_file(client, config, input_file, into_addr)
+        import_addresses_from_input_path(client.clone(), config, input_file, into_addr)
             .await
             .expect("error while indexing Bano");
 
