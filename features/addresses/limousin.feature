@@ -10,7 +10,7 @@ Feature: Addresses
     # With 'Exact Match', we expect the query to be found at the top of the
     # result because the query exactly matches the name / label of the target.
     Scenario Outline: Addresses exact match
-        When the user searches for "<query>"
+        When the user searches "addr" for "<query>"
         Then he finds "<id>" as the first result
 
         Examples:
@@ -22,7 +22,7 @@ Feature: Addresses
     # When using aliases, we should still fetch the query at the top of the
     # result.
     Scenario Outline: Addresses with aliases
-        When the user searches for "<query>"
+        When the user searches "addr" for "<query>"
         Then he finds "<id>" as the first result
 
         Examples:

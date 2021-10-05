@@ -31,11 +31,16 @@ async fn main() {
 
     Cucumber::<state::State>::new()
         // Specifies where our feature files exist
-        .features(&["./features/admin", "./features/addresses"])
+        .features(&[
+            "./features/admin",
+            "./features/addresses",
+            "./features/stops",
+        ])
         // Adds the implementation of our steps to the runner
         .steps(steps::download::steps())
         .steps(steps::admin::steps())
         .steps(steps::address::steps())
+        .steps(steps::stop::steps())
         .steps(steps::search::steps())
         // Add some global context for all the tests, like databases.
         .context(build_context().await)
