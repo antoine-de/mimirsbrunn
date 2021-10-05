@@ -2,6 +2,11 @@ use crate::document::ContainerDocument;
 use config::Config;
 use std::path::PathBuf;
 
+/// Create a new configuration source from a list of assignments key=value
+///
+/// The function iterates over the list, and for each element, it tries to
+/// (a) identify the key and the value, by searching for the '=' sign.
+/// (b) parse the value into one of bool, i64, f64. if not it's a string.
 pub fn config_from_args(
     args: impl IntoIterator<Item = String>,
 ) -> Result<Config, Box<dyn std::error::Error>> {
