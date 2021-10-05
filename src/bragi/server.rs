@@ -28,8 +28,12 @@ pub enum Error {
     #[snafu(display("Could not generate settings: {}", source))]
     SettingsProcessing { source: SettingsError },
 
-    #[snafu(display("Socket Addr Error {}", source))]
-    SockAddr { source: std::io::Error },
+    #[snafu(display("Socket Addr Error with host {} / port {}: {}", host, port, source))]
+    SockAddr {
+        host: String,
+        port: u16,
+        source: std::io::Error,
+    },
 
     #[snafu(display("Addr Resolution Error {}", msg))]
     AddrResolution { msg: String },
@@ -63,12 +67,12 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
     let addr = (host.as_str(), port);
     let addr = addr
         .to_socket_addrs()
-        .context(SockAddr)?
+        .context(SockAddr { host, port })?
         .next()
         .ok_or(Error::AddrResolution {
-            msg: String::from("Cannot resolve elasticsearch addr"),
+            msg: String::from("Cannot resolve elasticsearch addr."),
         })?;
-    let elasticsearch_url = addr.to_string();
+    let elasticsearch_url = format!("http://{}", addr.to_string());
 
     let pool = connection_pool_url(&elasticsearch_url)
         .await
@@ -88,15 +92,18 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .recover(routes::report_invalid)
         .with(warp::trace::request());
 
+    info!("api ready");
+
     let host = settings.service.host;
     let port = settings.service.port;
     let addr = (host.as_str(), port);
+    info!("addr: {:?}", addr);
     let addr = addr
         .to_socket_addrs()
-        .context(SockAddr)?
+        .context(SockAddr { host, port })?
         .next()
         .ok_or(Error::AddrResolution {
-            msg: String::from("Cannot resolve addr"),
+            msg: String::from("Cannot resolve bragi addr."),
         })?;
 
     info!("Serving bragi on {}", addr);

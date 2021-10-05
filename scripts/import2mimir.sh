@@ -179,18 +179,18 @@ restart_docker_es() {
   log_info "Checking docker ${ES_NAME}"
   local DOCKER_NAMES=`docker ps --all --format '{{.Names}}'`
   if [[ $DOCKER_NAMES =~ (^|[[:space:]])$ES_NAME($|[[:space:]]) ]]; then
-    log_info "docker container ${ES_NAME} is running"
-    docker stop ${ES_NAME}
-    log_info "docker container ${ES_NAME} stopped"
-    docker rm ${ES_NAME}
+    log_info "docker container ${ES_NAME} is running => stopping"
+    docker stop ${ES_NAME} > /dev/null 2>&1
+    log_info "docker container ${ES_NAME} stopped => removing"
+    docker rm ${ES_NAME} > /dev/null 2>&1
     log_info "docker container ${ES_NAME} removed"
   fi
   ES_PORT_1=$((9200+ES_PORT_OFFSET))
   ES_PORT_2=$((9300+ES_PORT_OFFSET))
   log_info "Starting docker container ${ES_NAME} on ports ${ES_PORT_1} and ${ES_PORT_2}"
-  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 -d ${ES_IMAGE}
+  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 -e "discovery.type=single-node" -d ${ES_IMAGE} > /dev/null 2>&1
   log_info "Waiting for Elasticsearch to be up and running"
-  sleep 5
+  sleep 15
   return $?
 }
 
@@ -217,12 +217,11 @@ generate_cosmogony() {
       log_info "${OUTPUT} already exists, skipping cosmogony generation"
       return 0
   fi
-  "${COSMOGONY}" --country-code FR --input "${INPUT}" --output "${OUTPUT}" > /dev/null 2> /dev/null
+  "${COSMOGONY}" --country-code FR --input "${INPUT}" --output "${OUTPUT}"
   [[ $? != 0 ]] && { log_error "Could not generate cosmogony data for ${OSM_REGION}. Aborting"; return 1; }
   return 0
 }
 
-# Pre requisite: DATA_DIR exists.
 import_cosmogony() {
   log_info "Importing cosmogony into mimir"
   local COSMOGONY2MIMIR="${MIMIR_DIR}/target/release/cosmogony2mimir"
@@ -235,7 +234,6 @@ import_cosmogony() {
   return 0
 }
 
-# Pre requisite: DATA_DIR exists.
 import_osm() {
   log_info "Importing osm into mimir"
   local OSM2MIMIR="${MIMIR_DIR}/target/release/osm2mimir"
@@ -243,15 +241,14 @@ import_osm() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   [[ -f "${INPUT}" ]] || { log_error "osm2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
+  "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))"
   [[ $? != 0 ]] && { log_error "Could not import OSM PBF data for ${OSM_REGION} into mimir. Aborting"; return 1; }
   return 0
 }
 
-# Pre requisite: DATA_DIR exists.
 download_osm() {
   log_info "Downloading OSM for ${OSM_REGION}"
-  mkdir -p "$DATA_DIR/osm"
+  mkdir -p "${DATA_DIR}/osm"
   if [[ -f "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" ]]; then
     log_info "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf already exists, skipping download"
     return 0
@@ -266,7 +263,7 @@ import_ntfs() {
   log_info "Importing ntfs into mimir"
   local NTFS2MIMIR="${MIMIR_DIR}/target/release/ntfs2mimir"
   command -v "${NTFS2MIMIR}" > /dev/null 2>&1  || { log_error "osm2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  "${NTFS2MIMIR}" --input "${DATA_DIR}/ntfs" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
+  "${NTFS2MIMIR}" --input "${DATA_DIR}/ntfs" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not import NTFS data from ${DATA_DIR}/ntfs into mimir. Aborting"; return 1; }
   return 0
 }
@@ -274,7 +271,7 @@ import_ntfs() {
 # Pre requisite: DATA_DIR exists.
 download_ntfs() {
   log_info "Downloading ntfs for ${NTFS_REGION}"
-  mkdir -p "$DATA_DIR/ntfs"
+  mkdir -p "${DATA_DIR}/ntfs"
   wget --quiet -O "${DATA_DIR}/${NTFS_REGION}.csv" "https://navitia.opendatasoft.com/explore/dataset/${NTFS_REGION}/download/?format=csv"
   [[ $? != 0 ]] && { log_error "Could not download NTFS CSV data for ${NTFS_REGION}. Aborting"; return 1; }
   NTFS_URL=`cat ${DATA_DIR}/${NTFS_REGION}.csv | grep NTFS | cut -d';' -f 2`
@@ -292,11 +289,14 @@ import_bano() {
   log_info "Importing bano into mimir"
   local BANO2MIMIR="${MIMIR_DIR}/target/release/bano2mimir"
   command -v "${BANO2MIMIR}" > /dev/null 2>&1  || { log_error "bano2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  for REGION in "${BANO_REGION}"
-  do
+  OIFS=$IFS
+  IFS=" "
+  read -r -a BANO_ARRAY <<< "${BANO_REGION}"
+  for REGION in "${BANO_ARRAY[@]}"; do
     import_bano_region "${DATA_DIR}/bano/bano-${REGION}.csv"
     [[ $? != 0 ]] && { log_error "Could not import bano from ${DATA_DIR}/bano/bano-${REGION}.csv into mimir. Aborting"; return 1; }
   done
+  IFS=$OIFS
   return 0
 }
 
@@ -305,21 +305,24 @@ import_bano() {
 # $1: bano csv file for one region
 import_bano_region() {
   local BANO_FILE="${1}"
-  log_info "Importing ${BANO_FILE} into mimir"
-  "${BANO2MIMIR}" --connection-string "http://localhost:${ES_PORT}" --input "${BANO_FILE}"
+  log_info "- Importing ${BANO_FILE} into mimir"
+  "${BANO2MIMIR}" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))" --input "${BANO_FILE}" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not import bano from ${BANO_FILE} into mimir. Aborting"; return 1; }
   return 0
 }
 
 # Pre requisite: DATA_DIR exists.
 download_bano() {
-  log_info "Downloading bano"
-  mkdir -p "$DATA_DIR/bano"
-  for REGION in ${BANO_REGION}
-  do
+  log_info "Downloading bano:"
+  mkdir -p "${DATA_DIR}/bano"
+  OIFS=$IFS
+  IFS=" "
+  read -r -a BANO_ARRAY <<< "${BANO_REGION}"
+  for REGION in "${BANO_ARRAY[@]}"; do
     download_bano_region_csv "${REGION}" "${DATA_DIR}/bano"
     [[ $? != 0 ]] && { log_error "Could not download CSV data for ${REGION}. Aborting"; return 1; }
   done
+  IFS=$OIFS
   return 0
 }
 
@@ -330,7 +333,7 @@ download_bano_region_csv() {
   local DEPT=$(printf %02d $1)
   local FILENAME="bano-${DEPT}.csv"
   local DOWNLOAD_DIR="${2}"
-  log_info "Downloading ${FILENAME}"
+  log_info "- Downloading ${FILENAME}"
   wget http://bano.openstreetmap.fr/data/${FILENAME} --timestamping --directory-prefix=${DOWNLOAD_DIR} -c --no-verbose --quiet
   return $?
 }
@@ -355,6 +358,14 @@ done
 [[ -z "$CONFIG_FILE" && "${CONFIG_FILE+xxx}" = "xxx" ]] &&
 { echo -e "\e[91m config filename set but empty" >&2; echo "\e[0m" >&2; exit 1; }
 
+if [[ ! -d "${LOGS_DIR}" ]]; then
+  mkdir "${LOGS_DIR}"
+  if [[ $? != 0 ]]; then
+    echo "Cannot create a log directory at ${LOGS_DIR}. Aborting"
+    exit 1
+  fi
+fi
+
 # Source $CONFIG_FILE
 if [[ -f ${CONFIG_FILE} ]]; then
   log_info "Reading ${CONFIG_FILE}"
@@ -378,9 +389,9 @@ check_environment
 
 restart_docker_es 9200
 [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
-# 
-# import_templates
-# [[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
+
+import_templates
+[[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
 
 # The order in which the import are done into mimir is important!
 # First we generate the admin regions with cosmogony
@@ -388,13 +399,13 @@ restart_docker_es 9200
 
 download_osm
 [[ $? != 0 ]] && { log_error "Could not download osm. Aborting"; exit 1; }
-# 
-# download_bano
-# [[ $? != 0 ]] && { log_error "Could not download bano. Aborting"; exit 1; }
-# 
-# download_ntfs
-# [[ $? != 0 ]] && { log_error "Could not download ntfs. Aborting"; exit 1; }
-# 
+
+download_bano
+[[ $? != 0 ]] && { log_error "Could not download bano. Aborting"; exit 1; }
+
+download_ntfs
+[[ $? != 0 ]] && { log_error "Could not download ntfs. Aborting"; exit 1; }
+
 generate_cosmogony
 [[ $? != 0 ]] && { log_error "Could not generate cosmogony. Aborting"; exit 1; }
 
@@ -404,8 +415,9 @@ import_cosmogony
 import_bano
 [[ $? != 0 ]] && { log_error "Could not import bano into mimir. Aborting"; exit 1; }
 
-# import_osm
-# [[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
+import_osm
+[[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
 # 
 # import_ntfs
 # [[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }
+#
