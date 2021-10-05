@@ -128,11 +128,11 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
     };
 
     if let Some(input_path) = args.input {
-        mimirsbrunn::addr_reader::import_addresses_from_file(client, config, input_path, into_addr)
+        mimirsbrunn::addr_reader::import_addresses_from_file(&client, config, input_path, into_addr)
             .await
     } else {
         mimirsbrunn::addr_reader::import_addresses_from_reads(
-            client,
+            &client,
             config,
             true,
             args.nb_threads,

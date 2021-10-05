@@ -1,4 +1,4 @@
-Feature: Baseline
+Feature: Admins
     Some scenarios for testing admins in Limousin, France.
     The reason for picking Limousin is that the size of the OSM file
     is less than 100Mb, which is the upper file size limit for github.
@@ -12,7 +12,7 @@ Feature: Baseline
     # result because the query exactly matches the name / label of the target.
     # These queries are for varying levels of administrative regions (city,
     # department, ...).
-    Scenario Outline: Exact Match
+    Scenario Outline: Admins exact match
         When the user searches for "<query>"
         Then he finds "<id>" as the first result
 
