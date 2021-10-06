@@ -129,12 +129,12 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
 
     if let Some(input_path) = args.input {
         mimirsbrunn::addr_reader::import_addresses_from_input_path(
-            client, config, input_path, into_addr,
+            &client, config, input_path, into_addr,
         )
         .await
     } else {
         mimirsbrunn::addr_reader::import_addresses_from_reads(
-            client,
+            &client,
             config,
             true,
             args.nb_threads,

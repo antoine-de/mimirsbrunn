@@ -99,7 +99,7 @@ impl Step for IndexBano {
         let input_dir: PathBuf = [base_path, "tests", "data", "bano"].iter().collect();
         let input_file = input_dir.join(format!("{}.csv", region));
 
-        import_addresses_from_input_path(client.clone(), config, input_file, into_addr)
+        import_addresses_from_input_path(client, config, input_file, into_addr)
             .await
             .expect("error while indexing Bano");
 

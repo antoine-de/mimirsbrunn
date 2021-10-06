@@ -18,7 +18,7 @@ use mimir2::{
 use places::addr::Addr;
 
 async fn import_addresses<S, F, T>(
-    client: ElasticsearchStorage,
+    client: &ElasticsearchStorage,
     config: Config,
     records: S,
     into_addr: F,
@@ -51,7 +51,7 @@ where
 }
 
 pub async fn import_addresses_from_reads<T, F>(
-    client: ElasticsearchStorage,
+    client: &ElasticsearchStorage,
     config: Config,
     has_headers: bool,
     _nb_threads: usize,
@@ -81,7 +81,7 @@ where
 }
 
 pub async fn import_addresses_from_files<T, F>(
-    client: ElasticsearchStorage,
+    client: &ElasticsearchStorage,
     config: Config,
     has_headers: bool,
     nb_threads: usize,
@@ -120,7 +120,7 @@ where
 }
 
 pub async fn import_addresses_from_input_path<F, T>(
-    client: ElasticsearchStorage,
+    client: &ElasticsearchStorage,
     config: Config,
     file: PathBuf,
     into_addr: F,
