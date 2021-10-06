@@ -1,27 +1,47 @@
 use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use async_trait::async_trait;
+use common::document::ContainerDocument;
 use cucumber::{t, StepContext, Steps};
-use mimir2::{
-    adapters::{
-        primary::{
-            common::dsl::build_query, common::filters::Filters, common::settings::QuerySettings,
-        },
-        secondary::elasticsearch::ElasticsearchStorage,
-    },
-    domain::{model::query::Query, ports::primary::search_documents::SearchDocuments},
+use mimir2::adapters::primary::{
+    common::dsl::build_query, common::filters::Filters, common::settings::QuerySettings,
 };
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir2::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
+
+    steps.when_regex_async(
+        "the user searches for \"(.*)\"",
+        t!(|mut state, ctx| {
+            let domain = vec![
+                Addr::static_doc_type().to_string(),
+                Admin::static_doc_type().to_string(),
+                Street::static_doc_type().to_string(),
+                Stop::static_doc_type().to_string(),
+                Poi::static_doc_type().to_string(),
+            ];
+
+            let query = ctx.matches[1].clone();
+
+            state
+                .execute(Search::new(domain, query), &ctx)
+                .await
+                .expect("failed to search");
+
+            state
+        }),
+    );
 
     steps.when_regex_async(
         "the user searches \"(.*)\" for \"(.*)\"",
         t!(|mut state, ctx| {
             let domain: Vec<String> = ctx.matches[1]
                 .clone()
-                .split(", ")
-                .map(|s| s.to_string())
+                .split(',')
+                .map(|s| s.trim().to_string())
                 .collect();
 
             let query = ctx.matches[2].clone();
@@ -29,7 +49,7 @@ pub fn steps() -> Steps<State> {
             state
                 .execute(Search::new(domain, query), &ctx)
                 .await
-                .expect("failed to index cosmogony file");
+                .expect("failed to search");
 
             state
         }),
@@ -43,7 +63,7 @@ pub fn steps() -> Steps<State> {
             state
                 .execute(HasDocument { id, max_rank: 1 }, &ctx)
                 .await
-                .expect("failed to index cosmogony file");
+                .expect("failed to find document");
 
             state
         }),
@@ -109,8 +129,6 @@ impl Step for HasDocument {
             .steps_for::<Search>()
             .next_back()
             .expect("the user must perform a search before checking results");
-
-        // println!("{:?}", search.results);
 
         let (rank, _) = (search.results.iter().enumerate())
             .find(|(_, doc)| self.id == doc["id"].as_str().unwrap())
