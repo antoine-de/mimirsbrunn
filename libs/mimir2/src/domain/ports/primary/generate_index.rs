@@ -14,7 +14,7 @@ pub trait GenerateIndex {
     async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
         config: Config,
-        documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
+        documents: impl Stream<Item = D> + Send + Sync + 'static,
         visibility: IndexVisibility,
     ) -> Result<Index, ModelError>;
 }
@@ -27,7 +27,7 @@ where
     async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
         config: Config,
-        documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
+        documents: impl Stream<Item = D> + Send + Sync + 'static,
         visibility: IndexVisibility,
     ) -> Result<Index, ModelError> {
         // 1. We modify the name of the index:
