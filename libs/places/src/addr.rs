@@ -70,3 +70,9 @@ pub struct AliasParameter {
     pub index: String,
     pub alias: String,
 }
+
+impl From<&Addr> for geojson::Geometry {
+    fn from(addr: &Addr) -> Self {
+        geojson::Geometry::from(addr.coord)
+    }
+}

@@ -75,3 +75,9 @@ impl Members for Poi {
         self.administrative_regions.clone()
     }
 }
+
+impl From<&Poi> for geojson::Geometry {
+    fn from(poi: &Poi) -> Self {
+        geojson::Geometry::from(poi.coord)
+    }
+}

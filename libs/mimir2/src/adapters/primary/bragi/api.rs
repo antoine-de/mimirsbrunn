@@ -6,6 +6,10 @@ use serde_json::Value as JsonValue;
 use crate::adapters::primary::common::coord::Coord;
 use crate::adapters::primary::common::filters::Filters;
 
+/// This structure contains all the query parameters that
+/// can be submitted for the autocomplete endpoint.
+///
+/// Only the `q` parameter is mandatory.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForwardGeocoderQuery {
@@ -41,6 +45,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
     }
 }
 
+/// This structure contains all the query parameters that
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReverseGeocoderQuery {
@@ -51,22 +56,6 @@ pub struct ReverseGeocoderQuery {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JsonParam {
     pub shape: GeoJson,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchResponseBody<D> {
-    pub docs: Vec<D>,
-    pub docs_count: usize,
-}
-
-impl<D> From<Vec<D>> for SearchResponseBody<D> {
-    fn from(values: Vec<D>) -> Self {
-        SearchResponseBody {
-            docs_count: values.len(),
-            docs: values,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -102,6 +91,9 @@ pub struct StatusResponseBody {
     pub elasticsearch: ElasticsearchStatus,
 }
 
+/// This macro is used to define the forward_geocoder route.
+/// It takes a client (ElasticsearchStorage) and query settings
+///
 #[macro_export]
 macro_rules! forward_geocoder {
     ($cl:expr, $st:expr) => {

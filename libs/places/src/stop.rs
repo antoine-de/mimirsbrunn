@@ -1,16 +1,15 @@
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::warn;
 use transit_model::objects::Rgb;
 use typed_index_collection::Idx;
 
-use super::code::Code;
 use super::context::Context;
 use super::coord::Coord;
 use super::Members;
-use super::Property;
 use crate::admin::Admin;
 use common::document::Document;
 
@@ -132,9 +131,9 @@ pub struct Stop {
     #[serde(default)]
     pub timezone: String,
     #[serde(default)]
-    pub codes: Vec<Code>,
+    pub codes: BTreeMap<String, String>,
     #[serde(default)]
-    pub properties: Vec<Property>,
+    pub properties: BTreeMap<String, String>,
     #[serde(default)]
     pub feed_publishers: Vec<FeedPublisher>,
     /// Distance to the coord in query.
@@ -280,20 +279,16 @@ pub fn to_mimir(
         codes: stop_area
             .codes
             .iter()
-            .map(|&(ref t, ref v)| Code {
-                name: t.clone(),
-                value: v.clone(),
-            })
+            .map(|&(ref t, ref v)| (t.clone(), v.clone()))
             .collect(),
-        properties: stop_area
-            .object_properties
-            .iter()
-            .map(|(ref k, ref v)| Property {
-                key: k.to_string(),
-                value: v.to_string(),
-            })
-            .collect(),
+        properties: stop_area.object_properties.clone(),
         feed_publishers,
         ..Default::default()
+    }
+}
+
+impl From<&Stop> for geojson::Geometry {
+    fn from(stop: &Stop) -> Self {
+        geojson::Geometry::from(stop.coord)
     }
 }

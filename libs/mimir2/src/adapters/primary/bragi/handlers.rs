@@ -6,15 +6,15 @@ use warp::reply::{json, with_status};
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, ReverseGeocoderQuery,
-        SearchResponseBody, StatusResponseBody,
+        StatusResponseBody,
     },
-    common::{dsl, filters, settings},
+    common::{dsl, filters, geocoding::FromWithLang, geocoding::GeocodeJsonResponse, settings},
 };
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -26,7 +26,7 @@ pub async fn forward_geocoder<S>(
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
-    S::Document: Serialize,
+    S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
     let filters = filters::Filters::from((params, geometry));
@@ -47,7 +47,12 @@ where
         .await
     {
         Ok(res) => {
-            let resp = SearchResponseBody::from(res);
+            let places = res
+                .into_iter()
+                .map(|json| serde_json::from_value::<Place>(json.into()).unwrap())
+                .collect();
+
+            let resp = GeocodeJsonResponse::from_with_lang(places, None);
             Ok(with_status(json(&resp), StatusCode::OK))
         }
         Err(err) => Ok(with_status(
@@ -68,7 +73,7 @@ pub async fn reverse_geocoder<S>(
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
-    S::Document: Serialize,
+    S::Document: Serialize + Into<serde_json::Value>,
 {
     let distance = format!("{}m", settings.reverse_query.radius);
     let dsl = dsl::build_reverse_query(&distance, params.lat, params.lon);
@@ -84,7 +89,12 @@ where
         .await
     {
         Ok(res) => {
-            let resp = SearchResponseBody::from(res);
+            let places = res
+                .into_iter()
+                .map(|json| serde_json::from_value::<Place>(json.into()).unwrap())
+                .collect();
+
+            let resp = GeocodeJsonResponse::from_with_lang(places, None);
             Ok(with_status(json(&resp), StatusCode::OK))
         }
         Err(err) => Ok(with_status(
