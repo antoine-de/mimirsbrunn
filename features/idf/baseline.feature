@@ -32,4 +32,4 @@ Feature: Baseline
 
         Examples:
             | query                 | id                         |
-	    | 20 rue Hector Malot   | admin:osm:relation:7444    | 
+	    | 20 rue Hector Malot   | addr:2.37715;48.846781:20  |
