@@ -167,40 +167,19 @@ impl Step for DownloadBano {
         create_dir_if_not_exists_rec(&dir_path).await?;
 
         // this is the path for the concatenated departments
-        let file_path = dir_path.join(format!("{}.csv", region));
+        let file_path = &dir_path.join(format!("{}.csv", region));
 
-        if file_exists(&file_path).await {
+        if file_exists(file_path).await {
             return Ok(StepStatus::Skipped);
         }
 
-        let res: Result<Vec<()>, Error> = stream::try_unfold(
-            BanoState {
-                departments: departments.to_vec(),
-                index: 0,
-            },
-            |state| async {
-                if state.departments.len() > state.index {
-                    let department = state.departments[state.index].clone();
-                    let next_state = BanoState {
-                        departments: state.departments,
-                        index: state.index + 1,
-                    };
-                    let url = format!("{}/data/bano-{:02}.csv", BANO_URL, department);
-                    download_to_file(&file_path, &url).await?;
-                    Ok(Some(((), next_state)))
-                } else {
-                    Ok(None)
-                }
-            },
-        )
-        .try_collect()
-        .await;
+        stream::iter(departments.iter().map(Ok))
+            .try_for_each(|department| async move {
+                let url = format!("{}/data/bano-{:02}.csv", BANO_URL, department);
+                download_to_file(file_path, &url).await
+            })
+            .await?;
 
-        res.map(|_| StepStatus::Done)
+        Ok(StepStatus::Done)
     }
-}
-
-struct BanoState {
-    departments: Vec<String>,
-    index: usize, // index into the departments
 }
