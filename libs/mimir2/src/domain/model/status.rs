@@ -15,10 +15,16 @@ impl fmt::Display for StorageHealth {
     }
 }
 
-pub type StorageVersion = String;
+pub type Version = String;
 
 #[derive(Debug)]
 pub struct StorageStatus {
     pub health: StorageHealth,
-    pub version: StorageVersion,
+    pub version: Version,
+}
+
+#[derive(Debug)]
+pub struct Status {
+    pub version: Version,
+    pub storage: StorageStatus,
 }

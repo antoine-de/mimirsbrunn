@@ -80,6 +80,12 @@ pub struct BragiStatus {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MimirStatus {
+    pub version: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ElasticsearchStatus {
     pub version: String,
     pub health: String,
@@ -90,6 +96,7 @@ pub struct ElasticsearchStatus {
 #[serde(rename_all = "camelCase")]
 pub struct StatusResponseBody {
     pub bragi: BragiStatus,
+    pub mimir: MimirStatus,
     pub elasticsearch: ElasticsearchStatus,
 }
 

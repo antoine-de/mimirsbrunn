@@ -5,7 +5,7 @@ use warp::reply::{json, with_status};
 
 use crate::adapters::primary::{
     bragi::api::{
-        BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, ReverseGeocoderQuery,
+        BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
         StatusResponseBody, Type,
     },
     common::{
@@ -127,9 +127,12 @@ where
                 bragi: BragiStatus {
                     version: VERSION.to_string(),
                 },
-                elasticsearch: ElasticsearchStatus {
+                mimir: MimirStatus {
                     version: res.version,
-                    health: res.health.to_string(),
+                },
+                elasticsearch: ElasticsearchStatus {
+                    version: res.storage.version,
+                    health: res.storage.health.to_string(),
                     url,
                 },
             };

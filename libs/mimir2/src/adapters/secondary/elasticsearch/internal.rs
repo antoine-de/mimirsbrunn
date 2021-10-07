@@ -26,7 +26,7 @@ use crate::domain::model::{
     index::{Index, IndexStatus},
     query::Query,
     stats::InsertStats as ModelInsertStats,
-    status::{StorageHealth, StorageVersion},
+    status::{StorageHealth, Version as StorageVersion},
 };
 use common::document::Document;
 
