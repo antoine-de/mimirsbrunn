@@ -62,6 +62,9 @@ impl Step for IndexBano {
     async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self(region) = self;
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
+        let reindex: &bool = ctx.get().expect("could not get reload flag");
+
+        println!("reindex: {}", reindex);
 
         state
             .status_of(&IndexCosmogony(region.to_string()))
@@ -70,6 +73,8 @@ impl Step for IndexBano {
         // Check if the address index already exists
         let container = root_doctype_dataset(Addr::static_doc_type(), region);
 
+        println!("searching container: {}", container);
+
         let index = client
             .find_container(container)
             .await
@@ -77,9 +82,11 @@ impl Step for IndexBano {
 
         // If the previous step has been skipped, then we don't need to index BANO file.
         if index.is_some() {
+            println!("container found");
             return Ok(StepStatus::Skipped);
         }
 
+        println!("container not found");
         // TODO: there might be some factorisation to do with bano2mimir?
         let into_addr = {
             let admins: Vec<Admin> = client
