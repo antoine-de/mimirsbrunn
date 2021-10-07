@@ -34,6 +34,20 @@ pub fn steps() -> Steps<State> {
         }),
     );
 
+    steps.given_regex_async(
+        "bano files have been indexed for (.*)",
+        t!(|mut state, ctx| {
+            let region = ctx.matches[1].clone();
+
+            state
+                .execute(IndexBano(region), &ctx)
+                .await
+                .expect("failed to index Bano file");
+
+            state
+        }),
+    );
+
     steps
 }
 

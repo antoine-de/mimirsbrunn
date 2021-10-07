@@ -131,7 +131,10 @@ impl Step for HasDocument {
             .expect("the user must perform a search before checking results");
 
         let (rank, _) = (search.results.iter().enumerate())
-            .find(|(_, doc)| self.id == doc["id"].as_str().unwrap())
+            .find(|(_, doc)| {
+                println!("{} vs {}", self.id, doc["id"].as_str().unwrap());
+                self.id == doc["id"].as_str().unwrap()
+            })
             .expect("document was not found in search results");
 
         assert!(rank < self.max_rank);
