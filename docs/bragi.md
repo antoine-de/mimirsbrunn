@@ -21,7 +21,7 @@ This will create an executable in `./target/release/bragi`
 ## Usage
 
 Before using Bragi, you need to have an Elasticsearch backend available with data
-indexed beforehand. Instructions on indexing are found [there](docs/indexing.md).
+indexed beforehand. Instructions on indexing are found [there](./indexing.md).
 
 To start Bragi, you need to specify a configuration directory, and a run_mode.
 
@@ -34,9 +34,9 @@ repository's config directory, run the following command.
 
 ## Configuration
 
-Bragi's configuration is split in two sections:
-- one part contains parameters needed to tune the performance of the query
-- and the rest.
+Bragi's configuration is split into two sections:
+- one part contains parameters needed to tune the performance of the query.
+- and the rest, which describes the connection to the backend, how to serve the REST API.
 
 The reason to split the configuration is that the part related to the query is
 used in other contexts than Bragi.
@@ -49,14 +49,14 @@ you will find:
 bragi -c ./config
 
 config
-  |-- query
-  |     |-- default.toml
-  |
-  |-- bragi
-        |-- default.toml
-	|-- testing.toml
-	|-- prod.toml
-	|-- [...]
+  ├── query
+  │     └── default.toml
+  │
+  └── bragi
+        ├── default.toml
+        ├── testing.toml
+        ├── prod.toml
+        └── [...]
 ```
 
 Bragi uses a layered approach to configuration. It will start by reading the
@@ -78,7 +78,7 @@ Here is an example:
 path = "./logs"
 
 [elasticsearch]
-host = "http://localhost"
+host = "localhost"
 port = 9200
 timeout = 500 # ms
 version_req = ">=7.12.0"
@@ -88,7 +88,72 @@ host = "0.0.0.0"
 port = "6010"
 ```
 
+Before running bragi, you may find it useful to see what bragi will use as a configuration.
+So there is a `config` subcommand, which compiles the configuration, and prints it
+as a json object:
+
+```
+bragi -c ./config -m testing -s elasticsearch.port=9208 config
+{
+  "mode": "testing",
+  "logging": {
+    "path": "./logs"
+  },
+  "elasticsearch": {
+    "host": "localhost",
+    "port": 9201,
+    "version_req": ">=7.13.0",
+    "timeout": 100
+  },
+  "query": {
+    "type_query": {
+      "global": 30.0,
+  […]
+}
+```
+
 ## REST API
+
+Bragi exposes a small REST API summarized in the table below:
+
+<table>
+<colgroup>
+<col style="width: 15%" />
+<col style="width: 57%" />
+<col style="width: 26%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>URL</th>
+<th>Description</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>autocomplete</code></td>
+<td><p>Searches the backend for places that match the query string.</p>
+<p>Bragi acts as a forward geocoder.</p></td>
+<td><a href="#forward-geocoding">link</a></td>
+</tr>
+<tr class="even">
+<td><code>reverse</code></td>
+<td><p>Searches the backend for places near the given location.</p>
+<p>Bragi acts as a reverse geocoder.</p></td>
+<td><a href="#reverse-geocoding">link</a></td>
+</tr>
+<tr class="odd">
+<td><code>features</code></td>
+<td>Returns Bragi’s status as well al the backend’s.</td>
+<td><a href="#features">link</a></td>
+</tr>
+<tr class="even">
+<td><code>status</code></td>
+<td>Returns Bragi’s status as well al the backend’s.</td>
+<td><a href="#status">link</a></td>
+</tr>
+</tbody>
+</table>
 
 ### Forward Geocoding
 
@@ -177,33 +242,40 @@ pub timeout: u32, // timeout to Elasticsearch in milliseconds
 
 **Content examples**
 
-For a User with ID 1234 on the local database where that User has saved an
-email address and name information.
+The response is a JSON document. It is an array of `docs`, each of which follows (TODO Check??)
+the [geocodejson](https://github.com/geocoders/geocodejson-spec) specification. Here is an 
+example:
 
 ```json
 {
-    "id": 1234,
-    "first_name": "Joe",
-    "last_name": "Bloggs",
-    "email": "joe25@example.com"
-}
-```
-
-For a user with ID 4321 on the local database but no details have been set yet.
-
-```json
-{
-    "id": 4321,
-    "first_name": "",
-    "last_name": "",
-    "email": ""
-}
+  "docs": [
+    {
+      "approx_coord": {
+        "coordinates": [
+          2.32484,
+          48.897096
+        ],
+        "type": "Point"
+      },
+      "context": null,
+      "coord": {
+        "lat": 48.897096,
+        "lon": 2.32484
+      },
+      "country_codes": [
+        "fr"
+      ],
+      "house_number": "1",
+      "id": "addr:2.32484;48.897096:1",
+      "label": "1 Passage Châtelet (Paris)",
+      "name": "1 Passage Châtelet",
+      "street": {
+        "administrative_regions": [
+          {
+            "administrative_regions": [],
 ```
 
 ## Notes
-
-* If the User does not have a `UserInfo` instance when requested then one will
-  be created for them.
 
 ### Reverse Geocoding
 
@@ -364,7 +436,7 @@ pub async fn forward_geocoder(
             let resp = SearchResponseBody::from(res);
             Ok(with_status(json(&resp), StatusCode::OK))
         }
-	[...]
+  [...]
     }
 }
 ```

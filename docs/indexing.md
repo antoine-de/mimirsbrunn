@@ -15,48 +15,57 @@ cd mimirsbrunn
 cargo build --release
 ```
 
-This will create several executable in `./target/release/{osm2mimir, cosmogony2mimir, ...}
+This will create several executable in `./target/release/{osm2mimir, cosmogony2mimir, ...}`
 
 ## Usage
 
 The following table shows what binary and source of data you need depending on the type of data
 you want to index:
 
-<table style="width:92%;">
+<table>
 <colgroup>
-<col style="width: 27%" />
-<col style="width: 31%" />
-<col style="width: 31%" />
+<col style="width: 22%" />
+<col style="width: 47%" />
+<col style="width: 29%" />
 </colgroup>
+<thead>
+<tr class="header">
+<th>type</th>
+<th>binary</th>
+<th>data source</th>
+</tr>
+</thead>
 <tbody>
 <tr class="odd">
-<td>type</td>
-<td>binary</td>
-<td>data source</td>
+<td>administrative regions (admins)</td>
+<td><a href="#cosmogony2mimir">cosmogony2mimir</a></td>
+<td><a href="#cosmogony">cosmogony</a></td>
 </tr>
 <tr class="even">
-<td>administrative regions (admins)</td>
-<td>cosmogony2mimir</td>
-<td>cosmogony</td>
+<td>streets</td>
+<td><a href="#osm2mimir">osm2mimir</a></td>
+<td><a href="#OSM">OSM</a></td>
 </tr>
 <tr class="odd">
-<td>streets</td>
-<td>osm2mimir</td>
-<td>OSM</td>
+<td>addresses</td>
+<td><p><a href="#bano2mimir">bano2mimir</a></p>
+<p><a href="#openaddress2mimir">openaddress2mimir</a></p></td>
+<td><p><a href="#BANO">BANO</a> (France)</p>
+<p>OpenAddresses</p></td>
 </tr>
 <tr class="even">
-<td>addresses</td>
-<td>bano2mimir / openaddress2mimir</td>
-<td>BANO (France)</td>
+<td>public transport stop locations</td>
+<td><a href="#ntfs2mimir">ntfs2mimir</a></td>
+<td><a href="#NTFS">NTFS</a></td>
 </tr>
 <tr class="odd">
 <td>public points of interests (POI)</td>
-<td>osm2mimir</td>
-<td>OSM</td>
+<td><a href="#osm2mimir">osm2mimir</a></td>
+<td><a href="#OSM">OSM</a></td>
 </tr>
 <tr class="even">
 <td>private points of interests (POI)</td>
-<td>poi2mimir</td>
+<td><a href="#poi2mimir">poi2mimir</a></td>
 <td></td>
 </tr>
 </tbody>
@@ -78,7 +87,7 @@ There is a currently two tools that will help you wrap these steps in an easy an
 
 #### cosmogony
 
-cosmogony datasets are produced by a binary cosmogony available
+cosmogony datasets are produced by a binary cosmogony available from
 [here](https://github.com/osm-without-borders/cosmogony), which uses an OSM pbf
 input.
 
@@ -94,7 +103,8 @@ git submodule update --init            # update the git submodules
 cargo build --release                  # finally build cosmogony
 ```
 
-cosmogony run on OSM pbf documents, which you need to download. Once you have a dataset, you can run
+cosmogony runs on OSM pbf documents, which you need to download. Once you have
+a dataset, you can run
 
 ```
 ./target/release/cosmogony -i <path/to/source.osm.pbf> -o <path/to/output.ext>
@@ -111,6 +121,11 @@ Elasticsearch.
 
 #### BANO
 
+You can download BANO datasets from [Openstreetmap](http://bano.openstreetmap.fr)
+
+#### NTFS
+
+You can download NTFS datasets from [Navitia](https://navitia.opendatasoft.com)
 
 ### Launch Elasticsearch
 
@@ -136,7 +151,29 @@ Here is the order of execution:
 1. `cosmogony2mimir`
 2. `osm2mimir`
 3. `bano2mimir` / `openaddress2mimir`
-4. `poi2mimir`
+4. `ntfs2mimir`
+5. `poi2mimir`
+
+### cosmogony2mimir
+
+As mentioned earlier, `cosmogony2mimir` is the binary responsible for indexing administrative
+regions into Elasticsearch.
+
+```
+cosmogony2mimir -i <cosmogony file> -m <mappings> -s <settings> --settings […]
+```
+
+You need to specify an input file, some Elasticsearch related parameters (mappings and settings).
+
+### osm2mimir
+
+### bano2mimir
+
+### openaddress2mimir
+
+### ntfs2mimir
+
+### poi2mimir
 
 ### import2mimir
 
