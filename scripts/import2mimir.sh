@@ -385,9 +385,6 @@ check_environment
 restart_docker_es 9200
 [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
 
-# import_templates
-# [[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
-
 # The order in which the import are done into mimir is important!
 # First we generate the admin regions with cosmogony
 # Second we import the addresses with bano
