@@ -1,6 +1,9 @@
 # The directory in which data is stored
 DATA_DIR="data"
 
+# Elasticsearch host. If you use docker, it should probably stay at localhost.
+ES_HOST="localhost"
+
 # The port number for elasticsearch host (9200 + offset, 9300 + offset)
 ES_PORT_OFFSET=0
 
