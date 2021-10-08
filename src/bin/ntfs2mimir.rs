@@ -1,4 +1,4 @@
-// Copyright © 2018, Canal TP and/or its affiliates. All rights reserved.
+// Copyright © 2016, Canal TP and/or its affiliates. All rights reserved.
 //
 // This file is part of Navitia,
 //     the software to build cool stuff with public transport.
@@ -28,45 +28,49 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use common::config::load_es_config_for;
 use failure::{format_err, Error};
+use slog_scope::info;
+use std::path::PathBuf;
+use structopt::StructOpt;
+
+use common::config::load_es_config_for;
 use mimir2::{
     adapters::secondary::elasticsearch::{self, ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ},
     domain::ports::secondary::remote::Remote,
 };
-use places::admin::Admin;
-use std::path::PathBuf;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug, StructOpt)]
 struct Args {
-    /// cosmogony file
-    #[structopt(short = "i", long = "input")]
-    input: String,
-    /// Elasticsearch parameters.
-    #[structopt(short = "c", long, default_value = "http://localhost:9200/munin")]
-    connection_string: String,
+    /// NTFS directory.
+    #[structopt(short = "i", long = "input", parse(from_os_str), default_value = ".")]
+    input: PathBuf,
     /// Name of the dataset.
-    #[structopt(short = "d", long, default_value = "fr")]
-    pub dataset: String,
+    #[structopt(short = "d", long = "dataset", default_value = "fr")]
+    dataset: String,
+    /// Elasticsearch parameters.
+    #[structopt(
+        short = "c",
+        long = "connection-string",
+        default_value = "http://localhost:9200/munin"
+    )]
+    connection_string: String,
     #[structopt(parse(from_os_str), long)]
     mappings: Option<PathBuf>,
     #[structopt(parse(from_os_str), long)]
     settings: Option<PathBuf>,
-    /// Languages codes, used to build i18n names and labels
-    #[structopt(name = "lang", short, long)]
-    langs: Vec<String>,
-    /// Override value of settings using syntax `key.subkey=val`
-    #[structopt(name = "setting", short = "v", long)]
+    /// Override value of settings using `key.subkey=value` syntax
     override_settings: Vec<String>,
 }
 
 #[tokio::main]
 async fn main() {
-    mimirsbrunn::utils::launch_async(index_cosmogony).await;
+    mimirsbrunn::utils::launch_async(index_ntfs).await;
 }
 
-async fn index_cosmogony(args: Args) -> Result<(), Error> {
+/// Uses the commandline arguments to index an ntfs directory into Elasticsearch.
+async fn index_ntfs(args: Args) -> Result<(), Error> {
+    info!("Launching ntfs2mimir...");
+
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
         .map_err(|err| {
@@ -81,7 +85,7 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 
-    let config = load_es_config_for::<Admin>(
+    let config = load_es_config_for::<places::stop::Stop>(
         args.mappings,
         args.settings,
         args.override_settings,
@@ -89,25 +93,20 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
     )
     .map_err(|err| format_err!("could not load configuration: {}", err))?;
 
-    mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, &client)
+    mimirsbrunn::stops::index_ntfs(args.input, config, &client)
         .await
-        .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string()))
+        .map_err(|err| format_err!("could not index ntfs: {}", err.to_string()))
 }
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
-    use futures::TryStreamExt;
+    use futures::stream::TryStreamExt;
     use serial_test::serial;
 
     use super::*;
-    use common::document::ContainerDocument;
-    use mimir2::domain::model::query::Query;
     use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    use mimir2::domain::ports::primary::search_documents::SearchDocuments;
     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
-    use places::admin::Admin;
-    use places::Place;
+    use places::stop::Stop;
 
     fn elasticsearch_test_url() -> String {
         std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
@@ -117,16 +116,15 @@ mod tests {
     async fn should_return_an_error_when_given_an_invalid_es_url() {
         let url = String::from("http://example.com:demo");
         let args = Args {
-            input: String::from("foo"),
+            input: PathBuf::from("NA"),
             connection_string: url,
             dataset: String::from("test"),
-            mappings: Some("./config/elasticsearch/admin/mappings.json".into()),
-            settings: Some("./config/elasticsearch/admin/settings.json".into()),
-            langs: vec![],
+            mappings: Some("./config/elasticsearch/stop/mappings.json".into()),
+            settings: Some("./config/elasticsearch/stop/settings.json".into()),
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
         assert!(res
             .unwrap_err()
             .to_string()
@@ -137,16 +135,15 @@ mod tests {
     async fn should_return_an_error_when_given_an_url_not_es() {
         let url = String::from("http://no-es.test");
         let args = Args {
-            input: String::from("foo"),
+            input: PathBuf::from("NA"),
             connection_string: url,
             dataset: String::from("test"),
             mappings: None,
             settings: None,
-            langs: vec![],
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
         assert!(res
             .unwrap_err()
             .to_string()
@@ -161,21 +158,20 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("foo"),
+            input: PathBuf::from("NA"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("test"),
             mappings: None,
             settings: None,
-            langs: vec![],
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("Unable to detect the file format"));
+            .contains("is neither a file nor a directory, cannot read a ntfs from it"));
     }
 
     #[tokio::test]
@@ -186,16 +182,15 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("foo"),
+            input: PathBuf::from("foo"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("test"),
             mappings: Some("./tests/fixtures/config/invalid/mappings.json".into()), // exists, but not json
             settings: None,
-            langs: vec![],
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
         assert!(dbg!(res.unwrap_err().to_string()).contains("expected value at line 1 column 1"));
     }
@@ -208,21 +203,20 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("./invalid.jsonl.gz"),
+            input: PathBuf::from("NA"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("test"),
             mappings: None,
             settings: None,
-            langs: vec![],
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("could not index cosmogony: No such file or directory"));
+            .contains("is neither a file nor a directory, cannot read a ntfs from it"));
     }
 
     #[tokio::test]
@@ -233,16 +227,15 @@ mod tests {
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("foo"),
+            input: PathBuf::from("NA"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("test"),
             mappings: None,
             settings: None,
-            langs: vec![],
             override_settings: vec!["no-value".to_string()],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
         assert!(res
             .unwrap_err()
@@ -252,24 +245,23 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn should_correctly_index_a_small_cosmogony_file() {
+    async fn should_correctly_index_a_small_ntfs_() {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            input: PathBuf::from("./tests/fixtures/ntfs"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("test"),
             mappings: None,
             settings: None,
-            langs: vec![],
             override_settings: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
-        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // Now we query the index we just created. Since it's a small NTFS dataset with few entries,
         // we'll just list all the documents in the index, and check them.
         let pool = remote::connection_test_pool()
             .await
@@ -280,7 +272,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        let admins: Vec<Admin> = client
+        let stops: Vec<Stop> = client
             .list_documents()
             .await
             .unwrap()
@@ -288,38 +280,38 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
-        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+        assert!(stops.iter().all(|stop| stop.id.starts_with("stop_area")));
+        assert!(stops.iter().all(|stop| stop.weight != 0f64));
     }
 
     #[tokio::test]
     #[serial]
-    async fn should_correctly_index_cosmogony_with_langs() {
+    async fn should_index_ntfs_with_correct_values() {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
         let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
+            input: PathBuf::from("./tests/fixtures/ntfs"),
             connection_string: elasticsearch_test_url(),
             dataset: String::from("test"),
-            mappings: None,
-            settings: None,
-            langs: vec!["fr".into(), "en".into()],
+            mappings: PathBuf::from("./config/elasticsearch/stop/mappings.json").into(),
+            settings: PathBuf::from("./config/elasticsearch/stop/settings.json").into(),
             override_settings: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch_async_args(index_ntfs, args).await;
 
         let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
+
         let client = pool
             .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
             .await
             .expect("Elasticsearch Connection Established");
 
-        let admins: Vec<Admin> = client
+        let stops: Vec<Stop> = client
             .list_documents()
             .await
             .unwrap()
@@ -327,73 +319,11 @@ mod tests {
             .await
             .unwrap();
 
-        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
-        assert_eq!(brittany.names.get("fr"), Some("Bretagne"));
-        assert_eq!(brittany.names.get("en"), Some("Brittany"));
-        assert_eq!(brittany.labels.get("en"), Some("Brittany"));
-    }
+        assert_eq!(stops.len(), 6);
 
-    #[tokio::test]
-    #[serial]
-    async fn should_index_cosmogony_with_correct_values() {
-        docker::initialize()
-            .await
-            .expect("elasticsearch docker initialization");
+        let stop1 = stops.iter().find(|&stop| stop.name == "Châtelet").unwrap();
 
-        let args = Args {
-            input: String::from("./tests/fixtures/cosmogony/bretagne.small.jsonl.gz"),
-            connection_string: elasticsearch_test_url(),
-            dataset: String::from("test"),
-            mappings: PathBuf::from("./config/elasticsearch/admin/mappings.json").into(),
-            settings: PathBuf::from("./config/elasticsearch/admin/settings.json").into(),
-            langs: vec![],
-            override_settings: vec![],
-        };
-
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
-
-        // Now we query the index we just created. Since a small cosmogony file with few entries,
-        // we'll just list all the documents in the index, and check them.
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
-            .await
-            .expect("Elasticsearch Connection Established");
-
-        let admins: Vec<Admin> = client
-            .search_documents(
-                vec![String::from(Admin::static_doc_type())], // Fixme Use ContainerDoc::static_doc_type()
-                Query::QueryString(String::from("name:bretagne")),
-            )
-            .await
-            .unwrap()
-            .into_iter()
-            .map(|json| serde_json::from_value::<Place>(json).unwrap())
-            .map(|place| match place {
-                Place::Admin(admin) => admin,
-                _ => panic!("should only have admins"),
-            })
-            .collect();
-
-        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
-        assert_eq!(brittany.id, "admin:osm:relation:102740");
-        assert_eq!(brittany.zone_type, Some(cosmogony::ZoneType::State));
-        assert_relative_eq!(brittany.weight, 0.002_298, epsilon = 1e-6);
-        assert_eq!(
-            brittany.codes,
-            vec![
-                ("ISO3166-2", "FR-BRE"),
-                ("ref:INSEE", "53"),
-                ("ref:nuts", "FRH;FRH0"),
-                ("ref:nuts:1", "FRH"),
-                ("ref:nuts:2", "FRH0"),
-                ("wikidata", "Q12130")
-            ]
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect()
-        )
+        assert_eq!(stop1.id, "stop_area:CHA");
+        assert_eq!(stop1.lines.len(), 1);
     }
 }

@@ -167,9 +167,8 @@ pub struct Args {
     #[structopt(short = "p", long = "import-poi")]
     import_poi: Option<bool>,
     /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset")]
-    pub dataset: Option<String>,
-
+    #[structopt(short = "d", long, default_value = "fr")]
+    pub dataset: String,
     /// Mappings file for Street documents
     #[structopt(parse(from_os_str), long = "street-mappings")]
     street_mappings: Option<PathBuf>,
@@ -233,10 +232,10 @@ impl Source for Args {
     fn collect(&self) -> Result<HashMap<String, Value>, ConfigError> {
         let mut m = HashMap::new();
 
-        // DATASET
-        if let Some(dataset) = self.dataset.clone() {
-            m.insert(String::from("dataset"), Value::new(None, dataset));
-        }
+        m.insert(
+            String::from("dataset"),
+            Value::new(None, self.dataset.clone()),
+        );
 
         // WAY
         if let Some(import_way) = self.import_way {
@@ -303,37 +302,25 @@ impl Source for Args {
 
 impl Args {
     pub fn get_street_config(&self) -> Result<Config, Error> {
-        let mut config = load_es_config_for::<places::street::Street>(
+        let config = load_es_config_for::<places::street::Street>(
             self.street_mappings.clone(),
             self.street_settings.clone(),
             self.override_street_settings.clone(),
+            self.dataset.clone(),
         )
         .map_err(|err| format_err!("could not load street configuration: {}", err))?;
-
-        if let Some(dataset) = &self.dataset {
-            config = Config::builder()
-                .add_source(config)
-                .set_override("container.dataset", dataset.clone())?
-                .build()?;
-        }
 
         Ok(config)
     }
 
     pub fn get_poi_config(&self) -> Result<Config, Error> {
-        let mut config = load_es_config_for::<places::poi::Poi>(
+        let config = load_es_config_for::<places::poi::Poi>(
             self.poi_mappings.clone(),
             self.poi_settings.clone(),
             self.override_poi_settings.clone(),
+            self.dataset.clone(),
         )
         .map_err(|err| format_err!("could not load poi configuration: {}", err))?;
-
-        if let Some(dataset) = &self.dataset {
-            config = Config::builder()
-                .add_source(config)
-                .set_override("container.dataset", dataset.clone())?
-                .build()?;
-        }
 
         Ok(config)
     }

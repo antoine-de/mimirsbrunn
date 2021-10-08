@@ -417,7 +417,6 @@ import_bano
 
 import_osm
 [[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
-# 
-# import_ntfs
-# [[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }
-#
+ 
+import_ntfs
+[[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }

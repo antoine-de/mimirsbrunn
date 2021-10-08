@@ -2793,11 +2793,13 @@ checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
 name = "places"
 version = "0.1.0"
 dependencies = [
+ "chrono-tz",
  "common",
  "config",
  "cosmogony",
  "geo-types 0.7.2",
  "geojson 0.22.2",
+ "human-sort",
  "navitia-poi-model",
  "serde",
  "tracing",
