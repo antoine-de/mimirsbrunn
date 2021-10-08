@@ -278,8 +278,8 @@ download_ntfs() {
   [[ $? != 0 ]] && { log_error "Could not find NTFS URL. Aborting"; return 1; }
   wget --quiet --content-disposition --directory-prefix="${DATA_DIR}/ntfs" "${NTFS_URL}"
   [[ $? != 0 ]] && { log_error "Could not download NTFS from ${NTFS_URL}. Aborting"; return 1; }
-  rm "${DATA_DIR}/${NTFS_REGION}.csv"
-  unzip -d "${DATA_DIR}/ntfs" "${DATA_DIR}/ntfs/*.zip"
+  rm "${DATA_DIR}/${NTFS_REGION}.csv" > /dev/null 2>&1
+  unzip -o -d "${DATA_DIR}/ntfs" "${DATA_DIR}/ntfs/*.zip" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not unzip NTFS from ${DATA_DIR}/ntfs. Aborting"; return 1; }
   return 0
 }
