@@ -196,11 +196,11 @@ restart_docker_es() {
 
 import_templates() {
   log_info "Importing templates into ${ES_NAME}"
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/addr_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/poi_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/stop_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/admin_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/street_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/addr_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/poi_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/stop_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/admin_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/street_settings.json > /dev/null 2> /dev/null
   return 0
 }
 
@@ -229,7 +229,7 @@ import_cosmogony() {
   local INPUT="${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz"
   [[ -f "${INPUT}" ]] || { log_error "cosmogony2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${COSMOGONY2MIMIR}" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))" --input "${INPUT}"
+  "${COSMOGONY2MIMIR}" --connection-string "http://${ES_HOST}:$((9200+ES_PORT_OFFSET))" --input "${INPUT}"
   [[ $? != 0 ]] && { log_error "Could not import cosmogony data from ${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz into mimir. Aborting"; return 1; }
   return 0
 }
@@ -241,7 +241,7 @@ import_osm() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   [[ -f "${INPUT}" ]] || { log_error "osm2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))"
+  "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" --connection-string "http://${ES_HOST}:$((9200+ES_PORT_OFFSET))"
   [[ $? != 0 ]] && { log_error "Could not import OSM PBF data for ${OSM_REGION} into mimir. Aborting"; return 1; }
   return 0
 }
@@ -263,7 +263,7 @@ import_ntfs() {
   log_info "Importing ntfs into mimir"
   local NTFS2MIMIR="${MIMIR_DIR}/target/release/ntfs2mimir"
   command -v "${NTFS2MIMIR}" > /dev/null 2>&1  || { log_error "osm2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  "${NTFS2MIMIR}" --input "${DATA_DIR}/ntfs" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))" > /dev/null 2>&1
+  "${NTFS2MIMIR}" --input "${DATA_DIR}/ntfs" --connection-string "http://${ES_HOST}:$((9200+ES_PORT_OFFSET))" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not import NTFS data from ${DATA_DIR}/ntfs into mimir. Aborting"; return 1; }
   return 0
 }
@@ -301,7 +301,7 @@ import_bano() {
 import_bano_region() {
   local BANO_FILE="${1}"
   log_info "- Importing ${BANO_FILE} into mimir"
-  "${BANO2MIMIR}" --connection-string "http://localhost:$((9200+ES_PORT_OFFSET))" --input "${BANO_FILE}" > /dev/null 2>&1
+  "${BANO2MIMIR}" --connection-string "http://${ES_HOST}:$((9200+ES_PORT_OFFSET))" --input "${BANO_FILE}" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not import bano from ${BANO_FILE} into mimir. Aborting"; return 1; }
   return 0
 }
