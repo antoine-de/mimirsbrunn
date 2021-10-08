@@ -118,6 +118,11 @@ path = "src/bragi/main.rs"
 name = "end_to_end"
 harness = false # Allows Cucumber to print output instead of libtest
 
+[[test]]
+name = "idf"
+harness = false # Allows Cucumber to print output instead of libtest
+test = false
+
 # [[test]]
 # name = "integration"
 # harness = false # Allows Cucumber to print output instead of libtest

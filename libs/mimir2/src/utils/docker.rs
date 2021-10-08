@@ -25,11 +25,22 @@ use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 const DOCKER_ES_VERSION: &str = "7.13.0";
 
 pub async fn initialize() -> Result<(), Error> {
+    initialize_with_param(true).await
+}
+
+/// Initializes a docker container for testing
+/// It will see if a docker container is available with the default name
+/// If there is no container, it will create one.
+/// If there is already a container, and the parameter cleanup is true,
+/// then all the indices found on that Elasticsearch are wiped out.
+/// Once the container is available, a connection is attempted, to make
+/// sure subsequent calls to that Elasticsearch will be successful.
+pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
     let mut docker = DockerWrapper::new();
     let is_available = docker.is_container_available().await?;
     if !is_available {
         docker.create_container().await?;
-    } else {
+    } else if cleanup {
         docker.cleanup().await?;
     }
     let is_available = docker.is_container_available().await?;

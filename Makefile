@@ -51,7 +51,10 @@ lint: ## Check quality of the code
 	cargo clippy --all-features --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
 
 test: ## Launch all tests
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --all-targets
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --lib
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --bins
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --doc
+	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --test end_to_end
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package mimir2
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package common
 	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package places

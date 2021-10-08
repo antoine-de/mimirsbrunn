@@ -3,14 +3,12 @@ use crate::state::{State, Step, StepStatus};
 use async_trait::async_trait;
 use common::document::ContainerDocument;
 use cucumber::{t, StepContext, Steps};
-use mimir2::adapters::primary::common::dsl::build_query;
-use mimir2::adapters::primary::common::filters::Filters;
-use mimir2::adapters::primary::common::settings::QuerySettings;
+use mimir2::adapters::primary::{
+    common::dsl::build_query, common::filters::Filters, common::settings::QuerySettings,
+};
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::model::query::Query;
-use mimir2::domain::ports::primary::search_documents::SearchDocuments;
-use places::addr::Addr;
-use places::admin::Admin;
+use mimir2::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
@@ -18,12 +16,40 @@ pub fn steps() -> Steps<State> {
     steps.when_regex_async(
         "the user searches for \"(.*)\"",
         t!(|mut state, ctx| {
+            let domain = vec![
+                Addr::static_doc_type().to_string(),
+                Admin::static_doc_type().to_string(),
+                Street::static_doc_type().to_string(),
+                Stop::static_doc_type().to_string(),
+                Poi::static_doc_type().to_string(),
+            ];
+
             let query = ctx.matches[1].clone();
 
             state
-                .execute(Search::new(query), &ctx)
+                .execute(Search::new(domain, query), &ctx)
                 .await
-                .expect("failed to index cosmogony file");
+                .expect("failed to search");
+
+            state
+        }),
+    );
+
+    steps.when_regex_async(
+        "the user searches \"(.*)\" for \"(.*)\"",
+        t!(|mut state, ctx| {
+            let domain: Vec<String> = ctx.matches[1]
+                .clone()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+
+            let query = ctx.matches[2].clone();
+
+            state
+                .execute(Search::new(domain, query), &ctx)
+                .await
+                .expect("failed to search");
 
             state
         }),
@@ -37,7 +63,7 @@ pub fn steps() -> Steps<State> {
             state
                 .execute(HasDocument { id, max_rank: 1 }, &ctx)
                 .await
-                .expect("failed to index cosmogony file");
+                .expect("failed to find document");
 
             state
         }),
@@ -48,13 +74,15 @@ pub fn steps() -> Steps<State> {
 
 /// Perform a search in current Elasticsearch DB.
 pub struct Search {
+    domain: Vec<String>,
     query: String,
     results: Vec<serde_json::Value>,
 }
 
 impl Search {
-    pub fn new(query: String) -> Self {
+    pub fn new(domain: Vec<String>, query: String) -> Self {
         Self {
+            domain,
             query,
             results: Vec::new(),
         }
@@ -77,13 +105,7 @@ impl Step for Search {
         // Fetch documents
         self.results = {
             client
-                .search_documents(
-                    vec![
-                        Admin::static_doc_type().to_string(),
-                        Addr::static_doc_type().to_string(),
-                    ],
-                    Query::QueryDSL(dsl),
-                )
+                .search_documents(self.domain.clone(), Query::QueryDSL(dsl))
                 .await
                 .unwrap()
         };
@@ -109,7 +131,10 @@ impl Step for HasDocument {
             .expect("the user must perform a search before checking results");
 
         let (rank, _) = (search.results.iter().enumerate())
-            .find(|(_, doc)| self.id == doc["id"].as_str().unwrap())
+            .find(|(_, doc)| {
+                println!("{} vs {}", self.id, doc["id"].as_str().unwrap());
+                self.id == doc["id"].as_str().unwrap()
+            })
             .expect("document was not found in search results");
 
         assert!(rank < self.max_rank);
