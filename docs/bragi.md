@@ -169,10 +169,10 @@ TODO How to specify negative long lat ?
 
 <table>
 <colgroup>
-<col style="width: 12%" />
-<col style="width: 18%" />
-<col style="width: 41%" />
-<col style="width: 27%" />
+<col style="width: 11%" />
+<col style="width: 16%" />
+<col style="width: 47%" />
+<col style="width: 24%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -212,7 +212,13 @@ TODO How to specify negative long lat ?
 <tr class="odd">
 <td>type</td>
 <td>list of strings (optional)</td>
-<td>restrics the search to the given place types. (2)</td>
+<td><p>restrics the search to the given place types.</p>
+<p>Possible values are: * house, * poi, * public_transport:stop_area, * street, * zone</p>
+<ol type="1">
+<li>If no type is given, all types are searched.</li>
+<li>This type parameter is featured in the response.</li>
+<li>Some types require a <em>sub type</em>, eg poi =&gt; poi_type</li>
+</ol></td>
 <td><code>type[]=streets&amp;</code> <code>type[]=zone</code></td>
 </tr>
 <tr class="even">
@@ -229,6 +235,7 @@ TODO How to specify negative long lat ?
 </tr>
 </tbody>
 </table>
+
 TODO Finish
 
 pub shape: Option<String>,

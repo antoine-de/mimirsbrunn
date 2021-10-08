@@ -1,8 +1,10 @@
 use convert_case::{Case, Casing};
-use places::utils::serialize_rect;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+
+use crate::adapters::primary::bragi::api;
+use places::utils::serialize_rect;
 
 /// GeocodeJSON is a an extension of the GeoJSON standard.
 // It must contain the following three items
@@ -72,7 +74,7 @@ pub struct Properties {
 pub struct GeocodeJsonProperty {
     pub id: String,
     #[serde(rename = "type")]
-    pub place_type: places::PlaceDocType,
+    pub place_type: api::Type,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub zone_type: Option<String>,
     pub label: Option<String>,
@@ -232,7 +234,7 @@ impl FromWithLang<places::admin::Admin> for GeocodeJsonProperty {
             lines: vec![],
             name,
             physical_modes: vec![],
-            place_type: places::PlaceDocType::Admin,
+            place_type: api::Type::Zone,
             poi_types: vec![],
             postcode,
             properties: BTreeMap::new(),
@@ -297,7 +299,7 @@ impl FromWithLang<places::street::Street> for GeocodeJsonProperty {
             lines: vec![],
             name: name.clone(),
             physical_modes: vec![],
-            place_type: places::PlaceDocType::Street,
+            place_type: api::Type::Street,
             poi_types: vec![],
             postcode,
             properties: BTreeMap::new(),
@@ -346,7 +348,7 @@ impl FromWithLang<places::addr::Addr> for GeocodeJsonProperty {
             lines: vec![],
             name,
             physical_modes: vec![],
-            place_type: places::PlaceDocType::Addr,
+            place_type: api::Type::House,
             poi_types: vec![],
             postcode,
             properties: BTreeMap::new(),
@@ -409,7 +411,7 @@ impl FromWithLang<places::poi::Poi> for GeocodeJsonProperty {
             lines: vec![],
             name,
             physical_modes: vec![],
-            place_type: places::PlaceDocType::Poi,
+            place_type: api::Type::Poi,
             poi_types: vec![poi.poi_type],
             postcode,
             properties: poi.properties,
@@ -456,7 +458,7 @@ impl FromWithLang<places::stop::Stop> for GeocodeJsonProperty {
             lines: stop.lines,
             name,
             physical_modes: stop.physical_modes,
-            place_type: places::PlaceDocType::Stop,
+            place_type: api::Type::StopArea,
             poi_types: vec![],
             postcode,
             properties: stop.properties,
