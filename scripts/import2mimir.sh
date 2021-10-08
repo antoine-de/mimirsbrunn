@@ -289,14 +289,9 @@ import_bano() {
   log_info "Importing bano into mimir"
   local BANO2MIMIR="${MIMIR_DIR}/target/release/bano2mimir"
   command -v "${BANO2MIMIR}" > /dev/null 2>&1  || { log_error "bano2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  OIFS=$IFS
-  IFS=" "
-  read -r -a BANO_ARRAY <<< "${BANO_REGION}"
-  for REGION in "${BANO_ARRAY[@]}"; do
-    import_bano_region "${DATA_DIR}/bano/bano-${REGION}.csv"
-    [[ $? != 0 ]] && { log_error "Could not import bano from ${DATA_DIR}/bano/bano-${REGION}.csv into mimir. Aborting"; return 1; }
-  done
-  IFS=$OIFS
+  # For Bano, we import the entire content of the directory
+  import_bano_region "${DATA_DIR}/bano"
+  [[ $? != 0 ]] && { log_error "Could not import bano from ${DATA_DIR}/bano into mimir. Aborting"; return 1; }
   return 0
 }
 
@@ -390,8 +385,8 @@ check_environment
 restart_docker_es 9200
 [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
 
-import_templates
-[[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
+# import_templates
+# [[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
 
 # The order in which the import are done into mimir is important!
 # First we generate the admin regions with cosmogony
