@@ -5,6 +5,8 @@ use serde_json::Value as JsonValue;
 
 use crate::adapters::primary::common::coord::Coord;
 use crate::adapters::primary::common::filters::Filters;
+use common::document::ContainerDocument;
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
 /// This structure contains all the query parameters that
 /// can be submitted for the autocomplete endpoint.
@@ -151,6 +153,16 @@ impl Type {
             Type::StopArea => "public_transport:stop_area",
             Type::Street => "street",
             Type::Zone => "zone",
+        }
+    }
+
+    pub fn as_index_type(&self) -> &'static str {
+        match self {
+            Type::House => Addr::static_doc_type(),
+            Type::Poi => Poi::static_doc_type(),
+            Type::StopArea => Stop::static_doc_type(),
+            Type::Street => Street::static_doc_type(),
+            Type::Zone => Admin::static_doc_type(),
         }
     }
 }

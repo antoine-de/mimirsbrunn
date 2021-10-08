@@ -6,9 +6,12 @@ use warp::reply::{json, with_status};
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, ReverseGeocoderQuery,
-        StatusResponseBody,
+        StatusResponseBody, Type,
     },
-    common::{dsl, filters, geocoding::FromWithLang, geocoding::GeocodeJsonResponse, settings},
+    common::{
+        dsl, filters, geocoding::Feature, geocoding::FromWithLang, geocoding::GeocodeJsonResponse,
+        settings,
+    },
 };
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
@@ -29,31 +32,38 @@ where
     S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
+    let search_types = types_to_indices(&params.types);
     let filters = filters::Filters::from((params, geometry));
-
     let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
 
     match client
-        .search_documents(
-            vec![
-                String::from(Admin::static_doc_type()),
-                String::from(Street::static_doc_type()),
-                String::from(Addr::static_doc_type()),
-                String::from(Stop::static_doc_type()),
-                String::from(Poi::static_doc_type()),
-            ],
-            Query::QueryDSL(dsl),
-        )
+        .search_documents(search_types, Query::QueryDSL(dsl))
         .await
     {
         Ok(res) => {
-            let places = res
+            let places: Result<Vec<Place>, serde_json::Error> = res
                 .into_iter()
-                .map(|json| serde_json::from_value::<Place>(json.into()).unwrap())
+                .map(|json| serde_json::from_value::<Place>(json.into()))
                 .collect();
 
-            let resp = GeocodeJsonResponse::from_with_lang(places, None);
-            Ok(with_status(json(&resp), StatusCode::OK))
+            match places {
+                Ok(places) => {
+                    let features = places
+                        .into_iter()
+                        .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
+                        .collect();
+                    let resp = GeocodeJsonResponse::new(q, features);
+                    Ok(with_status(json(&resp), StatusCode::OK))
+                }
+                Err(err) => Ok(with_status(
+                    json(&format!(
+                        "Error while searching {}: {}",
+                        &q,
+                        err.to_string()
+                    )),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                )),
+            }
         }
         Err(err) => Ok(with_status(
             json(&format!(
@@ -129,5 +139,21 @@ where
             json(&format!("Error while querying status: {}", err.to_string())),
             StatusCode::INTERNAL_SERVER_ERROR,
         )),
+    }
+}
+
+// This translate the search types requested in the query into index types to search for.
+// If no type were specified, we search all indices.
+fn types_to_indices(types: &Option<Vec<Type>>) -> Vec<String> {
+    if let Some(ts) = types {
+        ts.iter().map(|t| t.as_index_type().to_string()).collect()
+    } else {
+        vec![
+            String::from(Admin::static_doc_type()),
+            String::from(Street::static_doc_type()),
+            String::from(Addr::static_doc_type()),
+            String::from(Stop::static_doc_type()),
+            String::from(Poi::static_doc_type()),
+        ]
     }
 }
