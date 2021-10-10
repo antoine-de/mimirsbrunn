@@ -29,7 +29,6 @@
 // www.navitia.io
 use super::OsmPbfReader;
 use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
-use crate::utils;
 use cosmogony::ZoneType;
 use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
@@ -171,7 +170,9 @@ pub fn read_administrative_regions(
                 boundary,
                 zone_type,
                 parent_id: None,
-                country_codes: utils::get_country_code(&codes).into_iter().collect(),
+                country_codes: places::utils::get_country_code(&codes)
+                    .into_iter()
+                    .collect(),
                 codes,
                 names: places::i18n_properties::I18nProperties::default(),
                 labels: places::i18n_properties::I18nProperties::default(),
@@ -183,7 +184,7 @@ pub fn read_administrative_regions(
         }
     }
 
-    utils::normalize_admin_weight(&mut administrative_regions);
+    places::admin::normalize_admin_weight(&mut administrative_regions);
 
     administrative_regions
 }

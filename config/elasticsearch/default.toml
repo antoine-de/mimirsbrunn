@@ -1,0 +1,4 @@
+[elasticsearch]
+url = "http://localhost:9200"
+timeout = 100
+version_req = ">=7.13.0"

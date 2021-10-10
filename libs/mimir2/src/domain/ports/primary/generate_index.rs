@@ -30,20 +30,10 @@ where
         documents: impl Stream<Item = D> + Send + Sync + 'static,
         visibility: IndexVisibility,
     ) -> Result<Index, ModelError> {
-        // 1. We modify the name of the index:
-        //   currently set to the dataset, it should be something like root_doctype_dataset_timestamp
-        // 2. Then we create the index
-        // 3. We insert the document stream in that newly created index
-        // 4. We publish the index
-        // 5. We search for the newly created index to return it.
-
-        // So we need the name of the document type.... At one point it was easy, I could use
-        // a constant associated with the trait Document, and I'd be done with T::DOC_TYPE.
-        // But then I had to turn this into a trait object, which forbids using associated
-        // constant... So I made it a function argument.... but then the information is twice in
-        // there:
-        //   1) in the document type
-        //   2) in the parameter doc_type
+        // 1. We create the index
+        // 2. We insert the document stream in that newly created index
+        // 3. We publish the index
+        // 4. We search for the newly created index to return it.
         let index = self
             .create_container(config)
             .await

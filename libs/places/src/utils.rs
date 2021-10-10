@@ -1,6 +1,7 @@
 use geo_types::{Coordinate, MultiPolygon, Rect};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use tracing::warn;
 
 /// Build default configuration for given place type. By convention this will look in
@@ -121,4 +122,8 @@ where
             _ => None,
         })
     })
+}
+
+pub fn get_country_code(codes: &BTreeMap<String, String>) -> Option<String> {
+    codes.get("ISO3166-1:alpha2").cloned()
 }

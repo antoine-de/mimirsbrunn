@@ -32,7 +32,7 @@ use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, settings::osm2mimir::Settings, utils};
+use crate::{labels, settings::osm2mimir::Settings};
 use common::document::ContainerDocument;
 use mimir2::{
     domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
@@ -45,11 +45,30 @@ use places::{
     Address,
 };
 use serde::{Deserialize, Serialize};
-use slog_scope::{info, warn};
 use std::collections::BTreeMap;
-use std::error::Error;
+use tracing::{info, instrument, warn};
+// use std::error::Error;
+use snafu::{ResultExt, Snafu};
 use std::io;
 use std::ops::Deref;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Obj Wrapper Error: {}", msg))]
+    ObjWrapperCreation { msg: String },
+
+    #[snafu(display("OsmPbfReader Extraction Error: {} [{}]", msg, source))]
+    OsmPbfReaderExtraction {
+        msg: String,
+        source: osmpbfreader::Error,
+    },
+
+    #[snafu(display("JSON Deserialization Error [{}]", source))]
+    JsonDeserialization { source: serde_json::Error },
+
+    #[snafu(display("Poi Validation Error: {}", msg))]
+    PoiValidation { msg: String },
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OsmTagsFilter {
@@ -73,19 +92,20 @@ pub struct PoiConfig {
 
 impl Default for PoiConfig {
     fn default() -> Self {
-        let default_settings: Settings = toml::from_str(include_str!("../../config/osm2mimir-default.toml"))
+        let default_settings: Settings = toml::from_str(include_str!("../../config/osm2mimir/default.toml"))
             .expect("Could not read default osm2mimir settings for default poi types from osm2mimir-default.toml");
         let config = default_settings
-            .poi
-            .and_then(|poi| poi.config)
-            .expect("osm2mimir-default.toml does not contain default poi types");
-        config.check().unwrap();
+            .pois
+            .config
+            .expect("default poi config should be available");
+
+        config.check().expect("default poi config should be valid");
         config
     }
 }
 impl PoiConfig {
-    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<dyn Error>> {
-        let config: PoiConfig = serde_json::from_reader(r)?;
+    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Error> {
+        let config: PoiConfig = serde_json::from_reader(r).context(JsonDeserialization)?;
         config.check()?;
         Ok(config)
     }
@@ -109,19 +129,21 @@ impl PoiConfig {
                     .find(|poi_type| poi_type.id == rule.poi_type_id)
             })
     }
-    pub fn check(&self) -> Result<(), Box<dyn Error>> {
+    pub fn check(&self) -> Result<(), Error> {
         use std::collections::BTreeSet;
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
             if !ids.insert(&poi_type.id) {
-                return Err(format!("poi_type_id {:?} present several times", poi_type.id).into());
+                return Err(Error::PoiValidation {
+                    msg: format!("poi_type_id {:?} present several times", poi_type.id),
+                });
             }
         }
         for rule in &self.rules {
             if !ids.contains(rule.poi_type_id.as_str()) {
-                return Err(
-                    format!("poi_type_id {:?} in a rule not declared", rule.poi_type_id).into(),
-                );
+                return Err(Error::PoiValidation {
+                    msg: format!("poi_type_id {:?} in a rule not declared", rule.poi_type_id),
+                });
             }
         }
         Ok(())
@@ -177,20 +199,20 @@ fn parse_poi(
         return None;
     }
 
-    let adms = admins_geofinder.get(&coord);
+    let admins = admins_geofinder.get(&coord);
     let zip_codes = match osmobj.tags().get("addr:postcode") {
         Some(val) if !val.is_empty() => vec![val.to_string()],
-        _ => utils::get_zip_codes_from_admins(&adms),
+        _ => places::admin::get_zip_codes_from_admins(&admins),
     };
-    let country_codes = utils::find_country_codes(adms.iter().map(|a| a.deref()));
+    let country_codes = places::admin::find_country_codes(admins.iter().map(|a| a.deref()));
     Some(Poi {
         id,
         name: name.to_string(),
-        label: labels::format_poi_label(name, adms.iter().map(|a| a.deref()), &country_codes),
+        label: labels::format_poi_label(name, admins.iter().map(|a| a.deref()), &country_codes),
         coord,
         approx_coord: Some(coord.into()),
         zip_codes,
-        administrative_regions: adms,
+        administrative_regions: admins,
         weight: 0.,
         poi_type: poi_type.clone(),
         properties: make_properties(osmobj.tags()),
@@ -208,17 +230,22 @@ fn format_poi_id(osm_type: &str, id: i64) -> String {
 }
 
 // FIXME Should produce a stream
+#[instrument(skip(osm_reader, admins_geofinder))]
 pub fn pois(
-    pbf: &mut OsmPbfReader,
+    osm_reader: &mut OsmPbfReader,
     matcher: &PoiConfig,
     admins_geofinder: &AdminGeoFinder,
-) -> Vec<Poi> {
-    let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o.tags())).unwrap();
-    objects
+) -> Result<Vec<Poi>, Error> {
+    let objects = osm_reader
+        .get_objs_and_deps(|o| matcher.is_poi(o.tags()))
+        .context(OsmPbfReaderExtraction {
+            msg: String::from("Could not read objects and dependencies from pbf"),
+        })?;
+    Ok(objects
         .iter()
         .filter(|&(_, obj)| matcher.is_poi(obj.tags()))
         .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder))
-        .collect()
+        .collect())
 }
 
 pub fn compute_weight(poi: Poi) -> Poi {

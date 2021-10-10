@@ -28,15 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use std::path::PathBuf;
+use structopt::StructOpt;
+
 use common::config::load_es_config_for;
-use failure::{format_err, Error};
 use mimir2::{
     adapters::secondary::elasticsearch::{self, ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ},
     domain::ports::secondary::remote::Remote,
 };
 use places::admin::Admin;
-use std::path::PathBuf;
-use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -63,23 +63,18 @@ struct Args {
 
 #[tokio::main]
 async fn main() {
-    mimirsbrunn::utils::launch_async(index_cosmogony).await;
+    mimirsbrunn::utils::launch::launch_async(index_cosmogony).await;
 }
 
-async fn index_cosmogony(args: Args) -> Result<(), Error> {
+async fn index_cosmogony(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     let pool = elasticsearch::remote::connection_pool_url(&args.connection_string)
         .await
-        .map_err(|err| {
-            format_err!(
-                "could not create elasticsearch connection pool: {}",
-                err.to_string()
-            )
-        })?;
+        .map_err(|err| Box::new(err))?;
 
     let client = pool
         .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
         .await
-        .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
+        .map_err(|err| Box::new(err))?;
 
     let config = load_es_config_for::<Admin>(
         args.mappings,
@@ -87,11 +82,11 @@ async fn index_cosmogony(args: Args) -> Result<(), Error> {
         args.override_settings,
         args.dataset,
     )
-    .map_err(|err| format_err!("could not load configuration: {}", err))?;
+    .map_err(|err| Box::new(err))?;
 
     mimirsbrunn::admin::index_cosmogony(args.input, args.langs, config, &client)
         .await
-        .map_err(|err| format_err!("could not index cosmogony: {}", err.to_string()))
+        .map_err(|err| Box::new(err))
 }
 
 #[cfg(test)]
@@ -126,7 +121,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
         assert!(res
             .unwrap_err()
             .to_string()
@@ -146,7 +141,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
         assert!(res
             .unwrap_err()
             .to_string()
@@ -170,7 +165,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
 
         assert!(res
             .unwrap_err()
@@ -195,7 +190,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
 
         assert!(dbg!(res.unwrap_err().to_string()).contains("expected value at line 1 column 1"));
     }
@@ -217,7 +212,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
 
         assert!(res
             .unwrap_err()
@@ -242,7 +237,7 @@ mod tests {
             override_settings: vec!["no-value".to_string()],
         };
 
-        let res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
 
         assert!(res
             .unwrap_err()
@@ -267,7 +262,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
@@ -309,7 +304,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
 
         let pool = remote::connection_test_pool()
             .await
@@ -350,7 +345,7 @@ mod tests {
             override_settings: vec![],
         };
 
-        let _res = mimirsbrunn::utils::launch_async_args(index_cosmogony, args).await;
+        let _res = mimirsbrunn::utils::launch::launch_async_args(index_cosmogony, args).await;
 
         // Now we query the index we just created. Since a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.

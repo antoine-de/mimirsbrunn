@@ -1,118 +1,114 @@
-# Configuration for osm2mimir
-# Since this is the default configuration, which is embedded in the code,
-# you should rebuild mimirsbrunn if you change a value in this file.
+[logging]
+  path = "./logs"
 
-dataset = "fr"
+[container]
+  dataset = "fr"
 
-[elasticsearch]
-  connection_string = "http://localhost:9200/munin"
-  insert_thread_count = 1
-
-[street]
+[streets]
   import = false
-  [street.exclusion]
+  [streets.exclusion]
     # See [OSM Key Highway](https://wiki.openstreetmap.org/wiki/Key:highway) for background.
     highway = [ "bus_guideway", "bus_stop", "elevator", "escape", "platform" ]
     public_transport = [ "platform", "hub" ]
 
-[poi]
+[pois]
   import = false
-  [poi.config]
-    [[poi.config.types]]
+  [pois.config]
+    [[pois.config.types]]
       id = "poi_type:amenity:college"
       name = "École"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:university"
       name = "Université"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:theatre"
       name = "Théâtre"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:hospital"
       name = "Hôpital"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:post_office"
       name = "Bureau de poste"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:bicycle_rental"
       name = "Station VLS"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:bicycle_parking"
       name = "Parking vélo"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:parking"
       name = "Parking"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:police"
       name = "Police, gendarmerie"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:amenity:townhall"
       name = "Mairie"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:leisure:garden"
       name = "Jardin"
-    [[poi.config.types]]
+    [[pois.config.types]]
       id = "poi_type:leisure:park"
       name = "Parc, espace vert"
 
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:college"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "college"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:university"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "university"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:theatre"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "theatre"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:hospital"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "hospital"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:post_office"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "post_office"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:bicycle_rental"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "bicycle_rental"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:bicycle_parking"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "bicycle_parking"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:parking"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "parking"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:police"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "police"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:amenity:townhall"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "amenity"
         value = "townhall"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:leisure:garden"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "leisure"
         value = "garden"
-    [[poi.config.rules]]
+    [[pois.config.rules]]
       type = "poi_type:leisure:park"
-      [[poi.config.rules.osm_tags_filters]]
+      [[pois.config.rules.osm_tags_filters]]
         key = "leisure"
         value = "park"
 
