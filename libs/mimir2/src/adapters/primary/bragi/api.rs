@@ -5,7 +5,13 @@ use serde_json::Value as JsonValue;
 
 use crate::adapters::primary::common::coord::Coord;
 use crate::adapters::primary::common::filters::Filters;
+use common::document::ContainerDocument;
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
+/// This structure contains all the query parameters that
+/// can be submitted for the autocomplete endpoint.
+///
+/// Only the `q` parameter is mandatory.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForwardGeocoderQuery {
@@ -41,6 +47,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
     }
 }
 
+/// This structure contains all the query parameters that
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReverseGeocoderQuery {
@@ -51,22 +58,6 @@ pub struct ReverseGeocoderQuery {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JsonParam {
     pub shape: GeoJson,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchResponseBody<D> {
-    pub docs: Vec<D>,
-    pub docs_count: usize,
-}
-
-impl<D> From<Vec<D>> for SearchResponseBody<D> {
-    fn from(values: Vec<D>) -> Self {
-        SearchResponseBody {
-            docs_count: values.len(),
-            docs: values,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,6 +80,12 @@ pub struct BragiStatus {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MimirStatus {
+    pub version: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ElasticsearchStatus {
     pub version: String,
     pub health: String,
@@ -99,9 +96,13 @@ pub struct ElasticsearchStatus {
 #[serde(rename_all = "camelCase")]
 pub struct StatusResponseBody {
     pub bragi: BragiStatus,
+    pub mimir: MimirStatus,
     pub elasticsearch: ElasticsearchStatus,
 }
 
+/// This macro is used to define the forward_geocoder route.
+/// It takes a client (ElasticsearchStorage) and query settings
+///
 #[macro_export]
 macro_rules! forward_geocoder {
     ($cl:expr, $st:expr) => {
@@ -159,6 +160,16 @@ impl Type {
             Type::StopArea => "public_transport:stop_area",
             Type::Street => "street",
             Type::Zone => "zone",
+        }
+    }
+
+    pub fn as_index_type(&self) -> &'static str {
+        match self {
+            Type::House => Addr::static_doc_type(),
+            Type::Poi => Poi::static_doc_type(),
+            Type::StopArea => Stop::static_doc_type(),
+            Type::Street => Street::static_doc_type(),
+            Type::Zone => Admin::static_doc_type(),
         }
     }
 }

@@ -5,16 +5,19 @@ use warp::reply::{json, with_status};
 
 use crate::adapters::primary::{
     bragi::api::{
-        BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, ReverseGeocoderQuery,
-        SearchResponseBody, StatusResponseBody,
+        BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
+        StatusResponseBody, Type,
     },
-    common::{dsl, filters, settings},
+    common::{
+        dsl, filters, geocoding::Feature, geocoding::FromWithLang, geocoding::GeocodeJsonResponse,
+        settings,
+    },
 };
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -26,29 +29,41 @@ pub async fn forward_geocoder<S>(
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
-    S::Document: Serialize,
+    S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
+    let search_types = types_to_indices(&params.types);
     let filters = filters::Filters::from((params, geometry));
-
     let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
 
     match client
-        .search_documents(
-            vec![
-                String::from(Admin::static_doc_type()),
-                String::from(Street::static_doc_type()),
-                String::from(Addr::static_doc_type()),
-                String::from(Stop::static_doc_type()),
-                String::from(Poi::static_doc_type()),
-            ],
-            Query::QueryDSL(dsl),
-        )
+        .search_documents(search_types, Query::QueryDSL(dsl))
         .await
     {
         Ok(res) => {
-            let resp = SearchResponseBody::from(res);
-            Ok(with_status(json(&resp), StatusCode::OK))
+            let places: Result<Vec<Place>, serde_json::Error> = res
+                .into_iter()
+                .map(|json| serde_json::from_value::<Place>(json.into()))
+                .collect();
+
+            match places {
+                Ok(places) => {
+                    let features = places
+                        .into_iter()
+                        .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
+                        .collect();
+                    let resp = GeocodeJsonResponse::new(q, features);
+                    Ok(with_status(json(&resp), StatusCode::OK))
+                }
+                Err(err) => Ok(with_status(
+                    json(&format!(
+                        "Error while searching {}: {}",
+                        &q,
+                        err.to_string()
+                    )),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                )),
+            }
         }
         Err(err) => Ok(with_status(
             json(&format!(
@@ -68,7 +83,7 @@ pub async fn reverse_geocoder<S>(
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
-    S::Document: Serialize,
+    S::Document: Serialize + Into<serde_json::Value>,
 {
     let distance = format!("{}m", settings.reverse_query.radius);
     let dsl = dsl::build_reverse_query(&distance, params.lat, params.lon);
@@ -84,7 +99,12 @@ where
         .await
     {
         Ok(res) => {
-            let resp = SearchResponseBody::from(res);
+            let places = res
+                .into_iter()
+                .map(|json| serde_json::from_value::<Place>(json.into()).unwrap())
+                .collect();
+
+            let resp = GeocodeJsonResponse::from_with_lang(places, None);
             Ok(with_status(json(&resp), StatusCode::OK))
         }
         Err(err) => Ok(with_status(
@@ -107,9 +127,12 @@ where
                 bragi: BragiStatus {
                     version: VERSION.to_string(),
                 },
-                elasticsearch: ElasticsearchStatus {
+                mimir: MimirStatus {
                     version: res.version,
-                    health: res.health.to_string(),
+                },
+                elasticsearch: ElasticsearchStatus {
+                    version: res.storage.version,
+                    health: res.storage.health.to_string(),
                     url,
                 },
             };
@@ -119,5 +142,21 @@ where
             json(&format!("Error while querying status: {}", err.to_string())),
             StatusCode::INTERNAL_SERVER_ERROR,
         )),
+    }
+}
+
+// This translate the search types requested in the query into index types to search for.
+// If no type were specified, we search all indices.
+fn types_to_indices(types: &Option<Vec<Type>>) -> Vec<String> {
+    if let Some(ts) = types {
+        ts.iter().map(|t| t.as_index_type().to_string()).collect()
+    } else {
+        vec![
+            String::from(Admin::static_doc_type()),
+            String::from(Street::static_doc_type()),
+            String::from(Addr::static_doc_type()),
+            String::from(Stop::static_doc_type()),
+            String::from(Poi::static_doc_type()),
+        ]
     }
 }

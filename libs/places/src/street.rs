@@ -63,3 +63,9 @@ pub trait Incr: Clone {
     fn id(&self) -> &str;
     fn incr(&mut self);
 }
+
+impl From<&Street> for geojson::Geometry {
+    fn from(street: &Street) -> Self {
+        geojson::Geometry::from(street.coord)
+    }
+}

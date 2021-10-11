@@ -19,7 +19,7 @@ use poi::Poi;
 use stop::Stop;
 use street::Street;
 
-/// Object stored in elastic search
+/// Object stored in Elasticsearch
 #[allow(clippy::large_enum_variant)]
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
@@ -31,7 +31,7 @@ pub enum Place {
     Stop(Stop),
 }
 
-/// Object stored in elastic search
+/// Object stored in Elasticsearch
 #[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
@@ -200,6 +200,18 @@ impl From<navitia_poi_model::Property> for Property {
         Property {
             key: property.key,
             value: property.value,
+        }
+    }
+}
+
+impl From<&Place> for geojson::Geometry {
+    fn from(place: &Place) -> Self {
+        match place {
+            Place::Admin(admin) => geojson::Geometry::from(admin),
+            Place::Street(street) => geojson::Geometry::from(street),
+            Place::Addr(addr) => geojson::Geometry::from(addr),
+            Place::Poi(poi) => geojson::Geometry::from(poi),
+            Place::Stop(stop) => geojson::Geometry::from(stop),
         }
     }
 }

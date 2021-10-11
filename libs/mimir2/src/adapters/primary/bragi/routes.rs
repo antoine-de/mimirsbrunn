@@ -351,12 +351,13 @@ mod tests {
             .body(r#"{"shape":{"type":"Feature","properties":{}}}"#)
             .filter(&filter)
             .await;
+        println!("{:?}", resp);
         assert!(
             resp.unwrap_err()
                 .find::<warp::filters::body::BodyDeserializeError>()
                 .unwrap()
                 .to_string()
-                .contains("Expected GeoJSON property 'geometry'"),
+                .contains("Expected a GeoJSON property for `geometry`"),
             "Invalid GeoJSON shape (missing geometry). cannot deserialize body"
         );
     }
