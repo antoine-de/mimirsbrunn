@@ -34,15 +34,15 @@
     clippy::option_map_unit_fn
 )]
 
-use crate::Error;
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
-use slog_scope::info;
+use snafu::{ResultExt, Snafu};
+use tracing::info;
 
 #[cfg(feature = "db-storage")]
 use crate::settings::osm2mimir::Database;
 
 #[cfg(feature = "db-storage")]
-use slog_scope::error;
+use tracing::error;
 
 #[cfg(feature = "db-storage")]
 use std::fs;
@@ -97,6 +97,16 @@ macro_rules! get_kind {
     };
 }
 
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("DB Storage Error: {}", msg))]
+    DBStorage { msg: String },
+
+    #[cfg(feature = "db-storage")]
+    #[snafu(display("Sqlite Storage Error: {}", source))]
+    SqliteStorage { source: rusqlite::Error },
+}
+
 pub trait Getter {
     fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>>;
 }
@@ -117,10 +127,9 @@ pub struct Db<'a> {
 
 #[cfg(feature = "db-storage")]
 impl<'a> Db<'a> {
-    fn new(db_file: &'a Path, db_buffer_size: usize) -> Result<Db<'a>, String> {
+    fn new(db_file: &'a Path, db_buffer_size: usize) -> Result<Db<'a>, Error> {
         let _ = fs::remove_file(db_file); // we ignore any potential error
-        let conn = Connection::open(&db_file)
-            .map_err(|e| format!("failed to open SQLITE connection: {}", e))?;
+        let conn = Connection::open(&db_file).context(SqliteStorage)?;
 
         conn.execute(
             "CREATE TABLE ids (
@@ -131,7 +140,7 @@ impl<'a> Db<'a> {
              )",
             NO_PARAMS,
         )
-        .map_err(|e| format!("failed to create table: {}", e))?;
+        .context(SqliteStorage)?;
         Ok(Db {
             conn,
             db_file,
@@ -312,7 +321,7 @@ impl<'a> ObjWrapper<'a> {
     pub fn new(db: &'a Option<Database>) -> Result<ObjWrapper<'a>, Error> {
         Ok(if let Some(ref db) = db {
             info!("Running with Db storage");
-            ObjWrapper::Db(Db::new(&db.file, db.buffer_size).map_err(failure::err_msg)?)
+            ObjWrapper::Db(Db::new(&db.file, db.buffer_size)?)
         } else {
             info!("Running with BTreeMap (RAM) storage");
             ObjWrapper::Map(BTreeMap::new())

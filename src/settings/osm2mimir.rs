@@ -1,46 +1,24 @@
+use config::Config;
 /// This module contains the definition for osm2mimir configuration and command line arguments.
 ///
-// use config::{Config, Environment, File};
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::env;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use common::config::config_from_args;
-
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Arg Match Error: {}", msg))]
-    ArgMatch { msg: String },
-    #[snafu(display("Arg Missing Error: {}", msg))]
-    ArgMissing { msg: String },
-    #[snafu(display("Env Var Missing Error: {} [{}]", msg, source))]
-    EnvVarMissing { msg: String, source: env::VarError },
+    #[snafu(display("Config Compilation Error: {}", source))]
+    ConfigCompilation { source: common::config::Error },
     #[snafu(display("Config Merge Error: {} [{}]", msg, source))]
     ConfigMerge {
         msg: String,
         source: config::ConfigError,
     },
-    #[snafu(display("Config Extract Error: {} [{}]", msg, source))]
-    ConfigExtract {
-        msg: String,
-        source: config::ConfigError,
-    },
-    #[snafu(display("Config Value Error: {} [{}]", msg, source))]
-    ConfigValue {
-        msg: String,
-        source: std::num::TryFromIntError,
-    },
-    #[snafu(display("Config Value Error: {} [{}]", msg, source))]
-    ConfigParse {
-        msg: String,
-        source: std::num::ParseIntError,
-    },
-
     #[snafu(display("Invalid Configuration: {}", msg))]
     Invalid { msg: String },
 }
@@ -48,7 +26,7 @@ pub enum Error {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Street {
     pub import: bool,
-    pub exclusion: crate::osm_reader::street::StreetExclusion,
+    pub exclusions: crate::osm_reader::street::StreetExclusion,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,6 +52,13 @@ pub struct Elasticsearch {
     pub timeout: u64,
 }
 
+#[cfg(feature = "db-storage")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Database {
+    pub file: PathBuf,
+    pub buffer_size: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
@@ -82,7 +67,8 @@ pub struct Settings {
     pub pois: Poi,
     pub streets: Street,
     pub container: Container,
-    // FIXME Missing feature db-storage
+    #[cfg(feature = "db-storage")]
+    pub database: Option<Database>,
 }
 
 #[derive(Debug, StructOpt)]
@@ -101,7 +87,7 @@ pub struct Opts {
 
     /// Defines the run mode in {testing, dev, prod, ...}
     ///
-    /// If none is provided a default behavior will be used.
+    /// If no run mode is provided, a default behavior will be used.
     #[structopt(short = "m", long = "run-mode")]
     pub run_mode: Option<String>,
 
@@ -129,16 +115,27 @@ pub enum Command {
 impl Settings {
     // Read the configuration from <config-dir>/osm2mimir and <config-dir>/elasticsearch
     pub fn new(opts: &Opts) -> Result<Self, Error> {
-        let mut builder = crate::utils::config::config_builder_from(
-            opts.config_dir.as_ref(),
-            &["osm2mimir", "elasticsearch"],
-            opts.run_mode.clone(),
-            "OSM2MIMIR",
+        let mut builder = Config::builder();
+
+        builder = builder.add_source(
+            common::config::config_from(
+                opts.config_dir.as_ref(),
+                &[
+                    "osm2mimir",
+                    "osm2mimir/pois",
+                    "osm2mimir/streets",
+                    "elasticsearch",
+                ],
+                opts.run_mode.clone(),
+                "OSM2MIMIR",
+            )
+            .context(ConfigCompilation)?,
         );
 
         // Add command line overrides
-        builder =
-            builder.add_source(config_from_args(opts.settings.clone()).expect("from settings"));
+        builder = builder.add_source(
+            common::config::config_from_args(opts.settings.clone()).context(ConfigCompilation)?,
+        );
 
         // FIXME depending on service.pois.import and service.streets.import, read the corresponding
         // elasticsearch sub dirs.
@@ -175,9 +172,10 @@ mod tests {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
         let opts = Opts {
             config_dir,
-            run_mode: String::from("testing"),
+            run_mode: None,
             settings: vec![],
             cmd: Command::Run,
+            input: PathBuf::from("foo.osm.pbf"),
         };
         let settings = Settings::new(&opts);
         assert!(
@@ -185,7 +183,7 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().mode, String::from("testing"));
+        assert_eq!(settings.unwrap().mode, None);
     }
 
     #[test]
@@ -193,9 +191,10 @@ mod tests {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
         let opts = Opts {
             config_dir,
-            run_mode: String::from("testing"),
-            settings: vec![String::from("elasticsearch.port=9999")],
+            run_mode: None,
+            settings: vec![String::from("elasticsearch.url=http://localhost:9999")],
             cmd: Command::Run,
+            input: PathBuf::from("foo.osm.pbf"),
         };
         let settings = Settings::new(&opts);
         assert!(
@@ -203,18 +202,19 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.port, 9999);
+        assert_eq!(settings.unwrap().elasticsearch.url, "http://localhost:9999");
     }
 
     #[test]
     fn should_override_elasticsearch_port_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        std::env::set_var("BRAGI_ELASTICSEARCH_PORT", "9999");
+        std::env::set_var("OSM2MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
         let opts = Opts {
             config_dir,
-            run_mode: String::from("testing"),
+            run_mode: None,
             settings: vec![],
             cmd: Command::Run,
+            input: PathBuf::from("foo.osm.pbf"),
         };
         let settings = Settings::new(&opts);
         assert!(
@@ -222,6 +222,6 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.port, 9999);
+        assert_eq!(settings.unwrap().elasticsearch.url, "http://localhost:9999");
     }
 }

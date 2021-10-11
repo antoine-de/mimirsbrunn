@@ -33,10 +33,6 @@
     clippy::never_loop,
     clippy::option_map_unit_fn
 )]
-use super::osm_utils::get_way_coord;
-use super::OsmPbfReader;
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::labels;
 use cosmogony::ZoneType;
 use osmpbfreader::{OsmId, StoreObjs};
 use serde::{Deserialize, Serialize};
@@ -46,12 +42,17 @@ use std::ops::Deref;
 use std::sync::Arc;
 use tracing::{info, instrument};
 
-use super::osm_store::{Getter, ObjWrapper};
+use super::osm_store::{Error as OsmStoreError, Getter, ObjWrapper};
+use super::osm_utils::get_way_coord;
+use super::OsmPbfReader;
+use crate::admin_geofinder::AdminGeoFinder;
+use crate::labels;
+use crate::settings::osm2mimir::Settings;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Obj Wrapper Error: {}", msg))]
-    ObjWrapperCreation { msg: String },
+    #[snafu(display("Obj Wrapper Error [{}]", source))]
+    ObjWrapperCreation { source: OsmStoreError },
 
     #[snafu(display("OsmPbfReader Extraction Error: {} [{}]", msg, source))]
     OsmPbfReaderExtraction {
@@ -78,13 +79,23 @@ pub struct StreetExclusion {
 pub fn streets(
     osm_reader: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
-    exclusions: &StreetExclusion,
+    settings: &Settings,
 ) -> Result<Vec<places::street::Street>, Error> {
-    let invalid_highways = exclusions.highway.as_deref().unwrap_or(&[]);
+    let invalid_highways = settings
+        .streets
+        .exclusions
+        .highway
+        .as_deref()
+        .unwrap_or(&[]);
 
     let is_valid_highway = |tag: &str| -> bool { !invalid_highways.iter().any(|k| k == tag) };
 
-    let invalid_public_transports = exclusions.public_transport.as_deref().unwrap_or(&[]);
+    let invalid_public_transports = settings
+        .streets
+        .exclusions
+        .public_transport
+        .as_deref()
+        .unwrap_or(&[]);
 
     let is_valid_public_transport =
         |tag: &str| -> bool { !invalid_public_transports.iter().any(|k| k == tag) };
@@ -114,12 +125,10 @@ pub fn streets(
     };
 
     info!("reading pbf...");
-    // #[cfg(feature = "db-storage")]
-    // let mut objs_map = ObjWrapper::new(&settings.database)?;
-    // #[cfg(not(feature = "db-storage"))]
-    let mut objs_map = ObjWrapper::new().map_err(|err| Error::ObjWrapperCreation {
-        msg: format!("Could not create ObjWrapper: {}", err.to_string()),
-    })?;
+    #[cfg(feature = "db-storage")]
+    let mut objs_map = ObjWrapper::new(&settings.database).context(ObjWrapperCreation)?;
+    #[cfg(not(feature = "db-storage"))]
+    let mut objs_map = ObjWrapper::new().context(ObjWrapperCreation)?;
 
     osm_reader
         .get_objs_and_deps_store(is_valid_obj, &mut objs_map)

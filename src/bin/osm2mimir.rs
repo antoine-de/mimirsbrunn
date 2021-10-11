@@ -79,7 +79,7 @@ async fn main() -> Result<(), Error> {
 const POI_REVERSE_GEOCODING_CONCURRENCY: usize = 8;
 
 async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
-    let settings = settings::Settings::new(&opts).map_err(|err| Box::new(err))?;
+    let settings = settings::Settings::new(&opts).map_err(Box::new)?;
     println!("{}", serde_json::to_string_pretty(&settings).unwrap());
     Ok(())
 }
@@ -90,16 +90,16 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
     let settings = &settings::Settings::new(&opts)
         .and_then(settings::validate)
         .context(Settings)
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
 
     let mut osm_reader = mimirsbrunn::osm_reader::make_osm_reader(&input)
         .context(OsmPbfReader)
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
 
     let pool = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .await
         .context(ElasticsearchPool)
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
 
     let client = pool
         .conn(
@@ -108,7 +108,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         )
         .await
         .context(ElasticsearchConnection)
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
 
     let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
         Ok(stream) => {
@@ -153,16 +153,16 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
             settings.container.dataset.clone(),
         )
         .context(StreetElasticsearchConfiguration)
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
         import_streets(
             &mut osm_reader,
             &admins_geofinder,
-            &settings,
+            settings,
             &client,
             config,
         )
         .await
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
     }
 
     if settings.pois.import {
@@ -192,16 +192,16 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
             settings.container.dataset.clone(),
         )
         .context(StreetElasticsearchConfiguration)
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
         import_pois(
             &mut osm_reader,
             &admins_geofinder,
-            &settings,
+            settings,
             &client,
             config,
         )
         .await
-        .map_err(|err| Box::new(err))?;
+        .map_err(Box::new)?;
     }
 
     Ok(())
@@ -215,8 +215,8 @@ async fn import_streets(
     client: &ElasticsearchStorage,
     config: Config,
 ) -> Result<(), Error> {
-    let mut streets = streets(osm_reader, admins_geofinder, &settings.streets.exclusion)
-        .context(StreetOsmExtraction)?;
+    let mut streets =
+        streets(osm_reader, admins_geofinder, settings).context(StreetOsmExtraction)?;
 
     compute_street_weight(&mut streets);
 

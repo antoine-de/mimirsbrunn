@@ -32,7 +32,7 @@ use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, settings::osm2mimir::Settings};
+use crate::labels;
 use common::document::ContainerDocument;
 use mimir2::{
     domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
@@ -90,17 +90,22 @@ pub struct PoiConfig {
     pub rules: Vec<Rule>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PoiWrapper {
+    pub pois: crate::settings::osm2mimir::Poi,
+}
+
 impl Default for PoiConfig {
     fn default() -> Self {
-        let default_settings: Settings = toml::from_str(include_str!("../../config/osm2mimir/default.toml"))
-            .expect("Could not read default osm2mimir settings for default poi types from osm2mimir-default.toml");
-        let config = default_settings
-            .pois
-            .config
-            .expect("default poi config should be available");
+        let default_settings: PoiWrapper = toml::from_str(include_str!("../../config/osm2mimir/pois/default.toml"))
+            .expect("Could not read default osm2mimir settings for default poi types from osm2mimir/pois/default.toml");
 
-        config.check().expect("default poi config should be valid");
-        config
+        let poi_config = default_settings.pois.config.expect("config");
+
+        poi_config
+            .check()
+            .expect("default poi config should be valid");
+        poi_config
     }
 }
 impl PoiConfig {
@@ -336,12 +341,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::error::Error;
     use std::io;
     fn tags(v: &[(&str, &str)]) -> osmpbfreader::Tags {
         v.iter().map(|&(k, v)| (k.into(), v.into())).collect()
     }
-    fn from_str(s: &str) -> Result<PoiConfig, Box<dyn Error>> {
+    fn from_str(s: &str) -> Result<PoiConfig, Error> {
         PoiConfig::from_reader(io::Cursor::new(s))
     }
     #[test]

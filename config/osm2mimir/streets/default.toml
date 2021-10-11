@@ -1,0 +1,6 @@
+[streets]
+  import = false
+  [streets.exclusions]
+    # See [OSM Key Highway](https://wiki.openstreetmap.org/wiki/Key:highway) for background.
+    highway = [ "bus_guideway", "bus_stop", "elevator", "escape", "platform" ]
+    public_transport = [ "platform", "hub" ]
