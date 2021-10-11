@@ -163,16 +163,16 @@ Get a list of places (administrative regions, streets, ...) that best match your
 
 **Method** : `GET`
 
-**Query Parameters**
+#### Query Parameters
 
 TODO How to specify negative long lat ?
 
 <table>
 <colgroup>
-<col style="width: 12%" />
-<col style="width: 18%" />
-<col style="width: 41%" />
-<col style="width: 27%" />
+<col style="width: 11%" />
+<col style="width: 16%" />
+<col style="width: 47%" />
+<col style="width: 24%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -212,7 +212,13 @@ TODO How to specify negative long lat ?
 <tr class="odd">
 <td>type</td>
 <td>list of strings (optional)</td>
-<td>restrics the search to the given place types. (2)</td>
+<td><p>restrics the search to the given place types.</p>
+<p>Possible values are: * house, * poi, * public_transport:stop_area, * street, * zone</p>
+<ol type="1">
+<li>If no type is given, all types are searched.</li>
+<li>This type parameter is featured in the response.</li>
+<li>Some types require a <em>sub type</em>, eg poi =&gt; poi_type</li>
+</ol></td>
 <td><code>type[]=streets&amp;</code> <code>type[]=zone</code></td>
 </tr>
 <tr class="even">
@@ -229,6 +235,7 @@ TODO How to specify negative long lat ?
 </tr>
 </tbody>
 </table>
+
 TODO Finish
 
 pub shape: Option<String>,
@@ -236,46 +243,68 @@ pub shape_scope: Option<Vec<String>>,
 pub datasets: Option<Vec<String>>,
 pub timeout: u32, // timeout to Elasticsearch in milliseconds
 
-## Success Response
+#### Success Response
 
 **Code** : `200 OK`
 
 **Content examples**
 
-The response is a JSON document. It is an array of `docs`, each of which follows (TODO Check??)
-the [geocodejson](https://github.com/geocoders/geocodejson-spec) specification. Here is an 
-example:
+The response is a JSON document which follows the
+[geocodejson](https://github.com/geocoders/geocodejson-spec) specification.
+Here is an example:
 
 ```json
 {
-  "docs": [
+  "type": "FeatureCollection",
+  "geocoding": {
+    "version": "0.1.0",
+    "query": "hector"
+  },
+  "features": [
     {
-      "approx_coord": {
+      "type": "Feature",
+      "geometry": {
         "coordinates": [
-          2.32484,
-          48.897096
+          2.3766059,
+          48.8470632
         ],
         "type": "Point"
       },
-      "context": null,
-      "coord": {
-        "lat": 48.897096,
-        "lon": 2.32484
-      },
-      "country_codes": [
-        "fr"
-      ],
-      "house_number": "1",
-      "id": "addr:2.32484;48.897096:1",
-      "label": "1 Passage Châtelet (Paris)",
-      "name": "1 Passage Châtelet",
-      "street": {
-        "administrative_regions": [
-          {
-            "administrative_regions": [],
+      "properties": {
+        "geocoding": {
+          "id": "poi:osm:node:534918694",
+          "type": "poi",
+          "label": "Hector Malot (Paris)",
+          "name": "Hector Malot",
+          "postcode": "75012",
+          "city": "Paris",
+          "citycode": "75056",
+          "administrative_regions": [
+            {
+              "id": "admin:osm:relation:2192616",
+              "insee": "",
+              "level": 10,
+              "label": "Quartier des Quinze-Vingts (75012), Paris 12e Arrondissement, Paris, Île-de-France",
+              "name": "Quartier des Quinze-Vingts",
+  […]
+}
 ```
 
-## Notes
+#### Failure Response
+
+##### Bad Request
+
+**Code** : `503 Internal Server Error`
+
+**Content examples**
+
+##### Internal Server Error
+
+**Code** : `503 Internal Server Error`
+
+**Content examples**
+
+#### Notes
 
 ### Reverse Geocoding
 
