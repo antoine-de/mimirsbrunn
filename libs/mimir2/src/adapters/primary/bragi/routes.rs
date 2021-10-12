@@ -31,9 +31,9 @@ pub fn forward_geocoder_get(
     warp::get()
         .and(path_prefix())
         .and(warp::path("autocomplete"))
-        .and(forward_geocoder_query())
+        .and(forward_geocoder_query()) // We get the query parameters
         .and(warp::path::end())
-        .and(warp::any().map(move || None))
+        .and(warp::any().map(move || None)) // And the shape is None
 }
 
 /// This is the entry warp filter for the POST autocomplete endpoint
@@ -48,8 +48,8 @@ pub fn forward_geocoder_post(
     warp::post()
         .and(path_prefix())
         .and(warp::path("autocomplete"))
-        .and(forward_geocoder_query())
-        .and(forward_geocoder_body())
+        .and(forward_geocoder_query()) // Query Parameters
+        .and(forward_geocoder_body()) // Shape
 }
 
 /// This function reads the input parameters on a get request, makes a summary validation
@@ -193,6 +193,7 @@ pub async fn ensure_zone_type_consistent(
     }
 }
 
+// This filter extracts the GeoJson shape from the body of the request
 pub fn forward_geocoder_body(
 ) -> impl Filter<Extract = (Option<Geometry>,), Error = Rejection> + Copy {
     warp::body::content_length_limit(1024 * 32)
