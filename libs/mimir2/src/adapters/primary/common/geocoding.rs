@@ -1,6 +1,5 @@
 use convert_case::{Case, Casing};
 use serde::Serialize;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::adapters::primary::bragi::api;
@@ -91,8 +90,9 @@ pub struct GeocodeJsonProperty {
     pub administrative_regions: Vec<AssociatedAdmin>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<places::poi::PoiType>,
-    // For retrocompatibility, we can't have just a map of key values.
-    // We need a vector of objects { key: "<key>", value: "<value>" }
+    // For retrocompatibility, we can't have just a map of key values,
+    // that would be too simple. We need a vector of objects
+    // { key: "<key>", value: "<value>" }
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub properties: Vec<KeyValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -107,8 +107,11 @@ pub struct GeocodeJsonProperty {
     pub lines: Vec<places::stop::Line>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub timezone: Option<String>,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
-    pub codes: BTreeMap<String, String>,
+    // For retrocompatibility, we can't have just a map of key values,
+    // that would be too simple. We need a vector of objects
+    // { name: "<name>", value: "<value>" }
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub codes: Vec<NameValue>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub feed_publishers: Vec<places::stop::FeedPublisher>,
     #[serde(
@@ -140,8 +143,11 @@ pub struct AssociatedAdmin {
     pub zone_type: Option<cosmogony::ZoneType>,
     #[serde(default)]
     pub parent_id: Option<String>, // id of the Admin's parent (from the cosmogony's hierarchy)
-    #[serde(default)]
-    pub codes: BTreeMap<String, String>,
+    // For retrocompatibility, we can't have just a map of key values,
+    // that would be too simple. We need a vector of objects
+    // { name: "<name>", value: "<value>" }
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub codes: Vec<NameValue>,
 }
 
 impl FromWithLang<&places::admin::Admin> for AssociatedAdmin {
@@ -154,9 +160,17 @@ impl FromWithLang<&places::admin::Admin> for AssociatedAdmin {
         } else {
             (admin.name.as_ref(), admin.label.as_ref())
         };
+        let codes = admin.codes.iter().fold(Vec::new(), |mut v, (key, value)| {
+            v.push(NameValue {
+                name: key.to_string(),
+                value: value.to_string(),
+            });
+            v
+        });
+
         AssociatedAdmin {
             bbox: admin.bbox,
-            codes: admin.codes.clone(),
+            codes,
             coord: admin.coord,
             id: admin.id.clone(),
             insee: admin.insee.clone(),
@@ -212,6 +226,14 @@ impl FromWithLang<places::admin::Admin> for GeocodeJsonProperty {
             Some(admin.zip_codes.join(";"))
         };
         let label = Some(label.to_owned());
+        let codes = admin.codes.iter().fold(Vec::new(), |mut v, (key, value)| {
+            v.push(NameValue {
+                name: key.to_string(),
+                value: value.to_string(),
+            });
+            v
+        });
+
         let associated_admins = admin
             .administrative_regions
             .iter()
@@ -224,7 +246,7 @@ impl FromWithLang<places::admin::Admin> for GeocodeJsonProperty {
             bbox: admin.bbox,
             city: None,
             citycode: insee,
-            codes: admin.codes,
+            codes,
             comments: vec![],
             commercial_modes: vec![],
             country_codes: admin.country_codes,
@@ -289,7 +311,7 @@ impl FromWithLang<places::street::Street> for GeocodeJsonProperty {
             bbox: None,
             city,
             citycode,
-            codes: BTreeMap::new(),
+            codes: vec![],
             comments: vec![],
             commercial_modes: vec![],
             country_codes: street.country_codes,
@@ -338,7 +360,7 @@ impl FromWithLang<places::addr::Addr> for GeocodeJsonProperty {
             bbox: None,
             city,
             citycode,
-            codes: BTreeMap::new(),
+            codes: vec![],
             comments: vec![],
             commercial_modes: vec![],
             country_codes: addr.country_codes,
@@ -412,7 +434,7 @@ impl FromWithLang<places::poi::Poi> for GeocodeJsonProperty {
             bbox: None,
             city,
             citycode,
-            codes: BTreeMap::new(),
+            codes: vec![],
             comments: vec![],
             commercial_modes: vec![],
             country_codes: poi.country_codes,
@@ -464,13 +486,21 @@ impl FromWithLang<places::stop::Stop> for GeocodeJsonProperty {
                 v
             });
 
+        let codes = stop.codes.iter().fold(Vec::new(), |mut v, (key, value)| {
+            v.push(NameValue {
+                name: key.to_string(),
+                value: value.to_string(),
+            });
+            v
+        });
+
         GeocodeJsonProperty {
             address: None,
             administrative_regions: associated_admins,
             bbox: None,
             city,
             citycode,
-            codes: stop.codes,
+            codes,
             comments: stop.comments,
             commercial_modes: stop.commercial_modes,
             country_codes: stop.country_codes,
@@ -508,5 +538,11 @@ impl FromWithLang<places::Place> for GeocodeJsonProperty {
 #[derive(Serialize, Debug)]
 pub struct KeyValue {
     pub key: String,
+    pub value: String,
+}
+
+#[derive(Serialize, Debug)]
+pub struct NameValue {
+    pub name: String,
     pub value: String,
 }
