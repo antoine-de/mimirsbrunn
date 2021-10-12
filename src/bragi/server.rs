@@ -79,25 +79,9 @@ pub async fn run(opts: &Opts) -> Result<(), Error> {
 }
 
 #[allow(clippy::needless_lifetimes)]
-pub async fn config<T: Into<String>>(opts: &Opts, setting: Option<T>) -> Result<(), Error> {
+pub async fn config(opts: &Opts) -> Result<(), Error> {
     let settings = Settings::new(opts).context(SettingsProcessing)?;
-    match setting {
-        Some(setting) => {
-            let setting = setting.into();
-            let value = serde_json::to_value(&settings).unwrap();
-            match value.get(&setting) {
-                Some(value) => {
-                    println!("{}", serde_json::to_string_pretty(value).unwrap());
-                }
-                None => {
-                    println!("could not find key '{}'", &setting);
-                }
-            }
-        }
-        None => {
-            println!("{}", serde_json::to_string_pretty(&settings).unwrap());
-        }
-    }
+    println!("{}", serde_json::to_string_pretty(&settings).unwrap());
     Ok(())
 }
 

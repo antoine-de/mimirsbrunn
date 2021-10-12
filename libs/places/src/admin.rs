@@ -101,12 +101,7 @@ pub fn normalize_admin_weight(admins: &mut [Admin]) {
 
 /// normalize the weight for it to be in [0, 1]
 pub fn normalize_weight(weight: f64, max_weight: f64) -> f64 {
-    let w = weight / max_weight;
-    if w > 1. {
-        1.
-    } else {
-        w
-    }
+    (weight / max_weight).clamp(0., 1.)
 }
 
 pub fn find_country_codes<'a>(admins: impl Iterator<Item = &'a Admin>) -> Vec<String> {

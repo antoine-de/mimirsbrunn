@@ -21,7 +21,7 @@ pub enum Error {
 /// The function iterates over the list, and for each element, it tries to
 /// (a) identify the key and the value, by searching for the '=' sign.
 /// (b) parse the value into one of bool, i64, f64. if not it's a string.
-pub fn config_from_args(args: impl IntoIterator<Item = String>) -> Result<Config, Error> {
+fn config_from_args(args: impl IntoIterator<Item = String>) -> Result<Config, Error> {
     let mut config = Config::builder();
 
     for arg in args {
@@ -75,27 +75,24 @@ pub fn load_es_config_for<D: ContainerDocument>(
         .context(ConfigCompilation)
 }
 
-// This function produces a new configuration for bragi based on command line arguments,
-// configuration files, and environment variables.
-// * For bragi, up to three configuration files are read. These files are all in a directory
-//   given by the 'config dir' command line argument.
-// * The first configuration file is 'default.toml'
-// * The second depends on the run mode (eg test, dev, prod). The run mode can be specified
-//   either by the command line, or with the RUN_MODE environment variable. Given a run mode,
-//   we look for the corresponding file in the config directory: 'dev' -> 'config/dev.toml'.
-//   Default values are overriden by this mode config file.
-// * Finally we look for a 'config/local.toml' file which can still override previous values.
-// * Any value in a config file can then be overriden by environment variable: For example
-//   to replace service.port, we can specify XXX
-// * There is a special treatment for:
-//   - Elasticsearch URL, which is specified by ELASTICSEARCH_URL or ELASTICSEARCH_TEST_URL
-//   - Bragi's web server's port and listening address can be specified by command line
-//     arguments.
-pub fn config_from<T: Into<Option<String>> + Clone>(
+// This function produces a new configuration based on the arguments:
+// In the base directory (`config_dir`), it will look for the subdirectories.
+// * In each subdirectory, it will look for a default configuration file.
+// * If a run_mode is provided, then the corresponding file is sourced in each of these
+//   subdirectory.
+// * Then, if a prefix is given, we source environment variables starting with that string.
+// * And finally, we can make manual adjusts with a list of key value pairs.
+pub fn config_from<
+    'a,
+    T: Into<Option<String>> + Clone,
+    U: IntoIterator<Item = String>,
+    V: Into<Option<&'a str>>,
+>(
     config_dir: &Path,
     sub_dirs: &[&str],
     run_mode: T,
-    prefix: &str,
+    prefix: V,
+    settings: U,
 ) -> Result<Config, Error> {
     let mut builder = sub_dirs
         .iter()
@@ -123,7 +120,14 @@ pub fn config_from<T: Into<Option<String>> + Clone>(
 
     // Add in settings from the environment (with a prefix of OMS2MIMIR)
     // Eg.. `<prefix>_DEBUG=1 ./target/app` would set the `debug` key
-    builder = builder.add_source(Environment::with_prefix(prefix).separator("_"));
+    builder = if let Some(prefix) = prefix.into() {
+        builder.add_source(Environment::with_prefix(prefix).separator("_"))
+    } else {
+        builder
+    };
+
+    // Add command line overrides
+    builder = builder.add_source(config_from_args(settings)?);
 
     builder.build().context(ConfigCompilation)
 }

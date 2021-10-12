@@ -35,7 +35,10 @@
 )]
 
 use osmpbfreader::{OsmId, OsmObj, StoreObjs};
-use snafu::{ResultExt, Snafu};
+#[cfg(feature = "db-storage")]
+use snafu::ResultExt;
+use snafu::Snafu;
+
 use tracing::info;
 
 #[cfg(feature = "db-storage")]

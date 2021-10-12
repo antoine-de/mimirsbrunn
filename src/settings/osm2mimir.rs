@@ -120,21 +120,12 @@ impl Settings {
         builder = builder.add_source(
             common::config::config_from(
                 opts.config_dir.as_ref(),
-                &[
-                    "osm2mimir",
-                    "osm2mimir/pois",
-                    "osm2mimir/streets",
-                    "elasticsearch",
-                ],
+                &["osm2mimir", "elasticsearch"],
                 opts.run_mode.clone(),
                 "OSM2MIMIR",
+                opts.settings.clone(),
             )
             .context(ConfigCompilation)?,
-        );
-
-        // Add command line overrides
-        builder = builder.add_source(
-            common::config::config_from_args(opts.settings.clone()).context(ConfigCompilation)?,
         );
 
         // FIXME depending on service.pois.import and service.streets.import, read the corresponding
@@ -157,7 +148,7 @@ pub fn validate(settings: Settings) -> Result<Settings, Error> {
 
     if !import_streets_enabled && !import_poi_enabled {
         return Err(Error::Invalid {
-            msg: String::from("Neither streets nor POIs import is enabled. Nothing to do. Use --import-way=true or --import-poi=true")
+            msg: String::from("Neither streets nor POIs import is enabled. Nothing to do. Use -s pois.import=true or -s streets.import=true")
         });
     }
     Ok(settings)

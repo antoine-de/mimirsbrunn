@@ -28,6 +28,16 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use config::Config;
+use osm_boundaries_utils::build_boundary;
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+use std::collections::BTreeMap;
+use std::io;
+use std::ops::Deref;
+use std::path::PathBuf;
+use tracing::{info, instrument, warn};
+
 use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
@@ -37,20 +47,12 @@ use common::document::ContainerDocument;
 use mimir2::{
     domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
 };
-use osm_boundaries_utils::build_boundary;
 use places::{
     coord::Coord,
     i18n_properties::I18nProperties,
     poi::{Poi, PoiType},
     Address,
 };
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use tracing::{info, instrument, warn};
-// use std::error::Error;
-use snafu::{ResultExt, Snafu};
-use std::io;
-use std::ops::Deref;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -68,6 +70,12 @@ pub enum Error {
 
     #[snafu(display("Poi Validation Error: {}", msg))]
     PoiValidation { msg: String },
+
+    #[snafu(display("Config Merge Error: {} [{}]", msg, source))]
+    ConfigMerge {
+        msg: String,
+        source: config::ConfigError,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -97,15 +105,16 @@ pub struct PoiWrapper {
 
 impl Default for PoiConfig {
     fn default() -> Self {
-        let default_settings: PoiWrapper = toml::from_str(include_str!("../../config/osm2mimir/pois/default.toml"))
-            .expect("Could not read default osm2mimir settings for default poi types from osm2mimir/pois/default.toml");
+        let base_path = env!("CARGO_MANIFEST_DIR");
+        let input_dir: PathBuf = [base_path, "config", "osm2mimir"].iter().collect();
+        let input_file = input_dir.join("default.toml");
 
-        let poi_config = default_settings.pois.config.expect("config");
-
-        poi_config
-            .check()
-            .expect("default poi config should be valid");
-        poi_config
+        Config::builder()
+            .add_source(config::File::from(input_file))
+            .build()
+            .expect("cannot build the default poi configuration")
+            .get("pois.config")
+            .expect("poi configuration")
     }
 }
 impl PoiConfig {
