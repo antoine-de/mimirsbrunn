@@ -9,6 +9,9 @@ pub fn build_query(
     _langs: &[&str],
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
+    let string_query = build_string_query(q, &settings.string_query);
+    let importance_query = build_importance_query(q, settings);
+
     let filters::Filters {
         coord: _,
         shape,
@@ -18,16 +21,31 @@ pub fn build_query(
     } = filters;
 
     let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
+    let filters: Vec<_> = vec![geoshape_filter]
+        .into_iter()
+        .filter_map(|f| f)
+        .collect();
 
-    json!({
-        "query": {
-            "bool": {
-                "must": [ build_string_query(q, &settings.string_query) ],
-                "should": build_importance_query(q, settings),
-                "filter": [ geoshape_filter ]
+    if filters.is_empty() {
+        json!({
+            "query": {
+                "bool": {
+                    "must": [ string_query ],
+                    "should": importance_query,
+                }
             }
-        }
-    })
+        })
+    } else {
+        json!({
+            "query": {
+                "bool": {
+                    "must": [ string_query ],
+                    "should": importance_query,
+                    "filter": filters
+                }
+            }
+        })
+    }
 }
 
 fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::Value {
@@ -261,7 +279,7 @@ mod tests {
     }
 
     #[test]
-    fn should_correctly_build_query() {
+    fn should_correctly_build_query_with_shape_filter() {
         let geometry = match GEOJSON_STR.parse::<GeoJson>() {
             Ok(GeoJson::Geometry(g)) => g,
             _ => return,
@@ -271,6 +289,20 @@ mod tests {
             "chatelet",
             filters::Filters {
                 shape: Some((geometry, vec![String::from("foo"), String::from("bar")])),
+                ..Default::default()
+            },
+            &[],
+            &settings::QuerySettings::default(),
+        );
+
+        println!("{}", serde_json::to_string_pretty(&json).unwrap());
+    }
+
+    #[test]
+    fn should_correctly_build_query_without_filter() {
+        let json = build_query(
+            "chatelet",
+            filters::Filters {
                 ..Default::default()
             },
             &[],
