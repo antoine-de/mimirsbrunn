@@ -1,18 +1,31 @@
-use super::{filters, settings};
+use geojson::Geometry;
 use serde_json::json;
+
+use super::{filters, settings};
 
 pub fn build_query(
     q: &str,
-    _filters: filters::Filters,
+    filters: filters::Filters,
     _langs: &[&str],
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
+    let filters::Filters {
+        coord: _,
+        shape,
+        datasets: _,
+        zone_types: _,
+        poi_types: _,
+    } = filters;
+
+    let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
+
     json!({
         "query": {
             "bool": {
                 "must": [ build_string_query(q, &settings.string_query) ],
-                "should": build_importance_query(q, settings)
-            },
+                "should": build_importance_query(q, settings),
+                "filter": [ geoshape_filter ]
+            }
         }
     })
 }
@@ -97,7 +110,7 @@ fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde
 // impl std::fmt::Display for DecayFn {
 //     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 //         write!(f, "{:?}", self)
-//     }
+//     }kkkkkkkkkkkkkkk
 // }
 //
 // #[derive(Debug)]
@@ -175,4 +188,95 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Va
          }
      }]
     })
+}
+
+// If there is a shape, all the places listed in shape_scope are restricted to the shape.
+// and the places that are not listed are not restricted.
+// So if shape_scope = {A, B}, we should end up with something like
+// should [
+//   must {               => filwer_w_shape
+//     term: _type in {A, B}
+//     filter: geoshape
+//   },
+//   must_not {            => filter_wo_shape
+//      term: _type in {A, B}
+//   }
+// ]
+//
+pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Value {
+    json!({
+        "query": {
+            "bool": {
+                "should": [
+                {
+                    "bool": {
+                        "must": {
+                            "terms": {
+                                "_type": scope
+                            }
+                        },
+                        "filter": {
+                            "geo_shape": {
+                                "location": {
+                                    "shape": shape,
+                                    "relation": "intersects"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "bool": {
+                        "must_not": {
+                            "terms": {
+                                "_type": scope
+                            }
+                        }
+                    }
+                }
+                ]
+            }
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use geojson::GeoJson;
+
+    use super::*;
+
+    const GEOJSON_STR: &str = "{\"coordinates\":[7.428959,1.513394],\"type\":\"Point\"}";
+
+    #[test]
+    fn should_correctly_build_shape_query() {
+        let geometry = match GEOJSON_STR.parse::<GeoJson>() {
+            Ok(GeoJson::Geometry(g)) => g,
+            _ => return,
+        };
+
+        let json = build_shape_query(geometry, vec![String::from("foo"), String::from("bar")]);
+
+        println!("{}", serde_json::to_string_pretty(&json).unwrap());
+    }
+
+    #[test]
+    fn should_correctly_build_query() {
+        let geometry = match GEOJSON_STR.parse::<GeoJson>() {
+            Ok(GeoJson::Geometry(g)) => g,
+            _ => return,
+        };
+
+        let json = build_query(
+            "chatelet",
+            filters::Filters {
+                shape: Some((geometry, vec![String::from("foo"), String::from("bar")])),
+                ..Default::default()
+            },
+            &[],
+            &settings::QuerySettings::default(),
+        );
+
+        println!("{}", serde_json::to_string_pretty(&json).unwrap());
+    }
 }
