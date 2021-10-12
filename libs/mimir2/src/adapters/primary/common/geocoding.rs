@@ -91,8 +91,10 @@ pub struct GeocodeJsonProperty {
     pub administrative_regions: Vec<AssociatedAdmin>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<places::poi::PoiType>,
-    #[serde(skip_serializing_if = "BTreeMap::is_empty", default)]
-    pub properties: BTreeMap<String, String>,
+    // For retrocompatibility, we can't have just a map of key values.
+    // We need a vector of objects { key: "<key>", value: "<value>" }
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub properties: Vec<KeyValue>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<Box<GeocodeJsonProperty>>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -237,7 +239,7 @@ impl FromWithLang<places::admin::Admin> for GeocodeJsonProperty {
             place_type: api::Type::Zone,
             poi_types: vec![],
             postcode,
-            properties: BTreeMap::new(),
+            properties: vec![],
             street: None,
             timezone: None,
             zone_type: if zone_type.is_empty() {
@@ -302,7 +304,7 @@ impl FromWithLang<places::street::Street> for GeocodeJsonProperty {
             place_type: api::Type::Street,
             poi_types: vec![],
             postcode,
-            properties: BTreeMap::new(),
+            properties: vec![],
             street: name,
             timezone: None,
             zone_type: None,
@@ -351,7 +353,7 @@ impl FromWithLang<places::addr::Addr> for GeocodeJsonProperty {
             place_type: api::Type::House,
             poi_types: vec![],
             postcode,
-            properties: BTreeMap::new(),
+            properties: vec![],
             street: street_name,
             timezone: None,
             zone_type: None,
@@ -385,6 +387,17 @@ impl FromWithLang<places::poi::Poi> for GeocodeJsonProperty {
             .map(|a| AssociatedAdmin::from_with_lang(a, lang))
             .collect();
 
+        let properties = poi
+            .properties
+            .iter()
+            .fold(Vec::new(), |mut v, (key, value)| {
+                v.push(KeyValue {
+                    key: key.to_string(),
+                    value: value.to_string(),
+                });
+                v
+            });
+
         GeocodeJsonProperty {
             address: match poi.address {
                 Some(places::Address::Addr(addr)) => {
@@ -414,7 +427,7 @@ impl FromWithLang<places::poi::Poi> for GeocodeJsonProperty {
             place_type: api::Type::Poi,
             poi_types: vec![poi.poi_type],
             postcode,
-            properties: poi.properties,
+            properties,
             street: None,
             timezone: None,
             zone_type: None,
@@ -440,6 +453,17 @@ impl FromWithLang<places::stop::Stop> for GeocodeJsonProperty {
             .map(|a| AssociatedAdmin::from_with_lang(a, lang))
             .collect();
 
+        let properties = stop
+            .properties
+            .iter()
+            .fold(Vec::new(), |mut v, (key, value)| {
+                v.push(KeyValue {
+                    key: key.to_string(),
+                    value: value.to_string(),
+                });
+                v
+            });
+
         GeocodeJsonProperty {
             address: None,
             administrative_regions: associated_admins,
@@ -461,7 +485,7 @@ impl FromWithLang<places::stop::Stop> for GeocodeJsonProperty {
             place_type: api::Type::StopArea,
             poi_types: vec![],
             postcode,
-            properties: stop.properties,
+            properties,
             street: None,
             timezone: Some(stop.timezone),
             zone_type: None,
@@ -479,4 +503,10 @@ impl FromWithLang<places::Place> for GeocodeJsonProperty {
             places::Place::Stop(poi) => GeocodeJsonProperty::from_with_lang(poi, lang),
         }
     }
+}
+
+#[derive(Serialize, Debug)]
+pub struct KeyValue {
+    pub key: String,
+    pub value: String,
 }
