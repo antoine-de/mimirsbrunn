@@ -38,7 +38,11 @@ pub fn build_query(
                 "bool": {
                     "must": [ string_query ],
                     "should": importance_query,
-                    "filter": filters
+                    "filter": {
+                        "bool": {
+                            "must": filters
+                        }
+                    }
                 }
             }
         })
@@ -220,37 +224,35 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Va
 //
 pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Value {
     json!({
-        "query": {
-            "bool": {
-                "should": [
-                {
-                    "bool": {
-                        "must": {
-                            "terms": {
-                                "_type": scope
-                            }
-                        },
-                        "filter": {
-                            "geo_shape": {
-                                "location": {
-                                    "shape": shape,
-                                    "relation": "intersects"
-                                }
-                            }
+        "bool": {
+            "should": [
+            {
+                "bool": {
+                    "must": {
+                        "terms": {
+                            "_type": scope
                         }
-                    }
-                },
-                {
-                    "bool": {
-                        "must_not": {
-                            "terms": {
-                                "_type": scope
+                    },
+                    "filter": {
+                        "geo_shape": {
+                            "location": {
+                                "shape": shape,
+                                "relation": "intersects"
                             }
                         }
                     }
                 }
-                ]
+            },
+            {
+                "bool": {
+                    "must_not": {
+                        "terms": {
+                            "_type": scope
+                        }
+                    }
+                }
             }
+            ]
         }
     })
 }

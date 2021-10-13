@@ -47,6 +47,11 @@ pub async fn run(opts: &Opts) -> Result<(), Error> {
     let settings = Settings::new(opts).context(SettingsProcessing)?;
     LogTracer::init().expect("Unable to setup log tracer!");
 
+    // Filter traces based on the RUST_LOG env var, or, if it's not set,
+    // default to show the output of the example.
+    let filter =
+        std::env::var("RUST_LOG").unwrap_or_else(|_| "tracing=info,mimir2=debug".to_owned());
+
     // following code mostly from https://betterprogramming.pub/production-grade-logging-in-rust-applications-2c7fffd108a6
     let app_name = concat!(env!("CARGO_PKG_NAME"), "-", env!("CARGO_PKG_VERSION")).to_string();
 
@@ -70,7 +75,7 @@ pub async fn run(opts: &Opts) -> Result<(), Error> {
 
     let bunyan_formatting_layer = BunyanFormattingLayer::new(app_name, non_blocking);
     let subscriber = Registry::default()
-        .with(EnvFilter::new("INFO"))
+        .with(EnvFilter::new(&filter))
         .with(JsonStorageLayer)
         .with(bunyan_formatting_layer);
     tracing::subscriber::set_global_default(subscriber).expect("tracing subscriber global default");
@@ -112,6 +117,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .await
         .context(ElasticsearchConnection)?;
 
+    // Here I place reverse_geocoder first because its most likely to get hit.
     let api = reverse_geocoder!(client.clone(), settings.query.clone())
         .or(forward_geocoder!(client.clone(), settings.query))
         .or(status!(client, elasticsearch_url))
@@ -123,7 +129,6 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
     let host = settings.service.host;
     let port = settings.service.port;
     let addr = (host.as_str(), port);
-    info!("addr: {:?}", addr);
     let addr = addr
         .to_socket_addrs()
         .context(SockAddr { host, port })?

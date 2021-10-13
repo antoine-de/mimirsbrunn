@@ -136,7 +136,9 @@ pub struct StatusResponseBody {
 
 /// This macro is used to define the forward_geocoder route.
 /// It takes a client (ElasticsearchStorage) and query settings
-///
+/// It can be either a GET request, with query parameters,
+/// or a POST request, with both query parameters and a GeoJson shape
+/// in the body.
 #[macro_export]
 macro_rules! forward_geocoder {
     ($cl:expr, $st:expr) => {

@@ -1,5 +1,6 @@
 use geojson::Geometry;
 use serde::Serialize;
+use tracing::{debug, instrument};
 use warp::http::StatusCode;
 use warp::reply::{json, with_status};
 
@@ -21,6 +22,7 @@ use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Pla
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[instrument(skip(client, settings))]
 pub async fn forward_geocoder<S>(
     params: ForwardGeocoderQuery,
     geometry: Option<Geometry>,
@@ -35,6 +37,8 @@ where
     let search_types = types_to_indices(&params.types);
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
+
+    debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
         .search_documents(search_types, Query::QueryDSL(dsl))
