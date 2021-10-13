@@ -21,10 +21,7 @@ pub fn build_query(
     } = filters;
 
     let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
-    let filters: Vec<_> = vec![geoshape_filter]
-        .into_iter()
-        .filter_map(|f| f)
-        .collect();
+    let filters: Vec<_> = vec![geoshape_filter].into_iter().flatten().collect();
 
     if filters.is_empty() {
         json!({
