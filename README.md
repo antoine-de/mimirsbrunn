@@ -5,9 +5,9 @@
 # Mimirsbrunn
 
 Mimirsbrunn (also called Mimir) is an independent geocoding and reverse-geocoding system written in [Rust](https://www.rust-lang.org/en-US/), and built upon [Elasticsearch](https://www.elastic.co).
-It can handle addresses, streets, points-of-interest (POI), administrative regions or public transport stops.
+It can handle addresses, streets, points-of-interest (POI), administrative regions and public transport stops.
 
-## what's a geocoder ?
+## What's a Geocoder ?
 
 Usually [geocoding](https://en.wikipedia.org/wiki/Geocoding) refers to "the process of transforming a physical address description to a location on the Earth's surface". 
 However Mimir is more a [geoparser](https://en.wikipedia.org/wiki/Toponym_resolution#Geoparsing) than a geocoder since it can resolve any ambiguous toponym to its correct location.
@@ -18,14 +18,14 @@ Geocoding is traditionally used for autocompleting search fields used in geograp
 
 ![qwant maps](https://user-images.githubusercontent.com/3987698/56976025-53ed1180-6b72-11e9-9c81-9718e92061ce.png)
 
-## who uses it ?
+## Who Uses It ?
 
 * [Navitia](https://github.com/CanalTP/navitia)
 * [Qwant Maps](https://www.qwant.com/maps)
 
 If you use it too, feel free to open a pull request, we'll be happy to add your project here!
 
-## ressources
+## Ressources
 
 * [A french presentation of Mimirsbrunn](https://github.com/TeXitoi/pinot2017bano/blob/master/pinot2017bano.pdf)
 
@@ -158,3 +158,112 @@ All those projects use quite the same APIs, and you can compare their results us
 [geocoder-tester](https://github.com/geocoders/geocoder-tester).
 
 For a more visual comparison, you can also use [a comparator](https://github.com/CanalTP/autocomplete-comparator).
+
+
+# Mimirsbrunn
+
+One Paragraph of the project description
+
+Initially appeared on
+[gist](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2). But the page cannot open anymore so that is why I have moved it here.
+
+## Getting Started
+
+These instructions will give you a copy of the project up and running on
+your local machine for development and testing purposes. See deployment
+for notes on deploying the project on a live system.
+
+### Prerequisites
+
+Requirements for the software and other tools to build, test and push 
+- [Example 1](https://www.example.com)
+- [Example 2](https://www.example.com)
+
+### Installing
+
+A step by step series of examples that tell you how to get a development
+environment running
+
+Say what the step will be
+
+    Give the example
+
+And repeat
+
+    until finished
+
+End with an example of getting some data out of the system or using it
+for a little demo
+
+## Running the tests
+
+Since this is a rust project, we are well instrumented to run all sorts of tests:
+* style
+* lint
+* unit tests
+* end to end / integration.
+
+You can run them all at once, and this in the way it is carried out in the CI pipeline, with 
+
+```
+make check
+```
+
+One thing to care about while running tests is that you need to take into account that this project
+has rust workspaces, and also uses features for conditional compilation.
+
+See this [page](/docs/testing.md) for a more in depth introduction to testing this project.
+
+### Style
+
+We don't follow any particular style, just the default rust style, and you can check that your
+contribution follows the style with:
+
+```
+cargo fmt --all -- --check
+```
+
+### Lint
+
+Again we follow the linting suggestions given by *clippy*:
+
+```
+cargo clippy --all-features --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
+```
+
+### Unit Tests
+
+### End to End Tests
+
+
+## Deployment
+
+Add additional notes to deploy this on a live system
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process
+for submitting pull requests to us.
+
+## Versioning
+
+We use [Semantic Versioning](http://semver.org/) for versioning. For the versions available, see the
+[tags on this repository](https://github.com/CanalTP/mimirsbrunn/tags).
+
+## Authors
+
+Mimirsbrunn is a project initially spearheaded by [Guillaume Pinot](texitoi@texitio.eu) and [Antoine
+Desbordes]() for [Navitia](http://navitia.io). 
+
+See also the list of [contributors](https://github.com/CanalTP/mimirsbrunn/contributors) who
+participated in this project.
+
+## License
+
+This project is licensed under the [AGPLv3](LICENSE.md) GNU Affero General Public License - see the
+[LICENSE.md](LICENSE.md) file for details
+
+## Acknowledgments
+
+  - **Billie Thompson** - *Provided README Template* - [PurpleBooth](https://github.com/PurpleBooth)
+

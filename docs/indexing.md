@@ -1,4 +1,4 @@
-# Indexing
+# Indexing˙
 
 Indexing is the process by which we take data sources and store them as indexes
 in Elasticsearch. This process involves several steps of parsing, validating,
@@ -78,7 +78,7 @@ involve the following, which will be described below:
 2. Launch an Elasticsearch
 3. Launch indexing binaries in a specific order
 
-There is a currently two tools that will help you wrap these steps in an easy and configurable
+There is currently two tools that will help you wrap these steps in an easy and configurable manner:
 
 * [Fafnir](https://github.com/QwantResearch/fafnir)
 * import2mimir is a bash script 
@@ -139,7 +139,7 @@ docker run -p 9200:9200 -p 9300:9300 \
   -d docker.elastic.co/elasticsearch/elasticsearch:7.13.0
 ```
 
-### Index Data
+### Indexing Data
 
 We mentioned earlier that your data is parsed, validated, and enriched before
 beeing indexed into Elasticsearch. So processing the data may require to
@@ -154,16 +154,21 @@ Here is the order of execution:
 4. `ntfs2mimir`
 5. `poi2mimir`
 
+These binaries follow the same pattern for configuration, and this is detailed
+in a later [section](#configuring_indexing).
+
 ### cosmogony2mimir
 
 As mentioned earlier, `cosmogony2mimir` is the binary responsible for indexing administrative
-regions into Elasticsearch.
+regions into Elasticsearch. Here an example:
 
 ```
-cosmogony2mimir -i <cosmogony file> -m <mappings> -s <settings> --settings […]
+cosmogony2mimir -m testing -s elasticsearch.url=http://localhost:9204 -c ./config -i idf.jsonl.gz
 ```
 
-You need to specify an input file, some Elasticsearch related parameters (mappings and settings).
+It will read the default and testing configuration in
+`./config/cosmogony2mimir` and `./config/elasticsearch`, override the
+elasticsearch url, and read its input from  `idf.jsonl.gz`
 
 ### osm2mimir
 
@@ -177,4 +182,72 @@ You need to specify an input file, some Elasticsearch related parameters (mappin
 
 ### import2mimir
 
+### Configuring Indexing
+
+#### A layering process
+
+For configuring indexing binaries, we use the crate
+[config](https://crates.io/crates/config), which enables a layered
+configuration, and so the process of getting a configuration is as follow:
+
+1. We start with a default configuration. For example, for configuring the
+   elasticsearch connection, that means we read
+   `config/elasticsearch/default.toml`.
+2. If the user specifies a run mode, then we read the corresponding file. If
+   you are in production, and you specify the `--run-mode prod`, then we will
+   go read, for elasticsearch, `config/elasticsearch/prod.toml`. These values
+   override the default values set in (1).
+3. Then a `config/elasticsearch/local.toml` file can be used to override some
+   values again.
+4. Then, environment variables can be used on top of the previous values: The
+   name of the environment variable is all in upper case: It is the
+   concatenation of a prefix, followed by an underscore, followed by the path
+   to the value, separated by underscores. So if you want to change the
+   `elasticsearch.url` value for osm2mimir, you'd use, for example,
+   `OSM2MIMIR_ELASTICSEARCH_URL=http://localhost:9999`
+5. Finally, you can still override some values with the commandline, by using
+   `--setting elasticsearch.url=http://localhost:9999` (`<key>=<value>`).
+
+This way of configuring allows great flexibility, and also a very simple generic command line.
+It can also be a bit tricky to know what the exact final configuration will be. All binaries
+have a `config` subcommand, which displays the configuration in json format.
+
+#### Filesystem layout
+
+All the configuration stored with the code is found in the `config` directory
+at the base of the project. 
+
+Under `config`, you'll have a directory for `elasticsearch` because its shared
+by all binaries, and we don't want to repeat elasticsearch configuration for
+all the binaries. In Elasticsearch, you have one folder for each place, ie
+*admin*, *address*, … . Each of this folder is to configure the related index
+mapping and setting. Under the elasticsearch folder, you also have a
+configuration file, `default.toml` to define the connection parameters.
+
+```
+config
+  ├─── elasticsearch
+  ┊      ├─── admins
+         │      ├─── settings.json
+         │      └─── mappings.json
+         ├─── streets
+         │      ├─── settings.json
+         │      └─── mappings.json
+         ┊
+         │
+         ├─── default.toml
+         ├─── testing.toml
+         └─── prod.toml
+```
+
+You also have binary specific configuration: For example, for indexing stops, you use
+`ntfs2mimir`. So you'll find `ntfs2mimir` related configuration in a folder `config/ntfs2mimir`.
+
+```
+config
+  ┊
+  ├─── ntfs2mimir
+         ├─── default.toml
+         └─── testing.toml
+```
 
