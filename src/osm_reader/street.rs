@@ -33,19 +33,33 @@
     clippy::never_loop,
     clippy::option_map_unit_fn
 )]
-use super::osm_utils::get_way_coord;
-use super::OsmPbfReader;
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, settings, utils, Error};
 use cosmogony::ZoneType;
-use failure::ResultExt;
 use osmpbfreader::{OsmId, StoreObjs};
-use slog_scope::info;
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ops::Deref;
 use std::sync::Arc;
+use tracing::{info, instrument};
 
-use super::osm_store::{Getter, ObjWrapper};
+use super::osm_store::{Error as OsmStoreError, Getter, ObjWrapper};
+use super::osm_utils::get_way_coord;
+use super::OsmPbfReader;
+use crate::admin_geofinder::AdminGeoFinder;
+use crate::labels;
+use crate::settings::osm2mimir::Settings;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Obj Wrapper Error [{}]", source))]
+    ObjWrapperCreation { source: OsmStoreError },
+
+    #[snafu(display("OsmPbfReader Extraction Error: {} [{}]", msg, source))]
+    OsmPbfReaderExtraction {
+        msg: String,
+        source: osmpbfreader::Error,
+    },
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(dead_code)]
@@ -55,23 +69,32 @@ pub enum Kind {
     Relation = 2,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreetExclusion {
+    pub highway: Option<Vec<String>>,
+    pub public_transport: Option<Vec<String>>,
+}
+
+#[instrument(skip(osm_reader, admins_geofinder))]
 pub fn streets(
-    pbf: &mut OsmPbfReader,
+    osm_reader: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
-    settings: &settings::osm2mimir::Settings,
+    settings: &Settings,
 ) -> Result<Vec<places::street::Street>, Error> {
     let invalid_highways = settings
-        .street
-        .as_ref()
-        .and_then(|street| street.exclusion.highway.as_deref())
+        .streets
+        .exclusions
+        .highway
+        .as_deref()
         .unwrap_or(&[]);
 
     let is_valid_highway = |tag: &str| -> bool { !invalid_highways.iter().any(|k| k == tag) };
 
     let invalid_public_transports = settings
-        .street
-        .as_ref()
-        .and_then(|street| street.exclusion.public_transport.as_deref())
+        .streets
+        .exclusions
+        .public_transport
+        .as_deref()
         .unwrap_or(&[]);
 
     let is_valid_public_transport =
@@ -103,12 +126,16 @@ pub fn streets(
 
     info!("reading pbf...");
     #[cfg(feature = "db-storage")]
-    let mut objs_map = ObjWrapper::new(&settings.database)?;
+    let mut objs_map = ObjWrapper::new(&settings.database).context(ObjWrapperCreation)?;
     #[cfg(not(feature = "db-storage"))]
-    let mut objs_map = ObjWrapper::new()?;
+    let mut objs_map = ObjWrapper::new().context(ObjWrapperCreation)?;
 
-    pbf.get_objs_and_deps_store(is_valid_obj, &mut objs_map)
-        .context("Error occurred when reading pbf")?;
+    osm_reader
+        .get_objs_and_deps_store(is_valid_obj, &mut objs_map)
+        .context(OsmPbfReaderExtraction {
+            msg: String::from("Could not read objects and dependencies from pbf"),
+        })?;
+
     info!("reading pbf done.");
 
     // Builder for street object
@@ -117,13 +144,13 @@ pub fn streets(
                         coord: places::coord::Coord,
                         admins: Vec<Arc<places::admin::Admin>>| {
         let admins_iter = admins.iter().map(Deref::deref);
-        let country_codes = utils::find_country_codes(admins_iter.clone());
+        let country_codes = places::admin::find_country_codes(admins_iter.clone());
         places::street::Street {
             id,
             label: labels::format_street_label(&name, admins_iter, &country_codes),
             name,
             weight: 0.,
-            zip_codes: utils::get_zip_codes_from_admins(&admins),
+            zip_codes: places::admin::get_zip_codes_from_admins(&admins),
             administrative_regions: admins,
             coord,
             approx_coord: Some(coord.into()),

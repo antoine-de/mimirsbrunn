@@ -30,7 +30,6 @@
 
 use crate::osm_reader::admin;
 use crate::osm_reader::osm_utils;
-use crate::utils;
 use config::Config;
 use cosmogony::ZoneType::City;
 use cosmogony::{Zone, ZoneIndex};
@@ -115,7 +114,7 @@ impl IntoAdmin for Zone {
             label,
             name: self.name,
             zip_codes,
-            weight: utils::normalize_weight(weight, max_weight),
+            weight: places::admin::normalize_weight(weight, max_weight),
             bbox: self.bbox,
             boundary: self.boundary,
             coord: center,
@@ -125,7 +124,9 @@ impl IntoAdmin for Zone {
             // Note: Since we do not really attach an admin to its hierarchy, for the moment an admin only have it's own coutry code,
             // not the country code of it's country from the hierarchy
             // (so it has a country code mainly if it is a country)
-            country_codes: utils::get_country_code(&codes).into_iter().collect(),
+            country_codes: places::utils::get_country_code(&codes)
+                .into_iter()
+                .collect(),
             codes,
             names: osm_utils::get_names_from_tags(&self.tags, langs),
             labels: self
@@ -174,7 +175,7 @@ pub async fn index_cosmogony(
 ) -> Result<(), Error> {
     info!("building map cosmogony id => osm id");
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
-    let max_weight = utils::ADMIN_MAX_WEIGHT;
+    let max_weight = places::admin::ADMIN_MAX_WEIGHT;
     for z in read_zones(&input)? {
         let insee = match z.zone_type {
             Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),

@@ -12,6 +12,7 @@ readme = "README.md"
 
 [dependencies]
 serde = { version = "1.0", default_features = false }
+snafu = { version = "0.6.10", features = [ "futures" ] }
 
 [dependencies.config]
 git = "https://github.com/mehcode/config-rs.git"

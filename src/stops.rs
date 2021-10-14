@@ -41,7 +41,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, utils};
+use crate::labels;
 use config::Config;
 use mimir2::{
     adapters::secondary::elasticsearch::ElasticsearchStorage,
@@ -71,10 +71,10 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
 
 fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
     let admins_iter = admins.iter().map(|a| a.deref());
-    let country_codes = utils::find_country_codes(admins_iter.clone());
+    let country_codes = places::admin::find_country_codes(admins_iter.clone());
 
     stop.label = labels::format_stop_label(&stop.name, admins_iter, &country_codes);
-    stop.zip_codes = utils::get_zip_codes_from_admins(&admins);
+    stop.zip_codes = places::admin::get_zip_codes_from_admins(&admins);
 
     stop.country_codes = country_codes;
     stop.administrative_regions = admins;
