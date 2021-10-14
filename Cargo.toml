@@ -90,16 +90,13 @@ name = "mimirsbrunn"
 path = "src/lib.rs"
 
 [dev-dependencies]
-approx = "0.5"
 async-trait = "0.1.50"
-criterion = { version = "0.3", features = [ "async_tokio" ] }
+url = { version = "2.2.2", features = [ "serde" ] }
+approx = "0.5"
 cucumber = { package = "cucumber_rust", version = "0.9" }
 elasticsearch = "7.14.0-alpha.1"
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 serial_test = "0.5.1"
-tests = { path = "libs/tests" }
-tokio = { version = "1.6.0", features = [ "rt-multi-thread", "macros", "process" ] }
-url = "2.2.2"
 zip = "0.5.13"
 
 [build-dependencies]
@@ -118,9 +115,6 @@ name = "idf"
 harness = false # Allows Cucumber to print output instead of libtest
 test = false
 
-# [[test]]
-# name = "integration"
-# harness = false # Allows Cucumber to print output instead of libtest
 [[bench]]
 name = "benchmark"
 harness = false

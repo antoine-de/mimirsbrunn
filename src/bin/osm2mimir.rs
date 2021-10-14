@@ -96,13 +96,13 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         .context(OsmPbfReader)
         .map_err(Box::new)?;
 
-    let pool = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
+    let pool = elasticsearch::remote::connection_pool_url(settings.elasticsearch.url.as_str())
         .await
         .context(ElasticsearchPool)
         .map_err(Box::new)?;
 
     let client = pool
-        .conn(settings.elasticsearch.config.clone())
+        .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;

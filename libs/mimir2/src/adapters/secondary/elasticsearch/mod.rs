@@ -3,6 +3,7 @@ use elasticsearch::Elasticsearch;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
+use url::Url;
 
 pub mod configuration;
 pub mod explain;
@@ -25,13 +26,12 @@ pub struct ElasticsearchStorage {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ElasticsearchStorageConfig {
+    pub url: Url,
     #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
     pub version_req: String,
-
     #[serde(default = "es_default_scroll_chunk_size")]
     pub scroll_chunk_size: u64,
-
     #[serde(default = "es_default_scroll_pit_alive")]
     pub scroll_pit_alive: String,
 }
@@ -44,7 +44,7 @@ impl Default for ElasticsearchStorageConfig {
         let config = common::config::config_from(
             config_dir.as_path(),
             &["elasticsearch"],
-            "testing".to_string(),
+            "testing",
             "MIMIR_TEST",
             None,
         );

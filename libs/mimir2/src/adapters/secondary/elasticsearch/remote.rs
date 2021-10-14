@@ -8,11 +8,11 @@ use elasticsearch::Elasticsearch;
 use semver::{Version, VersionReq};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
+use std::path::PathBuf;
 use url::Url;
 
 use super::{ElasticsearchStorage, ElasticsearchStorageConfig};
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
-use crate::utils::docker::ConfigElasticsearchTesting;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -74,8 +74,7 @@ impl Remote for SingleNodeConnectionPool {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let url = "http://localhost:9200";
-    ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
+    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
     ///   let client = pool.conn(Default::default()).await.unwrap();
     /// }
     ///
@@ -199,16 +198,14 @@ impl Remote for SingleNodeConnectionPool {
 
 /// Opens a connection to elasticsearch given a url
 pub async fn connection_pool_url(url: &str) -> Result<SingleNodeConnectionPool, Error> {
-    let url = Url::parse(url).context(InvalidUrl {
-        details: String::from(url),
-    })?;
+    let url = Url::parse(url).context(InvalidUrl { details: url })?;
     let pool = SingleNodeConnectionPool::new(url);
     Ok(pool)
 }
 
 /// Open a connection to a test elasticsearch
 pub async fn connection_test_pool() -> Result<SingleNodeConnectionPool, Error> {
-    let config = ConfigElasticsearchTesting::default();
+    let config = ElasticsearchStorageConfig::default();
 
-    connection_pool_url(&config.url).await
+    connection_pool_url(config.url.as_str()).await
 }

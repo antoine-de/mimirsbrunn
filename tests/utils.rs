@@ -25,7 +25,7 @@ async fn build_context(reindex: bool) -> Context {
         .conn(
             config
                 .get("elasticsearch")
-                .expect("missing `elasticsearch` in config"),
+                .expect("invalid `elasticsearch` in config"),
         )
         .await
         .expect("Could not establish connection to Elasticsearch");
