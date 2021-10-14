@@ -2,7 +2,6 @@ use mimir2::adapters::secondary::elasticsearch::remote::Error as PoolError;
 use mimir2::domain::ports::secondary::remote::Error as ConnectionError;
 use snafu::Snafu;
 
-// TODO: should we bother with error management in tests?
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub(crate)")]
 pub enum Error {
@@ -42,4 +41,7 @@ pub enum Error {
         details: String,
         source: std::env::VarError,
     },
+
+    #[snafu(display("Miscellaneous Error: {}", details))]
+    Miscellaneous { details: String },
 }

@@ -32,12 +32,12 @@ pub fn steps() -> Steps<State> {
     );
 
     steps.given_regex_async(
-        "cosmogony file has been indexed for (.*)",
+        "cosmogony file has been indexed for (.*) as (.*)",
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
-
+            let dataset = ctx.matches[2].clone();
             state
-                .execute_once(IndexCosmogony(region), &ctx)
+                .execute_once(IndexCosmogony { region, dataset }, &ctx)
                 .await
                 .expect("failed to index cosmogony file");
 
@@ -74,10 +74,14 @@ impl Step for GenerateCosmogony {
         // Build
         let base_path = env!("CARGO_MANIFEST_DIR");
 
-        let input_dir: PathBuf = [base_path, "tests", "data", "osm"].iter().collect();
+        let input_dir: PathBuf = [base_path, "tests", "fixtures", "osm", region]
+            .iter()
+            .collect();
         let input_file = input_dir.join(format!("{}-latest.osm.pbf", region));
 
-        let output_dir: PathBuf = [base_path, "tests", "data", "cosmogony"].iter().collect();
+        let output_dir: PathBuf = [base_path, "tests", "fixtures", "cosmogony", region]
+            .iter()
+            .collect();
         let output_file = output_dir.join(format!("{}.jsonl.gz", region));
         create_dir_if_not_exists(&output_dir).await?;
 
@@ -118,12 +122,15 @@ impl Step for GenerateCosmogony {
 ///
 /// This assumes that a cosmogony file has already been generated before.
 #[derive(PartialEq)]
-pub struct IndexCosmogony(pub String);
+pub struct IndexCosmogony {
+    pub region: String,
+    pub dataset: String,
+}
 
 #[async_trait(?Send)]
 impl Step for IndexCosmogony {
     async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
-        let Self(region) = self;
+        let Self { region, dataset } = self;
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 
         let gen_status = state
@@ -131,7 +138,7 @@ impl Step for IndexCosmogony {
             .expect("can't generate cosmogony file without downloading from OSM first");
 
         // Check if the admin index already exists
-        let container = root_doctype_dataset(Admin::static_doc_type(), region);
+        let container = root_doctype_dataset(Admin::static_doc_type(), dataset);
 
         let index = client
             .find_container(container.clone())
@@ -145,7 +152,9 @@ impl Step for IndexCosmogony {
         }
 
         let base_path = env!("CARGO_MANIFEST_DIR");
-        let input_dir: PathBuf = [base_path, "tests", "data", "cosmogony"].iter().collect();
+        let input_dir: PathBuf = [base_path, "tests", "fixtures", "cosmogony", region]
+            .iter()
+            .collect();
         let input_file = input_dir.join(format!("{}.jsonl.gz", region));
 
         mimirsbrunn::admin::index_cosmogony(
@@ -153,7 +162,7 @@ impl Step for IndexCosmogony {
             vec!["fr".to_string()],
             Config::builder()
                 .add_source(Admin::default_es_container_config())
-                .set_override("container.dataset", region.to_string())
+                .set_override("container.dataset", dataset.to_string())
                 .expect("failed to set dataset name")
                 .build()
                 .expect("failed to build configuration"),

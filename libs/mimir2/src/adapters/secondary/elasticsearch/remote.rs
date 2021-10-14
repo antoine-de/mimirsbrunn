@@ -13,9 +13,7 @@ use url::Url;
 
 use super::ElasticsearchStorage;
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
-
-pub const ES_KEY: &str = "ELASTICSEARCH_URL";
-pub const ES_TEST_KEY: &str = "ELASTICSEARCH_TEST_URL";
+use crate::utils::docker::ConfigElasticsearchTesting;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -81,7 +79,8 @@ impl Remote for SingleNodeConnectionPool {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
+    ///   let url = "http://localhost:9200";
+    ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
     ///   let client = pool.conn(50u64, ">=7.10.0").await.unwrap();
     /// }
     ///
@@ -214,18 +213,9 @@ pub async fn connection_pool_url(url: &str) -> Result<SingleNodeConnectionPool, 
     Ok(pool)
 }
 
-/// Open a connection to elasticsearch
-pub async fn connection_pool() -> Result<SingleNodeConnectionPool, Error> {
-    let url = std::env::var(ES_KEY).context(MissingEnvironmentVariable {
-        key: String::from(ES_KEY),
-    })?;
-    connection_pool_url(&url).await
-}
-
 /// Open a connection to a test elasticsearch
 pub async fn connection_test_pool() -> Result<SingleNodeConnectionPool, Error> {
-    let url = std::env::var(ES_TEST_KEY).context(MissingEnvironmentVariable {
-        key: String::from(ES_TEST_KEY),
-    })?;
-    connection_pool_url(&url).await
+    let config = ConfigElasticsearchTesting::default();
+
+    connection_pool_url(&config.url).await
 }

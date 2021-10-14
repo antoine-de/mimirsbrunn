@@ -1,25 +1,28 @@
 use bollard::service::{HostConfig, PortBinding};
 use bollard::{
-    container::{Config, CreateContainerOptions, ListContainersOptions, StartContainerOptions},
+    container::{
+        Config as BollardConfig, CreateContainerOptions, ListContainersOptions,
+        StartContainerOptions,
+    },
     errors::Error as BollardError,
     image::CreateImageOptions,
     Docker,
 };
+use config::Config;
 use elasticsearch::{
     http::transport::BuildError as TransportBuilderError,
     indices::{IndicesDeleteAliasParts, IndicesDeleteIndexTemplateParts, IndicesDeleteParts},
     Error as ElasticsearchError,
 };
 use futures::stream::TryStreamExt;
+use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
-
+use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
+use url::Url;
 
-use crate::adapters::secondary::elasticsearch::{
-    remote::{self, Error as ElasticsearchRemoteError},
-    ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ,
-};
+use crate::adapters::secondary::elasticsearch::remote::{self, Error as ElasticsearchRemoteError};
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
 const DOCKER_ES_VERSION: &str = "7.13.0";
@@ -49,11 +52,11 @@ pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
             msg: format!("Cannot get docker {} available", docker.docker_image),
         });
     }
-    let pool = remote::connection_test_pool()
+    let pool = remote::connection_pool_url(&docker.config.url)
         .await
         .context(ElasticsearchPoolCreation)?;
     let _client = pool
-        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+        .conn(docker.config.timeout, &docker.config.version_req)
         .await
         .context(ElasticsearchConnection)?;
     Ok(())
@@ -93,19 +96,74 @@ pub struct DockerWrapper {
     ports: Vec<(u32, u32)>, // list of ports to publish (host port, container port)
     docker_image: String,
     container_name: String, // ip: String,
+    config: ConfigElasticsearchTesting,
 }
 
-// FIXME: Here we hardcode elasticsearch ports. These should be had from the ELASTICSEARCH_TEST_URL
+// Elasticsearch Configuration
+// FIXME Should be placed in common.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfigElasticsearchTesting {
+    pub url: String,
+    pub version_req: String,
+    pub timeout: u64,
+}
+
+impl Default for ConfigElasticsearchTesting {
+    fn default() -> Self {
+        // We retrieve the elasticsearch configuration from ./config/elasticsearch/{default +
+        // testing}
+        // We expect the elasticsearch url to be of the form 'http://localhost:9202'
+        // We extract the 9202, extract the offset from the usual 9000 port for elasticsearch,
+        // and map the ports 9202 -> 9200 et 9302 -> 9300
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../config");
+        let mut builder = Config::builder();
+        builder = builder.add_source(
+            common::config::config_from(
+                config_dir.as_path(),
+                &["elasticsearch"],
+                String::from("testing"),
+                "MIMIR_TEST", // environment variable
+                None,         // No command line override
+            )
+            .expect("configuration for testing"),
+        );
+
+        let config: ConfigElasticsearchTesting = builder
+            .build()
+            .unwrap_or_else(|_| {
+                panic!(
+                    "cannot build the configuration for testing from {}",
+                    config_dir.display(),
+                )
+            })
+            .get("elasticsearch")
+            .unwrap_or_else(|_| {
+                panic!(
+                    "expected elasticsearch section in configuration from {}",
+                    config_dir.display(),
+                )
+            });
+        config
+    }
+}
+
 impl Default for DockerWrapper {
     fn default() -> Self {
+        let config = ConfigElasticsearchTesting::default();
+
         let docker_image = format!(
             "docker.elastic.co/elasticsearch/elasticsearch:{}",
             DOCKER_ES_VERSION
         );
+
+        let url = Url::parse(&config.url).expect("cannot parse elasticsearch url");
+        let port = url.port().expect("expected port in elasticsearch url");
+        let offset: u32 = (port - 9000).into();
         DockerWrapper {
-            ports: vec![(9201, 9200), (9301, 9300)],
+            ports: vec![(9000 + offset, 9200), (9300 + offset, 9300)],
             docker_image,
             container_name: String::from("mimir-test-elasticsearch"),
+            config,
         }
     }
 }
@@ -210,7 +268,7 @@ impl DockerWrapper {
 
             let env_vars = vec![String::from("discovery.type=single-node")];
 
-            let config = Config {
+            let config = BollardConfig {
                 image: Some(self.docker_image.clone()),
                 exposed_ports: Some(exposed_ports),
                 host_config: Some(host_config),
@@ -254,7 +312,7 @@ impl DockerWrapper {
             .await
             .context(ElasticsearchPoolCreation)?;
         let storage = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+            .conn(self.config.timeout, &self.config.version_req)
             .await
             .context(ElasticsearchConnection)?;
 

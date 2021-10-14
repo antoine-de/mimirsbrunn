@@ -4,7 +4,6 @@ SHELL=/bin/bash
 # Configuration
 .PHONY: check docker-build-bragi-release docker-build-bragi-master dockerhub-login push-bragi-image-master push-bragi-image-release wipe-useless-images help
 .DEFAULT_GOAL := help
-ELASTICSEARCH_TEST_URL=http://localhost:9201
 
 check: pre-build ## Runs several tests (alias for pre-build)
 pre-build: fmt lint test
@@ -51,13 +50,13 @@ lint: ## Check quality of the code
 	cargo clippy --all-features --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
 
 test: ## Launch all tests
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --lib
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --bins
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --doc
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --test end_to_end
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package mimir2
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package common
-	ELASTICSEARCH_TEST_URL="${ELASTICSEARCH_TEST_URL}" cargo test --package places
+	cargo test --lib
+	cargo test --bins
+	cargo test --doc
+	cargo test --test end_to_end
+	cargo test --package mimir2
+	cargo test --package common
+	cargo test --package places
 
 .PHONY: version
 version: ## display version of bragi

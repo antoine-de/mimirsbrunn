@@ -21,26 +21,13 @@ pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.given_regex_async(
-        "bano file has been indexed for (.*)",
+        "bano file has been indexed for (.*) as (.*)",
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
+            let dataset = ctx.matches[2].clone();
 
             state
-                .execute(IndexBano(region), &ctx)
-                .await
-                .expect("failed to index Bano file");
-
-            state
-        }),
-    );
-
-    steps.given_regex_async(
-        "bano files have been indexed for (.*)",
-        t!(|mut state, ctx| {
-            let region = ctx.matches[1].clone();
-
-            state
-                .execute(IndexBano(region), &ctx)
+                .execute(IndexBano { region, dataset }, &ctx)
                 .await
                 .expect("failed to index Bano file");
 
@@ -55,25 +42,26 @@ pub fn steps() -> Steps<State> {
 ///
 /// This will require to import admins first.
 #[derive(PartialEq)]
-pub struct IndexBano(String);
+pub struct IndexBano {
+    pub region: String,
+    pub dataset: String,
+}
 
 #[async_trait(?Send)]
 impl Step for IndexBano {
     async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
-        let Self(region) = self;
+        let Self { region, dataset } = self;
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
-        let reindex: &bool = ctx.get().expect("could not get reload flag");
-
-        println!("reindex: {}", reindex);
 
         state
-            .status_of(&IndexCosmogony(region.to_string()))
+            .status_of(&IndexCosmogony {
+                region: region.to_string(),
+                dataset: dataset.to_string(),
+            })
             .expect("You must index admins before indexing addresses");
 
         // Check if the address index already exists
-        let container = root_doctype_dataset(Addr::static_doc_type(), region);
-
-        println!("searching container: {}", container);
+        let container = root_doctype_dataset(Addr::static_doc_type(), dataset);
 
         let index = client
             .find_container(container)
@@ -86,7 +74,6 @@ impl Step for IndexBano {
             return Ok(StepStatus::Skipped);
         }
 
-        println!("container not found");
         // TODO: there might be some factorisation to do with bano2mimir?
         let into_addr = {
             let admins: Vec<Admin> = client
@@ -111,13 +98,15 @@ impl Step for IndexBano {
         // Load file
         let config = Config::builder()
             .add_source(Addr::default_es_container_config())
-            .set_override("container.dataset", region.to_string())
+            .set_override("container.dataset", dataset.to_string())
             .expect("failed to set dataset name")
             .build()
             .expect("failed to build configuration");
 
         let base_path = env!("CARGO_MANIFEST_DIR");
-        let input_dir: PathBuf = [base_path, "tests", "data", "bano"].iter().collect();
+        let input_dir: PathBuf = [base_path, "tests", "fixtures", "bano", region]
+            .iter()
+            .collect();
         let input_file = input_dir.join(format!("{}.csv", region));
 
         import_addresses_from_input_path(client, config, input_file, into_addr)

@@ -2,3 +2,4 @@ mode = "testing"
 
 [elasticsearch]
 url = "http://localhost:9202"
+timeout = 5000

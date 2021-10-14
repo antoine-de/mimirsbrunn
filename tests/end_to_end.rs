@@ -17,7 +17,7 @@ async fn main() {
             "./features/addresses",
             "./features/stops",
         ],
-        true,
+        true, // FIXME Not sure what this parameter is for
     )
     .await
 }
