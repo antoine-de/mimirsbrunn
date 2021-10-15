@@ -7,7 +7,7 @@ use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use crate::steps::download::DownloadOsm;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use tests::admin;
+use tests::cosmogony;
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
@@ -69,7 +69,7 @@ impl Step for GenerateCosmogony {
             .status_of(&DownloadOsm(region.to_string()))
             .expect("can't generate cosmogony file without downloading from OSM first");
 
-        admin::generate_cosmogony(region, false)
+        cosmogony::generate(region, false)
             .await
             .map(|status| status.into())
             .context(error::GenerateCosmogony)
@@ -95,7 +95,7 @@ impl Step for IndexCosmogony {
             .status_of(&GenerateCosmogony(region.to_string()))
             .expect("can't generate cosmogony file without downloading from OSM first");
 
-        admin::index_cosmogony(client, region, dataset, false)
+        cosmogony::index_admins(client, region, dataset, false)
             .await
             .map(|status| status.into())
             .context(error::IndexCosmogony)

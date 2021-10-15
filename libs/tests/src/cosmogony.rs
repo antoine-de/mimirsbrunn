@@ -45,10 +45,7 @@ pub enum Status {
     Done,
 }
 
-pub async fn generate_cosmogony(
-    region: &str,
-    regenerate_if_already_exists: bool,
-) -> Result<Status, Error> {
+pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Result<Status, Error> {
     // Build
     let base_path = env!("CARGO_MANIFEST_DIR");
 
@@ -106,7 +103,7 @@ pub async fn generate_cosmogony(
     Ok(Status::Done)
 }
 
-pub async fn index_cosmogony(
+pub async fn index_admins(
     client: &ElasticsearchStorage,
     region: &str,
     dataset: &str,

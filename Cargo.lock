@@ -2040,6 +2040,7 @@ dependencies = [
  "common",
  "config",
  "cosmogony",
+ "criterion",
  "csv",
  "csv-async",
  "cucumber_rust",

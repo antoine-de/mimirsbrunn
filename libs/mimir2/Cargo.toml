@@ -63,6 +63,4 @@ serial_test = "0.5.1"
 name = "mimir2"
 path = "src/lib.rs"
 
-[[bench]]
-name = "benchmark"
-harness = false
+
