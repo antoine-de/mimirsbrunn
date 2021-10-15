@@ -1,17 +1,12 @@
-use crate::error::Error;
+use async_trait::async_trait;
+use cucumber::{t, StepContext, Steps};
+use snafu::ResultExt;
+
+use crate::error::{self, Error};
 use crate::state::{State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
-use async_trait::async_trait;
-use common::document::ContainerDocument;
-use config::Config;
-use cucumber::{t, StepContext, Steps};
-use mimir2::{
-    adapters::secondary::elasticsearch::ElasticsearchStorage,
-    domain::{model::configuration::root_doctype_dataset, ports::secondary::storage::Storage},
-};
-use mimirsbrunn::stops::index_ntfs;
-use places::stop::Stop;
-use std::path::PathBuf;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use tests::ntfs;
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
@@ -56,38 +51,9 @@ impl Step for IndexNtfs {
             })
             .expect("You must index admins before indexing stops");
 
-        // FIXME Other requirements?
-
-        // Check if the stop index already exists
-        let container = root_doctype_dataset(Stop::static_doc_type(), dataset);
-
-        let index = client
-            .find_container(container)
+        ntfs::index_stops(client, region, dataset, false)
             .await
-            .expect("failed at looking up for container");
-
-        // If we find an existing index, then we skip this indexation step.
-        if index.is_some() {
-            return Ok(StepStatus::Skipped);
-        }
-
-        // Load file
-        let config = Config::builder()
-            .add_source(Stop::default_es_container_config())
-            .set_override("container.dataset", dataset.to_string())
-            .expect("failed to set dataset name")
-            .build()
-            .expect("failed to build configuration");
-
-        let base_path = env!("CARGO_MANIFEST_DIR");
-        let input_dir: PathBuf = [base_path, "tests", "fixtures", "ntfs", region]
-            .iter()
-            .collect();
-
-        index_ntfs(input_dir, config, client)
-            .await
-            .expect("error while indexing Ntfs");
-
-        Ok(StepStatus::Done)
+            .map(|status| status.into())
+            .context(error::IndexNtfs)
     }
 }

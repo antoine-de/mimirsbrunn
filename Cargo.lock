@@ -2078,6 +2078,7 @@ dependencies = [
  "slog-term",
  "snafu",
  "structopt",
+ "tests",
  "tokio",
  "tokio-stream",
  "toml",
@@ -3768,6 +3769,30 @@ name = "termtree"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78fbf2dd23e79c28ccfa2472d3e6b3b189866ffef1aeb91f17c2d968b6586378"
+
+[[package]]
+name = "tests"
+version = "1.24.0-alpha"
+dependencies = [
+ "approx 0.5.0",
+ "async-trait",
+ "common",
+ "config",
+ "cucumber_rust",
+ "elasticsearch",
+ "futures 0.3.17",
+ "mimir2",
+ "mimirsbrunn",
+ "places",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "snafu",
+ "tokio",
+ "url",
+ "zip",
+]
 
 [[package]]
 name = "textwrap"

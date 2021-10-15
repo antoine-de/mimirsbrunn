@@ -17,6 +17,7 @@ members = [
   "libs/mimir2",
   "libs/places",
   "libs/common",
+	"libs/tests",
 ]
 
 [features]
@@ -98,6 +99,7 @@ tokio = { version = "1.6.0", features = [ "rt-multi-thread", "macros", "process"
 elasticsearch = "7.14.0-alpha.1"
 serial_test = "0.5.1"
 zip = "0.5.13"
+tests = { path = "libs/tests" }
 
 [build-dependencies]
 json = "0.12"

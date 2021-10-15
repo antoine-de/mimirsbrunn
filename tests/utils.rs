@@ -1,39 +1,10 @@
 use cucumber::{Context, Cucumber};
-use snafu::ResultExt;
-use std::path::{Path, PathBuf};
-use tokio::fs;
 
-use crate::error::{self, Error};
 use crate::state;
 use crate::steps;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimir2::utils::docker::ConfigElasticsearchTesting;
-
-pub async fn file_exists(path: &Path) -> bool {
-    fs::metadata(path).await.is_ok()
-}
-
-pub async fn create_dir_if_not_exists(path: &Path) -> Result<(), Error> {
-    if !file_exists(path).await {
-        fs::create_dir(path).await.context(error::InvalidIO {
-            details: format!("could no create directory {}", path.display()),
-        })?;
-    }
-
-    Ok(())
-}
-
-pub async fn create_dir_if_not_exists_rec(path: &Path) -> Result<(), Error> {
-    let mut head = PathBuf::new();
-
-    for fragment in path {
-        head.push(fragment);
-        create_dir_if_not_exists(&head).await?;
-    }
-
-    Ok(())
-}
 
 /// Build test context with commonly used handles.
 async fn build_context(reindex: bool) -> Context {

@@ -1,14 +1,52 @@
-use crate::error::Error;
 use async_trait::async_trait;
 use cucumber::{StepContext, World};
 use std::any::Any;
 use std::convert::Infallible;
+
+use crate::error::Error;
+use tests::{admin, bano, download, ntfs};
 
 /// Exit status for a step.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum StepStatus {
     Done,
     Skipped,
+}
+
+impl From<download::Status> for StepStatus {
+    fn from(status: download::Status) -> Self {
+        match status {
+            download::Status::Skipped => StepStatus::Skipped,
+            download::Status::Done => StepStatus::Done,
+        }
+    }
+}
+
+impl From<admin::Status> for StepStatus {
+    fn from(status: admin::Status) -> Self {
+        match status {
+            admin::Status::Skipped => StepStatus::Skipped,
+            admin::Status::Done => StepStatus::Done,
+        }
+    }
+}
+
+impl From<bano::Status> for StepStatus {
+    fn from(status: bano::Status) -> Self {
+        match status {
+            bano::Status::Skipped => StepStatus::Skipped,
+            bano::Status::Done => StepStatus::Done,
+        }
+    }
+}
+
+impl From<ntfs::Status> for StepStatus {
+    fn from(status: ntfs::Status) -> Self {
+        match status {
+            ntfs::Status::Skipped => StepStatus::Skipped,
+            ntfs::Status::Done => StepStatus::Done,
+        }
+    }
 }
 
 /// A step which can be run from current state.

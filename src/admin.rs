@@ -40,10 +40,10 @@ use mimir2::{
     domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
 use places::admin::Admin;
-use slog_scope::{info, warn};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 trait IntoAdmin {
     fn into_admin(
