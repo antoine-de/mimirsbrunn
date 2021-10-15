@@ -6,7 +6,7 @@ use elasticsearch::indices::{
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
-use futures::stream::{self, Stream, StreamExt};
+use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::de::DeserializeOwned;
@@ -126,6 +126,10 @@ pub enum Error {
     /// Elasticsearch Unhandled Status
     #[snafu(display("Elasticsearch Unhandled Status: {}", details))]
     ElasticsearchUnhandledStatus { details: String },
+
+    /// Elasticsearch Response Has Not PIT
+    #[snafu(display("Elasticsearch Response is Missing a PIT"))]
+    ElasticsearchResponseMissingPIT,
 }
 
 impl From<Exception> for Error {
@@ -839,13 +843,14 @@ impl ElasticsearchStorage {
     pub(super) async fn list_documents<D>(
         &self,
         index: String,
-    ) -> Result<Pin<Box<dyn Stream<Item = D> + Send>>, Error>
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<D, Error>> + Send>>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
-        let client = &self.client;
+        let client = self.client.clone();
         let timeout = self.timeout;
 
+        // Open initial PIT
         let init_pit = {
             #[derive(Deserialize)]
             struct PitResponse {
@@ -858,21 +863,45 @@ impl ElasticsearchStorage {
                 .keep_alive(SCROLL_PIT_ALIVE)
                 .send()
                 .await
-                .unwrap()
+                .context(ElasticsearchClient {
+                    details: format!("failed to query PIT for {}", index),
+                })?
                 .error_for_status_code()
                 .context(ElasticsearchClient {
-                    details: format!("cannot list index {}", index),
+                    details: format!("failed to open PIT for {}", index),
                 })?;
 
-            response.json::<PitResponse>().await.unwrap().id
+            response
+                .json::<PitResponse>()
+                .await
+                .context(ElasticsearchDeserialization)?
+                .id
         };
 
-        let client = self.client.clone();
-        let stream = stream::unfold(State::Start, move |state| {
+        // Build the query for the next chunk of documents.
+        let build_query = |pit_id, search_after| {
+            let mut query = json!({
+                "query": {"match_all": {}},
+                "size": SCROLL_CHUNK_SIZE,
+                "pit": {"id": pit_id, "keep_alive": SCROLL_PIT_ALIVE},
+                "track_total_hits": false,
+                "sort": [{"_shard_doc": "desc"}]
+            });
+
+            if let Some(search_after) = search_after {
+                query["search_after"] = json!([search_after]);
+            }
+
+            query
+        };
+
+        let stream = stream::try_unfold(State::Start, move |state| {
             let client = client.clone();
             let index = index.clone();
             let init_pit = init_pit.clone();
 
+            // Fetch Elasticsearch response, build stream over returned chunk and compute next
+            // state.
             let read_response = {
                 let client = client.clone();
 
@@ -884,16 +913,18 @@ impl ElasticsearchStorage {
                         .send()
                         .await
                         .context(ElasticsearchClient {
-                            details: format!("cannot search index {}", index),
-                        })
-                        .unwrap();
+                            details: format!("failed to search for {}", index),
+                        })?;
 
-                    let body: EsResponse<D> = response.json().await.unwrap();
+                    let body: EsResponse<D> = response
+                        .json()
+                        .await
+                        .context(ElasticsearchDeserialization)?;
 
                     let pit = body
                         .pit_id
                         .clone()
-                        .expect("ES response didn't contain any PIT");
+                        .ok_or(Error::ElasticsearchResponseMissingPIT)?;
 
                     let res_status = {
                         if let Some(last_hit) = body.hits.hits.last() {
@@ -904,34 +935,22 @@ impl ElasticsearchStorage {
                         }
                     };
 
-                    eprintln!("got {} documents", body.hits.hits.len());
-                    let docs = stream::iter(body.into_hits());
-                    Some((docs, res_status))
+                    let docs = stream::iter(body.into_hits().map(Ok));
+                    Ok::<_, Error>(Some((docs, res_status)))
                 }
             };
 
             async move {
                 match state {
                     State::Start => {
-                        let query = json!({
-                            "query": {"match_all": {}},
-                            "size": SCROLL_CHUNK_SIZE,
-                            "pit": {"id": init_pit, "keep_alive": SCROLL_PIT_ALIVE},
-                            "track_total_hits": false,
-                            "sort": [{"_shard_doc": "desc"}]
-                        });
-
+                        let query = build_query(init_pit, None);
                         read_response(query).await
                     }
                     State::Next(continuation_token) => {
-                        let query = json!({
-                            "query": {"match_all": {}},
-                            "size": SCROLL_CHUNK_SIZE,
-                            "pit": {"id": continuation_token.pit, "keep_alive": SCROLL_PIT_ALIVE},
-                            "track_total_hits": false,
-                            "sort": [{"_shard_doc": "desc"}],
-                            "search_after": [continuation_token.tiebreaker]
-                        });
+                        let query = build_query(
+                            continuation_token.pit,
+                            Some(continuation_token.tiebreaker),
+                        );
 
                         read_response(query).await
                     }
@@ -944,12 +963,12 @@ impl ElasticsearchStorage {
                             .unwrap();
 
                         let _response_body = response.json::<Value>().await.unwrap();
-                        None
+                        Ok(None)
                     }
                 }
             }
         })
-        .flatten();
+        .try_flatten();
 
         Ok(stream.boxed())
     }
