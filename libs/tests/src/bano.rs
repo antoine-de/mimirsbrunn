@@ -72,7 +72,7 @@ pub async fn index_addresses(
             .collect();
 
         let admins_geofinder = admins.into_iter().collect();
-        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, false)
+        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder)
     };
 
     // Load file

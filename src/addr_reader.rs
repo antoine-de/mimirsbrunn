@@ -1,21 +1,36 @@
-use failure::format_err;
 use flate2::read::GzDecoder;
 use futures::future;
 use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use serde::de::DeserializeOwned;
 use slog_scope::{info, warn};
+use snafu::futures::TryStreamExt as SnafuTryStreamExt;
+use snafu::{ResultExt, Snafu};
 use std::io::Read;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
 use tokio::fs::File;
 
-use crate::Error;
 use config::Config;
 use mimir2::{
     adapters::secondary::elasticsearch::ElasticsearchStorage,
     domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
 use places::addr::Addr;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    // FIXME: I cannot use this here, because the model error contains Box<dyn stdError>
+    // which makes a stream of Result<T, Error> not `Send`.
+    // #[snafu(display("Index Generation Error: {}", source))]
+    // IndexGeneration {
+    //     source: mimir2::domain::model::error::Error,
+    // },
+    #[snafu(display("CSV Error: {}", source))]
+    Csv { source: csv_async::Error },
+
+    #[snafu(display("IO Error: {}", source))]
+    InvalidIO { source: tokio::io::Error },
+}
 
 async fn import_addresses<S, F, T>(
     client: &ElasticsearchStorage,
@@ -24,7 +39,7 @@ async fn import_addresses<S, F, T>(
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
     S: Stream<Item = T> + Send + Sync + 'static,
 {
     let addrs = records.map(into_addr).filter_map(|ra| match ra {
@@ -45,7 +60,9 @@ where
     client
         .generate_index(config, addrs, IndexVisibility::Public)
         .await
-        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
+        .unwrap();
+    // FIXME See above in definition of the enum Error.
+    //.context(IndexGeneration)?;
 
     Ok(())
 }
@@ -59,7 +76,7 @@ pub async fn import_addresses_from_reads<T, F>(
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
     let iter = inputs
@@ -89,7 +106,7 @@ pub async fn import_addresses_from_files<T, F>(
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
     let files = files
@@ -119,18 +136,21 @@ where
     import_addresses_from_reads(client, config, has_headers, nb_threads, files, into_addr).await
 }
 
+/// Import the addresses found in path, using the given (Elastiscsearch) configuration and client.
+/// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
+/// address.
 pub async fn import_addresses_from_input_path<F, T>(
     client: &ElasticsearchStorage,
     config: Config,
-    file: PathBuf,
+    path: PathBuf,
     into_addr: F,
 ) -> Result<(), Error>
 where
-    F: Fn(T) -> Result<Addr, Error> + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    if file.is_dir() {
-        let files = dir_to_stream(file).await?;
+    if path.is_dir() {
+        let files = dir_to_stream(path).await?;
         let records = files
             .filter_map(move |file| async move {
                 match file {
@@ -155,7 +175,7 @@ where
 
         import_addresses(client, config, records, into_addr).await
     } else {
-        let records = stream_records_from_file(file).await?;
+        let records = stream_records_from_file(path).await?;
         let records = records.filter_map(|rec| future::ready(rec.ok()));
         import_addresses(client, config, records, into_addr).await
     }
@@ -169,10 +189,7 @@ async fn dir_to_stream(
 
     let stream = tokio_stream::wrappers::ReadDirStream::new(entries);
 
-    Ok(stream.map(|entry| match entry {
-        Ok(entry) => Ok(entry.path()),
-        Err(err) => Err(format_err!("could not read dir entry: {}", err.to_string())),
-    }))
+    Ok(stream.map_ok(|entry| entry.path()).context(InvalidIO))
 }
 
 async fn stream_records_from_file<T>(
@@ -181,14 +198,10 @@ async fn stream_records_from_file<T>(
 where
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    let reader = File::open(file)
-        .await
-        .map_err(|err| format_err!("file open {}", err.to_string()))?;
+    let reader = File::open(file).await.context(InvalidIO)?;
 
     let csv_reader = csv_async::AsyncReaderBuilder::new()
         .has_headers(false)
         .create_deserializer(reader);
-    Ok(csv_reader
-        .into_deserialize::<T>()
-        .map_err(|err| format_err!("could not read record: {}", err.to_string())))
+    Ok(csv_reader.into_deserialize::<T>().context(Csv))
 }
