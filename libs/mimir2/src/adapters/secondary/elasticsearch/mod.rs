@@ -29,8 +29,17 @@ pub struct ElasticsearchStorageConfig {
         deserialize_with = "deserialize_duration"
     )]
     pub timeout: Duration,
+
     #[serde(default = "es_default_version_req")]
     pub version_req: String,
+
+    /// Number of documents loaded per request when performing a `list_documents`.
+    #[serde(default = "es_default_scroll_chunk_size")]
+    pub scroll_chunk_size: u64,
+
+    /// Liveness of the PIT while performing a `list_documents`.
+    #[serde(default = "es_default_scroll_pit_alive")]
+    pub scroll_pit_alive: String,
 }
 
 fn es_default_version_timeout() -> Duration {
@@ -41,11 +50,21 @@ fn es_default_version_req() -> String {
     ">=7.13.0".to_string()
 }
 
+fn es_default_scroll_chunk_size() -> u64 {
+    10_000
+}
+
+fn es_default_scroll_pit_alive() -> String {
+    "10m".to_string()
+}
+
 impl Default for ElasticsearchStorageConfig {
     fn default() -> Self {
         Self {
             timeout: es_default_version_timeout(),
             version_req: es_default_version_req(),
+            scroll_chunk_size: es_default_scroll_chunk_size(),
+            scroll_pit_alive: es_default_scroll_pit_alive(),
         }
     }
 }

@@ -34,12 +34,6 @@ use common::document::Document;
 /// Number of document inserted at once in indexes
 const INSERT_CHUNK_SIZE: usize = 100;
 
-/// Number of documents fetched at once from the index
-const SCROLL_CHUNK_SIZE: usize = 10_000;
-
-/// Life duration of the PIT created when scroll the index
-const SCROLL_PIT_ALIVE: &str = "10m";
-
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
@@ -849,6 +843,8 @@ impl ElasticsearchStorage {
     {
         let client = self.client.clone();
         let timeout = self.config.timeout;
+        let chunk_size = self.config.scroll_chunk_size;
+        let pit_alive = self.config.scroll_pit_alive.clone();
 
         // Open initial PIT
         let init_pit = {
@@ -860,7 +856,7 @@ impl ElasticsearchStorage {
             let response = client
                 .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
                 .request_timeout(timeout)
-                .keep_alive(SCROLL_PIT_ALIVE)
+                .keep_alive(&pit_alive)
                 .send()
                 .await
                 .context(ElasticsearchClient {
@@ -878,27 +874,28 @@ impl ElasticsearchStorage {
                 .id
         };
 
-        // Build the query for the next chunk of documents.
-        let build_query = |pit_id, search_after| {
-            let mut query = json!({
-                "query": {"match_all": {}},
-                "size": SCROLL_CHUNK_SIZE,
-                "pit": {"id": pit_id, "keep_alive": SCROLL_PIT_ALIVE},
-                "track_total_hits": false,
-                "sort": [{"_shard_doc": "desc"}]
-            });
-
-            if let Some(search_after) = search_after {
-                query["search_after"] = json!([search_after]);
-            }
-
-            query
-        };
-
         let stream = stream::try_unfold(State::Start, move |state| {
             let client = client.clone();
             let index = index.clone();
             let init_pit = init_pit.clone();
+            let pit_alive = pit_alive.clone();
+
+            // Build the query for the next chunk of documents.
+            let build_query = move |pit_id, search_after| {
+                let mut query = json!({
+                    "query": {"match_all": {}},
+                    "size": chunk_size,
+                    "pit": {"id": pit_id, "keep_alive": pit_alive},
+                    "track_total_hits": false,
+                    "sort": [{"_shard_doc": "desc"}]
+                });
+
+                if let Some(search_after) = search_after {
+                    query["search_after"] = json!([search_after]);
+                }
+
+                query
+            };
 
             // Fetch Elasticsearch response, build stream over returned chunk and compute next
             // state.

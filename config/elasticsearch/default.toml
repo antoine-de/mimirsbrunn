@@ -2,3 +2,5 @@
 url = "http://localhost:9200"
 timeout = 100
 version_req = ">=7.13.0"
+scroll_chunk_size = 1000
+scroll_pit_alive = "1m"
