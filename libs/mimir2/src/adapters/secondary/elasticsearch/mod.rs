@@ -5,6 +5,7 @@ pub mod configuration;
 pub mod explain;
 pub(super) mod internal;
 pub mod list;
+pub mod models;
 pub mod query;
 pub mod remote;
 pub mod status;
