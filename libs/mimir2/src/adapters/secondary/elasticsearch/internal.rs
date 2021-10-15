@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
 use super::configuration::IndexConfiguration;
-use super::models::EsResponse;
+use super::models::ElasticsearchSearchResponse;
 use super::ElasticsearchStorage;
 use crate::domain::model::{
     configuration,
@@ -916,7 +916,7 @@ impl ElasticsearchStorage {
                             details: format!("failed to search for {}", index),
                         })?;
 
-                    let body: EsResponse<D> = response
+                    let body: ElasticsearchSearchResponse<D> = response
                         .json()
                         .await
                         .context(ElasticsearchDeserialization)?;
