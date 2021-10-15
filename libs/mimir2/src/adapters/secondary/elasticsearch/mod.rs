@@ -27,7 +27,7 @@ pub struct ElasticsearchStorage {
 pub mod tests {
 
     use config::Config;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use serial_test::serial;
 
     use super::*;
@@ -189,7 +189,7 @@ pub mod tests {
             .starts_with("Container Creation Error"));
     }
 
-    #[derive(Serialize)]
+    #[derive(Deserialize, Serialize)]
     struct TestObj {
         value: String,
     }
@@ -204,6 +204,7 @@ pub mod tests {
         fn static_doc_type() -> &'static str {
             "test-obj"
         }
+
         fn default_es_container_config() -> config::Config {
             config::Config::builder()
                 .set_default("container.name", Self::static_doc_type())
