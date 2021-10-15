@@ -30,6 +30,8 @@ pub async fn run_cucumber(features: &[&str], reindex: bool) {
         .steps(steps::download::steps())
         .steps(steps::admin::steps())
         .steps(steps::address::steps())
+        .steps(steps::street::steps())
+        .steps(steps::poi::steps())
         .steps(steps::stop::steps())
         .steps(steps::search::steps())
         // Add some global context for all the tests, like databases.

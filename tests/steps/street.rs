@@ -5,49 +5,28 @@ use snafu::ResultExt;
 use crate::error::{self, Error};
 use crate::state::{State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
-use crate::steps::download::DownloadNTFS;
+use crate::steps::download::DownloadOsm;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use tests::ntfs;
+use tests::osm;
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.given_regex_async(
-        r#"ntfs file has been indexed for (.*) as (.*)"#,
+        "streets have been indexed for (.*) as (.*)",
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
             let dataset = ctx.matches[2].clone();
 
             state
-                .execute(IndexNTFS { region, dataset }, &ctx)
+                .execute(DownloadOsm(region.clone()), &ctx)
                 .await
-                .expect("failed to index NTFS file");
+                .expect("failed to download OSM file");
 
             state
-        }),
-    );
-
-    // download and index ntfs
-    steps.given_regex_async(
-        "stops have been indexed for (.*) as (.*)",
-        t!(|mut state, ctx| {
-            let region = ctx.matches[1].clone();
-            let dataset = ctx.matches[2].clone();
-
-            state
-                .execute(
-                    DownloadNTFS {
-                        region: region.clone(),
-                    },
-                    &ctx,
-                )
+                .execute(IndexStreets { region, dataset }, &ctx)
                 .await
-                .expect("failed to download NTFS file");
-
-            state
-                .execute(IndexNTFS { region, dataset }, &ctx)
-                .await
-                .expect("failed to index NTFS file");
+                .expect("failed to index OSM file for streets");
 
             state
         }),
@@ -56,17 +35,17 @@ pub fn steps() -> Steps<State> {
     steps
 }
 
-/// Index an NTFS file for a given region into Elasticsearch.
+/// Index an osm file for a given region into Elasticsearch, extracting streets
 ///
 /// This will require to import admins first.
-#[derive(Debug, PartialEq)]
-pub struct IndexNtfs {
+#[derive(PartialEq)]
+pub struct IndexStreets {
     pub region: String,
     pub dataset: String,
 }
 
 #[async_trait(?Send)]
-impl Step for IndexNTFS {
+impl Step for IndexStreets {
     async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self { region, dataset } = self;
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
@@ -78,9 +57,9 @@ impl Step for IndexNTFS {
             })
             .expect("You must index admins before indexing stops");
 
-        ntfs::index_stops(client, region, dataset, false)
+        osm::index_streets(client, region, dataset, false)
             .await
             .map(|status| status.into())
-            .context(error::IndexNtfs)
+            .context(error::IndexOsm)
     }
 }

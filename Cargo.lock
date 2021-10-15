@@ -3784,6 +3784,7 @@ dependencies = [
  "futures 0.3.17",
  "mimir2",
  "mimirsbrunn",
+ "osmpbfreader",
  "places",
  "reqwest",
  "serde",

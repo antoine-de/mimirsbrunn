@@ -11,7 +11,7 @@ use mimir2::domain::ports::primary::{
 };
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::osm_reader::street::{compute_street_weight, streets};
+use mimirsbrunn::osm_reader::street::streets;
 use mimirsbrunn::settings::osm2mimir as settings;
 
 #[derive(Debug, Snafu)]
@@ -127,19 +127,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
     };
 
     if settings.streets.import {
-        let es_mappings = opts
-            .config_dir
-            .join("elasticsearch")
-            .join("street")
-            .join("mappings.json");
-        let es_settings = opts
-            .config_dir
-            .join("elasticsearch")
-            .join("street")
-            .join("settings.json");
         let config = common::config::load_es_config_for::<places::street::Street>(
-            es_mappings.into(),
-            es_settings.into(),
             opts.settings
                 .iter()
                 .filter_map(|s| {
@@ -157,7 +145,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         import_streets(
             &mut osm_reader,
             &admins_geofinder,
-            settings,
+            &settings.streets.exclusions,
             &client,
             config,
         )
@@ -166,19 +154,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if settings.pois.import {
-        let es_mappings = opts
-            .config_dir
-            .join("elasticsearch")
-            .join("poi")
-            .join("mappings.json");
-        let es_settings = opts
-            .config_dir
-            .join("elasticsearch")
-            .join("poi")
-            .join("settings.json");
         let config = common::config::load_es_config_for::<places::poi::Poi>(
-            es_mappings.into(),
-            es_settings.into(),
             opts.settings
                 .iter()
                 .filter_map(|s| {
@@ -196,7 +172,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         import_pois(
             &mut osm_reader,
             &admins_geofinder,
-            settings,
+            &settings.pois.config.clone().unwrap_or_default(),
             &client,
             config,
         )
@@ -211,14 +187,15 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
 async fn import_streets(
     osm_reader: &mut mimirsbrunn::osm_reader::OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
-    settings: &settings::Settings,
+    exclusions: &mimirsbrunn::osm_reader::street::StreetExclusion,
     client: &ElasticsearchStorage,
     config: Config,
 ) -> Result<(), Error> {
-    let mut streets =
-        streets(osm_reader, admins_geofinder, settings).context(StreetOsmExtraction)?;
-
-    compute_street_weight(&mut streets);
+    let streets: Vec<places::street::Street> = streets(osm_reader, admins_geofinder, exclusions)
+        .context(StreetOsmExtraction)?
+        .into_iter()
+        .map(|street| street.set_weight_from_admins())
+        .collect();
 
     let _index = client
         .generate_index(
@@ -236,16 +213,12 @@ async fn import_streets(
 async fn import_pois(
     osm_reader: &mut mimirsbrunn::osm_reader::OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
-    settings: &settings::Settings,
+    poi_config: &mimirsbrunn::osm_reader::poi::PoiConfig,
     client: &ElasticsearchStorage,
     config: Config,
 ) -> Result<(), Error> {
-    let pois = mimirsbrunn::osm_reader::poi::pois(
-        osm_reader,
-        &settings.pois.config.clone().unwrap_or_default(),
-        admins_geofinder,
-    )
-    .context(PoiOsmExtraction)?;
+    let pois = mimirsbrunn::osm_reader::poi::pois(osm_reader, poi_config, admins_geofinder)
+        .context(PoiOsmExtraction)?;
 
     let pois: Vec<places::poi::Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)

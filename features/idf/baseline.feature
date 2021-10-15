@@ -2,14 +2,11 @@ Feature: Baseline
     Some scenarios for validating in Ile de France
 
     Background:
-        Given osm file has been downloaded for ile-de-france
-	And osm file has been processed by cosmogony for ile-de-france
-        And cosmogony file has been indexed for ile-de-france as idf
-	And bano files have been downloaded for 92, 75, 94 into ile-de-france
-	And bano file has been indexed for ile-de-france as idf
-	And osm file has been indexed for ile-de-france as idf
-	And ntfs file has been downloaded for fr-idf
-	And ntfs file has been indexed for fr-idf as idf
+        Given admins have been indexed for ile-de-france as idf
+				# And addresses (bano) have been indexed for 92, 75, 94 into ile-de-france as idf
+        And streets have been indexed for ile-de-france as idf
+				And stops have been indexed for fr-idf as idf
+				And pois have been indexed for fr-idf as idf
 
     # With 'Exact Match', we expect the query to be found at the top of the
     # result because the query exactly matches the name / label of the target.
@@ -21,7 +18,7 @@ Feature: Baseline
 
         Examples:
             | query             | id                         |
-	    | paris             | admin:osm:relation:7444    | 
+            | paris             | admin:osm:relation:7444    | 
             | ile-de-france     | admin:osm:relation:8649    |
             | saint-denis       | admin:osm:relation:87922   |
 
@@ -35,4 +32,4 @@ Feature: Baseline
 
         Examples:
             | query                 | id                         |
-	    | 20 rue Hector Malot   | addr:2.37715;48.846781:20  |
+            | 20 rue Hector Malot   | addr:2.37715;48.846781:20  |

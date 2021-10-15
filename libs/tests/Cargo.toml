@@ -19,6 +19,7 @@ elasticsearch = "7.14.0-alpha.1"
 futures = "0.3"
 mimir2 = { path = "../mimir2" }
 mimirsbrunn = { path = "../.." }
+osmpbfreader = "0.14"
 places = { path = "../places" }
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 serde = {version = "1", features = ["rc"]}

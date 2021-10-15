@@ -4,7 +4,7 @@ use std::any::Any;
 use std::convert::Infallible;
 
 use crate::error::Error;
-use tests::{bano, cosmogony, download, ntfs};
+use tests::{bano, cosmogony, download, ntfs, osm};
 
 /// Exit status for a step.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -45,6 +45,15 @@ impl From<ntfs::Status> for StepStatus {
         match status {
             ntfs::Status::Skipped => StepStatus::Skipped,
             ntfs::Status::Done => StepStatus::Done,
+        }
+    }
+}
+
+impl From<osm::Status> for StepStatus {
+    fn from(status: osm::Status) -> Self {
+        match status {
+            osm::Status::Skipped => StepStatus::Skipped,
+            osm::Status::Done => StepStatus::Done,
         }
     }
 }
