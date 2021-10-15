@@ -1003,53 +1003,12 @@ impl ElasticsearchStorage {
         };
 
         if response.status_code().is_success() {
-            let json = response
-                .json::<Value>()
+            let body = response
+                .json::<ElasticsearchSearchResponse<D>>()
                 .await
                 .context(ElasticsearchDeserialization)?;
 
-            let hits = json
-                .as_object()
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected JSON object"),
-                    json: json.clone(),
-                })?
-                .get("hits")
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected 'hits'"),
-                    json: json.clone(),
-                })?
-                .as_object()
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected JSON object"),
-                    json: json.clone(),
-                })?
-                .get("hits")
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected 'hits'"),
-                    json: json.clone(),
-                })?
-                .as_array()
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected JSON array"),
-                    json: json.clone(),
-                })?;
-
-            let hits = hits
-                .to_owned()
-                .into_iter()
-                .map(|i| {
-                    let source = i
-                        .as_object()
-                        .unwrap()
-                        .get("_source")
-                        .expect("object has source")
-                        .to_owned();
-                    serde_json::from_value::<D>(source).unwrap()
-                })
-                .collect::<Vec<_>>();
-
-            Ok(hits)
+            Ok(body.into_hits().collect())
         } else {
             let exception = response.exception().await.ok().unwrap();
 
