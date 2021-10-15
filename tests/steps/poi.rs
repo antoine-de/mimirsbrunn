@@ -4,6 +4,7 @@ use snafu::ResultExt;
 
 use crate::error::{self, Error};
 use crate::state::{State, Step, StepStatus};
+use crate::steps::admin::IndexCosmogony;
 use crate::steps::download::DownloadOsm;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use tests::osm;
@@ -45,16 +46,16 @@ pub struct IndexPois {
 
 #[async_trait(?Send)]
 impl Step for IndexPois {
-    async fn execute(&mut self, _state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self { region, dataset } = self;
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 
-        // state
-        //     .status_of(&IndexCosmogony {
-        //         region: region.to_string(),
-        //         dataset: dataset.to_string(),
-        //     })
-        //     .expect("You must index admins before indexing pois");
+        state
+            .status_of(&IndexCosmogony {
+                region: region.to_string(),
+                dataset: dataset.to_string(),
+            })
+            .expect("You must index admins before indexing pois");
 
         osm::index_pois(client, region, dataset, false)
             .await

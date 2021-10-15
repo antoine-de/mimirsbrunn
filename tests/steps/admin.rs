@@ -79,6 +79,31 @@ pub fn steps() -> Steps<State> {
         }),
     );
 
+    // This step is a condensed format for download + generate + index
+    steps.given_regex_async(
+        "admins have been indexed for (.*) as (.*)",
+        t!(|mut state, ctx| {
+            let region = ctx.matches[1].clone();
+            let dataset = ctx.matches[2].clone();
+            state
+                .execute_once(DownloadOsm(region.to_string()), &ctx)
+                .await
+                .expect("failed to download OSM");
+
+            state
+                .execute_once(GenerateCosmogony(region.to_string()), &ctx)
+                .await
+                .expect("failed to generate cosmogony file");
+
+            state
+                .execute_once(IndexCosmogony { region, dataset }, &ctx)
+                .await
+                .expect("failed to index cosmogony file");
+
+            state
+        }),
+    );
+
     steps
 }
 
