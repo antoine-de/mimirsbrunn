@@ -10,6 +10,7 @@ pub enum Error {
 #[async_trait]
 pub trait Remote {
     type Conn;
+    type Config;
 
     /// Returns a client for making calls to the backend
     ///
@@ -34,9 +35,9 @@ pub trait Remote {
     /// async fn main() {
     ///   let url = "http://localhost:9200";
     ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
-    ///   let client = pool.conn(50u64, ">=7.11.0").await.unwrap();
+    ///   let client = pool.conn(Default::default()).await.unwrap();
     /// }
     ///
     /// ```
-    async fn conn(self, timeout: u64, version_req: &str) -> Result<Self::Conn, Error>;
+    async fn conn(self, config: Self::Config) -> Result<Self::Conn, Error>;
 }

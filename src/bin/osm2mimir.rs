@@ -102,10 +102,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         .map_err(Box::new)?;
 
     let client = pool
-        .conn(
-            settings.elasticsearch.timeout,
-            &settings.elasticsearch.version_req,
-        )
+        .conn(settings.elasticsearch.config.clone())
         .await
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;

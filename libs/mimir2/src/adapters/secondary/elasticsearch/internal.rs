@@ -208,7 +208,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .create(IndicesCreateParts::Index(&config.name))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .wait_for_active_shards(&config.parameters.wait_for_active_shards)
             .body(body)
             .send()
@@ -268,7 +268,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .delete(IndicesDeleteParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -330,7 +330,7 @@ impl ElasticsearchStorage {
             .client
             .cat()
             .indices(CatIndicesParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .format("json")
             .send()
             .await
@@ -511,7 +511,7 @@ impl ElasticsearchStorage {
         let resp = self
             .client
             .bulk(BulkParts::Index(index.as_str()))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .body(ops)
             .send()
             .await
@@ -640,7 +640,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .update_aliases()
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .body(json!({ "actions": actions }))
             .send()
             .await
@@ -675,7 +675,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .get_alias(IndicesGetAliasParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -743,7 +743,7 @@ impl ElasticsearchStorage {
             .client
             .ingest()
             .put_pipeline(IngestPutPipelineParts::Id(&name))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .body(pipeline)
             .send()
             .await
@@ -815,7 +815,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .refresh(IndicesRefreshParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -848,7 +848,7 @@ impl ElasticsearchStorage {
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let client = self.client.clone();
-        let timeout = self.timeout;
+        let timeout = self.config.timeout;
 
         // Open initial PIT
         let init_pit = {
@@ -985,7 +985,7 @@ impl ElasticsearchStorage {
         let search = self
             .client
             .search(SearchParts::Index(&indices))
-            .request_timeout(self.timeout);
+            .request_timeout(self.config.timeout);
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
@@ -1036,7 +1036,7 @@ impl ElasticsearchStorage {
         let explain = self
             .client
             .explain(ExplainParts::IndexId(&index, &id))
-            .request_timeout(self.timeout);
+            .request_timeout(self.config.timeout);
 
         let response = match query {
             Query::QueryString(q) => explain.q(&q).send().await.context(ElasticsearchClient {
@@ -1098,7 +1098,7 @@ impl ElasticsearchStorage {
             .client
             .cluster()
             .health(ClusterHealthParts::None)
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -1154,7 +1154,7 @@ impl ElasticsearchStorage {
             .client
             .cat()
             .nodes()
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .h(&["v"]) // We only want the version
             .format("json")
             .send()

@@ -56,7 +56,7 @@ pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
         .await
         .context(ElasticsearchPoolCreation)?;
     let _client = pool
-        .conn(docker.config.timeout, &docker.config.version_req)
+        .conn(Default::default())
         .await
         .context(ElasticsearchConnection)?;
     Ok(())
@@ -312,7 +312,7 @@ impl DockerWrapper {
             .await
             .context(ElasticsearchPoolCreation)?;
         let storage = pool
-            .conn(self.config.timeout, &self.config.version_req)
+            .conn(Default::default())
             .await
             .context(ElasticsearchConnection)?;
 
@@ -320,7 +320,7 @@ impl DockerWrapper {
             .client
             .indices()
             .delete(IndicesDeleteParts::Index(&["*"]))
-            .request_timeout(storage.timeout)
+            .request_timeout(storage.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient)?;
@@ -329,7 +329,7 @@ impl DockerWrapper {
             .client
             .indices()
             .delete_alias(IndicesDeleteAliasParts::IndexName(&["*"], &["*"]))
-            .request_timeout(storage.timeout)
+            .request_timeout(storage.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient)?;
@@ -338,7 +338,7 @@ impl DockerWrapper {
             .client
             .indices()
             .delete_index_template(IndicesDeleteIndexTemplateParts::Name("*"))
-            .request_timeout(storage.timeout)
+            .request_timeout(storage.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient)?;

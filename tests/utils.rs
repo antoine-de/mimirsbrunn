@@ -15,7 +15,7 @@ async fn build_context(reindex: bool) -> Context {
         .expect("could not initialize ES pool");
 
     let es_client = es_pool
-        .conn(config.timeout, &config.version_req)
+        .conn(Default::default())
         .await
         .expect("Could not establish connection to Elasticsearch");
 

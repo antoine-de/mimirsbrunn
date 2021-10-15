@@ -1,4 +1,5 @@
 use config::Config;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 /// This module contains the definition for osm2mimir configuration and command line arguments.
 ///
 use serde::{Deserialize, Serialize};
@@ -48,8 +49,8 @@ pub struct Container {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Elasticsearch {
     pub url: String,
-    pub version_req: String,
-    pub timeout: u64,
+    #[serde(flatten)]
+    pub config: ElasticsearchStorageConfig,
 }
 
 #[cfg(feature = "db-storage")]

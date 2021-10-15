@@ -1,4 +1,5 @@
 use config::Config;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use snafu::Snafu;
@@ -49,7 +50,9 @@ pub struct Elasticsearch {
     pub host: String,
     pub port: u16,
     pub version_req: String,
-    pub timeout: u64,
+
+    #[serde(flatten)]
+    pub config: ElasticsearchStorageConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

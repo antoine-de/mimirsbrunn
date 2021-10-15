@@ -110,10 +110,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .context(ElasticsearchConnectionPoolCreation)?;
 
     let client = pool
-        .conn(
-            settings.elasticsearch.timeout,
-            &settings.elasticsearch.version_req,
-        )
+        .conn(Default::default())
         .await
         .context(ElasticsearchConnection)?;
 
