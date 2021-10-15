@@ -1,6 +1,6 @@
 use snafu::Snafu;
 
-use tests::{admin, bano, download, ntfs};
+use tests::{bano, cosmogony, download, ntfs};
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub(crate)")]
@@ -9,10 +9,10 @@ pub enum Error {
     Download { source: download::Error },
 
     #[snafu(display("Generate Cosmogony Error: {}", source))]
-    GenerateCosmogony { source: admin::Error },
+    GenerateCosmogony { source: cosmogony::Error },
 
     #[snafu(display("Index Cosmogony Error: {}", source))]
-    IndexCosmogony { source: admin::Error },
+    IndexCosmogony { source: cosmogony::Error },
 
     #[snafu(display("Index Bano Error: {}", source))]
     IndexBano { source: bano::Error },

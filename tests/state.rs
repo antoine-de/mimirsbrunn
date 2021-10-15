@@ -4,7 +4,7 @@ use std::any::Any;
 use std::convert::Infallible;
 
 use crate::error::Error;
-use tests::{admin, bano, download, ntfs};
+use tests::{bano, cosmogony, download, ntfs};
 
 /// Exit status for a step.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -22,11 +22,11 @@ impl From<download::Status> for StepStatus {
     }
 }
 
-impl From<admin::Status> for StepStatus {
-    fn from(status: admin::Status) -> Self {
+impl From<cosmogony::Status> for StepStatus {
+    fn from(status: cosmogony::Status) -> Self {
         match status {
-            admin::Status::Skipped => StepStatus::Skipped,
-            admin::Status::Done => StepStatus::Done,
+            cosmogony::Status::Skipped => StepStatus::Skipped,
+            cosmogony::Status::Done => StepStatus::Done,
         }
     }
 }
