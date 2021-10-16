@@ -4,7 +4,6 @@ use snafu::ResultExt;
 
 use crate::error::{self, Error};
 use crate::state::{State, Step, StepStatus};
-use crate::steps::admin::IndexCosmogony;
 use crate::steps::download::DownloadNTFS;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use tests::ntfs;
@@ -67,7 +66,7 @@ pub struct IndexNtfs {
 
 #[async_trait(?Send)]
 impl Step for IndexNTFS {
-    async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, _state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self { region, dataset } = self;
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 

@@ -4,7 +4,6 @@ use snafu::ResultExt;
 
 use crate::error::{self, Error};
 use crate::state::{State, Step, StepStatus};
-use crate::steps::admin::IndexCosmogony;
 use crate::steps::download::DownloadOsm;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use tests::osm;
