@@ -165,73 +165,73 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use futures::TryStreamExt;
-//     use mimir2::domain::ports::primary::list_documents::ListDocuments;
-//     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
-//     use places::addr::Addr;
-//     use serial_test::serial;
-//
-//     fn elasticsearch_test_url() -> String {
-//         std::env::var(elasticsearch::remote::ES_TEST_KEY).expect("env var")
-//     }
-//
-//     #[tokio::test]
-//     #[serial]
-//     async fn should_correctly_index_bano_file() {
-//         docker::initialize()
-//             .await
-//             .expect("elasticsearch docker initialization");
-//
-//         let args = Args {
-//             input: Some("./tests/fixtures/sample-bano.csv".into()),
-//             connection_string: elasticsearch_test_url(),
-//             dataset: String::from("test"),
-//             mappings: Some("./config/elasticsearch/addr/mappings.json".into()),
-//             settings: Some("./config/elasticsearch/addr/settings.json".into()),
-//             use_old_index_format: false,
-//             nb_threads: 2,
-//             nb_insert_threads: 2,
-//             override_settings: vec![],
-//         };
-//
-//         let _res = mimirsbrunn::utils::launch_async_args(run, args).await;
-//
-//         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
-//         // we'll just list all the documents in the index, and check them.
-//         let pool = remote::connection_test_pool()
-//             .await
-//             .expect("Elasticsearch Connection Pool");
-//
-//         let client = pool
-//             .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
-//             .await
-//             .expect("Elasticsearch Connection Established");
-//
-//         let addresses: Vec<Addr> = client
-//             .list_documents()
-//             .await
-//             .unwrap()
-//             .try_collect()
-//             .await
-//             .unwrap();
-//
-//         assert_eq!(addresses.len(), 35);
-//
-//         let addr1 = addresses
-//             .iter()
-//             .find(|&addr| addr.name == "10 Place de la Mairie")
-//             .unwrap();
-//
-//         assert_eq!(addr1.id, "addr:1.378886;43.668175:10");
-//
-//         let addr2 = addresses
-//             .iter()
-//             .find(|&addr| addr.name == "999 Rue Foncet")
-//             .unwrap();
-//
-//         assert_eq!(addr2.zip_codes, vec!["06000", "06100", "06200", "06300"]);
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::TryStreamExt;
+    use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
+    use mimirsbrunn::settings::bano2mimir as settings;
+    use places::addr::Addr;
+    use serial_test::serial;
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_index_bano_file() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "sample-bano.csv",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let _res = mimirsbrunn::utils::launch::launch_async_args(run, opts).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = docker::ConfigElasticsearchTesting::default();
+        let pool = remote::connection_pool_url(&config.url)
+            .await
+            .expect("Elasticsearch Connection Pool");
+
+        let client = pool
+            .conn(config.timeout, &config.version_req)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let addresses: Vec<Addr> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        assert_eq!(addresses.len(), 35);
+
+        let addr1 = addresses
+            .iter()
+            .find(|&addr| addr.name == "10 Place de la Mairie")
+            .unwrap();
+
+        assert_eq!(addr1.id, "addr:1.378886;43.668175:10");
+
+        let addr2 = addresses
+            .iter()
+            .find(|&addr| addr.name == "999 Rue Foncet")
+            .unwrap();
+
+        assert_eq!(addr2.zip_codes, vec!["06000", "06100", "06200", "06300"]);
+    }
+}
