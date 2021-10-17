@@ -175,7 +175,7 @@ It will read the default and testing configuration in
 elasticsearch url, and read its input from  `idf.jsonl.gz`
 
 cosmogony2mimir will check the following files (or more, depending on its mode, see
-[below](#configuring_indexing) )
+[below](#configuring-indexing) )
 
 <table>
 <colgroup>
@@ -247,7 +247,7 @@ osm2mimir -m testing -s elasticsearch.url='http://localhost:9204' -c ./config -i
 
 Depending on its configuration (eg if both pois and streets are imported), osm2mimir will
 need the following configuration files (or more, depending on its mode, see
-[below](#configuring_indexing) )
+[below](#configuring-indexing) )
 
 <table>
 <colgroup>
@@ -370,23 +370,21 @@ For configuring indexing binaries, we use the crate
 [config](https://crates.io/crates/config), which enables a layered
 configuration, and so the process of getting a configuration is as follow:
 
-1. We start with a default configuration. For example, for configuring the
-   elasticsearch connection, that means we read
-   `config/elasticsearch/default.toml`.
-2. If the user specifies a run mode, then we read the corresponding file. If
-   you are in production, and you specify the `--run-mode prod`, then we will
-   go read, for elasticsearch, `config/elasticsearch/prod.toml`. These values
-   override the default values set in (1).
-3. Then a `config/elasticsearch/local.toml` file can be used to override some
-   values again.
-4. Then, environment variables can be used on top of the previous values: The
-   name of the environment variable is all in upper case: It is the
-   concatenation of a prefix, followed by an underscore, followed by the path
-   to the value, separated by underscores. So if you want to change the
-   `elasticsearch.url` value for osm2mimir, you'd use, for example,
-   `OSM2MIMIR_ELASTICSEARCH_URL=http://localhost:9999`
-5. Finally, you can still override some values with the commandline, by using
-   `--setting elasticsearch.url=http://localhost:9999` (`<key>=<value>`).
+1. We start with a default configuration. For example, for configuring the elasticsearch connection,
+	 that means we read `config/elasticsearch/default.toml`.
+2. If the user specifies a run mode, then we read the corresponding file. If you are in production,
+	 and you specify the `--run-mode prod`, then we will go read, for elasticsearch,
+	 `config/elasticsearch/prod.toml`. These values override the default values set in (1).
+3. Then a `config/elasticsearch/local.toml` file can be used to override some values again.
+4. Then, environment variables can be used on top of the previous values: The name of the
+	 environment variable is all in upper case: It is the concatenation of a prefix, followed by an
+	 underscore, followed by the path to the value, separated by underscores. So if you want to change
+	 the `elasticsearch.url` value for osm2mimir, you'd use, for example,
+	 `OSM2MIMIR_ELASTICSEARCH_URL=http://localhost:9999`
+5. Finally, you can still override some values with the commandline, by using `--setting
+	 elasticsearch.url='http://localhost:9999'`. You use the format (`<key>=<value>`), where
+	 the value must be written in a valid TOML syntax: For example, to set an array of strings,
+	 you would use `--setting lang=['fr', 'de', 'es']`.
 
 This way of configuring allows great flexibility, and also a very simple generic command line.
 It can also be a bit tricky to know what the exact final configuration will be. All binaries
