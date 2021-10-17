@@ -195,7 +195,7 @@ focus on one country, lets say Denmark.
 1. Download OSM file.
 
 First we download the OSM file for Denmark, from the
-[geofabrik])http://download.geofabrik.de/europe/denmark-latest.osm.pbf) server, and store the file
+[geofabrik](http://download.geofabrik.de/europe/denmark-latest.osm.pbf) server, and store the file
 locally.
 
 2. Generate cosmogony file.
@@ -240,7 +240,13 @@ the Elasticsearch container we just started:
 
 ```
 cd mimirsbrunn
-./target/release/cosmogony2mimir -c ./config -m testing -s elasticsearch.url='http://localhost:9200' -i <path/to/denmark.jsonl.gz>
+./target/release/cosmogony2mimir \
+  -c ./config \
+	-m testing \
+	-s elasticsearch.url='http://localhost:9200' \
+	-s langs=['en', 'da'] \
+	-i <path/to/denmark.jsonl.gz> \
+	run
 ```
 
 You can follow in the `mimirsbrunn/logs` directory.
