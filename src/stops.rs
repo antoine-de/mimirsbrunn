@@ -30,9 +30,8 @@
 
 /// In this module we put the code related to stops, that need to draw on 'places', 'mimir2',
 /// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
-use failure::format_err;
-use failure::Error;
 use futures::stream::{Stream, TryStreamExt};
+use snafu::{ResultExt, Snafu};
 use std::collections::{hash_map::DefaultHasher, HashMap};
 use std::hash::BuildHasherDefault;
 use std::ops::Deref;
@@ -43,15 +42,40 @@ use tracing::info;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
 use config::Config;
-use mimir2::{
-    adapters::secondary::elasticsearch::ElasticsearchStorage,
-    domain::model::index::IndexVisibility, domain::ports::primary::generate_index::GenerateIndex,
-    domain::ports::primary::list_documents::ListDocuments,
+use mimir2::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
+use mimir2::domain::model::index::IndexVisibility;
+use mimir2::domain::ports::primary::{
+    generate_index::GenerateIndex, list_documents::ListDocuments,
 };
 use places::admin::Admin;
 use places::stop::Stop;
 
-// const GLOBAL_STOP_INDEX_NAME: &str = "munin_global_stops";
+#[derive(Debug, Snafu)]
+pub enum Error {
+    // #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
+    // Settings { source: settings::Error },
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchPool {
+        source: elasticsearch::remote::Error,
+    },
+
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchConnection {
+        source: mimir2::domain::ports::secondary::remote::Error,
+    },
+
+    // #[snafu(display("Cosmogony Error: {}", details))]
+    // Cosmogony { details: String },
+    #[snafu(display("Index Generation Error {}", source))]
+    IndexGeneration {
+        source: mimir2::domain::model::error::Error,
+    },
+
+    // transit_model uses failure::Error, which does not implement std::Error, so
+    // we use a String to get the error message instead.
+    #[snafu(display("Transit Model Error {}", details))]
+    TransitModel { details: String },
+}
 
 pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     stops: It,
@@ -88,13 +112,10 @@ fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
 async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
     stops: It,
     client: &ElasticsearchStorage,
-) -> Result<(), crate::Error> {
+) -> Result<(), Error> {
     match client.list_documents().await {
         Ok(stream) => {
-            let admins: Vec<Admin> = stream
-                .try_collect()
-                .await
-                .map_err(|err| format_err!("cannot retrieve admins: {}", err.to_string()))?;
+            let admins: Vec<Admin> = stream.try_collect().await.context(IndexGeneration)?;
 
             let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
 
@@ -134,7 +155,13 @@ pub async fn index_ntfs(
     config: Config,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
-    let navitia = transit_model::ntfs::read(&input)?;
+    let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
+        details: format!(
+            "Could not read transit model from {}: {}",
+            input.display(),
+            err.to_string()
+        ),
+    })?;
 
     let nb_stop_points: HashMap<String, u32, BuildHasherDefault<DefaultHasher>> = navitia
         .stop_areas
@@ -196,7 +223,7 @@ where
     client
         .generate_index(config, stops, IndexVisibility::Public)
         .await
-        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
+        .context(IndexGeneration)?;
 
     Ok(())
 }
