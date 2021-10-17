@@ -125,7 +125,7 @@ impl Settings {
         })?;
 
         config.try_into().context(ConfigMerge {
-            msg: String::from("Cannot convert configuration into osm2mimir settings"),
+            msg: String::from("Cannot convert configuration into bano2mimir settings"),
         })
     }
 }
@@ -159,7 +159,7 @@ mod tests {
         let opts = Opts {
             config_dir,
             run_mode: None,
-            settings: vec![String::from("elasticsearch.url=http://localhost:9999")],
+            settings: vec![String::from("elasticsearch.url='http://localhost:9999'")],
             cmd: Command::Run,
             input: PathBuf::from("foo.osm.pbf"),
         };

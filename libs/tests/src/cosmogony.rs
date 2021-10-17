@@ -138,7 +138,7 @@ pub async fn index_admins(
     let input_file = input_dir.join(format!("{}.jsonl.gz", region));
 
     mimirsbrunn::admin::index_cosmogony(
-        input_file.into_os_string().into_string().unwrap(),
+        &input_file,
         vec!["fr".to_string()],
         Config::builder()
             .add_source(Admin::default_es_container_config())

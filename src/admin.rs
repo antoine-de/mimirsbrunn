@@ -28,22 +28,50 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use crate::osm_reader::admin;
-use crate::osm_reader::osm_utils;
 use config::Config;
 use cosmogony::ZoneType::City;
 use cosmogony::{Zone, ZoneIndex};
-use failure::{format_err, Error};
+// use failure::{format_err, Error};
 use futures::stream::Stream;
+use snafu::{ResultExt, Snafu};
+use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::path::Path;
+use std::sync::Arc;
+use tracing::{info, warn};
+
+use crate::osm_reader::admin;
+use crate::osm_reader::osm_utils;
 use mimir2::{
-    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
     domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
 use places::admin::Admin;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::sync::Arc;
-use tracing::{info, warn};
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    // #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
+    // Settings { source: settings::Error },
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchPool {
+        source: elasticsearch::remote::Error,
+    },
+
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchConnection {
+        source: mimir2::domain::ports::secondary::remote::Error,
+    },
+
+    // Cosmogony uses failure::Error, which does not implement std::Error, so
+    // we use a String to get the error message instead.
+    #[snafu(display("Cosmogony Error: {}", details))]
+    Cosmogony { details: String },
+
+    #[snafu(display("Index Generation Error {}", source))]
+    IndexGeneration {
+        source: mimir2::domain::model::error::Error,
+    },
+}
 
 trait IntoAdmin {
     fn into_admin(
@@ -64,11 +92,10 @@ pub async fn import_admins<S>(
 where
     S: Stream<Item = Admin> + Send + Sync + Unpin + 'static,
 {
-    client
+    let _ = client
         .generate_index(config, admins, IndexVisibility::Public)
         .await
-        .map_err(|err| format_err!("could not generate index: {}", err.to_string()))?;
-
+        .context(IndexGeneration)?;
     Ok(())
 }
 
@@ -161,14 +188,22 @@ impl IntoAdmin for Zone {
     }
 }
 
-fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
-    Ok(cosmogony::read_zones_from_file(input)?
-        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok()))
+fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone>, Error> {
+    let iter = cosmogony::read_zones_from_file(path)
+        .map_err(|err| Error::Cosmogony {
+            details: format!(
+                "could not read zones from file {}: {}",
+                path.display(),
+                err.to_string()
+            ),
+        })?
+        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok());
+    Ok(iter)
 }
 
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
 pub async fn index_cosmogony(
-    input: String,
+    path: &Path,
     langs: Vec<String>,
     config: Config,
     client: &ElasticsearchStorage,
@@ -176,7 +211,7 @@ pub async fn index_cosmogony(
     info!("building map cosmogony id => osm id");
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     let max_weight = places::admin::ADMIN_MAX_WEIGHT;
-    for z in read_zones(&input)? {
+    for z in read_zones(path)? {
         let insee = match z.zone_type {
             Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
             _ => None,
@@ -186,7 +221,7 @@ pub async fn index_cosmogony(
     let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
 
     info!("building admins hierarchy");
-    let admins_without_boundaries = read_zones(&input)?
+    let admins_without_boundaries = read_zones(path)?
         .map(|mut zone| {
             zone.boundary = None;
             let admin = zone.into_admin(&cosmogony_id_to_osm_id, &langs, max_weight, None);
@@ -195,7 +230,7 @@ pub async fn index_cosmogony(
         .collect::<HashMap<_, _>>();
 
     info!("importing admins into Elasticsearch");
-    let admins = read_zones(&input)?.map(move |z| {
+    let admins = read_zones(path)?.map(move |z| {
         z.into_admin(
             &cosmogony_id_to_osm_id,
             &langs,
