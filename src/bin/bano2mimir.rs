@@ -91,7 +91,6 @@ async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> 
 }
 
 async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
-    info!("importing BANO into Mimir");
     let input = opts.input.clone(); // we save the input, because opts will be consumed by settings.
 
     let settings = &settings::Settings::new(&opts)

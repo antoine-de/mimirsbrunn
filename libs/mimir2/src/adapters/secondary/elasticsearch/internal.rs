@@ -509,7 +509,10 @@ impl ElasticsearchStorage {
             .body(ops)
             .send()
             .await
-            .expect("send bulk");
+            .and_then(|res| res.error_for_status_code())
+            .context(ElasticsearchClient {
+                details: String::from("cannot bulk insert"),
+            })?;
 
         if resp.status_code().is_success() {
             let json = resp
@@ -572,7 +575,7 @@ impl ElasticsearchStorage {
                         Ok(())
                     } else if result == "updated" {
                         (*stats).lock().unwrap().updated += 1;
-                        warn!("Item was updated: {:?}", item);
+                        // warn!("Item was updated: {:?}", item);
                         Ok(())
                     } else {
                         Err(Error::NotCreated {
