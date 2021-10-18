@@ -1,2 +1,4 @@
 mode = "testing"
 
+[coordinates]
+    id_precision = 5
