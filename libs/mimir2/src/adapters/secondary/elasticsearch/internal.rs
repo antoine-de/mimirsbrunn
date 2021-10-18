@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use tracing::{info, warn};
+use tracing::info;
 
 use super::configuration::IndexConfiguration;
 use super::models::ElasticsearchSearchResponse;
