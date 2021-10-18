@@ -28,21 +28,55 @@ pub struct ForwardGeocoderQuery {
 }
 
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
-    fn from(query: (ForwardGeocoderQuery, Option<Geometry>)) -> Self {
+    fn from(source: (ForwardGeocoderQuery, Option<Geometry>)) -> Self {
+        let (
+            ForwardGeocoderQuery {
+                q: _,
+                lat,
+                lon,
+                shape_scope,
+                datasets,
+                types: _,
+                zone_types,
+                poi_types,
+            },
+            geometry,
+        ) = source;
+        let zone_types = zone_types.map(|zts| {
+            zts.iter()
+                .map(|zt| serde_json::to_string(zt).unwrap())
+                .collect()
+        });
         Filters {
             // When option_zip_option becomes available: coord: input.lat.zip_with(input.lon, Coord::new),
-            coord: match (query.0.lat, query.0.lon) {
+            coord: match (lat, lon) {
                 (Some(lat), Some(lon)) => Some(Coord::new(lat, lon)),
                 _ => None,
             },
-            shape: None, // Not implemented yet.... soon!
-            datasets: query.0.datasets,
-            zone_types: query.0.zone_types.map(|zts| {
-                zts.iter()
-                    .map(|zt| serde_json::to_string(zt).unwrap())
-                    .collect()
+            shape: geometry.map(|geometry| {
+                (
+                    geometry,
+                    shape_scope
+                        .map(|shape_scope| {
+                            shape_scope.iter().map(|t| t.as_str().to_string()).collect()
+                        })
+                        .unwrap_or_else(|| {
+                            vec![
+                                Type::House,
+                                Type::Poi,
+                                Type::StopArea,
+                                Type::Street,
+                                Type::Zone,
+                            ]
+                            .iter()
+                            .map(|t| t.as_str().to_string())
+                            .collect()
+                        }),
+                )
             }),
-            poi_types: query.0.poi_types,
+            datasets,
+            zone_types,
+            poi_types,
         }
     }
 }
@@ -102,7 +136,9 @@ pub struct StatusResponseBody {
 
 /// This macro is used to define the forward_geocoder route.
 /// It takes a client (ElasticsearchStorage) and query settings
-///
+/// It can be either a GET request, with query parameters,
+/// or a POST request, with both query parameters and a GeoJson shape
+/// in the body.
 #[macro_export]
 macro_rules! forward_geocoder {
     ($cl:expr, $st:expr) => {

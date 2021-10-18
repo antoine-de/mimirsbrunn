@@ -1,5 +1,6 @@
 use geojson::{GeoJson, Geometry};
 use std::convert::Infallible;
+use tracing::{info, instrument};
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::{
@@ -25,15 +26,16 @@ fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 /// If all succeed, it returns
 /// * a `ForwardGeocoderQuery` structure representing input parameters,
 /// * None for the Geometry, since the Geometry can only be obtained from a POST request
-///
+#[instrument]
 pub fn forward_geocoder_get(
 ) -> impl Filter<Extract = (ForwardGeocoderQuery, Option<Geometry>), Error = Rejection> + Clone {
+    info!("GET");
     warp::get()
         .and(path_prefix())
         .and(warp::path("autocomplete"))
-        .and(forward_geocoder_query())
         .and(warp::path::end())
-        .and(warp::any().map(move || None))
+        .and(forward_geocoder_query()) // We get the query parameters
+        .and(warp::any().map(move || None)) // And the shape is None
 }
 
 /// This is the entry warp filter for the POST autocomplete endpoint
@@ -43,17 +45,21 @@ pub fn forward_geocoder_get(
 /// * It has valid query parameters and the body of the request is a valid shape.
 ///
 /// If any of these steps fails, this filter rejects the request
+#[instrument]
 pub fn forward_geocoder_post(
 ) -> impl Filter<Extract = (ForwardGeocoderQuery, Option<Geometry>), Error = Rejection> + Clone {
+    info!("POST");
     warp::post()
         .and(path_prefix())
         .and(warp::path("autocomplete"))
-        .and(forward_geocoder_query())
-        .and(forward_geocoder_body())
+        .and(warp::path::end())
+        .and(forward_geocoder_query()) // Query Parameters
+        .and(forward_geocoder_body()) // Shape
 }
 
 /// This function reads the input parameters on a get request, makes a summary validation
 /// of the parameters, and returns them.
+#[instrument]
 pub fn reverse_geocoder(
 ) -> impl Filter<Extract = (ReverseGeocoderQuery,), Error = Rejection> + Clone {
     warp::get()
@@ -102,6 +108,7 @@ struct InvalidPostBody;
 impl Reject for InvalidPostBody {}
 
 /// Extract and Validate input parameters from the query
+#[instrument]
 pub fn forward_geocoder_query(
 ) -> impl Filter<Extract = (ForwardGeocoderQuery,), Error = Rejection> + Copy {
     // warp::query cannot parse array parameters correctly, so we use serde_qs for that:
@@ -193,6 +200,8 @@ pub async fn ensure_zone_type_consistent(
     }
 }
 
+// This filter extracts the GeoJson shape from the body of the request
+#[instrument]
 pub fn forward_geocoder_body(
 ) -> impl Filter<Extract = (Option<Geometry>,), Error = Rejection> + Copy {
     warp::body::content_length_limit(1024 * 32)
