@@ -23,60 +23,55 @@ members = [
 db-storage = [ "rusqlite" ]
 
 [dependencies]
-log = { version = "0.4", features = ["release_max_level_debug"] }
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
-slog-scope = "4.3"
-slog-envlogger = "2.2"
-slog-async = "2.5"
-slog-term = "2.8"
-slog-stdlog = "4.1"
-slog-json = "2.4"
-structopt = "0.3"
-futures = "0.3"
-csv = "1.1"
-csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
-rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
-regex = "1"
-osmpbfreader = "0.14"
-osm_boundaries_utils = "0.9"
+address-formatter = "0.2.1"
+bincode = "1.3.3"
 chrono = "0.4"
 chrono-tz = "0.5"
-serde = {version = "1", features = ["rc"]}
-serde_json = "1"
-bincode = "1.2"
+clap = "2.33.1"
+cosmogony = "0.10.3"
+csv = "1.1"
+csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
+failure = "0.1"
+flate2 = { version = "1.0", features = [ "tokio" ] }
+futures = "0.3"
 geo = "0.18"
 geo-types = { version = "0.7", features = [ "rstar" ] }
-rstar = "0.8"
-itertools = "0.9"
-transit_model = "0.39"
-typed_index_collection = "2.0"
-failure = "0.1"
-cosmogony = "0.10.3"
-par-map = "0.1.4"
-lazy_static = "1.4"
-num_cpus = "1.13"
-assert_float_eq = "1.1"
+http = "0.2"
 human-sort = "0.2"
-address-formatter = "0.2.1"
+itertools = "0.9"
+lazy_static = "1.4"
+log = { version = "0.4", features = ["release_max_level_debug"] }
 navitia-poi-model = "0.3"
-walkdir = "2.3"
+num_cpus = "1.13"
+osm_boundaries_utils = "0.9"
+osmpbfreader = "0.14"
+par-map = "0.1.4"
+regex = "1"
+rstar = "0.8"
 rusqlite = { version = "0.23", optional = true }
-flate2 = { version = "1.0", features = [ "tokio" ] }
-toml = "0.5"
+serde = {version = "1", features = ["rc"]}
+serde_json = "1"
+slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
+slog-async = "2.5"
+slog-envlogger = "2.2"
+slog-json = "2.4"
+slog-scope = "4.3"
+slog-stdlog = "4.1"
+slog-term = "2.8"
+snafu = { version = "0.6.10", features = [ "futures" ] }
+structopt = "0.3"
 tokio = { version = "1.6.0", features = [ "sync", "rt-multi-thread", "macros", "process" ] }
 tokio-stream = { version = "0.1.7", features = [ "fs" ] }
-# tokio-test = "0.4.2"
-async-graphql = { version = "2.8", features = [ "chrono", "tracing" ] }
-async-graphql-warp = "2.8"
-snafu = { version = "0.6.10", features = [ "futures" ] }
-clap = "2.33.1"
+toml = "0.5"
 tracing = "0.1.26"
 tracing-appender = "0.1.2"
-tracing-futures = "0.2.5"
-tracing-subscriber = "0.2.17"
 tracing-bunyan-formatter = { version = "0.2", default-features = false }
+tracing-futures = "0.2.5"
 tracing-log = "0.1.2"
-http = "0.2"
+tracing-subscriber = "0.2.17"
+transit_model = "0.41.3"
+typed_index_collection = "2.0"
+walkdir = "2.3"
 warp = { version = "0.3.1" }
 
 common = { path = "libs/common" }
@@ -100,15 +95,11 @@ url = "2.2.2"
 approx = "0.5"
 cucumber = { package = "cucumber_rust", version = "0.9" }
 tokio = { version = "1.6.0", features = [ "rt-multi-thread", "macros", "process" ] }
-elasticsearch = "7.12.0-alpha.1"
+elasticsearch = "7.14.0-alpha.1"
 serial_test = "0.5.1"
 
 [build-dependencies]
 json = "0.12"
-
-[[bin]]
-name = "b2"
-path = "src/b2/main.rs"
 
 [[bin]]
 name = "bragi"
