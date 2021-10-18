@@ -33,7 +33,6 @@ use mimir2::adapters::secondary::elasticsearch;
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::settings::cosmogony2mimir as settings;
 use places::admin::Admin;
-use slog_scope::info;
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
