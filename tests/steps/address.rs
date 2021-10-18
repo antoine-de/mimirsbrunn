@@ -21,10 +21,10 @@ pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.given_regex_async(
-        "bano file has been indexed for (.*) as (.*)",
+        "bano file has been indexed for (.*)(?: as (.*))?",
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
-            let dataset = ctx.matches[2].clone();
+            let dataset = ctx.matches.get(2).unwrap_or(&region).clone();
 
             state
                 .execute(IndexBano { region, dataset }, &ctx)
