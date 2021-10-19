@@ -129,7 +129,7 @@ fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde
 // impl std::fmt::Display for DecayFn {
 //     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 //         write!(f, "{:?}", self)
-//     }kkkkkkkkkkkkkkk
+//     }
 // }
 //
 // #[derive(Debug)]
@@ -255,59 +255,4 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
             ]
         }
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use geojson::GeoJson;
-
-    use super::*;
-
-    const GEOJSON_STR: &str = "{\"coordinates\":[7.428959,1.513394],\"type\":\"Point\"}";
-
-    #[test]
-    fn should_correctly_build_shape_query() {
-        let geometry = match GEOJSON_STR.parse::<GeoJson>() {
-            Ok(GeoJson::Geometry(g)) => g,
-            _ => return,
-        };
-
-        let json = build_shape_query(geometry, vec![String::from("foo"), String::from("bar")]);
-
-        println!("{}", serde_json::to_string_pretty(&json).unwrap());
-    }
-
-    #[test]
-    fn should_correctly_build_query_with_shape_filter() {
-        let geometry = match GEOJSON_STR.parse::<GeoJson>() {
-            Ok(GeoJson::Geometry(g)) => g,
-            _ => return,
-        };
-
-        let json = build_query(
-            "chatelet",
-            filters::Filters {
-                shape: Some((geometry, vec![String::from("foo"), String::from("bar")])),
-                ..Default::default()
-            },
-            &[],
-            &settings::QuerySettings::default(),
-        );
-
-        println!("{}", serde_json::to_string_pretty(&json).unwrap());
-    }
-
-    #[test]
-    fn should_correctly_build_query_without_filter() {
-        let json = build_query(
-            "chatelet",
-            filters::Filters {
-                ..Default::default()
-            },
-            &[],
-            &settings::QuerySettings::default(),
-        );
-
-        println!("{}", serde_json::to_string_pretty(&json).unwrap());
-    }
 }
