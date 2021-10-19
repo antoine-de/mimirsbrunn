@@ -78,7 +78,7 @@ involve the following, which will be described below:
 2. Launch an Elasticsearch
 3. Launch indexing binaries in a specific order
 
-There is a currently two tools that will help you wrap these steps in an easy and configurable
+There is currently two tools that will help you wrap these steps in an easy and configurable manner:
 
 * [Fafnir](https://github.com/QwantResearch/fafnir)
 * import2mimir is a bash script 
@@ -139,7 +139,7 @@ docker run -p 9200:9200 -p 9300:9300 \
   -d docker.elastic.co/elasticsearch/elasticsearch:7.13.0
 ```
 
-### Index Data
+### Indexing Data
 
 We mentioned earlier that your data is parsed, validated, and enriched before
 beeing indexed into Elasticsearch. So processing the data may require to
@@ -154,18 +154,201 @@ Here is the order of execution:
 4. `ntfs2mimir`
 5. `poi2mimir`
 
+These binaries follow the same pattern for configuration and command line, and this is detailed
+in a later [section](#configuring_indexing).
+
+These binaries have a subcommand at the end, which can be either
+* *run*: execute the program
+* *config*: print the configuration as a json file.
+
 ### cosmogony2mimir
 
 As mentioned earlier, `cosmogony2mimir` is the binary responsible for indexing administrative
-regions into Elasticsearch.
+regions into Elasticsearch. Here is a usage example:
 
 ```
-cosmogony2mimir -i <cosmogony file> -m <mappings> -s <settings> --settings […]
+cosmogony2mimir -m testing -s elasticsearch.url='http://localhost:9204' -c ./config -i idf.jsonl.gz run
 ```
 
-You need to specify an input file, some Elasticsearch related parameters (mappings and settings).
+It will read the default and testing configuration in
+`./config/cosmogony2mimir` and `./config/elasticsearch`, override the
+elasticsearch url, and read its input from  `idf.jsonl.gz`
+
+cosmogony2mimir will check the following files (or more, depending on its mode, see
+[below](#configuring-indexing) )
+
+<table>
+<colgroup>
+<col style="width: 55%" />
+<col style="width: 44%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>configuration path</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>&lt;base-config&gt;/elasticsearch/default.toml</code></td>
+<td>Connection to Elasticsearch</td>
+</tr>
+<tr class="even">
+<td><code>&lt;base-config&gt;/cosmogony2mimir/default.toml</code></td>
+<td>Cosmogony Specific + logging + dataset</td>
+</tr>
+<tr class="odd">
+<td><code>&lt;base-config&gt;/elasticsearch/admin/mappings.json</code></td>
+<td>Elasticsearch mappings for admins</td>
+</tr>
+<tr class="even">
+<td><code>&lt;base-config&gt;/elasticsearch/admin/settings.json</code></td>
+<td>Elasticsearch settings for admins</td>
+</tr>
+</tbody>
+</table>
+
+The specific configuration for cosmogony2mimir includes:
+
+<table>
+<colgroup>
+<col style="width: 18%" />
+<col style="width: 16%" />
+<col style="width: 45%" />
+<col style="width: 20%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>configuration key</th>
+<th>type</th>
+<th>description</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>langs</td>
+<td>array of string</td>
+<td>list of language (ISO 639-2 Code) used to index administrative regions</td>
+<td><code>langs=['fr', 'en']</code></td>
+</tr>
+</tbody>
+</table>
 
 ### osm2mimir
+
+`osm2mimir` indexes streets and public POIs into Elasticsearch. You need to have indexed
+administrative regions into the same Elasticsearch first. The command line follows the same pattern
+as the other binaries:
+
+```
+osm2mimir -m testing -s elasticsearch.url='http://localhost:9204' -c ./config -i idf.osm.pbf run
+```
+
+Depending on its configuration (eg if both pois and streets are imported), osm2mimir will
+need the following configuration files (or more, depending on its mode, see
+[below](#configuring-indexing) )
+
+<table>
+<colgroup>
+<col style="width: 56%" />
+<col style="width: 43%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>configuration path</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>&lt;base-config&gt;/elasticsearch/default.toml</code></td>
+<td>Connection to Elasticsearch</td>
+</tr>
+<tr class="even">
+<td><code>&lt;base-config&gt;/osm2mimir/default.toml</code></td>
+<td>osm2mimir Specific + logging + dataset</td>
+</tr>
+<tr class="odd">
+<td><code>&lt;base-config&gt;/elasticsearch/poi/mappings.json</code></td>
+<td>Elasticsearch mappings for pois</td>
+</tr>
+<tr class="even">
+<td><code>&lt;base-config&gt;/elasticsearch/poi/settings.json</code></td>
+<td>Elasticsearch settings for pois</td>
+</tr>
+<tr class="odd">
+<td><code>&lt;base-config&gt;/elasticsearch/street/mappings.json</code></td>
+<td>Elasticsearch mappings for streets</td>
+</tr>
+<tr class="even">
+<td><code>&lt;base-config&gt;/elasticsearch/street/settings.json</code></td>
+<td>Elasticsearch settings for streets</td>
+</tr>
+</tbody>
+</table>
+
+The specific configuration for osm2mimir includes the following parameters:
+
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 17%" />
+<col style="width: 26%" />
+<col style="width: 35%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>configuration key</th>
+<th>type</th>
+<th>description</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>pois.import</td>
+<td>boolean</td>
+<td>Indicate if osm2mimir indexes pois</td>
+<td><code>pois.import=true</code></td>
+</tr>
+<tr class="even">
+<td>pois.config.types</td>
+<td>array of tables</td>
+<td></td>
+<td><pre><code>pois.config.types=[{
+id = &quot;poi_type:amenity:parking&quot;,
+name = &quot;parking&quot; }]</code></pre></td>
+</tr>
+<tr class="odd">
+<td>pois.config.rules</td>
+<td>array of tables</td>
+<td></td>
+<td><pre><code>pois.config.rules=[{
+type = &quot;poi_type:amenity:parking&quot;,
+filters = [{
+key = &quot;amenity&quot;,
+value = &quot;parking&quot;
+}]
+}]</code></pre></td>
+</tr>
+<tr class="even">
+<td>streets.import</td>
+<td>boolean</td>
+<td>Indicate if osm2mimir indexes streets</td>
+<td><code>streets.import=true</code></td>
+</tr>
+<tr class="odd">
+<td>streets.exclusions</td>
+<td>table</td>
+<td>Indicate what objects are not indexed.</td>
+<td><pre><code>streets.exclusions={
+highways=[&quot;elevator&quot;, &quot;escape&quot;],
+public_transport=[&quot;platform&quot;]
+}</code></pre></td>
+</tr>
+</tbody>
+</table>
 
 ### bano2mimir
 
@@ -177,4 +360,72 @@ You need to specify an input file, some Elasticsearch related parameters (mappin
 
 ### import2mimir
 
+This is a script which is intended to make it easy to play with a simple dataset.
+
+### Configuring Indexing
+
+#### A layering process
+
+For configuring indexing binaries, we use the crate
+[config](https://crates.io/crates/config), which enables a layered
+configuration, and so the process of getting a configuration is as follow:
+
+1. We start with a default configuration. For example, for configuring the elasticsearch connection,
+	 that means we read `config/elasticsearch/default.toml`.
+2. If the user specifies a run mode, then we read the corresponding file. If you are in production,
+	 and you specify the `--run-mode prod`, then we will go read, for elasticsearch,
+	 `config/elasticsearch/prod.toml`. These values override the default values set in (1).
+3. Then a `config/elasticsearch/local.toml` file can be used to override some values again.
+4. Then, environment variables can be used on top of the previous values: The name of the
+	 environment variable is all in upper case: It is the concatenation of a prefix, followed by an
+	 underscore, followed by the path to the value, separated by underscores. So if you want to change
+	 the `elasticsearch.url` value for osm2mimir, you'd use, for example,
+	 `OSM2MIMIR_ELASTICSEARCH_URL=http://localhost:9999`
+5. Finally, you can still override some values with the commandline, by using `--setting
+	 elasticsearch.url='http://localhost:9999'`. You use the format (`<key>=<value>`), where
+	 the value must be written in a valid TOML syntax: For example, to set an array of strings,
+	 you would use `--setting lang=['fr', 'de', 'es']`.
+
+This way of configuring allows great flexibility, and also a very simple generic command line.
+It can also be a bit tricky to know what the exact final configuration will be. All binaries
+have a `config` subcommand, which displays the configuration in json format.
+
+#### Filesystem layout
+
+All the configuration stored with the code is found in the `config` directory
+at the base of the project. 
+
+Under `config`, you'll have a directory for `elasticsearch` because its shared
+by all binaries, and we don't want to repeat elasticsearch configuration for
+all the binaries. In Elasticsearch, you have one folder for each place, ie
+*admin*, *address*, … . Each of this folder is to configure the related index
+mapping and setting. Under the elasticsearch folder, you also have a
+configuration file, `default.toml` to define the connection parameters.
+
+```
+config
+  ├─── elasticsearch
+  ┊      ├─── admins
+         │      ├─── settings.json
+         │      └─── mappings.json
+         ├─── streets
+         │      ├─── settings.json
+         │      └─── mappings.json
+         ┊
+         │
+         ├─── default.toml
+         ├─── testing.toml
+         └─── prod.toml
+```
+
+You also have binary specific configuration: For example, for indexing stops, you use
+`ntfs2mimir`. So you'll find `ntfs2mimir` related configuration in a folder `config/ntfs2mimir`.
+
+```
+config
+  ┊
+  ├─── ntfs2mimir
+         ├─── default.toml
+         └─── testing.toml
+```
 
