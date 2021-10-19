@@ -25,11 +25,6 @@ pub enum Error {
     },
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
-    ElasticsearchPool {
-        source: elasticsearch::remote::Error,
-    },
-
-    #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
         source: mimir2::domain::ports::secondary::remote::Error,
     },
@@ -96,12 +91,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         .context(OsmPbfReader)
         .map_err(Box::new)?;
 
-    let pool = elasticsearch::remote::connection_pool_url(settings.elasticsearch.url.as_str())
-        .await
-        .context(ElasticsearchPool)
-        .map_err(Box::new)?;
-
-    let client = pool
+    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnection)

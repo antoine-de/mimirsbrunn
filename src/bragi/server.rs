@@ -11,17 +11,12 @@ use super::settings::{Error as SettingsError, Opts, Settings};
 use mimir2::{
     adapters::primary::bragi::api::{forward_geocoder, reverse_geocoder, status},
     adapters::primary::bragi::{handlers, routes},
-    adapters::secondary::elasticsearch::remote::{
-        connection_pool_url, Error as ElasticsearchRemoteError,
-    },
+    adapters::secondary::elasticsearch::remote::connection_pool_url,
     domain::ports::secondary::remote::{Error as PortRemoteError, Remote},
 };
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("Could not create an Elasticsearch Connection Pool: {}", source))]
-    ElasticsearchConnectionPoolCreation { source: ElasticsearchRemoteError },
-
     #[snafu(display("Could not establish Elasticsearch Connection: {}", source))]
     ElasticsearchConnection { source: PortRemoteError },
 
@@ -92,32 +87,20 @@ pub async fn config(opts: &Opts) -> Result<(), Error> {
 
 #[instrument(skip(settings))]
 pub async fn run_server(settings: Settings) -> Result<(), Error> {
-    let addr = settings
-        .elasticsearch
-        .url
-        .socket_addrs(|| Some(9200))
-        .expect("invalid elasticsearch url") // TODO: catch error correctly
-        .pop()
-        .ok_or(Error::AddrResolution {
-            msg: "Cannot resolve elasticsearch addr.".to_string(),
-        })?;
+    info!(
+        "Connecting to Elasticsearch at {}",
+        &settings.elasticsearch.url
+    );
 
-    let elasticsearch_url = format!("http://{}", addr);
-    info!("Connecting to Elasticsearch at {}", &elasticsearch_url);
-
-    let pool = connection_pool_url(&elasticsearch_url)
-        .await
-        .context(ElasticsearchConnectionPoolCreation)?;
-
-    let client = pool
-        .conn(settings.elasticsearch)
+    let client = connection_pool_url(&settings.elasticsearch.url)
+        .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnection)?;
 
     // Here I place reverse_geocoder first because its most likely to get hit.
     let api = reverse_geocoder!(client.clone(), settings.query.clone())
         .or(forward_geocoder!(client.clone(), settings.query))
-        .or(status!(client, elasticsearch_url))
+        .or(status!(client, &settings.elasticsearch.url))
         .recover(routes::report_invalid)
         .with(warp::trace::request());
 

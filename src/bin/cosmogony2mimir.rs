@@ -42,11 +42,6 @@ pub enum Error {
     Settings { source: settings::Error },
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
-    ElasticsearchPool {
-        source: elasticsearch::remote::Error,
-    },
-
-    #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
         source: mimir2::domain::ports::secondary::remote::Error,
     },
@@ -89,12 +84,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
         .context(Settings)
         .map_err(Box::new)?;
 
-    let pool = elasticsearch::remote::connection_pool_url(settings.elasticsearch.url.as_str())
-        .await
-        .context(ElasticsearchPool)
-        .map_err(Box::new)?;
-
-    let client = pool
+    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
         .context(ElasticsearchConnection)
@@ -266,11 +256,8 @@ mod tests {
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
         let config = ElasticsearchStorageConfig::default_testing();
-        let pool = remote::connection_pool_url(config.url.as_str())
-            .await
-            .expect("Elasticsearch Connection Pool");
 
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(config)
             .await
             .expect("Elasticsearch Connection Established");
@@ -316,11 +303,8 @@ mod tests {
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
         let config = ElasticsearchStorageConfig::default_testing();
-        let pool = remote::connection_pool_url(config.url.as_str())
-            .await
-            .expect("Elasticsearch Connection Pool");
 
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(config)
             .await
             .expect("Elasticsearch Connection Established");
@@ -367,11 +351,8 @@ mod tests {
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
         let config = ElasticsearchStorageConfig::default_testing();
-        let pool = remote::connection_pool_url(config.url.as_str())
-            .await
-            .expect("Elasticsearch Connection Pool");
 
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(config)
             .await
             .expect("Elasticsearch Connection Established");

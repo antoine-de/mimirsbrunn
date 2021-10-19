@@ -8,11 +8,7 @@ use mimir2::domain::ports::secondary::remote::Remote;
 
 /// Build test context with commonly used handles.
 async fn build_context(reindex: bool) -> Context {
-    let es_pool = connection_test_pool()
-        .await
-        .expect("could not initialize ES pool");
-
-    let es_client = es_pool
+    let es_client = connection_test_pool()
         .conn(ElasticsearchStorageConfig::default_testing())
         .await
         .expect("Could not establish connection to Elasticsearch");

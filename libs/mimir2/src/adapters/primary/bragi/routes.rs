@@ -1,6 +1,7 @@
 use geojson::{GeoJson, Geometry};
 use std::convert::Infallible;
 use tracing::instrument;
+use url::Url;
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::{
@@ -80,8 +81,9 @@ pub fn with_settings(
 }
 
 pub fn with_elasticsearch(
-    url: String, // elasticsearch url
+    url: &Url, // elasticsearch url
 ) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
+    let url = url.to_string();
     warp::any().map(move || url.clone())
 }
 

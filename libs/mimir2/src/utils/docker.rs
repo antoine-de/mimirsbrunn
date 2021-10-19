@@ -18,7 +18,7 @@ use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 use tokio::time::{sleep, Duration};
 
-use crate::adapters::secondary::elasticsearch::remote::{self, Error as ElasticsearchRemoteError};
+use crate::adapters::secondary::elasticsearch::remote;
 use crate::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
 
@@ -49,10 +49,7 @@ pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
             msg: format!("Cannot get docker {} available", docker.docker_image),
         });
     }
-    let pool = remote::connection_pool_url(docker.config.url.as_str())
-        .await
-        .context(ElasticsearchPoolCreation)?;
-    let _client = pool
+    let _client = remote::connection_pool_url(&docker.config.url)
         .conn(ElasticsearchStorageConfig::default_testing())
         .await
         .context(ElasticsearchConnection)?;
@@ -63,9 +60,6 @@ pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
 pub enum Error {
     #[snafu(display("Connection to docker socket: {}", source))]
     DockerConnection { source: BollardError },
-
-    #[snafu(display("Creation of elasticsearch pool: {}", source))]
-    ElasticsearchPoolCreation { source: ElasticsearchRemoteError },
 
     #[snafu(display("Connection to elasticsearch: {}", source))]
     ElasticsearchConnection { source: RemoteError },
@@ -260,9 +254,8 @@ impl DockerWrapper {
 
     /// This function cleans up the Elasticsearch
     async fn cleanup(&mut self) -> Result<(), Error> {
-        let pool = remote::connection_test_pool()
-            .await
-            .context(ElasticsearchPoolCreation)?;
+        let pool = remote::connection_test_pool();
+
         let storage = pool
             .conn(ElasticsearchStorageConfig::default_testing())
             .await

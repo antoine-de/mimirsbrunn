@@ -2,7 +2,7 @@ use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use futures::stream::TryStreamExt;
 
-use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
+use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::domain::ports::secondary::remote::Remote;
@@ -19,10 +19,7 @@ fn bench(c: &mut Criterion) {
 
     rt.block_on(async {
         let config = ElasticsearchStorageConfig::default_testing();
-        let pool = connection_pool_url(config.url.as_str())
-            .await
-            .expect("could not initialize Elasticsearch Connection Pool");
-        let client = pool
+        let client = connection_test_pool()
             .conn(config)
             .await
             .expect("could not establish connection with Elasticsearch");
@@ -41,10 +38,7 @@ fn bench(c: &mut Criterion) {
         b.iter(|| {
             rt.block_on(async move {
                 let config = ElasticsearchStorageConfig::default_testing();
-                let pool = connection_pool_url(config.url.as_str())
-                    .await
-                    .expect("could not initialize Elasticsearch Connection Pool");
-                let client = pool
+                let client = connection_test_pool()
                     .conn(config)
                     .await
                     .expect("could not establish connection with Elasticsearch");
