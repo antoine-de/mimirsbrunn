@@ -1,6 +1,6 @@
 [elasticsearch]
 url = "http://localhost:9200"
-timeout = 100
+timeout = 5000
 version_req = ">=7.13.0"
 
 # Number of documents loaded per request when performing a `list_documents`
