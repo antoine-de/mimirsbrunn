@@ -1,6 +1,7 @@
 use crate::utils::deserialize::deserialize_duration;
 use elasticsearch::Elasticsearch;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::time::Duration;
 
 pub mod configuration;
@@ -24,30 +25,45 @@ pub struct ElasticsearchStorage {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ElasticsearchStorageConfig {
-    #[serde(
-        default = "es_default_version_timeout",
-        deserialize_with = "deserialize_duration"
-    )]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
-
-    #[serde(default = "es_default_version_req")]
     pub version_req: String,
 
-    /// Number of documents loaded per request when performing a `list_documents`.
     #[serde(default = "es_default_scroll_chunk_size")]
     pub scroll_chunk_size: u64,
 
-    /// Liveness of the PIT while performing a `list_documents`.
     #[serde(default = "es_default_scroll_pit_alive")]
     pub scroll_pit_alive: String,
 }
 
-fn es_default_version_timeout() -> Duration {
-    Duration::from_secs(10)
-}
+impl Default for ElasticsearchStorageConfig {
+    /// We retrieve the elasticsearch configuration from ./config/elasticsearch/default.
+    fn default() -> Self {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../config");
 
-fn es_default_version_req() -> String {
-    ">=7.13.0".to_string()
+        let config = common::config::config_from(
+            config_dir.as_path(),
+            &["elasticsearch"],
+            "testing".to_string(),
+            "MIMIR_TEST",
+            None,
+        );
+
+        config
+            .unwrap_or_else(|_| {
+                panic!(
+                    "cannot build the configuration for testing from {}",
+                    config_dir.display(),
+                )
+            })
+            .get("elasticsearch")
+            .unwrap_or_else(|_| {
+                panic!(
+                    "expected elasticsearch section in configuration from {}",
+                    config_dir.display(),
+                )
+            })
+    }
 }
 
 fn es_default_scroll_chunk_size() -> u64 {
@@ -56,17 +72,6 @@ fn es_default_scroll_chunk_size() -> u64 {
 
 fn es_default_scroll_pit_alive() -> String {
     "10m".to_string()
-}
-
-impl Default for ElasticsearchStorageConfig {
-    fn default() -> Self {
-        Self {
-            timeout: es_default_version_timeout(),
-            version_req: es_default_version_req(),
-            scroll_chunk_size: es_default_scroll_chunk_size(),
-            scroll_pit_alive: es_default_scroll_pit_alive(),
-        }
-    }
 }
 
 #[cfg(test)]

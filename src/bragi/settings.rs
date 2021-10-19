@@ -1,4 +1,3 @@
-use config::Config;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
@@ -49,7 +48,6 @@ pub struct Logging {
 pub struct Elasticsearch {
     pub host: String,
     pub port: u16,
-    pub version_req: String,
 
     #[serde(flatten)]
     pub config: ElasticsearchStorageConfig,
@@ -112,25 +110,17 @@ pub enum Command {
 
 impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
-        let mut builder = Config::builder();
-
-        builder = builder.add_source(
-            common::config::config_from(
-                opts.config_dir.as_ref(),
-                &["bragi", "query"],
-                opts.run_mode.as_deref(),
-                "BRAGI",
-                opts.settings.clone(),
-            )
-            .context(ConfigCompilation)?,
-        );
-
-        let config = builder.build().context(ConfigMerge {
-            msg: String::from("foo"),
-        })?;
-
-        config.try_into().context(ConfigMerge {
-            msg: String::from("Cannot merge bragi settings"),
+        common::config::config_from(
+            opts.config_dir.as_ref(),
+            &["bragi", "query"],
+            opts.run_mode.clone(),
+            "BRAGI",
+            opts.settings.clone(),
+        )
+        .context(ConfigCompilation)?
+        .try_into()
+        .context(ConfigMerge {
+            msg: "cannot merge bragi settings",
         })
     }
 }

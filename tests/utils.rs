@@ -3,6 +3,7 @@ use cucumber::{Context, Cucumber};
 use crate::state;
 use crate::steps;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
+use common::config::config_from;
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimir2::utils::docker::ConfigElasticsearchTesting;
 
@@ -11,11 +12,21 @@ async fn build_context(reindex: bool) -> Context {
     let config = ConfigElasticsearchTesting::default();
 
     let es_pool = connection_pool_url(&config.url)
-        .await
-        .expect("could not initialize ES pool");
+    let config = config_from(
+        &PathBuf::from("config"),
+        &["elasticsearch"],
+        "testing".to_string(),
+        "TEST",
+        None,
+    )
+    .unwrap();
 
     let es_client = es_pool
-        .conn(Default::default())
+        .conn(
+            config
+                .get("elasticsearch")
+                .expect("missing `elasticsearch` in config"),
+        )
         .await
         .expect("Could not establish connection to Elasticsearch");
 
