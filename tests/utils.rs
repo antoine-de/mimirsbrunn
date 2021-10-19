@@ -6,9 +6,9 @@ use tokio::fs;
 use crate::error::{self, Error};
 use crate::state;
 use crate::steps;
-use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
+use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir2::domain::ports::secondary::remote::Remote;
+use mimir2::utils::docker::ConfigElasticsearchTesting;
 
 pub async fn file_exists(path: &Path) -> bool {
     fs::metadata(path).await.is_ok()
@@ -37,12 +37,14 @@ pub async fn create_dir_if_not_exists_rec(path: &Path) -> Result<(), Error> {
 
 /// Build test context with commonly used handles.
 async fn build_context(reindex: bool) -> Context {
-    let es_pool = connection_test_pool()
+    let config = ConfigElasticsearchTesting::default();
+
+    let es_pool = connection_pool_url(&config.url)
         .await
         .expect("could not initialize ES pool");
 
     let es_client = es_pool
-        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+        .conn(config.timeout, &config.version_req)
         .await
         .expect("Could not establish connection to Elasticsearch");
 

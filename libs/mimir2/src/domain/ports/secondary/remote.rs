@@ -32,7 +32,8 @@ pub trait Remote {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
+    ///   let url = "http://localhost:9200";
+    ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
     ///   let client = pool.conn(50u64, ">=7.11.0").await.unwrap();
     /// }
     ///

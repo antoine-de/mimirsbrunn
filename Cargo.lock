@@ -2092,6 +2092,7 @@ dependencies = [
  "url",
  "walkdir",
  "warp",
+ "zip",
 ]
 
 [[package]]

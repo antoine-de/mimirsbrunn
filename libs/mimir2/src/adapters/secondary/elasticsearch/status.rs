@@ -19,7 +19,8 @@ impl Status for ElasticsearchStorage {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
+    ///   let url = "http://localhost:9200";
+    ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
     ///   let client = pool.conn(500u64, ">=7.13.0").await.unwrap();
     ///
     ///   let status = client.status().await.unwrap();

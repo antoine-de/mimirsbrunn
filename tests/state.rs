@@ -5,7 +5,7 @@ use std::any::Any;
 use std::convert::Infallible;
 
 /// Exit status for a step.
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum StepStatus {
     Done,
     Skipped,
@@ -22,7 +22,7 @@ pub trait Step: Sized + 'static {
 /// This acts as a very generic history used to query what steps have been
 /// executed before, filtered by kind (using `steps_for`) or exact match (using
 /// `status_of`).
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct State(Vec<(Box<dyn Any>, StepStatus)>);
 
 impl State {
