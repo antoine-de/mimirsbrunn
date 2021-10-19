@@ -14,6 +14,9 @@ pub enum Error {
 
     #[snafu(display("Config Compilation Error: {}", source))]
     ConfigCompilation { source: config::ConfigError },
+
+    #[snafu(display("Unrecognized Value Type Error: {}", details))]
+    UnrecognizedValueType { details: String },
 }
 
 /// Create a new configuration specific for the document of type D.
@@ -103,30 +106,52 @@ pub fn config_from<
 }
 
 /// Create a new configuration source from a list of assignments key=value
-///
-/// The function iterates over the list, and for each element, it tries to
-/// (a) identify the key and the value, by searching for the '=' sign.
-/// (b) parse the value into one of bool, i64, f64. if not it's a string.
 fn config_from_args(args: impl IntoIterator<Item = String>) -> Result<Config, Error> {
-    let mut config = Config::builder();
+    let builder = args.into_iter().fold(Config::builder(), |builder, arg| {
+        builder.add_source(config::File::from_str(&arg, config::FileFormat::Toml))
+    });
 
-    for arg in args {
-        let (key, val) = arg.split_once('=').ok_or(Error::Splitting {
-            msg: format!("missing '=' in setting override: {}", arg),
-        })?;
+    builder.build().context(ConfigCompilation)
+}
 
-        config = {
-            if let Ok(as_bool) = val.parse::<bool>() {
-                config.set_override(key, as_bool).context(ConfigValue)
-            } else if let Ok(as_int) = val.parse::<i64>() {
-                config.set_override(key, as_int).context(ConfigValue)
-            } else if let Ok(as_float) = val.parse::<f64>() {
-                config.set_override(key, as_float).context(ConfigValue)
-            } else {
-                config.set_override(key, val).context(ConfigValue)
-            }
-        }?
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn should_correctly_create_a_source_from_int_assignment() {
+        let overrides = vec![String::from("foo=42")];
+        let config = config_from_args(overrides).unwrap();
+        let val: i32 = config.get("foo").unwrap();
+        assert_eq!(val, 42);
     }
 
-    config.build().context(ConfigCompilation)
+    #[test]
+    fn should_correctly_create_a_source_from_string_assignment() {
+        let overrides = vec![String::from("foo='42'")];
+        let config = config_from_args(overrides).unwrap();
+        let val: String = config.get("foo").unwrap();
+        assert_eq!(val, "42");
+    }
+
+    #[test]
+    fn should_correctly_create_a_source_from_array_assignment() {
+        let overrides = vec![String::from("foo=['fr', 'en']")];
+        let config = config_from_args(overrides).unwrap();
+        let val: Vec<String> = config.get("foo").unwrap();
+        assert_eq!(val[0], "fr");
+        assert_eq!(val[1], "en");
+    }
+
+    #[test]
+    fn should_correctly_create_a_source_from_multiple_assignments() {
+        let overrides = vec![
+            String::from("elasticsearch.url='http://localhost:9200'"),
+            String::from("service.port=6666"),
+        ];
+        let config = config_from_args(overrides).unwrap();
+        let url: String = config.get("elasticsearch.url").unwrap();
+        let port: i32 = config.get("service.port").unwrap();
+        assert_eq!(url, "http://localhost:9200");
+        assert_eq!(port, 6666);
+    }
 }

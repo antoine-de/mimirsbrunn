@@ -45,7 +45,10 @@ pub enum Status {
     Done,
 }
 
-pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Result<Status, Error> {
+pub async fn generate_cosmogony(
+    region: &str,
+    regenerate_if_already_exists: bool,
+) -> Result<Status, Error> {
     // Build
     let base_path = env!("CARGO_MANIFEST_DIR");
 
@@ -103,7 +106,7 @@ pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Resul
     Ok(Status::Done)
 }
 
-pub async fn index_admins(
+pub async fn index_cosmogony(
     client: &ElasticsearchStorage,
     region: &str,
     dataset: &str,
@@ -138,7 +141,7 @@ pub async fn index_admins(
     let input_file = input_dir.join(format!("{}.jsonl.gz", region));
 
     mimirsbrunn::admin::index_cosmogony(
-        &input_file,
+        input_file.into_os_string().into_string().unwrap(),
         vec!["fr".to_string()],
         Config::builder()
             .add_source(Admin::default_es_container_config())

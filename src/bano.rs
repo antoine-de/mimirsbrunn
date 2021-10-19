@@ -65,7 +65,6 @@ impl Bano {
         self,
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
-        use_old_index_format: bool,
     ) -> Result<Addr, Error> {
         let street_id = format!("street:{}", self.fantoir()?.to_string());
         let mut admins = admins_geofinder.get(&geo::Coordinate {
@@ -129,22 +128,18 @@ impl Bano {
                 "addr:{};{}{}",
                 self.lon,
                 self.lat,
-                if use_old_index_format {
-                    String::new()
-                } else {
-                    format!(
-                        ":{}",
-                        self.house_number
-                            .replace(" ", "")
-                            .replace("\t", "")
-                            .replace("\r", "")
-                            .replace("\n", "")
-                            .replace("/", "-")
-                            .replace(".", "-")
-                            .replace(":", "-")
-                            .replace(";", "-")
-                    )
-                }
+                format!(
+                    ":{}",
+                    self.house_number
+                        .replace(" ", "")
+                        .replace("\t", "")
+                        .replace("\r", "")
+                        .replace("\n", "")
+                        .replace("/", "-")
+                        .replace(".", "-")
+                        .replace(":", "-")
+                        .replace(";", "-")
+                )
             ),
             name: addr_name,
             label: addr_label,

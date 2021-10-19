@@ -70,6 +70,37 @@ pub fn steps() -> Steps<State> {
         }),
     );
 
+    // This step is a condensed format for download + index bano
+    steps.given_regex_async(
+        r"addresses \(bano\) have been indexed for (.*) into (.*) as (.*)",
+        t!(|mut state, ctx| {
+            let departments = ctx.matches[1]
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+
+            let region = ctx.matches[2].clone();
+            let dataset = ctx.matches[3].clone();
+
+            state
+                .execute_once(
+                    DownloadBano {
+                        departments,
+                        region: region.clone(),
+                    },
+                    &ctx,
+                )
+                .await
+                .expect("failed to download OSM file");
+            state
+                .execute(IndexBano { region, dataset }, &ctx)
+                .await
+                .expect("failed to index Bano file");
+
+            state
+        }),
+    );
+
     steps
 }
 

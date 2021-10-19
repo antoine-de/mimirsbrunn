@@ -1,12 +1,12 @@
+/// This module contains the definition for bano2mimir configuration and command line arguments.
 use config::Config;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-/// This module contains the definition for osm2mimir configuration and command line arguments.
-///
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::env;
 use std::path::PathBuf;
 use structopt::StructOpt;
+
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -25,18 +25,6 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Street {
-    pub import: bool,
-    pub exclusions: crate::osm_reader::street::StreetExclusion,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Poi {
-    pub import: bool,
-    pub config: Option<crate::osm_reader::poi::PoiConfig>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Logging {
     pub path: String,
 }
@@ -44,6 +32,12 @@ pub struct Logging {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Container {
     pub dataset: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Concurrency {
+    pub nb_threads: usize,
+    pub nb_insert_threads: usize,
 }
 
 #[cfg(feature = "db-storage")]
@@ -57,9 +51,8 @@ pub struct Database {
 pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
+    pub concurrency: Concurrency,
     pub elasticsearch: ElasticsearchStorageConfig,
-    pub pois: Poi,
-    pub streets: Street,
     pub container: Container,
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,
@@ -67,15 +60,15 @@ pub struct Settings {
 
 #[derive(Debug, StructOpt)]
 #[structopt(
-name = "osm2mimir",
-about = "Parsing OSM PBF document and indexing its content in Elasticsearch",
-version = VERSION,
-author = AUTHORS
-)]
+    name = "bano2mimir",
+    about = "Parsing BANO document and indexing its content in Elasticsearch",
+    version = VERSION,
+    author = AUTHORS
+    )]
 pub struct Opts {
     /// Defines the config directory
     ///
-    /// This directory must contain 'elasticsearch' and 'osm2mimir' subdirectories.
+    /// This directory must contain 'elasticsearch' and 'bano2mimir' subdirectories.
     #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
     pub config_dir: PathBuf,
 
@@ -89,7 +82,7 @@ pub struct Opts {
     #[structopt(short = "s", long = "setting")]
     pub settings: Vec<String>,
 
-    /// OSM PBF file
+    /// Either a single BANO file, or a directory of several BANO files.
     #[structopt(short = "i", long = "input", parse(from_os_str))]
     pub input: PathBuf,
 
@@ -99,53 +92,37 @@ pub struct Opts {
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
-    /// Execute osm2mimir with the given configuration
+    /// Execute bano2mimir with the given configuration
     Run,
-    /// Prints osm2mimir's configuration
+    /// Prints bano2mimir's configuration
     Config,
 }
 
 // TODO Parameterize the config directory
 impl Settings {
-    // Read the configuration from <config-dir>/osm2mimir and <config-dir>/elasticsearch
+    // Read the configuration from <config-dir>/bano2mimir and <config-dir>/elasticsearch
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         let mut builder = Config::builder();
 
         builder = builder.add_source(
             common::config::config_from(
                 opts.config_dir.as_ref(),
-                &["osm2mimir", "elasticsearch"],
+                &["bano2mimir", "elasticsearch"],
                 opts.run_mode.as_deref(),
-                "OSM2MIMIR",
+                "BANO2MIMIR",
                 opts.settings.clone(),
             )
             .context(ConfigCompilation)?,
         );
 
-        // FIXME depending on service.pois.import and service.streets.import, read the corresponding
-        // elasticsearch sub dirs.
         let config = builder.build().context(ConfigMerge {
             msg: String::from("Cannot build the configuration from sources"),
         })?;
 
         config.try_into().context(ConfigMerge {
-            msg: String::from("Cannot convert configuration into osm2mimir settings"),
+            msg: String::from("Cannot convert configuration into bano2mimir settings"),
         })
     }
-}
-
-// This function returns an error if the settings are invalid.
-pub fn validate(settings: Settings) -> Result<Settings, Error> {
-    let import_streets_enabled = settings.streets.import;
-
-    let import_poi_enabled = settings.pois.import;
-
-    if !import_streets_enabled && !import_poi_enabled {
-        return Err(Error::Invalid {
-            msg: String::from("Neither streets nor POIs import is enabled. Nothing to do. Use -s pois.import=true or -s streets.import=true")
-        });
-    }
-    Ok(settings)
 }
 
 #[cfg(test)]
@@ -172,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn should_override_elasticsearch_port_with_command_line() {
+    fn should_override_elasticsearch_url_with_command_line() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
         let opts = Opts {
             config_dir,
@@ -194,9 +171,9 @@ mod tests {
     }
 
     #[test]
-    fn should_override_elasticsearch_port_environment_variable() {
+    fn should_override_elasticsearch_url_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        std::env::set_var("OSM2MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
+        std::env::set_var("BANO2MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
         let opts = Opts {
             config_dir,
             run_mode: None,
