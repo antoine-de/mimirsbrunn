@@ -21,5 +21,5 @@ pub enum Error {
     IndexOsm { source: osm::Error },
 
     #[snafu(display("Index NTFS Error: {}", source))]
-    IndexNtfs { source: ntfs::Error },
+    IndexNTFS { source: ntfs::Error },
 }
