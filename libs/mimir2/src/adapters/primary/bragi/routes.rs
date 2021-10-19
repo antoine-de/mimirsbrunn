@@ -1,6 +1,6 @@
 use geojson::{GeoJson, Geometry};
 use std::convert::Infallible;
-use tracing::{info, instrument};
+use tracing::instrument;
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::{
@@ -29,7 +29,6 @@ fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 #[instrument]
 pub fn forward_geocoder_get(
 ) -> impl Filter<Extract = (ForwardGeocoderQuery, Option<Geometry>), Error = Rejection> + Clone {
-    info!("GET");
     warp::get()
         .and(path_prefix())
         .and(warp::path("autocomplete"))
@@ -48,7 +47,6 @@ pub fn forward_geocoder_get(
 #[instrument]
 pub fn forward_geocoder_post(
 ) -> impl Filter<Extract = (ForwardGeocoderQuery, Option<Geometry>), Error = Rejection> + Clone {
-    info!("POST");
     warp::post()
         .and(path_prefix())
         .and(warp::path("autocomplete"))
@@ -370,20 +368,4 @@ mod tests {
             "Invalid GeoJSON shape (missing geometry). cannot deserialize body"
         );
     }
-
-    // #[tokio::test]
-    // async fn should_report_valid_reverse() {
-    //     let filter = reverse_geocoder();
-    //     let resp = warp::test::request()
-    //         .path("/api/v1/reverse?lat=48.85406&lon=2.33027")
-    //         .reply(&filter)
-    //         .await;
-    //     assert_eq!(
-    //         resp.status(),
-    //         warp::http::status::StatusCode::OK,
-    //         "Expected Status::OK, Got {}: Error Message: {}",
-    //         resp.status(),
-    //         String::from_utf8(resp.body().to_vec()).unwrap()
-    //     );
-    // }
 }
