@@ -1,8 +1,6 @@
 name: Minimal setup
 on:
   push:
-    branches:
-      - es7
 
 jobs:
   benchmark:
