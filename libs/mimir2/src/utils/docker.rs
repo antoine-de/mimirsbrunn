@@ -93,59 +93,7 @@ pub struct DockerWrapper {
     ports: Vec<(u32, u32)>, // list of ports to publish (host port, container port)
     docker_image: String,
     container_name: String, // ip: String,
-<<<<<<< HEAD
     config: ElasticsearchStorageConfig,
-=======
-    config: ConfigElasticsearchTesting,
-}
-
-// Elasticsearch Configuration
-// FIXME Should be placed in common.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConfigElasticsearchTesting {
-    pub url: String,
-    pub version_req: String,
-    pub timeout: u64,
-}
-
-impl Default for ConfigElasticsearchTesting {
-    fn default() -> Self {
-        // We retrieve the elasticsearch configuration from ./config/elasticsearch/{default +
-        // testing}
-        // We expect the elasticsearch url to be of the form 'http://localhost:9202'
-        // We extract the 9202, extract the offset from the usual 9000 port for elasticsearch,
-        // and map the ports 9202 -> 9200 et 9302 -> 9300
-        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../config");
-        let mut builder = Config::builder();
-        builder = builder.add_source(
-            common::config::config_from(
-                config_dir.as_path(),
-                &["elasticsearch"],
-                "testing",
-                "MIMIR_TEST", // environment variable
-                None,         // No command line override
-            )
-            .expect("configuration for testing"),
-        );
-
-        let config: ConfigElasticsearchTesting = builder
-            .build()
-            .unwrap_or_else(|_| {
-                panic!(
-                    "cannot build the configuration for testing from {}",
-                    config_dir.display(),
-                )
-            })
-            .get("elasticsearch")
-            .unwrap_or_else(|_| {
-                panic!(
-                    "expected elasticsearch section in configuration from {}",
-                    config_dir.display(),
-                )
-            });
-        config
-    }
->>>>>>> fd1e288 (Rework config handling in tests)
 }
 
 impl Default for DockerWrapper {

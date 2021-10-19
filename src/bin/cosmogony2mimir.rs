@@ -85,20 +85,17 @@ async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> 
 async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
     let input = opts.input.clone(); // we save the input, because opts will be consumed by settings.
 
-    let settings = &settings::Settings::new(&opts)
+    let settings = settings::Settings::new(&opts)
         .context(Settings)
         .map_err(Box::new)?;
 
-    let pool = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
+    let pool = elasticsearch::remote::connection_pool_url(settings.elasticsearch.url.as_str())
         .await
         .context(ElasticsearchPool)
         .map_err(Box::new)?;
 
     let client = pool
-        .conn(
-            settings.elasticsearch.timeout,
-            &settings.elasticsearch.version_req,
-        )
+        .conn(settings.elasticsearch)
         .await
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
@@ -132,21 +129,9 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    //use common::document::ContainerDocument;
-    //use mimir2::domain::model::query::Query;
-    //use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    //use mimir2::domain::ports::primary::search_documents::SearchDocuments;
-    //use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
-    //use places::admin::Admin;
-    //use places::Place;
-
-    //use super::*;
-    //use futures::TryStreamExt;
-    //use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
     use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
-    //use mimirsbrunn::settings::cosmogony2mimir as settings;
-    //use places::addr::Addr;
+    use mimir2::utils::docker;
 
     #[tokio::test]
     #[serial]
@@ -170,10 +155,7 @@ mod tests {
         };
 
         let res = mimirsbrunn::utils::launch::launch_async_args(run, opts).await;
-        assert!(res
-            .unwrap_err()
-            .to_string()
-            .contains("Invalid Elasticsearch URL"));
+        assert!(res.unwrap_err().to_string().contains("invalid port number"));
     }
 
     #[tokio::test]
@@ -283,13 +265,13 @@ mod tests {
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
-        let config = docker::ConfigElasticsearchTesting::default();
-        let pool = remote::connection_pool_url(&config.url)
+        let config = ElasticsearchStorageConfig::default_testing();
+        let pool = remote::connection_pool_url(config.url.as_str())
             .await
             .expect("Elasticsearch Connection Pool");
 
         let client = pool
-            .conn(config.timeout, &config.version_req)
+            .conn(config)
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -333,13 +315,13 @@ mod tests {
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
-        let config = docker::ConfigElasticsearchTesting::default();
-        let pool = remote::connection_pool_url(&config.url)
+        let config = ElasticsearchStorageConfig::default_testing();
+        let pool = remote::connection_pool_url(config.url.as_str())
             .await
             .expect("Elasticsearch Connection Pool");
 
         let client = pool
-            .conn(config.timeout, &config.version_req)
+            .conn(config)
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -384,13 +366,13 @@ mod tests {
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
-        let config = docker::ConfigElasticsearchTesting::default();
-        let pool = remote::connection_pool_url(&config.url)
+        let config = ElasticsearchStorageConfig::default_testing();
+        let pool = remote::connection_pool_url(config.url.as_str())
             .await
             .expect("Elasticsearch Connection Pool");
 
         let client = pool
-            .conn(config.timeout, &config.version_req)
+            .conn(config)
             .await
             .expect("Elasticsearch Connection Established");
 

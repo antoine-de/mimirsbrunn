@@ -7,7 +7,6 @@ use tests::{bano, cosmogony, download, ntfs, osm};
 pub enum Error {
     #[snafu(display("Download Error: {}", source))]
     Download { source: download::Error },
-<<<<<<< HEAD
 
     #[snafu(display("Generate Cosmogony Error: {}", source))]
     GenerateCosmogony { source: cosmogony::Error },

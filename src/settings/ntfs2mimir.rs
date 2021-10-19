@@ -6,6 +6,8 @@ use std::env;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
@@ -29,13 +31,6 @@ pub struct Logging {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Elasticsearch {
-    pub url: String,
-    pub version_req: String,
-    pub timeout: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Container {
     pub dataset: String,
 }
@@ -44,7 +39,7 @@ pub struct Container {
 pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
-    pub elasticsearch: Elasticsearch,
+    pub elasticsearch: ElasticsearchStorageConfig,
     pub container: Container,
 }
 
@@ -154,7 +149,10 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.url, "http://localhost:9999");
+        assert_eq!(
+            settings.unwrap().elasticsearch.url,
+            "http://localhost:9999/"
+        );
     }
 
     #[test]
@@ -174,6 +172,9 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.url, "http://localhost:9999");
+        assert_eq!(
+            settings.unwrap().elasticsearch.url,
+            "http://localhost:9999/"
+        );
     }
 }
