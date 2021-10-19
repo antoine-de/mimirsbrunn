@@ -1,18 +1,13 @@
+use async_trait::async_trait;
+use cucumber::{t, StepContext, Steps};
+use snafu::ResultExt;
+
 use crate::error;
 use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use crate::steps::download::DownloadOsm;
-use crate::utils::{create_dir_if_not_exists, file_exists};
-use async_trait::async_trait;
-use common::document::ContainerDocument;
-use config::Config;
-use cucumber::{t, StepContext, Steps};
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::model::configuration::root_doctype_dataset;
-use mimir2::domain::ports::secondary::storage::Storage;
-use places::admin::Admin;
-use snafu::ResultExt;
-use std::path::PathBuf;
+use tests::cosmogony;
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
@@ -59,21 +54,35 @@ pub fn steps() -> Steps<State> {
         }),
     );
 
+    // This step is a condensed format for download + generate + index
+    steps.given_regex_async(
+        "admins have been indexed for (.*) as (.*)",
+        t!(|mut state, ctx| {
+            let region = ctx.matches[1].clone();
+            let dataset = ctx.matches[2].clone();
+            state
+                .execute_once(DownloadOsm(region.to_string()), &ctx)
+                .await
+                .expect("failed to download OSM");
+
+            state
+                .execute_once(GenerateCosmogony(region.to_string()), &ctx)
+                .await
+                .expect("failed to generate cosmogony file");
+
+            state
+                .execute_once(IndexCosmogony { region, dataset }, &ctx)
+                .await
+                .expect("failed to index cosmogony file");
+
+            state
+        }),
+    );
+
     steps
 }
 
-/// Generate a cosmogony file given the region.
-///
-/// The makes several assumptions:
-///  1. The OSM file has previously been downloaded into the expected folder (tests/data/osm)
-///  2. The output is a jsonl.gz
-///  3. The output will be stored in tests/data/cosmogony
-///
-/// The OSM file will be processed if:
-///  1. The output file is not found
-///  2. If the output file is found and the previous step is 'downloaded' (that is it's probably a
-///     new OSM file and we need to generate a new cosmogony file.
-#[derive(Debug, PartialEq)]
+#[derive(PartialEq)]
 pub struct GenerateCosmogony(pub String);
 
 #[async_trait(?Send)]
@@ -81,53 +90,14 @@ impl Step for GenerateCosmogony {
     async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
         let Self(region) = self;
 
-        let download_state = state
+        state
             .status_of(&DownloadOsm(region.to_string()))
             .expect("can't generate cosmogony file without downloading from OSM first");
 
-        let base_path = env!("CARGO_MANIFEST_DIR");
-
-        let input_dir: PathBuf = [base_path, "tests", "fixtures", "osm", region]
-            .iter()
-            .collect();
-        let input_file = input_dir.join(format!("{}-latest.osm.pbf", region));
-
-        let output_dir: PathBuf = [base_path, "tests", "fixtures", "cosmogony", region]
-            .iter()
-            .collect();
-        let output_file = output_dir.join(format!("{}.jsonl.gz", region));
-        create_dir_if_not_exists(&output_dir).await?;
-
-        // If the output already exists, and the input is not a new file, then skip the generation
-        if file_exists(&output_file).await && download_state == StepStatus::Skipped {
-            return Ok(StepStatus::Skipped);
-        }
-
-        let cosmogony_path =
-            std::env::var("COSMOGONY_EXE").context(error::EnvironmentVariable {
-                details: "Could not get cosmogony executable".to_string(),
-            })?;
-
-        // TODO: check command status ?
-        tokio::process::Command::new(&cosmogony_path)
-            .args(["--country-code", "FR"])
-            .arg("--input")
-            .arg(&input_file)
-            .arg("--output")
-            .arg(&output_file)
-            .spawn()
-            .expect("failed to spawn cosmogony")
-            .wait()
+        cosmogony::generate(region, false)
             .await
-            .context(error::InvalidIO {
-                details: format!(
-                    "failed to generate cosmogony with input {} and output {}",
-                    input_file.display(),
-                    output_file.display()
-                ),
-            })?;
-
-        Ok(StepStatus::Done)
+            .map(|status| status.into())
+            .context(error::GenerateCosmogony)
     }
 }
 
@@ -146,46 +116,13 @@ impl Step for IndexCosmogony {
         let Self { region, dataset } = self;
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 
-        let gen_status = state
+        state
             .status_of(&GenerateCosmogony(region.to_string()))
             .expect("can't generate cosmogony file without downloading from OSM first");
 
-        // Check if the admin index already exists
-        let container = root_doctype_dataset(Admin::static_doc_type(), dataset);
-
-        let index = client
-            .find_container(container.clone())
+        cosmogony::index_admins(client, region, dataset, false)
             .await
-            .expect("failed at looking up for container");
-
-        // If the previous step has been skipped, then we don't need to index the
-        // cosmogony file.
-        if gen_status == StepStatus::Skipped && index.is_some() {
-            return Ok(StepStatus::Skipped);
-        }
-
-        let base_path = env!("CARGO_MANIFEST_DIR");
-        let input_dir: PathBuf = [base_path, "tests", "fixtures", "cosmogony", region]
-            .iter()
-            .collect();
-        let input_file = input_dir.join(format!("{}.jsonl.gz", region));
-
-        mimirsbrunn::admin::index_cosmogony(
-            input_file.into_os_string().into_string().unwrap(),
-            vec!["fr".to_string()],
-            Config::builder()
-                .add_source(Admin::default_es_container_config())
-                .set_override("container.dataset", dataset.to_string())
-                .expect("failed to set dataset name")
-                .build()
-                .expect("failed to build configuration"),
-            client,
-        )
-        .await
-        .map_err(|err| Error::Indexing {
-            details: format!("could not index cosmogony: {}", err.to_string(),),
-        })?;
-
-        Ok(StepStatus::Done)
+            .map(|status| status.into())
+            .context(error::IndexCosmogony)
     }
 }

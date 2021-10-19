@@ -47,7 +47,6 @@ use super::osm_utils::get_way_coord;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
-use crate::settings::osm2mimir::Settings;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -75,27 +74,40 @@ pub struct StreetExclusion {
     pub public_transport: Option<Vec<String>>,
 }
 
-#[instrument(skip(osm_reader, admins_geofinder))]
+// The following conditional compilation is to allow to optionaly pass an extra argument if
+// the db-storage feature is enabled
+#[cfg(feature = "db-storage")]
 pub fn streets(
     osm_reader: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
-    settings: &Settings,
+    exclusions: &StreetExclusion,
+    database: Option<crate::settings::osm2mimir::Database>,
 ) -> Result<Vec<places::street::Street>, Error> {
-    let invalid_highways = settings
-        .streets
-        .exclusions
-        .highway
-        .as_deref()
-        .unwrap_or(&[]);
+    let objs_map = ObjWrapper::new(&database).context(ObjWrapperCreation)?;
+    inner_streets(osm_reader, admins_geofinder, exclusions, objs_map)
+}
+#[cfg(not(feature = "db-storage"))]
+pub fn streets(
+    osm_reader: &mut OsmPbfReader,
+    admins_geofinder: &AdminGeoFinder,
+    exclusions: &StreetExclusion,
+) -> Result<Vec<places::street::Street>, Error> {
+    let objs_map = ObjWrapper::new().context(ObjWrapperCreation)?;
+    inner_streets(osm_reader, admins_geofinder, exclusions, objs_map)
+}
+
+#[instrument(skip(osm_reader, admins_geofinder, objs_map))]
+pub fn inner_streets(
+    osm_reader: &mut OsmPbfReader,
+    admins_geofinder: &AdminGeoFinder,
+    exclusions: &StreetExclusion,
+    mut objs_map: ObjWrapper,
+) -> Result<Vec<places::street::Street>, Error> {
+    let invalid_highways = exclusions.highway.as_deref().unwrap_or(&[]);
 
     let is_valid_highway = |tag: &str| -> bool { !invalid_highways.iter().any(|k| k == tag) };
 
-    let invalid_public_transports = settings
-        .streets
-        .exclusions
-        .public_transport
-        .as_deref()
-        .unwrap_or(&[]);
+    let invalid_public_transports = exclusions.public_transport.as_deref().unwrap_or(&[]);
 
     let is_valid_public_transport =
         |tag: &str| -> bool { !invalid_public_transports.iter().any(|k| k == tag) };
@@ -125,11 +137,6 @@ pub fn streets(
     };
 
     info!("reading pbf...");
-    #[cfg(feature = "db-storage")]
-    let mut objs_map = ObjWrapper::new(&settings.database).context(ObjWrapperCreation)?;
-    #[cfg(not(feature = "db-storage"))]
-    let mut objs_map = ObjWrapper::new().context(ObjWrapperCreation)?;
-
     osm_reader
         .get_objs_and_deps_store(is_valid_obj, &mut objs_map)
         .context(OsmPbfReaderExtraction {
@@ -333,15 +340,4 @@ fn get_street_admin<T: StoreObjs + Getter>(
                     .unwrap_or(false)
             })
         })
-}
-
-pub fn compute_street_weight(streets: &mut Vec<places::street::Street>) {
-    for st in streets {
-        for admin in &mut st.administrative_regions {
-            if admin.is_city() {
-                st.weight = admin.weight;
-                break;
-            }
-        }
-    }
 }

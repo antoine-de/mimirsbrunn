@@ -1,21 +1,13 @@
-use crate::error::Error;
+use async_trait::async_trait;
+use cucumber::{t, StepContext, Steps};
+use snafu::ResultExt;
+
+use crate::error::{self, Error};
 use crate::state::{State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
-use async_trait::async_trait;
-use common::document::ContainerDocument;
-use config::Config;
-use cucumber::{t, StepContext, Steps};
-use futures::stream::StreamExt;
+use crate::steps::download::DownloadBano;
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::model::configuration::root_doctype_dataset;
-use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::domain::ports::secondary::storage::Storage;
-use mimirsbrunn::addr_reader::import_addresses_from_input_path;
-use mimirsbrunn::bano::Bano;
-use places::addr::Addr;
-use places::admin::Admin;
-use std::path::PathBuf;
-use std::sync::Arc;
+use tests::bano;
 
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
@@ -38,6 +30,37 @@ pub fn steps() -> Steps<State> {
                 .clone();
             assert!(!region.is_empty());
             assert!(!dataset.is_empty());
+            state
+                .execute(IndexBano { region, dataset }, &ctx)
+                .await
+                .expect("failed to index Bano file");
+
+            state
+        }),
+    );
+
+    // This step is a condensed format for download + index bano
+    steps.given_regex_async(
+        r"addresses \(bano\) have been indexed for (.*) into (.*) as (.*)",
+        t!(|mut state, ctx| {
+            let departments = ctx.matches[1]
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+
+            let region = ctx.matches[2].clone();
+            let dataset = ctx.matches[3].clone();
+
+            state
+                .execute_once(
+                    DownloadBano {
+                        departments,
+                        region: region.clone(),
+                    },
+                    &ctx,
+                )
+                .await
+                .expect("failed to download OSM file");
             state
                 .execute(IndexBano { region, dataset }, &ctx)
                 .await
@@ -72,59 +95,9 @@ impl Step for IndexBano {
             })
             .expect("You must index admins before indexing addresses");
 
-        // Check if the address index already exists
-        let container = root_doctype_dataset(Addr::static_doc_type(), dataset);
-
-        let index = client
-            .find_container(container)
+        bano::index_addresses(client, region, dataset, false)
             .await
-            .expect("failed at looking up for container");
-
-        // If the previous step has been skipped, then we don't need to index BANO file.
-        if index.is_some() {
-            println!("container found");
-            return Ok(StepStatus::Skipped);
-        }
-
-        // TODO: there might be some factorisation to do with bano2mimir?
-        let into_addr = {
-            let admins: Vec<Admin> = client
-                .list_documents()
-                .await
-                .expect("could not query for admins")
-                .map(|admin| admin.expect("could not parse admin"))
-                .collect()
-                .await;
-
-            let admins_by_insee = admins
-                .iter()
-                .cloned()
-                .filter(|addr| !addr.insee.is_empty())
-                .map(|addr| (addr.insee.clone(), Arc::new(addr)))
-                .collect();
-
-            let admins_geofinder = admins.into_iter().collect();
-            move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, false)
-        };
-
-        // Load file
-        let config = Config::builder()
-            .add_source(Addr::default_es_container_config())
-            .set_override("container.dataset", dataset.to_string())
-            .expect("failed to set dataset name")
-            .build()
-            .expect("failed to build configuration");
-
-        let base_path = env!("CARGO_MANIFEST_DIR");
-        let input_dir: PathBuf = [base_path, "tests", "fixtures", "bano", region]
-            .iter()
-            .collect();
-        let input_file = input_dir.join(format!("{}.csv", region));
-
-        import_addresses_from_input_path(client, config, input_file, into_addr)
-            .await
-            .expect("error while indexing Bano");
-
-        Ok(StepStatus::Done)
+            .map(|status| status.into())
+            .context(error::IndexBano)
     }
 }
