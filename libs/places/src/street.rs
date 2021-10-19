@@ -69,3 +69,15 @@ impl From<&Street> for geojson::Geometry {
         geojson::Geometry::from(street.coord)
     }
 }
+
+impl Street {
+    pub fn set_weight_from_admins(self) -> Self {
+        let weight = self
+            .administrative_regions
+            .iter()
+            .find(|&admin| admin.is_city())
+            .map(|admin| admin.weight)
+            .unwrap_or_else(|| self.weight);
+        Street { weight, ..self }
+    }
+}

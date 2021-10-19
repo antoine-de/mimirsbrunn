@@ -121,7 +121,7 @@ impl Default for ConfigElasticsearchTesting {
             common::config::config_from(
                 config_dir.as_path(),
                 &["elasticsearch"],
-                String::from("testing"),
+                "testing",
                 "MIMIR_TEST", // environment variable
                 None,         // No command line override
             )

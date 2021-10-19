@@ -121,7 +121,7 @@ impl Settings {
             common::config::config_from(
                 opts.config_dir.as_ref(),
                 &["osm2mimir", "elasticsearch"],
-                opts.run_mode.clone(),
+                opts.run_mode.as_deref(),
                 "OSM2MIMIR",
                 opts.settings.clone(),
             )

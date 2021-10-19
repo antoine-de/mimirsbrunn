@@ -115,7 +115,7 @@ impl Settings {
             common::config::config_from(
                 opts.config_dir.as_ref(),
                 &["bragi", "query"],
-                opts.run_mode.clone(),
+                opts.run_mode.as_deref(),
                 "BRAGI",
                 opts.settings.clone(),
             )
