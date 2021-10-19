@@ -1,4 +1,5 @@
 use config::Config;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 /// This module contains the definition for osm2mimir configuration and command line arguments.
 ///
 use serde::{Deserialize, Serialize};
@@ -45,13 +46,6 @@ pub struct Container {
     pub dataset: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Elasticsearch {
-    pub url: String,
-    pub version_req: String,
-    pub timeout: u64,
-}
-
 #[cfg(feature = "db-storage")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
@@ -63,7 +57,7 @@ pub struct Database {
 pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
-    pub elasticsearch: Elasticsearch,
+    pub elasticsearch: ElasticsearchStorageConfig,
     pub pois: Poi,
     pub streets: Street,
     pub container: Container,
@@ -193,7 +187,10 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.url, "http://localhost:9999");
+        assert_eq!(
+            settings.unwrap().elasticsearch.url.as_str(),
+            "http://localhost:9999/"
+        );
     }
 
     #[test]
@@ -213,6 +210,9 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.url, "http://localhost:9999");
+        assert_eq!(
+            settings.unwrap().elasticsearch.url.as_str(),
+            "http://localhost:9999/"
+        );
     }
 }

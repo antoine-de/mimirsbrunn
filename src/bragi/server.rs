@@ -92,16 +92,16 @@ pub async fn config(opts: &Opts) -> Result<(), Error> {
 
 #[instrument(skip(settings))]
 pub async fn run_server(settings: Settings) -> Result<(), Error> {
-    let host = settings.elasticsearch.host;
-    let port = settings.elasticsearch.port;
-    let addr = (host.as_str(), port);
-    let addr = addr
-        .to_socket_addrs()
-        .context(SockAddr { host, port })?
-        .next()
+    let addr = settings
+        .elasticsearch
+        .url
+        .socket_addrs(|| Some(9200))
+        .expect("invalid elasticsearch url") // TODO: catch error correctly
+        .pop()
         .ok_or(Error::AddrResolution {
-            msg: String::from("Cannot resolve elasticsearch addr."),
+            msg: "Cannot resolve elasticsearch addr.".to_string(),
         })?;
+
     let elasticsearch_url = format!("http://{}", addr);
     info!("Connecting to Elasticsearch at {}", &elasticsearch_url);
 
@@ -110,10 +110,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .context(ElasticsearchConnectionPoolCreation)?;
 
     let client = pool
-        .conn(
-            settings.elasticsearch.timeout,
-            &settings.elasticsearch.version_req,
-        )
+        .conn(settings.elasticsearch)
         .await
         .context(ElasticsearchConnection)?;
 

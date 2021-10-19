@@ -3,7 +3,7 @@ Feature: Baseline
 
     Background:
         Given admins have been indexed for ile-de-france as idf
-				# And addresses (bano) have been indexed for 92, 75, 94 into ile-de-france as idf
+				And addresses (bano) have been indexed for 92, 75, 94 into ile-de-france as idf
         And streets have been indexed for ile-de-france as idf
 				And stops have been indexed for fr-idf as idf
 				And pois have been indexed for fr-idf as idf

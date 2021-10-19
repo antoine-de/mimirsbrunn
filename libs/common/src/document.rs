@@ -1,8 +1,9 @@
 use config::Config;
+use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 /// Generic document.
-pub trait Document: Serialize {
+pub trait Document: DeserializeOwned + Serialize {
     // TODO: Do we need to use an owned string here?
     /// Unique identifier for the document.
     fn id(&self) -> String;

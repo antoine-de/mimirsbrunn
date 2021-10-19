@@ -1,4 +1,4 @@
-use config::Config;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use snafu::Snafu;
@@ -45,14 +45,6 @@ pub struct Logging {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Elasticsearch {
-    pub host: String,
-    pub port: u16,
-    pub version_req: String,
-    pub timeout: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Service {
     /// Host on which we expose bragi. Example: 'http://localhost', '0.0.0.0'
     pub host: String,
@@ -66,7 +58,7 @@ pub struct Service {
 pub struct Settings {
     pub mode: String,
     pub logging: Logging,
-    pub elasticsearch: Elasticsearch,
+    pub elasticsearch: ElasticsearchStorageConfig,
     pub query: QuerySettings,
     pub service: Service,
 }
@@ -109,25 +101,17 @@ pub enum Command {
 
 impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
-        let mut builder = Config::builder();
-
-        builder = builder.add_source(
-            common::config::config_from(
-                opts.config_dir.as_ref(),
-                &["bragi", "query"],
-                opts.run_mode.as_deref(),
-                "BRAGI",
-                opts.settings.clone(),
-            )
-            .context(ConfigCompilation)?,
-        );
-
-        let config = builder.build().context(ConfigMerge {
-            msg: String::from("foo"),
-        })?;
-
-        config.try_into().context(ConfigMerge {
-            msg: String::from("Cannot merge bragi settings"),
+        common::config::config_from(
+            opts.config_dir.as_ref(),
+            &["bragi", "query"],
+            opts.run_mode.as_deref(),
+            "BRAGI",
+            opts.settings.clone(),
+        )
+        .context(ConfigCompilation)?
+        .try_into()
+        .context(ConfigMerge {
+            msg: "cannot merge bragi settings",
         })
     }
 }
@@ -169,13 +153,13 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.port, 9999);
+        assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }
 
     #[test]
     fn should_override_elasticsearch_port_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        std::env::set_var("BRAGI_ELASTICSEARCH_PORT", "9999");
+        std::env::set_var("BRAGI_ELASTICSEARCH_URL", "http://localhost:9999");
         let opts = Opts {
             config_dir,
             run_mode: Some(String::from("testing")),
@@ -188,6 +172,6 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().elasticsearch.port, 9999);
+        assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }
 }

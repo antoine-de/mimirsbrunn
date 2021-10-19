@@ -6,7 +6,7 @@ use elasticsearch::indices::{
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
-use futures::stream::{self, Stream, StreamExt};
+use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::de::DeserializeOwned;
@@ -20,6 +20,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
 use super::configuration::IndexConfiguration;
+use super::models::ElasticsearchSearchResponse;
 use super::ElasticsearchStorage;
 use crate::domain::model::{
     configuration,
@@ -30,7 +31,8 @@ use crate::domain::model::{
 };
 use common::document::Document;
 
-static CHUNK_SIZE: usize = 100;
+/// Number of document inserted at once in indexes
+const INSERT_CHUNK_SIZE: usize = 100;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -118,6 +120,10 @@ pub enum Error {
     /// Elasticsearch Unhandled Status
     #[snafu(display("Elasticsearch Unhandled Status: {}", details))]
     ElasticsearchUnhandledStatus { details: String },
+
+    /// Elasticsearch Response Has Not PIT
+    #[snafu(display("Elasticsearch Response is Missing a PIT"))]
+    ElasticsearchResponseMissingPIT,
 }
 
 impl From<Exception> for Error {
@@ -196,7 +202,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .create(IndicesCreateParts::Index(&config.name))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .wait_for_active_shards(&config.parameters.wait_for_active_shards)
             .body(body)
             .send()
@@ -256,7 +262,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .delete(IndicesDeleteParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -318,7 +324,7 @@ impl ElasticsearchStorage {
             .client
             .cat()
             .indices(CatIndicesParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .format("json")
             .send()
             .await
@@ -448,7 +454,7 @@ impl ElasticsearchStorage {
         let stats = Arc::new(Mutex::new(InsertStats::default()));
 
         documents
-            .chunks(CHUNK_SIZE) // FIXME chunck size should be a variable.
+            .chunks(INSERT_CHUNK_SIZE) // FIXME chunck size should be a variable.
             .for_each_concurrent(8, |chunk| {
                 // FIXME 8 automagick!!??
                 let stats = stats.clone();
@@ -487,16 +493,19 @@ impl ElasticsearchStorage {
         // Each item must contain the string 'created'. So we iterate through these items,
         // and build a Result<(), Error>, and skip while it `is_ok()`. If we have an
         // error, we report it.
-        let mut ops: Vec<BulkOperation<Value>> = Vec::with_capacity(CHUNK_SIZE);
-        chunk.into_iter().for_each(|doc| {
-            let doc_id = doc.id();
-            let value = serde_json::to_value(doc).expect("to json value");
-            ops.push(BulkOperation::index(value).id(doc_id).into());
-        });
+        let ops: Vec<BulkOperation<Value>> = chunk
+            .into_iter()
+            .map(|doc| {
+                let doc_id = doc.id();
+                let value = serde_json::to_value(doc).expect("to json value");
+                BulkOperation::index(value).id(doc_id).into()
+            })
+            .collect();
+
         let resp = self
             .client
             .bulk(BulkParts::Index(index.as_str()))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .body(ops)
             .send()
             .await
@@ -625,7 +634,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .update_aliases()
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .body(json!({ "actions": actions }))
             .send()
             .await
@@ -660,7 +669,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .get_alias(IndicesGetAliasParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -728,7 +737,7 @@ impl ElasticsearchStorage {
             .client
             .ingest()
             .put_pipeline(IngestPutPipelineParts::Id(&name))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .body(pipeline)
             .send()
             .await
@@ -800,7 +809,7 @@ impl ElasticsearchStorage {
             .client
             .indices()
             .refresh(IndicesRefreshParts::Index(&[&index]))
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -828,196 +837,135 @@ impl ElasticsearchStorage {
     pub(super) async fn list_documents<D>(
         &self,
         index: String,
-    ) -> Result<Pin<Box<dyn Stream<Item = D> + Send>>, Error>
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<D, Error>> + Send>>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
-        let client = &self.client;
-        let timeout = self.timeout;
-        let pit: String = {
+        let client = self.client.clone();
+        let timeout = self.config.timeout;
+        let chunk_size = self.config.scroll_chunk_size;
+        let pit_alive = self.config.scroll_pit_alive.clone();
+
+        // Open initial PIT
+        let init_pit = {
+            #[derive(Deserialize)]
+            struct PitResponse {
+                id: String,
+            }
+
             let response = client
                 .open_point_in_time(OpenPointInTimeParts::Index(&[&index]))
                 .request_timeout(timeout)
-                .keep_alive("1m")
+                .keep_alive(&pit_alive)
                 .send()
                 .await
-                .unwrap()
+                .context(ElasticsearchClient {
+                    details: format!("failed to query PIT for {}", index),
+                })?
                 .error_for_status_code()
                 .context(ElasticsearchClient {
-                    details: format!("cannot list index {}", index),
+                    details: format!("failed to open PIT for {}", index),
                 })?;
-            let response_body = response.json::<Value>().await.unwrap();
-            response_body
-                .get("id")
-                .expect("response has id")
-                .as_str()
-                .unwrap()
-                .into()
+
+            response
+                .json::<PitResponse>()
+                .await
+                .context(ElasticsearchDeserialization)?
+                .id
         };
 
-        let client = self.client.clone();
-        let stream = stream::unfold(State::Start, move |state| {
+        let stream = stream::try_unfold(State::Start, move |state| {
             let client = client.clone();
             let index = index.clone();
-            let pit = pit.clone();
+            let init_pit = init_pit.clone();
+            let pit_alive = pit_alive.clone();
+
+            // Build the query for the next chunk of documents.
+            let build_query = move |pit_id, search_after| {
+                let mut query = json!({
+                    "query": {"match_all": {}},
+                    "size": chunk_size,
+                    "pit": {"id": pit_id, "keep_alive": pit_alive},
+                    "track_total_hits": false,
+                    "sort": [{"_shard_doc": "desc"}]
+                });
+
+                if let Some(search_after) = search_after {
+                    query["search_after"] = json!([search_after]);
+                }
+
+                query
+            };
+
+            // Fetch Elasticsearch response, build stream over returned chunk and compute next
+            // state.
+            let read_response = {
+                let client = client.clone();
+
+                move |query| async move {
+                    let response = client
+                        .search(SearchParts::None)
+                        .request_timeout(timeout)
+                        .body(query)
+                        .send()
+                        .await
+                        .context(ElasticsearchClient {
+                            details: format!("failed to search for {}", index),
+                        })?;
+
+                    let body: ElasticsearchSearchResponse<D> = response
+                        .json()
+                        .await
+                        .context(ElasticsearchDeserialization)?;
+
+                    let pit = body
+                        .pit_id
+                        .clone()
+                        .ok_or(Error::ElasticsearchResponseMissingPIT)?;
+
+                    let res_status = {
+                        if let Some(last_hit) = body.hits.hits.last() {
+                            let tiebreaker = last_hit.sort.get(0).unwrap().as_u64().unwrap();
+                            State::Next(ContinuationToken { pit, tiebreaker })
+                        } else {
+                            State::End(pit)
+                        }
+                    };
+
+                    let docs = stream::iter(body.into_hits().map(Ok));
+                    Ok::<_, Error>(Some((docs, res_status)))
+                }
+            };
+
             async move {
                 match state {
                     State::Start => {
-                        // We're starting, so we get a pit, and make a first requestj
-                        let body = json!({
-                            "query": { "match_all": {}},
-                            "pit": {"id": pit, "keep_alive": "1m" },
-                            "sort": [ { "indexed_at": {"order": "asc" }}, {"_id": {"order": "asc"}} ],
-                            "track_total_hits": false
-                        });
-
-                        let response = client
-                            .search(SearchParts::None)
-                            .request_timeout(timeout)
-                            .body(body)
-                            .send()
-                            .await
-                            .context(ElasticsearchClient {
-                                details: format!("cannot search index {}", index),
-                            })
-                            .unwrap();
-
-                        let response_body = response.json::<Value>().await.unwrap();
-
-                        let pit = response_body
-                            .get("pit_id")
-                            .expect("response has pit_id")
-                            .as_str()
-                            .unwrap();
-
-                        let hits = response_body
-                            .get("hits")
-                            .expect("response has hits")
-                            .as_object()
-                            .unwrap()["hits"]
-                            .as_array()
-                            .unwrap();
-
-                        if hits.is_empty() {
-                            Some((stream::iter(vec![]), State::End(String::from(pit))))
-                        } else {
-                            let last_hit = hits.last().unwrap();
-
-                            let sort = last_hit
-                                .as_object()
-                                .unwrap()
-                                .get("sort")
-                                .expect("hit has sort")
-                                .as_array()
-                                .unwrap();
-
-                            let timestamp = sort[0].as_u64().unwrap();
-                            let tiebreaker = sort[1].as_str().unwrap();
-
-                            let continuation_token = ContinuationToken {
-                                pit: String::from(pit),
-                                timestamp,
-                                tiebreaker: tiebreaker.into(),
-                            };
-
-                            Some((
-                                stream::iter(
-                                    hits.to_owned()
-                                        .into_iter()
-                                        .map(|i| {
-                                            let source = i
-                                                .as_object()
-                                                .unwrap()
-                                                .get("_source")
-                                                .expect("object has source")
-                                                .to_owned();
-                                            serde_json::from_value::<D>(source).unwrap()
-                                        })
-                                        .collect::<Vec<_>>(),
-                                ),
-                                State::Next(continuation_token),
-                            ))
-                        }
+                        let query = build_query(init_pit, None);
+                        read_response(query).await
                     }
                     State::Next(continuation_token) => {
-                        let body = json!({
-                            "query": { "match_all": {}},
-                            "pit": {"id": continuation_token.pit, "keep_alive": "1m" },
-                            "sort": [ { "indexed_at": {"order": "asc" }}, {"_id": {"order": "asc"}} ],
-                            "search_after": [
-                                continuation_token.timestamp,
-                                continuation_token.tiebreaker
-                            ]
-                        });
+                        let query = build_query(
+                            continuation_token.pit,
+                            Some(continuation_token.tiebreaker),
+                        );
 
-                        let response = client
-                            .search(SearchParts::None)
-                            .request_timeout(timeout)
-                            .body(body)
-                            .send()
-                            .await
-                            .context(ElasticsearchClient {
-                                details: format!("cannot search index {}", index),
-                            })
-                            .unwrap();
-
-                        let response_body = response.json::<Value>().await.unwrap();
-                        let pit = response_body["pit_id"].as_str().unwrap_or_else(|| panic!("Unexpected response: {}", response_body));
-
-                        let hits = response_body["hits"].as_object().unwrap()["hits"]
-                            .as_array()
-                            .unwrap();
-
-                        if hits.is_empty() {
-                            Some((stream::iter(vec![]), State::End(String::from(pit))))
-                        } else {
-                            let last_hit = hits.last().unwrap();
-
-                            let sort = last_hit.as_object().unwrap()["sort"].as_array().unwrap();
-
-                            let timestamp = sort[0].as_u64().unwrap();
-                            let tiebreaker = sort[1].as_str().unwrap();
-
-                            let continuation_token = ContinuationToken {
-                                pit: String::from(pit),
-                                timestamp,
-                                tiebreaker: tiebreaker.into(),
-                            };
-                            Some((
-                                stream::iter(
-                                    hits.to_owned()
-                                        .into_iter()
-                                        .map(|i| {
-                                            let source = i
-                                                .as_object()
-                                                .unwrap()
-                                                .get("_source")
-                                                .expect("object has source")
-                                                .to_owned();
-                                            serde_json::from_value::<D>(source).unwrap()
-                                        })
-                                        .collect::<Vec<_>>(),
-                                ),
-                                State::Next(continuation_token),
-                            ))
-                        }
+                        read_response(query).await
                     }
                     State::End(pit) => {
                         let response = client
                             .close_point_in_time()
-                            .body(json!({"id": pit}))
+                            .body(json!({ "id": pit }))
                             .send()
                             .await
                             .unwrap();
 
                         let _response_body = response.json::<Value>().await.unwrap();
-
-                        None
+                        Ok(None)
                     }
                 }
             }
         })
-        .flatten();
+        .try_flatten();
 
         Ok(stream.boxed())
     }
@@ -1034,7 +982,7 @@ impl ElasticsearchStorage {
         let search = self
             .client
             .search(SearchParts::Index(&indices))
-            .request_timeout(self.timeout);
+            .request_timeout(self.config.timeout);
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
@@ -1052,53 +1000,12 @@ impl ElasticsearchStorage {
         };
 
         if response.status_code().is_success() {
-            let json = response
-                .json::<Value>()
+            let body = response
+                .json::<ElasticsearchSearchResponse<D>>()
                 .await
                 .context(ElasticsearchDeserialization)?;
 
-            let hits = json
-                .as_object()
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected JSON object"),
-                    json: json.clone(),
-                })?
-                .get("hits")
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected 'hits'"),
-                    json: json.clone(),
-                })?
-                .as_object()
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected JSON object"),
-                    json: json.clone(),
-                })?
-                .get("hits")
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected 'hits'"),
-                    json: json.clone(),
-                })?
-                .as_array()
-                .ok_or_else(|| Error::JsonInvalid {
-                    details: String::from("expected JSON array"),
-                    json: json.clone(),
-                })?;
-
-            let hits = hits
-                .to_owned()
-                .into_iter()
-                .map(|i| {
-                    let source = i
-                        .as_object()
-                        .unwrap()
-                        .get("_source")
-                        .expect("object has source")
-                        .to_owned();
-                    serde_json::from_value::<D>(source).unwrap()
-                })
-                .collect::<Vec<_>>();
-
-            Ok(hits)
+            Ok(body.into_hits().collect())
         } else {
             let exception = response.exception().await.ok().unwrap();
 
@@ -1126,7 +1033,7 @@ impl ElasticsearchStorage {
         let explain = self
             .client
             .explain(ExplainParts::IndexId(&index, &id))
-            .request_timeout(self.timeout);
+            .request_timeout(self.config.timeout);
 
         let response = match query {
             Query::QueryString(q) => explain.q(&q).send().await.context(ElasticsearchClient {
@@ -1188,7 +1095,7 @@ impl ElasticsearchStorage {
             .client
             .cluster()
             .health(ClusterHealthParts::None)
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .send()
             .await
             .context(ElasticsearchClient {
@@ -1244,7 +1151,7 @@ impl ElasticsearchStorage {
             .client
             .cat()
             .nodes()
-            .request_timeout(self.timeout)
+            .request_timeout(self.config.timeout)
             .h(&["v"]) // We only want the version
             .format("json")
             .send()
@@ -1360,8 +1267,7 @@ impl From<String> for IndexStatus {
 
 struct ContinuationToken {
     pit: String,
-    timestamp: u64,
-    tiebreaker: String,
+    tiebreaker: u64,
 }
 
 enum State {

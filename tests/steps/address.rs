@@ -89,7 +89,7 @@ impl Step for IndexBano {
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
 
         state
-            .status_of(&IndexCosmogony {
+            .status_of(IndexCosmogony {
                 region: region.to_string(),
                 dataset: dataset.to_string(),
             })

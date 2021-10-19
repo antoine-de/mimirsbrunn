@@ -22,4 +22,13 @@ pub enum Error {
 
     #[snafu(display("Index NTFS Error: {}", source))]
     IndexNTFS { source: ntfs::Error },
+
+    #[snafu(display("Environment Variable Error: {} ({})", details, source))]
+    EnvironmentVariable {
+        details: String,
+        source: std::env::VarError,
+    },
+
+    #[snafu(display("Miscellaneous Error: {}", details))]
+    Miscellaneous { details: String },
 }

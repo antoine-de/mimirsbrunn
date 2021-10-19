@@ -5,7 +5,6 @@ use snafu::ResultExt;
 use crate::error;
 use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
-
 use tests::download;
 
 pub fn steps() -> Steps<State> {

@@ -99,7 +99,7 @@ async fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
         })?;
 
     let client = pool
-        .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+        .conn(Default::default())
         .await
         .map_err(|err| format_err!("could not connect elasticsearch pool: {}", err.to_string()))?;
 

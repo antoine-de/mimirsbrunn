@@ -3,9 +3,9 @@ use criterion::{criterion_group, criterion_main};
 use futures::stream::TryStreamExt;
 
 use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::domain::ports::secondary::remote::Remote;
-use mimir2::utils::docker::ConfigElasticsearchTesting;
 use places::admin::Admin;
 use tests::{cosmogony, download};
 
@@ -18,12 +18,12 @@ fn bench(c: &mut Criterion) {
         .unwrap();
 
     rt.block_on(async {
-        let config = ConfigElasticsearchTesting::default();
-        let pool = connection_pool_url(&config.url)
+        let config = ElasticsearchStorageConfig::default_testing();
+        let pool = connection_pool_url(config.url.as_str())
             .await
             .expect("could not initialize Elasticsearch Connection Pool");
         let client = pool
-            .conn(config.timeout, &config.version_req)
+            .conn(config)
             .await
             .expect("could not establish connection with Elasticsearch");
 
@@ -40,12 +40,12 @@ fn bench(c: &mut Criterion) {
     group.bench_function("listing admins", |b| {
         b.iter(|| {
             rt.block_on(async move {
-                let config = ConfigElasticsearchTesting::default();
-                let pool = connection_pool_url(&config.url)
+                let config = ElasticsearchStorageConfig::default_testing();
+                let pool = connection_pool_url(config.url.as_str())
                     .await
                     .expect("could not initialize Elasticsearch Connection Pool");
                 let client = pool
-                    .conn(config.timeout, &config.version_req)
+                    .conn(config)
                     .await
                     .expect("could not establish connection with Elasticsearch");
                 let admins: Vec<Admin> = client

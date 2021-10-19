@@ -8,12 +8,10 @@ use elasticsearch::Elasticsearch;
 use semver::{Version, VersionReq};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
-use std::time::Duration;
 use url::Url;
 
-use super::ElasticsearchStorage;
+use super::{ElasticsearchStorage, ElasticsearchStorageConfig};
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
-use crate::utils::docker::ConfigElasticsearchTesting;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
@@ -59,15 +57,11 @@ pub enum Error {
 #[async_trait]
 impl Remote for SingleNodeConnectionPool {
     type Conn = ElasticsearchStorage;
+    type Config = ElasticsearchStorageConfig;
 
     /// Returns an Elasticsearch client
     ///
     /// This function verifies that the Elasticsearch server's version matches the requirements.
-    ///
-    /// # Arguments
-    ///
-    /// * `timeout` - Expressed in milliseconds.
-    /// * `version_req` - Elasticsearch version requirements, eg '>=7.11.0'
     ///
     /// # Examples
     ///
@@ -76,19 +70,19 @@ impl Remote for SingleNodeConnectionPool {
     /// // If you pass --test to `rustdoc`, it will even test it for you!
     /// use mimir2::domain::ports::secondary::remote::Remote;
     /// use mimir2::adapters::secondary::elasticsearch;
+    /// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let url = "http://localhost:9200";
-    ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
-    ///   let client = pool.conn(50u64, ">=7.10.0").await.unwrap();
+    ///   let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
+    ///   let client = pool.conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
     /// }
     ///
     /// ```
-    async fn conn(self, timeout: u64, version_req: &str) -> Result<Self::Conn, RemoteError> {
-        let version_req = VersionReq::parse(version_req)
+    async fn conn(self, config: Self::Config) -> Result<Self::Conn, RemoteError> {
+        let version_req = VersionReq::parse(&config.version_req)
             .context(VersionRequirementInvalid {
-                details: version_req,
+                details: &config.version_req,
             })
             .map_err(|err| RemoteError::Connection {
                 source: Box::new(err),
@@ -100,8 +94,6 @@ impl Remote for SingleNodeConnectionPool {
                 source: Box::new(err),
             })?;
 
-        let timeout = Duration::from_millis(timeout);
-
         let response = transport
             .send::<String, String>(
                 Method::Get,
@@ -109,7 +101,7 @@ impl Remote for SingleNodeConnectionPool {
                 HeaderMap::new(),
                 None, /* query_string */
                 None, /* body */
-                Some(timeout),
+                Some(config.timeout),
             )
             .await
             .context(ElasticsearchConnectionError)
@@ -192,7 +184,7 @@ impl Remote for SingleNodeConnectionPool {
                 })
             } else {
                 let client = Elasticsearch::new(transport);
-                Ok(ElasticsearchStorage { client, timeout })
+                Ok(ElasticsearchStorage { client, config })
             }
         } else {
             Err(RemoteError::Connection {
@@ -206,16 +198,13 @@ impl Remote for SingleNodeConnectionPool {
 
 /// Opens a connection to elasticsearch given a url
 pub async fn connection_pool_url(url: &str) -> Result<SingleNodeConnectionPool, Error> {
-    let url = Url::parse(url).context(InvalidUrl {
-        details: String::from(url),
-    })?;
+    let url = Url::parse(url).context(InvalidUrl { details: url })?;
     let pool = SingleNodeConnectionPool::new(url);
     Ok(pool)
 }
 
 /// Open a connection to a test elasticsearch
 pub async fn connection_test_pool() -> Result<SingleNodeConnectionPool, Error> {
-    let config = ConfigElasticsearchTesting::default();
-
-    connection_pool_url(&config.url).await
+    let config = ElasticsearchStorageConfig::default_testing();
+    connection_pool_url(config.url.as_str()).await
 }

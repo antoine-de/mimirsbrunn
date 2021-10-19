@@ -1,32 +1,91 @@
+use crate::utils::deserialize::deserialize_duration;
 use elasticsearch::Elasticsearch;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::time::Duration;
+use url::Url;
 
 pub mod configuration;
 pub mod explain;
 pub(super) mod internal;
 pub mod list;
+pub mod models;
 pub mod query;
 pub mod remote;
 pub mod status;
 pub mod storage;
-
-pub const ES_DEFAULT_TIMEOUT: u64 = 5000; // milliseconds
-pub const ES_DEFAULT_VERSION_REQ: &str = ">=7.13.0";
 
 /// A structure wrapping around the elasticsearch's client.
 #[derive(Clone, Debug)]
 pub struct ElasticsearchStorage {
     /// Elasticsearch client
     pub(crate) client: Elasticsearch,
-    /// Timeout used by every call to the server.
+    /// Client configuration
+    pub config: ElasticsearchStorageConfig,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ElasticsearchStorageConfig {
+    pub url: Url,
+    #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
+    pub version_req: String,
+    pub scroll_chunk_size: u64,
+    pub scroll_pit_alive: String,
+}
+
+impl Default for ElasticsearchStorageConfig {
+    /// We retrieve the elasticsearch configuration from ./config/elasticsearch/default.
+    fn default() -> Self {
+        let config = common::config::config_from(
+            &PathBuf::from("config"),
+            &["elasticsearch"],
+            None,
+            None,
+            None,
+        );
+
+        config
+            .expect("cannot build the configuration for testing from config")
+            .get("elasticsearch")
+            .expect("expected elasticsearch section in configuration from config")
+    }
+}
+
+impl ElasticsearchStorageConfig {
+    pub fn default_testing() -> Self {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../config");
+
+        let config = common::config::config_from(
+            config_dir.as_path(),
+            &["elasticsearch"],
+            "testing",
+            "MIMIR_TEST",
+            None,
+        );
+
+        config
+            .unwrap_or_else(|_| {
+                panic!(
+                    "cannot build the configuration for testing from {}",
+                    config_dir.display(),
+                )
+            })
+            .get("elasticsearch")
+            .unwrap_or_else(|_| {
+                panic!(
+                    "expected elasticsearch section in configuration from {}",
+                    config_dir.display(),
+                )
+            })
+    }
 }
 
 #[cfg(test)]
 pub mod tests {
 
     use config::Config;
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
     use serial_test::serial;
 
     use super::*;
@@ -49,7 +108,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -83,7 +142,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let _client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
     }
@@ -98,7 +157,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
         let config = config::Config::builder()
@@ -147,7 +206,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
         let config = config::Config::builder()
@@ -188,7 +247,7 @@ pub mod tests {
             .starts_with("Container Creation Error"));
     }
 
-    #[derive(Serialize)]
+    #[derive(Deserialize, Serialize)]
     struct TestObj {
         value: String,
     }
@@ -203,6 +262,7 @@ pub mod tests {
         fn static_doc_type() -> &'static str {
             "test-obj"
         }
+
         fn default_es_container_config() -> config::Config {
             config::Config::builder()
                 .set_default("container.name", Self::static_doc_type())
@@ -237,7 +297,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ)
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -288,7 +348,13 @@ pub mod tests {
         let pool = remote::connection_test_pool()
             .await
             .expect("Elasticsearch Connection Pool");
-        let client = pool.conn(ES_DEFAULT_TIMEOUT, ">=9.99.99").await;
+
+        let client = pool
+            .conn(ElasticsearchStorageConfig {
+                version_req: ">=9.99.99".to_string(),
+                ..ElasticsearchStorageConfig::default_testing()
+            })
+            .await;
 
         assert!(client
             .unwrap_err()

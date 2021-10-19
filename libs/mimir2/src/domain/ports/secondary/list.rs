@@ -19,13 +19,11 @@ pub enum Error {
 }
 
 #[async_trait]
-pub trait List {
-    type Doc: DeserializeOwned + Send + Sync + 'static;
-
+pub trait List<D: DeserializeOwned + Send + Sync + 'static> {
     async fn list_documents(
         &self,
         parameters: Parameters,
-    ) -> Result<Pin<Box<dyn Stream<Item = Self::Doc> + Send + 'static>>, Error>;
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<D, Error>> + Send + 'static>>, Error>;
 }
 
 // Conversion from secondary ports errors
