@@ -22,3 +22,8 @@ jobs:
       run: make lint
     - name: Running unit tests and E2E tests
       run: make test
+    - name: Store benchmark result
+      uses: benchmark-action/github-action-benchmark@v1
+      with:
+        tool: 'cargo'
+        output-file-path: output.txt
