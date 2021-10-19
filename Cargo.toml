@@ -117,6 +117,9 @@ name = "idf"
 harness = false # Allows Cucumber to print output instead of libtest
 test = false
 
+[profile.bench]
+lto = true
+
 [[bench]]
 name = "benchmark"
 harness = false
