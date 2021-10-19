@@ -150,8 +150,8 @@ In other words, a geocoder reads a description (possibly incomplete) of a locati
 list of candidate locations (latitude / longitude) matching the input. 
 
 Geocoding is traditionally used for autocompleting search fields used in geographic applications.
-For example, here is a screenshot of Qwant Maps, where the user enters a search string 20 rue hec
-mal, and mimir returns possible candidates in a dropdown box.
+For example, here is a screenshot of Qwant Maps, where the user enters a search string `20 rue hec
+mal`, and mimir returns possible candidates in a dropdown box.
 
 ![qwant maps](https://user-images.githubusercontent.com/3987698/56976025-53ed1180-6b72-11e9-9c81-9718e92061ce.png)
 
@@ -231,12 +231,13 @@ curl 'http://localhost:9200'
 
 4. Index cosmogony into Elasticsearch
 
-When you built the mimirsbrunn project, that included several binaries, one of them is used to index
-cosmogony files:
+The result of building the mimirsbrunn project includes several binaries located in
+`/target/releases`, one of which is used to index cosmogony files:
 
 cosmogony2mimir uses several configuration files found in the source code, and they work fine by
 default. In the following command, we use a setting to make sure that cosmogony2mimir will target
-the Elasticsearch container we just started:
+the Elasticsearch container we just started: (See [here](/docs/indexings.md#cosmogony2mimir) for
+more details about using cosmogony2mimir)
 
 ```
 cd mimirsbrunn

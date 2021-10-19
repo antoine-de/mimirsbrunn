@@ -1,4 +1,4 @@
-# Indexing˙
+# Indexing
 
 Indexing is the process by which we take data sources and store them as indexes
 in Elasticsearch. This process involves several steps of parsing, validating,
