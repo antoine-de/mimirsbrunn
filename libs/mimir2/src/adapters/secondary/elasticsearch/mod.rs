@@ -42,7 +42,7 @@ impl Default for ElasticsearchStorageConfig {
         let config = common::config::config_from(
             &PathBuf::from("config"),
             &["elasticsearch"],
-            "default".to_string(),
+            None,
             None,
             None,
         );

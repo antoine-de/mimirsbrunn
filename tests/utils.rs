@@ -1,14 +1,10 @@
 use cucumber::{Context, Cucumber};
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use snafu::ResultExt;
-use std::path::{Path, PathBuf};
-use tokio::fs;
 
 use crate::state;
 use crate::steps;
 use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
 use mimir2::domain::ports::secondary::remote::Remote;
-use mimir2::utils::docker::ConfigElasticsearchTesting;
 
 /// Build test context with commonly used handles.
 async fn build_context(reindex: bool) -> Context {

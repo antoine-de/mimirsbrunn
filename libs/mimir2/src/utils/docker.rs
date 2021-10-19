@@ -8,18 +8,15 @@ use bollard::{
     image::CreateImageOptions,
     Docker,
 };
-use config::Config;
 use elasticsearch::{
     http::transport::BuildError as TransportBuilderError,
     indices::{IndicesDeleteAliasParts, IndicesDeleteIndexTemplateParts, IndicesDeleteParts},
     Error as ElasticsearchError,
 };
 use futures::stream::TryStreamExt;
-use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 use tokio::time::{sleep, Duration};
-use url::Url;
 
 use crate::adapters::secondary::elasticsearch::remote::{self, Error as ElasticsearchRemoteError};
 use crate::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
