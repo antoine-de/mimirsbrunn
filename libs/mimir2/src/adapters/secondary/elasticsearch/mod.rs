@@ -30,9 +30,7 @@ pub struct ElasticsearchStorageConfig {
     #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
     pub version_req: String,
-    #[serde(default = "es_default_scroll_chunk_size")]
     pub scroll_chunk_size: u64,
-    #[serde(default = "es_default_scroll_pit_alive")]
     pub scroll_pit_alive: String,
 }
 
@@ -81,14 +79,6 @@ impl ElasticsearchStorageConfig {
                 )
             })
     }
-}
-
-fn es_default_scroll_chunk_size() -> u64 {
-    10_000
-}
-
-fn es_default_scroll_pit_alive() -> String {
-    "10m".to_string()
 }
 
 #[cfg(test)]
