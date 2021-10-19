@@ -8,7 +8,6 @@ use elasticsearch::Elasticsearch;
 use semver::{Version, VersionReq};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
-use std::path::PathBuf;
 use url::Url;
 
 use super::{ElasticsearchStorage, ElasticsearchStorageConfig};
@@ -71,11 +70,12 @@ impl Remote for SingleNodeConnectionPool {
     /// // If you pass --test to `rustdoc`, it will even test it for you!
     /// use mimir2::domain::ports::secondary::remote::Remote;
     /// use mimir2::adapters::secondary::elasticsearch;
+    /// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let pool = elasticsearch::remote::connection_pool().await.unwrap();
-    ///   let client = pool.conn(Default::default()).await.unwrap();
+    ///   let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
+    ///   let client = pool.conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
     /// }
     ///
     /// ```
@@ -205,7 +205,6 @@ pub async fn connection_pool_url(url: &str) -> Result<SingleNodeConnectionPool, 
 
 /// Open a connection to a test elasticsearch
 pub async fn connection_test_pool() -> Result<SingleNodeConnectionPool, Error> {
-    let config = ElasticsearchStorageConfig::default();
-
+    let config = ElasticsearchStorageConfig::default_testing();
     connection_pool_url(config.url.as_str()).await
 }

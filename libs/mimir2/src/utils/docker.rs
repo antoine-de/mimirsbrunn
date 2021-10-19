@@ -56,7 +56,7 @@ pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
         .await
         .context(ElasticsearchPoolCreation)?;
     let _client = pool
-        .conn(Default::default())
+        .conn(ElasticsearchStorageConfig::default_testing())
         .await
         .context(ElasticsearchConnection)?;
     Ok(())
@@ -101,7 +101,7 @@ pub struct DockerWrapper {
 
 impl Default for DockerWrapper {
     fn default() -> Self {
-        let config = ElasticsearchStorageConfig::default();
+        let config = ElasticsearchStorageConfig::default_testing();
 
         let docker_image = format!(
             "docker.elastic.co/elasticsearch/elasticsearch:{}",
@@ -267,7 +267,7 @@ impl DockerWrapper {
             .await
             .context(ElasticsearchPoolCreation)?;
         let storage = pool
-            .conn(Default::default())
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .context(ElasticsearchConnection)?;
 

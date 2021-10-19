@@ -1,32 +1,23 @@
 use cucumber::{Context, Cucumber};
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use snafu::ResultExt;
+use std::path::{Path, PathBuf};
+use tokio::fs;
 
 use crate::state;
 use crate::steps;
-use mimir2::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use common::config::config_from;
+use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimir2::utils::docker::ConfigElasticsearchTesting;
 
 /// Build test context with commonly used handles.
 async fn build_context(reindex: bool) -> Context {
-    let config = ConfigElasticsearchTesting::default();
-
-    let es_pool = connection_pool_url(&config.url)
-    let config = config_from(
-        &PathBuf::from("config"),
-        &["elasticsearch"],
-        "testing".to_string(),
-        "TEST",
-        None,
-    )
-    .unwrap();
+    let es_pool = connection_test_pool()
+        .await
+        .expect("could not initialize ES pool");
 
     let es_client = es_pool
-        .conn(
-            config
-                .get("elasticsearch")
-                .expect("invalid `elasticsearch` in config"),
-        )
+        .conn(ElasticsearchStorageConfig::default_testing())
         .await
         .expect("Could not establish connection to Elasticsearch");
 

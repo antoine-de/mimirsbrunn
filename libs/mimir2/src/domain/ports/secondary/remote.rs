@@ -30,12 +30,13 @@ pub trait Remote {
     /// ```rust,no_run
     /// use mimir2::domain::ports::secondary::remote::Remote;
     /// use mimir2::adapters::secondary::elasticsearch;
+    /// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
     ///
     /// #[tokio::main]
     /// async fn main() {
     ///   let url = "http://localhost:9200";
     ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
-    ///   let client = pool.conn(Default::default()).await.unwrap();
+    ///   let client = pool.conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
     /// }
     ///
     /// ```

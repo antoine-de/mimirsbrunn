@@ -15,13 +15,14 @@ impl Status for ElasticsearchStorage {
     /// ```rust,no_run
     /// use mimir2::domain::ports::secondary::remote::Remote;
     /// use mimir2::adapters::secondary::elasticsearch;
+    /// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
     /// use mimir2::domain::ports::primary::status::Status;
     ///
     /// #[tokio::main]
     /// async fn main() {
     ///   let url = "http://localhost:9200";
     ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
-    ///   let client = pool.conn(Default::default()).await.unwrap();
+    ///   let client = pool.conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
     ///
     ///   let status = client.status().await.unwrap();
     /// }

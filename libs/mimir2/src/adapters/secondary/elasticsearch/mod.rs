@@ -39,6 +39,23 @@ pub struct ElasticsearchStorageConfig {
 impl Default for ElasticsearchStorageConfig {
     /// We retrieve the elasticsearch configuration from ./config/elasticsearch/default.
     fn default() -> Self {
+        let config = common::config::config_from(
+            &PathBuf::from("config"),
+            &["elasticsearch"],
+            "default".to_string(),
+            None,
+            None,
+        );
+
+        config
+            .expect("cannot build the configuration for testing from config")
+            .get("elasticsearch")
+            .expect("expected elasticsearch section in configuration from config")
+    }
+}
+
+impl ElasticsearchStorageConfig {
+    pub fn default_testing() -> Self {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../config");
 
         let config = common::config::config_from(
@@ -101,7 +118,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ElasticsearchStorageConfig::default())
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -135,7 +152,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let _client = pool
-            .conn(ElasticsearchStorageConfig::default())
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
     }
@@ -150,7 +167,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ElasticsearchStorageConfig::default())
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
         let config = config::Config::builder()
@@ -199,7 +216,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ElasticsearchStorageConfig::default())
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
         let config = config::Config::builder()
@@ -290,7 +307,7 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Pool");
         let client = pool
-            .conn(ElasticsearchStorageConfig::default())
+            .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
 
@@ -345,7 +362,7 @@ pub mod tests {
         let client = pool
             .conn(ElasticsearchStorageConfig {
                 version_req: ">=9.99.99".to_string(),
-                ..Default::default()
+                ..ElasticsearchStorageConfig::default_testing()
             })
             .await;
 
