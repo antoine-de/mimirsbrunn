@@ -121,7 +121,7 @@ async fn download_to_file(path: &Path, url: &str) -> Result<(), Error> {
 ///  1. The name of the region is one found in http://download.geofabrik.de/europe/france.html
 ///  2. The file will be downloaded to `tests/data/osm` under the project's root (identified
 ///     by the CARGO_MANIFEST_DIR environment variable
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct DownloadOsm(pub String);
 
 #[async_trait(?Send)]
@@ -166,7 +166,7 @@ impl Step for DownloadOsm {
 /// This makes several assumptions:
 ///  1. The file will be downloaded to `tests/data/bano` under the project's root (identified
 ///     by the CARGO_MANIFEST_DIR environment variable
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct DownloadBano {
     pub departments: Vec<String>,
     pub region: String,
@@ -212,7 +212,7 @@ impl Step for DownloadBano {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct DownloadNTFS {
     pub region: String,
 }

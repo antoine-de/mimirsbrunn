@@ -17,7 +17,7 @@ pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.given_regex_async(
-        "ntfs file has been indexed for (.*) as (.*)",
+        r#"ntfs file has been indexed for (.*) as (.*)"#,
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
             let dataset = ctx.matches[2].clone();
@@ -37,7 +37,7 @@ pub fn steps() -> Steps<State> {
 /// Index an ntfs file for a given region into Elasticsearch.
 ///
 /// This will require to import admins first.
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct IndexNtfs {
     pub region: String,
     pub dataset: String,

@@ -21,11 +21,23 @@ pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.given_regex_async(
-        "bano file has been indexed for (.*)(?: as (.*))?",
+        r#"bano file has been indexed for ([^\s]*)(?: as (.*))?"#,
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
-            let dataset = ctx.matches.get(2).unwrap_or(&region).clone();
-
+            let dataset = ctx
+                .matches
+                .get(2)
+                .map(|d| {
+                    if d.is_empty() {
+                        region.to_string()
+                    } else {
+                        d.to_string()
+                    }
+                })
+                .unwrap_or_else(|| region.clone())
+                .clone();
+            assert!(!region.is_empty());
+            assert!(!dataset.is_empty());
             state
                 .execute(IndexBano { region, dataset }, &ctx)
                 .await
@@ -41,7 +53,7 @@ pub fn steps() -> Steps<State> {
 /// Index a bano file for given region into ES.
 ///
 /// This will require to import admins first.
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct IndexBano {
     pub region: String,
     pub dataset: String,

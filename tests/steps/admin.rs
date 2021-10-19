@@ -18,9 +18,10 @@ pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.given_regex_async(
-        "osm file has been processed by cosmogony for (.*)",
+        r#"osm file has been processed by cosmogony for ([^\s]*)"#,
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
+            assert!(!region.is_empty());
 
             state
                 .execute_once(GenerateCosmogony(region), &ctx)
@@ -32,10 +33,23 @@ pub fn steps() -> Steps<State> {
     );
 
     steps.given_regex_async(
-        "cosmogony file has been indexed for (.*) as (.*)",
+        r#"cosmogony file has been indexed for ([^\s]*)(?: as (.*))?"#,
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
-            let dataset = ctx.matches[2].clone();
+            let dataset = ctx
+                .matches
+                .get(2)
+                .map(|d| {
+                    if d.is_empty() {
+                        region.to_string()
+                    } else {
+                        d.to_string()
+                    }
+                })
+                .unwrap_or_else(|| region.clone())
+                .clone();
+            assert!(!region.is_empty());
+            assert!(!dataset.is_empty());
             state
                 .execute_once(IndexCosmogony { region, dataset }, &ctx)
                 .await
@@ -59,7 +73,7 @@ pub fn steps() -> Steps<State> {
 ///  1. The output file is not found
 ///  2. If the output file is found and the previous step is 'downloaded' (that is it's probably a
 ///     new OSM file and we need to generate a new cosmogony file.
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct GenerateCosmogony(pub String);
 
 #[async_trait(?Send)]
@@ -71,7 +85,6 @@ impl Step for GenerateCosmogony {
             .status_of(&DownloadOsm(region.to_string()))
             .expect("can't generate cosmogony file without downloading from OSM first");
 
-        // Build
         let base_path = env!("CARGO_MANIFEST_DIR");
 
         let input_dir: PathBuf = [base_path, "tests", "fixtures", "osm", region]
@@ -121,7 +134,7 @@ impl Step for GenerateCosmogony {
 /// Index a cosmogony file for given region into ES.
 ///
 /// This assumes that a cosmogony file has already been generated before.
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct IndexCosmogony {
     pub region: String,
     pub dataset: String,
