@@ -103,7 +103,7 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["bragi", "query"],
+            &["bragi", "elasticsearch", "query"],
             opts.run_mode.as_deref(),
             "BRAGI",
             opts.settings.clone(),
