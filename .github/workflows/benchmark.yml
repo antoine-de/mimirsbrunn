@@ -16,6 +16,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         name: Setup rust toolchain
         with:
+          toolchain: 1.54.0
           profile: minimal
           components: rustfmt, clippy, criterion
 
