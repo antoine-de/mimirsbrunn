@@ -12,9 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: rustup toolchain update nightly && rustup default nightly
+
+      - uses: actions-rs/toolchain@v1
+        name: Setup rust toolchain
+        with:
+          profile: minimal
+          components: rustfmt, clippy, criterion
+
       - name: Run benchmark
-        run: cargo +nightly bench | tee benches/results/output.txt
+        run: cargo criterion --bench benchmark --output-format bencher | tee benches/results/output.txt
+
       - name: Store benchmark
         uses: benchmark-action/github-action-benchmark@v1
         with:
