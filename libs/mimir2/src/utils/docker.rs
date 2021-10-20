@@ -141,7 +141,6 @@ impl Default for DockerConfig {
 
 pub struct DockerWrapper {
     ports: Vec<(u32, u32)>, // list of ports to publish (host port, container port)
-    elasticsearch_config: ElasticsearchStorageConfig,
     docker_config: DockerConfig,
 }
 
@@ -200,7 +199,6 @@ impl Default for DockerWrapper {
         let offset: u32 = (port - 9000).into();
         DockerWrapper {
             ports: vec![(9000 + offset, 9200), (9300 + offset, 9300)],
-            elasticsearch_config,
             docker_config,
         }
     }
