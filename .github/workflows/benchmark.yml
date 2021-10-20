@@ -18,10 +18,10 @@ jobs:
         with:
           toolchain: 1.54.0
           profile: minimal
-          components: rustfmt, clippy, cargo-criterion
+          components: rustfmt, clippy
 
       - name: Run benchmark
-        run: cargo criterion --bench benchmark --output-format bencher | tee benches/results/output.txt
+        run: cargo cargo +nightly bench | tee benches/results/output.txt
 
       - name: Store benchmark
         uses: benchmark-action/github-action-benchmark@v1
