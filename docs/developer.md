@@ -1,31 +1,92 @@
+# Developer Documentation
 
-## A word of caution
+Table of Contents
+=================
 
-Keep in mind that while you're developing with mimirsbrunn, you will probably run tests at one point
-or another. You must then ensure that you're not wiping a production Elasticsearch in the process.
-When you are running tests, eg `cargo test`, the tests will read the
-`config/elasticsearch/default.toml` file, and override its values with ones found in
-`config/elasticsearch/testing.md`. Make sure the `elasticsearch.url` value specified is of no
-importance.
+  * [Design](#design)
+	  * [Software Architecture](#software-architecture)
+	* [Contributing](#contributing)
+  * [Dependencies](#dependencies)
+	* [Development Process](#development-process)
+	* [Testing](#testing)
+	* [Tools](#tools)
+    * [import2mimir](#import2mimir)
 
-* An introduction to mimirsbrunn's [software architecture](architecture.md)
+## Design
 
-* An [explanation](bragi.md) of Bragi, a REST API to query Elasticsearch
+### Software Architecture
 
-* A [presentation](concepts.md) of some of the concepts used in the context of Mimirsbrunn.
+## Contributing
 
-* [indexing](indexing.md)
+## Dependencies
 
-* [indices](indices.md)
+### Crates
 
-* [testing](testing.md)
+<table>
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 19%" />
+<col style="width: 41%" />
+<col style="width: 18%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Domain</th>
+<th>Crate</th>
+<th>Motivation</th>
+<th>Alternatives</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>logging</td>
+<td>tracing</td>
+<td><ul>
+<li>Same team as tokio, warp, …</li>
+<li>Support opentelemetry</li>
+<li>Support tracing, logs</li>
+</ul></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>error handling</td>
+<td>snafu</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>web framework</td>
+<td>warp</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>commandline</td>
+<td>structopt</td>
+<td></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>elasticsearch</td>
+<td>elasticsearch</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
 
-# Tools
+## Development Process
 
-## import2mimir
+## Testing
 
-## autocomplete
+You will find information about tests in general [here](/docs/process/testing.md).
 
-# Testing
+This section is meant for developing your own tests.
+
+### 
+## Tools
+
+### import2mimir
 
 
+### autocomplete
