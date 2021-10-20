@@ -321,7 +321,7 @@ impl DockerWrapper {
                 .await
                 .context(DockerEngine)?;
 
-            sleep(Duration::from_secs(self.docker_config.container_wait)).await;
+            sleep(Duration::from_millis(self.docker_config.container_wait)).await;
         }
         let _ = docker
             .start_container(
@@ -331,7 +331,7 @@ impl DockerWrapper {
             .await
             .context(DockerEngine)?;
 
-        sleep(Duration::from_secs(self.docker_config.elasticsearch_wait)).await;
+        sleep(Duration::from_millis(self.docker_config.elasticsearch_wait)).await;
 
         Ok(())
     }
@@ -372,7 +372,7 @@ impl DockerWrapper {
             .await
             .context(ElasticsearchClient)?;
 
-        sleep(Duration::from_secs(self.docker_config.cleanup_wait)).await;
+        sleep(Duration::from_millis(self.docker_config.cleanup_wait)).await;
         Ok(())
     }
 
