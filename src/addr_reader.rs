@@ -8,6 +8,7 @@ use snafu::{ResultExt, Snafu};
 use std::io::Read;
 use std::marker::{Send, Sync};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs::File;
 
 use config::Config;
@@ -39,23 +40,46 @@ async fn import_addresses<S, F, T>(
     into_addr: F,
 ) -> Result<(), Error>
 where
+    T: Send + Sync + 'static,
     F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
     S: Stream<Item = T> + Send + Sync + 'static,
 {
-    let addrs = records.map(into_addr).filter_map(|ra| match ra {
-        Ok(a) => {
-            if a.street.name.is_empty() {
-                warn!("Address {} has no street name and has been ignored.", a.id);
-                future::ready(None)
-            } else {
-                future::ready(Some(a))
+    let into_addr = Arc::new(into_addr);
+
+    let addrs = records
+        .chunks(1000)
+        .map(move |addresses| {
+            let into_addr = into_addr.clone();
+
+            async move {
+                tokio::task::spawn_blocking(move || {
+                    let addresses = addresses
+                        .into_iter()
+                        .map(|addr| into_addr(addr))
+                        .filter_map(|addr_res| match addr_res {
+                            Err(err) => {
+                                warn!("Address Error ignored: {}", err);
+                                None
+                            }
+                            Ok(addr) if addr.street.name.is_empty() => {
+                                warn!(
+                                    "Address {} has no street name and has been ignored.",
+                                    addr.id
+                                );
+                                None
+                            }
+                            Ok(addr) => Some(addr),
+                        })
+                        .collect::<Vec<_>>();
+
+                    futures::stream::iter(addresses)
+                })
+                .await
+                .expect("tokio thread panicked")
             }
-        }
-        Err(err) => {
-            warn!("Address Error ignored: {}", err);
-            future::ready(None)
-        }
-    });
+        })
+        .buffered(num_cpus::get())
+        .flatten();
 
     client
         .generate_index(config, addrs, IndexVisibility::Public)

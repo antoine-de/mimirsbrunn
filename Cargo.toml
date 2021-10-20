@@ -50,19 +50,19 @@ par-map = "0.1.4"
 regex = "1"
 rstar = "0.8"
 rusqlite = { version = "0.23", optional = true }
-serde = {version = "1", features = ["rc"]}
 serde_json = "1"
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
+serde = {version = "1", features = ["rc"]}
 slog-async = "2.5"
 slog-envlogger = "2.2"
 slog-json = "2.4"
 slog-scope = "4.3"
 slog-stdlog = "4.1"
 slog-term = "2.8"
+slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
 snafu = { version = "0.6.10", features = [ "futures" ] }
 structopt = "0.3"
-tokio = { version = "1.6.0", features = [ "sync", "rt-multi-thread", "macros", "process" ] }
 tokio-stream = { version = "0.1.7", features = [ "fs" ] }
+tokio = { version = "1.6.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
 toml = "0.5"
 tracing = "0.1.26"
 tracing-appender = "0.1.2"

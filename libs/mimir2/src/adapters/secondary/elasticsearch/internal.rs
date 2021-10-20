@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use super::configuration::IndexConfiguration;
-use super::models::ElasticsearchSearchResponse;
+use super::models::{ElasticSearchBulkInsertResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
 use crate::domain::model::{
     configuration,
@@ -455,13 +455,19 @@ impl ElasticsearchStorage {
 
         documents
             .chunks(INSERT_CHUNK_SIZE) // FIXME chunck size should be a variable.
-            .for_each_concurrent(8, |chunk| {
-                // FIXME 8 automagick!!??
+            .for_each_concurrent(32, |chunk| {
+                // FIXME 32 automagick!!??
                 let stats = stats.clone();
                 let index = index.clone();
+                let client = self.clone();
+
                 async move {
-                    if let Err(err) = self.insert_chunk_in_index(index, chunk, stats).await {
-                        panic!("Error inserting chunk: {}", err.to_string());
+                    let res = tokio::spawn(client.insert_chunk_in_index(index, chunk, stats))
+                        .await
+                        .expect("tokio task panicked");
+
+                    if let Err(err) = res {
+                        panic!("Error inserting chunk: {}", err);
                     }
                 } // res
             })
@@ -480,7 +486,7 @@ impl ElasticsearchStorage {
 
     // Changed the name to avoid recursive calls int storage::insert_documents
     pub(super) async fn insert_chunk_in_index<D>(
-        &self,
+        self,
         index: String,
         chunk: Vec<D>,
         stats: Arc<Mutex<InsertStats>>,
@@ -493,12 +499,11 @@ impl ElasticsearchStorage {
         // Each item must contain the string 'created'. So we iterate through these items,
         // and build a Result<(), Error>, and skip while it `is_ok()`. If we have an
         // error, we report it.
-        let ops: Vec<BulkOperation<Value>> = chunk
+        let ops: Vec<BulkOperation<_>> = chunk
             .into_iter()
             .map(|doc| {
                 let doc_id = doc.id();
-                let value = serde_json::to_value(doc).expect("to json value");
-                BulkOperation::index(value).id(doc_id).into()
+                BulkOperation::index(doc).id(doc_id).into()
             })
             .collect();
 
@@ -515,80 +520,22 @@ impl ElasticsearchStorage {
             })?;
 
         if resp.status_code().is_success() {
-            let json = resp
-                .json::<Value>()
-                .await
-                .context(ElasticsearchDeserialization)?;
+            let body: ElasticSearchBulkInsertResponse =
+                resp.json().await.context(ElasticsearchDeserialization)?;
 
-            let items = json
-                .as_object()
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected JSON object"),
-                    json: json.clone(),
-                })?
-                .get("items")
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected 'items'"),
-                    json: json.clone(),
-                })?
-                .as_array()
-                .ok_or(Error::JsonInvalid {
-                    details: String::from("expected 'items' to be an array"),
-                    json: json.clone(),
-                })?;
-
-            let mut res = items
-                .iter()
-                .map(|item| {
-                    let result = item
-                        .as_object()
-                        .ok_or(Error::JsonInvalid {
-                            details: String::from("expected JSON object"),
-                            json: item.clone(),
-                        })?
-                        .get("index")
-                        .ok_or(Error::JsonInvalid {
-                            details: String::from("expected 'index'"),
-                            json: item.clone(),
-                        })?
-                        .as_object()
-                        .ok_or(Error::JsonInvalid {
-                            details: String::from("expected JSON 'index' to be an object"),
-                            json: item.clone(),
-                        })?
-                        .get("result")
-                        .ok_or(Error::JsonInvalid {
-                            details: String::from("expected 'result'"),
-                            json: item.clone(),
-                        })?
-                        .as_str()
-                        .ok_or(Error::JsonInvalid {
-                            details: String::from("expected 'result' to be a string"),
-                            json: item.clone(),
-                        })?;
-
-                    if result == "created" {
-                        // println!("TRACE: item {:?} was created", item);
-                        (*stats).lock().unwrap().created += 1;
-                        // let mut stats_guard = (*stats).lock().unwrap().created += 1;
-                        // *stats_guard.created += 1;
-                        Ok(())
-                    } else if result == "updated" {
-                        (*stats).lock().unwrap().updated += 1;
-                        // warn!("Item was updated: {:?}", item);
-                        Ok(())
-                    } else {
-                        Err(Error::NotCreated {
+            body.items.iter().try_for_each(|item| {
+                match item.index.result.as_str() {
+                    "created" => (*stats).lock().unwrap().created += 1,
+                    "updated" => (*stats).lock().unwrap().updated += 1,
+                    _ => {
+                        return Err(Error::NotCreated {
                             details: format!("not created: {:?}", item),
                         })
                     }
-                })
-                .skip_while(|x| x.is_ok());
+                }
 
-            match res.next() {
-                None => Ok(()),
-                Some(err) => Err(err.unwrap_err()),
-            }
+                Ok(())
+            })
         } else {
             let exception = resp.exception().await.ok().unwrap();
             match exception {

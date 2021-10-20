@@ -1,8 +1,9 @@
+//! ES response for various ES queries, these only serialize the fields that we use,
+/// which can be prone to change in the future
 use serde::Deserialize;
 use serde_json::Value;
 
-/// ES response for a search query, this only serialize the fields that we use,
-/// which can be prone to change in the future.
+/// ES response for a search query.
 #[derive(Deserialize)]
 pub struct ElasticsearchSearchResponse<D> {
     pub pit_id: Option<String>,
@@ -27,4 +28,20 @@ impl<D> ElasticsearchSearchResponse<D> {
     pub fn into_hits(self) -> impl Iterator<Item = D> {
         self.hits.hits.into_iter().map(|hit| hit.source)
     }
+}
+
+/// ES response for bulk insert queries.
+#[derive(Deserialize)]
+pub struct ElasticSearchBulkInsertResponse {
+    pub items: Vec<ElasticSearchBulkInsertItem>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ElasticSearchBulkInsertItem {
+    pub index: ElasticSearchBulkInsertIndex,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ElasticSearchBulkInsertIndex {
+    pub result: String,
 }
