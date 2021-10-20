@@ -74,8 +74,8 @@ impl Remote for SingleNodeConnectionPool {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let pool = elasticsearch::remote::connection_test_pool().await.unwrap();
-    ///   let client = pool.conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
+    ///   let pool = elasticsearch::remote::connection_test_pool()
+    ///       .conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
     /// }
     ///
     /// ```

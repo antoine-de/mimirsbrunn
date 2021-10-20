@@ -13,6 +13,7 @@ impl Status for ElasticsearchStorage {
     /// # Example
     ///
     /// ```rust,no_run
+    /// use url::Url;
     /// use mimir2::domain::ports::secondary::remote::Remote;
     /// use mimir2::adapters::secondary::elasticsearch;
     /// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
@@ -20,9 +21,9 @@ impl Status for ElasticsearchStorage {
     ///
     /// #[tokio::main]
     /// async fn main() {
-    ///   let url = "http://localhost:9200";
-    ///   let pool = elasticsearch::remote::connection_pool_url(url).await.unwrap();
-    ///   let client = pool.conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
+    ///   let url = Url::parse("http://localhost:9200").expect("valid url");
+    ///   let client = elasticsearch::remote::connection_pool_url(&url)
+    ///       .conn(ElasticsearchStorageConfig::default_testing()).await.unwrap();
     ///
     ///   let status = client.status().await.unwrap();
     /// }
