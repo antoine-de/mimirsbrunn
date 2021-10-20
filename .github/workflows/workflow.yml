@@ -49,4 +49,3 @@ jobs:
 
       - name: Run benchmark
         run: cargo bench | tee benchmarks/perf/list/output.txt;
-
