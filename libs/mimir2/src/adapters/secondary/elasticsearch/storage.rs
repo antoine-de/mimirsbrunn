@@ -187,4 +187,14 @@ impl Storage for ElasticsearchStorage {
 
         Ok(())
     }
+
+    async fn force_merge(&self, indices: Vec<String>) -> Result<(), StorageError> {
+        self.force_merge(indices)
+            .await
+            .map_err(|err| StorageError::ForceMergeError {
+                source: Box::new(err),
+            })?;
+
+        Ok(())
+    }
 }

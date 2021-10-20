@@ -2,7 +2,8 @@ use elasticsearch::cat::CatIndicesParts;
 use elasticsearch::cluster::ClusterHealthParts;
 use elasticsearch::http::response::Exception;
 use elasticsearch::indices::{
-    IndicesCreateParts, IndicesDeleteParts, IndicesGetAliasParts, IndicesRefreshParts,
+    IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
+    IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
@@ -736,6 +737,48 @@ impl ElasticsearchStorage {
                     details: String::from("Fail status without exception"),
                 }),
             }
+        }
+    }
+
+    pub(super) async fn force_merge(&self, indices: Vec<String>) -> Result<(), Error> {
+        let indices: Vec<_> = indices.iter().map(String::as_str).collect();
+        let response = self
+            .client
+            .indices()
+            .forcemerge(IndicesForcemergeParts::Index(&indices))
+            .request_timeout(self.config.timeout)
+            .send()
+            .await
+            .and_then(|res| res.error_for_status_code())
+            .context(ElasticsearchClient {
+                details: format!(
+                    "cannot force merge indices '{}'",
+                    indices
+                        .iter()
+                        .map(|s| &**s)
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                ),
+            })?;
+
+        let json = response
+            .json::<Value>()
+            .await
+            .context(ElasticsearchDeserialization)?;
+
+        if json["acknowledged"] == true {
+            Ok(())
+        } else {
+            Err(Error::NotAcknowledged {
+                details: format!(
+                    "cannot force merge '{}'",
+                    indices
+                        .iter()
+                        .map(|s| &**s)
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                ),
+            })
         }
     }
 
