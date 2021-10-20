@@ -26,6 +26,6 @@
 		vars = ["discovery.type=single-node"]
 
 	[docker.version]
-	  major = 1
-		minor = 24
+    major = 1
+    minor = 24
 
