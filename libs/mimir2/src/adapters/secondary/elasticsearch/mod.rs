@@ -104,10 +104,7 @@ pub mod tests {
             .await
             .expect("elasticsearch docker initialization");
 
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
@@ -123,25 +120,13 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn should_return_invalid_url() {
-        let res = remote::connection_pool_url("foobar").await;
-        assert!(res
-            .unwrap_err()
-            .to_string()
-            .starts_with("Invalid Elasticsearch URL"));
-    }
-
-    #[tokio::test]
     #[serial]
     async fn should_connect_to_elasticsearch() {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
 
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let _client = pool
+        let _client = remote::connection_test_pool()
             .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
@@ -153,10 +138,7 @@ pub mod tests {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
@@ -202,10 +184,7 @@ pub mod tests {
             .await
             .expect("elasticsearch docker initialization");
 
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
@@ -293,10 +272,7 @@ pub mod tests {
             .await
             .expect("elasticsearch docker initialization");
 
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
@@ -345,11 +321,7 @@ pub mod tests {
             .await
             .expect("elasticsearch docker initialization");
 
-        let pool = remote::connection_test_pool()
-            .await
-            .expect("Elasticsearch Connection Pool");
-
-        let client = pool
+        let client = remote::connection_test_pool()
             .conn(ElasticsearchStorageConfig {
                 version_req: ">=9.99.99".to_string(),
                 ..ElasticsearchStorageConfig::default_testing()

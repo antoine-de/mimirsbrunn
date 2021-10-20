@@ -197,14 +197,12 @@ impl Remote for SingleNodeConnectionPool {
 }
 
 /// Opens a connection to elasticsearch given a url
-pub async fn connection_pool_url(url: &str) -> Result<SingleNodeConnectionPool, Error> {
-    let url = Url::parse(url).context(InvalidUrl { details: url })?;
-    let pool = SingleNodeConnectionPool::new(url);
-    Ok(pool)
+pub fn connection_pool_url(url: &Url) -> SingleNodeConnectionPool {
+    SingleNodeConnectionPool::new(url.clone())
 }
 
 /// Open a connection to a test elasticsearch
-pub async fn connection_test_pool() -> Result<SingleNodeConnectionPool, Error> {
+pub fn connection_test_pool() -> SingleNodeConnectionPool {
     let config = ElasticsearchStorageConfig::default_testing();
-    connection_pool_url(config.url.as_str()).await
+    connection_pool_url(&config.url)
 }
