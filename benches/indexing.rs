@@ -1,13 +1,12 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
-use futures::stream::TryStreamExt;
 
-use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir2::domain::ports::primary::list_documents::ListDocuments;
+use mimir2::adapters::secondary::elasticsearch::{
+    remote::connection_test_pool, ElasticsearchStorageConfig,
+};
 use mimir2::domain::ports::secondary::remote::Remote;
-use places::admin::Admin;
-use tests::{cosmogony, download};
+use mimir2::utils::docker;
+use tests::{bano, cosmogony, download};
 
 fn bench(c: &mut Criterion) {
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -18,6 +17,9 @@ fn bench(c: &mut Criterion) {
         .unwrap();
 
     rt.block_on(async {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
         let config = ElasticsearchStorageConfig::default_testing();
         let client = connection_test_pool()
             .conn(config)
@@ -25,16 +27,19 @@ fn bench(c: &mut Criterion) {
             .expect("could not establish connection with Elasticsearch");
 
         download::osm("ile-de-france").await.unwrap();
-        // don't force regenerate admins for 'ile-de-france'
+        // false: don't force regenerate admins for 'ile-de-france'
         cosmogony::generate("ile-de-france", false).await.unwrap();
-        // force reindex admins on bench dataset for 'ile-de-france'
+        // true: force reindex admins on bench dataset for 'ile-de-france'
         cosmogony::index_admins(&client, "ile-de-france", "bench", true)
+            .await
+            .unwrap();
+        download::bano("ile-de-france", &["75", "77", "78", "92", "93", "94", "95"])
             .await
             .unwrap();
     });
 
-    let mut group = c.benchmark_group("sample-size-example");
-    group.bench_function("listing admins", |b| {
+    let mut group = c.benchmark_group("indexing");
+    group.bench_function("indexing addresses", |b| {
         b.iter(|| {
             rt.block_on(async move {
                 let config = ElasticsearchStorageConfig::default_testing();
@@ -42,14 +47,9 @@ fn bench(c: &mut Criterion) {
                     .conn(config)
                     .await
                     .expect("could not establish connection with Elasticsearch");
-                let admins: Vec<Admin> = client
-                    .list_documents()
-                    .await
-                    .unwrap()
-                    .try_collect()
+                bano::index_addresses(&client, "ile-de-france", "bench", true)
                     .await
                     .unwrap();
-                println!("admin count: {}", admins.len());
             })
         });
     });
@@ -58,7 +58,8 @@ fn bench(c: &mut Criterion) {
 
 criterion_group! {
     name = benches;
-    config = Criterion::default().significance_level(0.1).sample_size(20);
+    // config = Criterion::default().sample_size(5);
+    config = Criterion::default();
     targets = bench
 }
 criterion_main!(benches);

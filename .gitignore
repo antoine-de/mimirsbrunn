@@ -6,7 +6,6 @@ build_packages/*
 import2mimir-*.log
 scripts/*.log
 scripts/data
-tests/fixtures/cosmogony/ile-de-france
 tests/fixtures/osm/ile-de-france
 tests/fixtures/bano/ile-de-france
 tests/fixtures/ntfs/fr-idf

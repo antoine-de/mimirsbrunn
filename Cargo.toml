@@ -121,5 +121,9 @@ test = false
 lto = true
 
 [[bench]]
-name = "benchmark"
+name = "listing"
+harness = false
+
+[[bench]]
+name = "indexing"
 harness = false
