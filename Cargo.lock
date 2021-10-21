@@ -897,7 +897,7 @@ checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
 name = "difference"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
+checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 
 [[package]]
 name = "digest"
@@ -1323,20 +1323,6 @@ dependencies = [
  "geographiclib-rs",
  "log",
  "num-traits",
- "robust",
- "rstar",
-]
-
-[[package]]
-name = "geo"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02bf7fb342abefefb0abbb8d033f37233e6f857a1a970805d15f96560834d699"
-dependencies = [
- "geo-types 0.7.2",
- "geographiclib-rs",
- "log",
- "num-traits 0.2.14",
  "robust",
  "rstar",
 ]
