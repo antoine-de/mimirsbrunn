@@ -32,16 +32,16 @@ impl<D> ElasticsearchSearchResponse<D> {
 
 /// ES response for bulk insert queries.
 #[derive(Deserialize)]
-pub struct ElasticSearchBulkInsertResponse {
-    pub items: Vec<ElasticSearchBulkInsertItem>,
+pub struct ElasticsearchBulkInsertResponse {
+    pub items: Vec<ElasticsearchBulkInsertItem>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ElasticSearchBulkInsertItem {
-    pub index: ElasticSearchBulkInsertIndex,
+pub struct ElasticsearchBulkInsertItem {
+    pub index: ElasticsearchBulkInsertIndex,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ElasticSearchBulkInsertIndex {
+pub struct ElasticsearchBulkInsertIndex {
     pub result: String,
 }

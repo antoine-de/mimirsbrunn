@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use super::configuration::IndexConfiguration;
-use super::models::{ElasticSearchBulkInsertResponse, ElasticsearchSearchResponse};
+use super::models::{ElasticsearchBulkInsertResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
 use crate::domain::model::{
     configuration,
@@ -495,7 +495,7 @@ impl ElasticsearchStorage {
         // Each item must contain the string 'created'. So we iterate through these items,
         // and build a Result<(), Error>, and skip while it `is_ok()`. If we have an
         // error, we report it.
-        let ops: Vec<BulkOperation<_>> = chunk
+        let ops: Vec<BulkOperation<D>> = chunk
             .into_iter()
             .map(|doc| {
                 let doc_id = doc.id();
@@ -516,7 +516,7 @@ impl ElasticsearchStorage {
             })?;
 
         if resp.status_code().is_success() {
-            let body: ElasticSearchBulkInsertResponse =
+            let body: ElasticsearchBulkInsertResponse =
                 resp.json().await.context(ElasticsearchDeserialization)?;
 
             body.items.iter().try_for_each(|item| {
