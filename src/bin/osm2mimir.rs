@@ -84,18 +84,14 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
 
     let settings = &settings::Settings::new(&opts)
         .and_then(settings::validate)
-        .context(Settings)
-        .map_err(Box::new)?;
+        .context(Settings)?;
 
-    let mut osm_reader = mimirsbrunn::osm_reader::make_osm_reader(&input)
-        .context(OsmPbfReader)
-        .map_err(Box::new)?;
+    let mut osm_reader = mimirsbrunn::osm_reader::make_osm_reader(&input).context(OsmPbfReader)?;
 
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch.clone())
         .await
-        .context(ElasticsearchConnection)
-        .map_err(Box::new)?;
+        .context(ElasticsearchConnection)?;
 
     let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
         Ok(stream) => {
@@ -127,17 +123,18 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
                 .collect(),
             settings.container.dataset.clone(),
         )
-        .context(StreetElasticsearchConfiguration)
-        .map_err(Box::new)?;
-        import_streets(
+        .context(StreetElasticsearchConfiguration)?;
+
+        let streets = streets(
             &mut osm_reader,
             &admins_geofinder,
             &settings.streets.exclusions,
-            &client,
-            config,
+            #[cfg(feature = "db-storage")]
+            settings.database.as_ref(),
         )
-        .await
-        .map_err(Box::new)?;
+        .context(StreetOsmExtraction)?;
+
+        import_streets(streets, &client, config).await?;
     }
 
     if settings.pois.import {
@@ -154,8 +151,8 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
                 .collect(),
             settings.container.dataset.clone(),
         )
-        .context(StreetElasticsearchConfiguration)
-        .map_err(Box::new)?;
+        .context(StreetElasticsearchConfiguration)?;
+
         import_pois(
             &mut osm_reader,
             &admins_geofinder,
@@ -163,8 +160,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
             &client,
             config,
         )
-        .await
-        .map_err(Box::new)?;
+        .await?;
     }
 
     Ok(())
@@ -172,17 +168,13 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
 
 #[instrument(skip_all)]
 async fn import_streets(
-    osm_reader: &mut mimirsbrunn::osm_reader::OsmPbfReader,
-    admins_geofinder: &AdminGeoFinder,
-    exclusions: &mimirsbrunn::osm_reader::street::StreetExclusion,
+    streets: Vec<places::street::Street>,
     client: &ElasticsearchStorage,
     config: Config,
 ) -> Result<(), Error> {
-    let streets: Vec<places::street::Street> = streets(osm_reader, admins_geofinder, exclusions)
-        .context(StreetOsmExtraction)?
+    let streets = streets
         .into_iter()
-        .map(|street| street.set_weight_from_admins())
-        .collect();
+        .map(|street| street.set_weight_from_admins());
 
     let _index = client
         .generate_index(
