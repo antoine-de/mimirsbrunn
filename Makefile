@@ -47,7 +47,9 @@ format: ## Check formatting of the code
 
 clippy: lint ## Check quality of the code (alias for 'lint')
 lint: ## Check quality of the code
-	cargo clippy --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
+	CLIPPY_EXTRA="--warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings"
+	cargo clippy --all-targets -- $$CLIPPY_EXTRA
+	cargo clippy --bins --all-features -- $$CLIPPY_EXTRA
 
 test: ## Launch all tests
 	cargo test --lib
