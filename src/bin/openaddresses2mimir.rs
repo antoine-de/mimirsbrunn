@@ -28,263 +28,251 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use lazy_static::lazy_static;
-use mimir::rubber::{IndexSettings, Rubber};
-use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_streams};
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::{labels, utils};
-use serde::{Deserialize, Serialize};
+use common::config::load_es_config_for;
+use futures::stream::StreamExt;
+use mimir2::adapters::secondary::elasticsearch;
+use mimir2::domain::ports::primary::list_documents::ListDocuments;
+use mimir2::domain::ports::secondary::remote::Remote;
+use mimirsbrunn::addr_reader::import_addresses_from_files;
+use mimirsbrunn::openaddresses::OpenAddress;
+use mimirsbrunn::settings::openaddresses2mimir as settings;
+use places::addr::Addr;
+use places::admin::Admin;
 use slog_scope::{info, warn};
-use std::io::stdin;
-use std::ops::Deref;
-use std::path::PathBuf;
+use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
-lazy_static! {
-    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
+    Settings { source: settings::Error },
+
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchConnection {
+        source: mimir2::domain::ports::secondary::remote::Error,
+    },
+
+    #[snafu(display("Execution Error {}", source))]
+    Execution { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Configuration Error {}", source))]
+    Configuration { source: common::config::Error },
+
+    #[snafu(display("Import Error {}", source))]
+    Import {
+        source: mimirsbrunn::addr_reader::Error,
+    },
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub struct OpenAddress {
-    pub id: String,
-    pub street: String,
-    pub postcode: String,
-    pub district: String,
-    pub region: String,
-    pub city: String,
-    pub number: String,
-    pub unit: String,
-    pub lat: f64,
-    pub lon: f64,
-}
-
-impl OpenAddress {
-    pub fn into_addr(
-        self,
-        admins_geofinder: &AdminGeoFinder,
-        use_old_index_format: bool,
-        id_precision: usize,
-    ) -> Result<mimir::Addr, mimirsbrunn::Error> {
-        let street_id = format!("street:{}", self.id); // TODO check if thats ok
-        let admins = admins_geofinder.get(&geo::Coordinate {
-            x: self.lon,
-            y: self.lat,
-        });
-        let country_codes = utils::find_country_codes(admins.iter().map(|a| a.deref()));
-
-        let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
-        // Note: for openaddress, we don't trust the admin hierarchy much (compared to bano)
-        // so we use for the label the admins that we find in the DB
-        let street_label = labels::format_street_label(
-            &self.street,
-            admins.iter().map(|a| a.deref()),
-            &country_codes,
-        );
-        let (addr_name, addr_label) = labels::format_addr_name_and_label(
-            &self.number,
-            &self.street,
-            admins.iter().map(|a| a.deref()),
-            &country_codes,
-        );
-
-        let zip_codes: Vec<_> = self.postcode.split(';').map(str::to_string).collect();
-        let coord = mimir::Coord::new(self.lon, self.lat);
-        let street = mimir::Street {
-            id: street_id,
-            name: self.street,
-            label: street_label,
-            administrative_regions: admins,
-            weight,
-            zip_codes: zip_codes.clone(),
-            coord,
-            approx_coord: None,
-            distance: None,
-            country_codes: country_codes.clone(),
-            context: None,
-        };
-
-        let id_suffix = {
-            if use_old_index_format {
-                String::new()
-            } else {
-                format!(
-                    ":{}",
-                    self.number
-                        .replace(" ", "")
-                        .replace("\t", "")
-                        .replace("\r", "")
-                        .replace("\n", "")
-                        .replace("/", "-")
-                        .replace(".", "-")
-                        .replace(":", "-")
-                        .replace(";", "-")
-                )
-            }
-        };
-
-        let id = {
-            if id_precision > 0 {
-                format!(
-                    "addr:{:.precision$};{:.precision$}{}",
-                    self.lon,
-                    self.lat,
-                    id_suffix,
-                    precision = id_precision
-                )
-            } else {
-                format!("addr:{};{}{}", self.lon, self.lat, id_suffix)
-            }
-        };
-
-        Ok(mimir::Addr {
-            id,
-            name: addr_name,
-            label: addr_label,
-            house_number: self.number,
-            street,
-            coord,
-            approx_coord: Some(coord.into()),
-            weight,
-            zip_codes,
-            distance: None,
-            country_codes,
-            context: None,
-        })
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let opts = settings::Opts::from_args();
+    match opts.cmd {
+        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(run))
+            .await
+            .context(Execution),
+        settings::Command::Config => {
+            mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(config))
+                .await
+                .context(Execution)
+        }
     }
 }
 
-#[derive(StructOpt, Debug)]
-struct Args {
-    /// OpenAddresses files. Can be either a directory or a file.
-    /// If this is left empty, addresses are read from standard input.
-    #[structopt(short = "i", long = "input", parse(from_os_str))]
-    input: Option<PathBuf>,
-    /// Float precision for coordinates used to define the `id` field of addresses.
-    /// Set to 0 to use exact coordinates.
-    #[structopt(short = "p", long = "id-precision", default_value = "6")]
-    id_precision: usize,
-    /// Elasticsearch parameters.
-    #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
-    )]
-    connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset", default_value = "fr")]
-    dataset: String,
-    /// Deprecated option.
-    #[structopt(short = "C", long = "city-level")]
-    city_level: Option<String>,
-    /// Number of threads to use
-    #[structopt(
-        short = "t",
-        long = "nb-threads",
-        default_value = &DEFAULT_NB_THREADS
-    )]
-    nb_threads: usize,
-    /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
-    /// to handle values that are too high.
-    #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
-    nb_insert_threads: usize,
-    /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "5")]
-    nb_shards: usize,
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
-    nb_replicas: usize,
-    /// If set to true, the number inside the address won't be used for the index generation,
-    /// therefore, different addresses with the same position will disappear.
-    #[structopt(long = "use-old-index-format")]
-    use_old_index_format: bool,
+async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
+    let settings = settings::Settings::new(&opts).map_err(Box::new)?;
+    println!("{}", serde_json::to_string_pretty(&settings).unwrap());
+    Ok(())
 }
 
-fn run(args: Args) -> Result<(), failure::Error> {
+async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
     info!("importing open addresses into Mimir");
 
-    if args.city_level.is_some() {
-        warn!("city-level option is deprecated, it now has no effect.");
-    }
+    let input = opts.input.clone(); // we save the input, because opts will be consumed by settings.
 
-    let mut rubber =
-        Rubber::new(&args.connection_string).with_nb_insert_threads(args.nb_insert_threads);
+    let settings = settings::Settings::new(&opts)
+        .context(Settings)
+        .map_err(Box::new)?;
 
-    let index_settings = IndexSettings {
-        nb_shards: args.nb_shards,
-        nb_replicas: args.nb_replicas,
-    };
+    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
+        .conn(settings.elasticsearch)
+        .await
+        .context(ElasticsearchConnection)
+        .map_err(Box::new)?;
 
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let admins = rubber.get_all_admins().unwrap_or_else(|err| {
-            warn!(
-                "Administratives regions not found in es db for dataset {}. (error: {})",
-                &args.dataset, err
-            );
-            vec![]
-        });
-
+        let admins: Vec<Admin> = match client.list_documents().await {
+            Ok(stream) => {
+                stream
+                    .map(|admin| admin.expect("could not parse admin"))
+                    .collect()
+                    .await
+            }
+            Err(err) => {
+                warn!("administratives regions not found in es db. {:?}", err);
+                Vec::new()
+            }
+        };
         let admins_geofinder = admins.into_iter().collect();
-        let use_old_index_format = args.use_old_index_format;
-        let id_precision = args.id_precision;
-
-        move |a: OpenAddress| a.into_addr(&admins_geofinder, use_old_index_format, id_precision)
+        let id_precision = settings.coordinates.id_precision;
+        move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
     };
 
-    if let Some(input_path) = args.input {
-        // Import from file(s)
-        if input_path.is_dir() {
-            let paths = walkdir::WalkDir::new(&input_path);
-            let path_iter = paths
-                .into_iter()
-                .map(|p| p.unwrap().into_path())
-                .filter(|p| {
-                    let f = p
-                        .file_name()
-                        .and_then(|name| name.to_str())
-                        .map(|name| name.ends_with(".csv") || name.ends_with(".csv.gz"))
-                        .unwrap_or(false);
-                    if !f {
-                        info!("skipping file {} as it is not a csv", p.display());
-                    }
-                    f
-                });
+    let config = load_es_config_for::<Addr>(
+        opts.settings
+            .iter()
+            .filter_map(|s| {
+                if s.starts_with("elasticsearch.addr") {
+                    Some(s.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect(),
+        settings.container.dataset.clone(),
+    )
+    .context(Configuration)
+    .map_err(Box::new)?;
 
-            import_addresses_from_files(
-                &mut rubber,
-                true,
-                args.nb_threads,
-                index_settings,
-                &args.dataset,
-                path_iter,
-                into_addr,
-            )
-        } else {
-            import_addresses_from_files(
-                &mut rubber,
-                true,
-                args.nb_threads,
-                index_settings,
-                &args.dataset,
-                std::iter::once(input_path),
-                into_addr,
-            )
-        }
-    } else {
-        // Import from stdin
-        import_addresses_from_streams(
-            &mut rubber,
+    // Import from file(s)
+    if input.is_dir() {
+        let paths = walkdir::WalkDir::new(&input);
+        let path_iter = paths
+            .into_iter()
+            .map(|p| p.unwrap().into_path())
+            .filter(|p| {
+                let f = p
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|name| name.ends_with(".csv") || name.ends_with(".csv.gz"))
+                    .unwrap_or(false);
+                if !f {
+                    info!("skipping file {} as it is not a csv", p.display());
+                }
+                f
+            });
+
+        import_addresses_from_files(
+            &client,
+            config,
             true,
-            args.nb_threads,
-            index_settings,
-            &args.dataset,
-            std::iter::once(stdin()),
+            settings.concurrency.nb_threads,
+            path_iter,
             into_addr,
         )
+        .await
+        .context(Import)
+        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>)
+    } else {
+        import_addresses_from_files(
+            &client,
+            config,
+            true,
+            settings.concurrency.nb_threads,
+            std::iter::once(input),
+            into_addr,
+        )
+        .await
+        .context(Import)
+        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>)
     }
 }
 
-fn main() {
-    mimirsbrunn::utils::launch_run(run);
+#[cfg(test)]
+mod tests {
+    use futures::TryStreamExt;
+    use serial_test::serial;
+
+    use common::document::ContainerDocument;
+    use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
+    use mimir2::domain::model::query::Query;
+    use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::domain::ports::primary::search_documents::SearchDocuments;
+    use mimir2::utils::docker;
+    use places::{addr::Addr, Place};
+
+    use super::*;
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_index_oa_file() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "sample-oa.csv",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let _res = mimirsbrunn::utils::launch::launch_async_args(run, opts).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_pool_url(&config.url)
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let search = |query: &str| {
+            let client = client.clone();
+            let query: String = query.into();
+            async move {
+                client
+                    .search_documents(
+                        vec![String::from(Addr::static_doc_type())],
+                        Query::QueryString(format!("full_label.prefix:({})", query)),
+                    )
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json).unwrap())
+                    .map(|place| match place {
+                        Place::Addr(addr) => addr,
+                        _ => panic!("should only have admins"),
+                    })
+                    .collect::<Vec<Addr>>()
+            }
+        };
+
+        let addresses: Vec<Addr> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        assert_eq!(addresses.len(), 11);
+
+        let results = search("Otto-Braun-Straße 72").await;
+        assert_eq!(results.len(), 1);
+        let result = &results[0];
+        assert_eq!(result.id, "addr:13.41931;52.52354:72");
+
+        // We look for postcode 11111 which should have been filtered since the street name is empty
+        let results = search("11111").await;
+        assert_eq!(results.len(), 0);
+
+        // Check that addresses containing multiple postcodes are read correctly
+        let results = search("Rue Foncet").await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].zip_codes,
+            vec!["06000", "06100", "06200", "06300"]
+        )
+    }
 }

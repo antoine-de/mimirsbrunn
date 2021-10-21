@@ -1,457 +1,218 @@
-use config::{Config, ConfigError, File, FileFormat, Source, Value};
-use failure::ResultExt;
-use serde::Deserialize;
-use slog_scope::{info, warn};
-use std::collections::HashMap;
-use std::convert::TryFrom;
+use config::Config;
+use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+/// This module contains the definition for osm2mimir configuration and command line arguments.
+///
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+use std::env;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use crate::osm_reader::poi;
-use crate::Error;
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct StreetExclusion {
-    pub highway: Option<Vec<String>>,
-    pub public_transport: Option<Vec<String>>,
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Config Compilation Error: {}", source))]
+    ConfigCompilation { source: common::config::Error },
+    #[snafu(display("Config Merge Error: {} [{}]", msg, source))]
+    ConfigMerge {
+        msg: String,
+        source: config::ConfigError,
+    },
+    #[snafu(display("Invalid Configuration: {}", msg))]
+    Invalid { msg: String },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Street {
     pub import: bool,
-    pub exclusion: StreetExclusion,
+    pub exclusions: crate::osm_reader::street::StreetExclusion,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct Admin {
-    pub import: bool,
-    pub levels: Vec<u32>,
-    pub city_level: u32,
-}
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Poi {
     pub import: bool,
-    pub config: Option<poi::PoiConfig>,
+    pub config: Option<crate::osm_reader::poi::PoiConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Logging {
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Container {
+    pub dataset: String,
 }
 
 #[cfg(feature = "db-storage")]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
     pub file: PathBuf,
     pub buffer_size: usize,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct Elasticsearch {
-    pub connection_string: String,
-    pub insert_thread_count: usize,
-    pub streets_shards: usize,
-    pub streets_replicas: usize,
-    pub admins_shards: usize,
-    pub admins_replicas: usize,
-    pub pois_shards: usize,
-    pub pois_replicas: usize,
-}
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
-    pub dataset: String,
+    pub mode: Option<String>,
+    pub logging: Logging,
+    pub elasticsearch: ElasticsearchStorageConfig,
+    pub pois: Poi,
+    pub streets: Street,
+    pub container: Container,
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,
-    pub elasticsearch: Elasticsearch,
-    pub street: Option<Street>,
-    pub poi: Option<Poi>,
-    pub admin: Option<Admin>,
 }
 
+#[derive(Debug, StructOpt)]
+#[structopt(
+name = "osm2mimir",
+about = "Parsing OSM PBF document and indexing its content in Elasticsearch",
+version = VERSION,
+author = AUTHORS
+)]
+pub struct Opts {
+    /// Defines the config directory
+    ///
+    /// This directory must contain 'elasticsearch' and 'osm2mimir' subdirectories.
+    #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
+    pub config_dir: PathBuf,
+
+    /// Defines the run mode in {testing, dev, prod, ...}
+    ///
+    /// If no run mode is provided, a default behavior will be used.
+    #[structopt(short = "m", long = "run-mode")]
+    pub run_mode: Option<String>,
+
+    /// Override settings values using key=value
+    #[structopt(short = "s", long = "setting")]
+    pub settings: Vec<String>,
+
+    /// OSM PBF file
+    #[structopt(short = "i", long = "input", parse(from_os_str))]
+    pub input: PathBuf,
+
+    #[structopt(subcommand)]
+    pub cmd: Command,
+}
+
+#[derive(Debug, StructOpt)]
+pub enum Command {
+    /// Execute osm2mimir with the given configuration
+    Run,
+    /// Prints osm2mimir's configuration
+    Config,
+}
+
+// TODO Parameterize the config directory
 impl Settings {
-    // To create settings, we first retrieve default settings, merge in specific settings if
-    // needed, and finally override them with command line arguments.
-    pub fn new(args: Args) -> Result<Self, Error> {
-        let config_dir = args.config_dir.clone();
-        let settings = args.settings.clone();
+    // Read the configuration from <config-dir>/osm2mimir and <config-dir>/elasticsearch
+    pub fn new(opts: &Opts) -> Result<Self, Error> {
+        let mut builder = Config::builder();
 
-        let mut config = Config::new();
-        // let config_dir = config_dir.clone();
-        match config_dir {
-            Some(mut dir) => {
-                // Start off by merging in the "default" configuration file
-                dir.push("osm2mimir-default");
+        builder = builder.add_source(
+            common::config::config_from(
+                opts.config_dir.as_ref(),
+                &["osm2mimir", "elasticsearch"],
+                opts.run_mode.as_deref(),
+                "OSM2MIMIR",
+                opts.settings.clone(),
+            )
+            .context(ConfigCompilation)?,
+        );
 
-                if let Some(path) = dir.to_str() {
-                    info!("using configuration from {}", path);
-                    // Now if the file exists, we read it, otherwise, we
-                    // read from the compiled version.
-                    if dir.exists() {
-                        config.merge(File::with_name(path)).with_context(|e| {
-                            format!(
-                                "Could not merge default configuration from file {}: {}",
-                                path, e
-                            )
-                        })?;
-                    } else {
-                        config
-                            .merge(File::from_str(
-                                include_str!("../../config/osm2mimir-default.toml"),
-                                FileFormat::Toml,
-                            ))
-                            .with_context(|e| {
-                                format!(
-                                    "Could not merge default configuration from file {}: {}",
-                                    path, e
-                                )
-                            })?;
-                    }
-                } else {
-                    return Err(failure::err_msg(format!(
-                        "Could not read default settings in '{}'",
-                        dir.display()
-                    )));
-                }
+        // FIXME depending on service.pois.import and service.streets.import, read the corresponding
+        // elasticsearch sub dirs.
+        let config = builder.build().context(ConfigMerge {
+            msg: String::from("Cannot build the configuration from sources"),
+        })?;
 
-                dir.pop(); // remove the default
-                           // If we provided a special configuration, merge it.
-                if let Some(settings) = settings {
-                    dir.push(&settings);
-
-                    if let Some(path) = dir.to_str() {
-                        info!("using configuration from {}", path);
-                        config
-                            .merge(File::with_name(path).required(true))
-                            .with_context(|e| {
-                                format!(
-                                    "Could not merge {} configuration in file {}: {}",
-                                    settings, path, e
-                                )
-                            })?;
-                    } else {
-                        return Err(failure::err_msg(format!(
-                            "Could not read configuration for '{}'",
-                            settings,
-                        )));
-                    }
-                    dir.pop();
-                }
-            }
-            None => {
-                if settings.is_some() {
-                    // If the user set the 'settings' at the command line, he should
-                    // also have used the 'config_dir' option. So we issue a warning,
-                    // and leave with an error because the expected configuration can
-                    // not be read.
-                    warn!("settings option used without the 'config_dir' option. Please set the config directory with --config-dir.");
-                    return Err(failure::err_msg(String::from(
-                        "Could not build program settings",
-                    )));
-                }
-                config
-                    .merge(File::from_str(
-                        include_str!("../../config/osm2mimir-default.toml"),
-                        FileFormat::Toml,
-                    ))
-                    .with_context(|e| {
-                        format!(
-                            "Could not merge default configuration from file at compile time: {}",
-                            e
-                        )
-                    })?;
-            }
-        }
-
-        // Now override with command line values
-        config
-            .merge(args)
-            .with_context(|e| format!("Could not merge arguments into configuration: {}", e))?;
-
-        // You can deserialize (and thus freeze) the entire configuration as
-        config.try_into().map_err(|e| {
-            failure::err_msg(format!(
-                "Could not generate settings from configuration: {}",
-                e
-            ))
+        config.try_into().context(ConfigMerge {
+            msg: String::from("Cannot convert configuration into osm2mimir settings"),
         })
     }
 }
 
-#[derive(StructOpt, Clone, Debug)]
-pub struct Args {
-    /// OSM PBF file.
-    #[structopt(short = "i", long = "input", parse(from_os_str))]
-    pub input: PathBuf,
-    /// Admin levels to keep.
-    #[structopt(short = "l", long = "level")]
-    level: Option<Vec<u32>>,
-    /// City level to  calculate weight.
-    #[structopt(short = "C", long = "city-level")]
-    city_level: Option<u32>,
-    /// Elasticsearch parameters.
-    #[structopt(short = "c", long = "connection-string")]
-    connection_string: Option<String>,
-    /// Import ways.
-    #[structopt(short = "w", long = "import-way")]
-    import_way: Option<bool>,
-    /// Import admins.
-    #[structopt(short = "a", long = "import-admin")]
-    import_admin: Option<bool>,
-    /// Import POIs.
-    #[structopt(short = "p", long = "import-poi")]
-    import_poi: Option<bool>,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset")]
-    pub dataset: Option<String>,
-    /// Number of shards for the admin es index
-    #[structopt(long = "nb-admin-shards")]
-    nb_admin_shards: Option<usize>,
-    /// Number of replicas for the es index
-    #[structopt(long = "nb-admin-replicas")]
-    nb_admin_replicas: Option<usize>,
-    /// Number of shards for the street es index
-    #[structopt(long = "nb-street-shards")]
-    nb_street_shards: Option<usize>,
-    /// Number of replicas for the street es index
-    #[structopt(long = "nb-street-replicas")]
-    nb_street_replicas: Option<usize>,
-    /// Number of shards for the es index
-    #[structopt(long = "nb-poi-shards")]
-    nb_poi_shards: Option<usize>,
-    /// Number of replicas for the es index
-    #[structopt(long = "nb-poi-replicas")]
-    nb_poi_replicas: Option<usize>,
-    /// If you use this option by providing a filename, then we
-    /// will use a SQlite database that will be persisted. You
-    /// can only do that if osm2mimir was compiled with the
-    /// 'db-storage' feature. If you don't provide a value, then
-    /// we will use in memory storage.
-    #[cfg(feature = "db-storage")]
-    #[structopt(long = "db-file", parse(from_os_str))]
-    pub db_file: Option<PathBuf>,
+// This function returns an error if the settings are invalid.
+pub fn validate(settings: Settings) -> Result<Settings, Error> {
+    let import_streets_enabled = settings.streets.import;
 
-    /// DB buffer size.
-    #[cfg(feature = "db-storage")]
-    #[structopt(long = "db-buffer-size")]
-    pub db_buffer_size: Option<usize>,
-    /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
-    /// to handle values that are too high.
-    #[structopt(short = "T", long = "nb-insert-threads")]
-    nb_insert_threads: Option<usize>,
+    let import_poi_enabled = settings.pois.import;
 
-    /// Path to the config directory
-    /// osm2mimir will read the default configuration in there, and maybe
-    /// more depending on the settings option.
-    /// If no option is given, we'll just read the ./config/osm2mimir-default.toml
-    /// at compile time.
-    #[structopt(short = "D", long = "config-dir")]
-    config_dir: Option<PathBuf>,
-
-    /// Specific configuration, on top of the default ones.
-    /// You should provide the basename of the file, eg acme, so that
-    /// osm2mimir will use {config-dir}/acme.toml. (Requires config_dir to
-    /// be set)
-    #[structopt(short = "s", long = "settings")]
-    settings: Option<String>,
+    if !import_streets_enabled && !import_poi_enabled {
+        return Err(Error::Invalid {
+            msg: String::from("Neither streets nor POIs import is enabled. Nothing to do. Use -s pois.import=true or -s streets.import=true")
+        });
+    }
+    Ok(settings)
 }
 
-impl Source for Args {
-    fn clone_into_box(&self) -> Box<dyn Source + Send + Sync> {
-        Box::new((*self).clone())
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_return_ok_with_default_config_dir() {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
+        let opts = Opts {
+            config_dir,
+            run_mode: None,
+            settings: vec![],
+            cmd: Command::Run,
+            input: PathBuf::from("foo.osm.pbf"),
+        };
+        let settings = Settings::new(&opts);
+        assert!(
+            settings.is_ok(),
+            "Expected Ok, Got an Err: {}",
+            settings.unwrap_err().to_string()
+        );
+        assert_eq!(settings.unwrap().mode, None);
     }
 
-    fn collect(&self) -> Result<HashMap<String, Value>, ConfigError> {
-        let mut m = HashMap::new();
+    #[test]
+    fn should_override_elasticsearch_port_with_command_line() {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
+        let opts = Opts {
+            config_dir,
+            run_mode: None,
+            settings: vec![String::from("elasticsearch.url='http://localhost:9999'")],
+            cmd: Command::Run,
+            input: PathBuf::from("foo.osm.pbf"),
+        };
+        let settings = Settings::new(&opts);
+        assert!(
+            settings.is_ok(),
+            "Expected Ok, Got an Err: {}",
+            settings.unwrap_err().to_string()
+        );
+        assert_eq!(
+            settings.unwrap().elasticsearch.url.as_str(),
+            "http://localhost:9999/"
+        );
+    }
 
-        // DATASET
-        if let Some(dataset) = self.dataset.clone() {
-            m.insert(String::from("dataset"), Value::new(None, dataset));
-        }
-
-        // ADMIN
-        if let Some(import_admin) = self.import_admin {
-            m.insert(String::from("admin.import"), Value::new(None, import_admin));
-        }
-
-        if let Some(city_level) = self.city_level {
-            m.insert(
-                String::from("admin.city_level"),
-                Value::new(
-                    None,
-                    i64::try_from(city_level).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert admin city_level to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-        if let Some(level) = self.level.clone() {
-            m.insert(
-                String::from("admin.levels"),
-                Value::new(
-                    None,
-                    level.into_iter().try_fold(Vec::new(), |mut acc, l| {
-                        let i = i64::try_from(l).map_err(|e| {
-                            ConfigError::Message(format!(
-                                "Could not convert admin city_level to integer: {}",
-                                e
-                            ))
-                        })?;
-                        acc.push(i);
-                        Ok(acc)
-                    })?,
-                ),
-            );
-        }
-
-        // WAY
-        if let Some(import_way) = self.import_way {
-            m.insert(String::from("street.import"), Value::new(None, import_way));
-        }
-
-        // POI
-        if let Some(import_poi) = self.import_poi {
-            m.insert(String::from("poi.import"), Value::new(None, import_poi));
-        }
-
-        // ELASTICSEARCH SETTINGS
-
-        if let Some(connection_string) = self.connection_string.clone() {
-            m.insert(
-                String::from("elasticsearch.connection_string"),
-                Value::new(None, connection_string),
-            );
-        }
-
-        if let Some(nb_way_shards) = self.nb_street_shards {
-            m.insert(
-                String::from("elasticsearch.streets_shards"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_way_shards).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of streets shards to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_way_replicas) = self.nb_street_replicas {
-            m.insert(
-                String::from("elasticsearch.streets_replicas"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_way_replicas).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of way replicas to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_poi_shards) = self.nb_poi_shards {
-            m.insert(
-                String::from("elasticsearch.pois_shards"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_poi_shards).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of poi shards to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_poi_replicas) = self.nb_poi_replicas {
-            m.insert(
-                String::from("elasticsearch.pois_replicas"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_poi_replicas).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of poi replicas to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_admin_shards) = self.nb_admin_shards {
-            m.insert(
-                String::from("elasticsearch.admins_shards"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_admin_shards).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of admin shards to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_admin_replicas) = self.nb_admin_replicas {
-            m.insert(
-                String::from("elasticsearch.admins_replicas"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_admin_replicas).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert count of admin replicas to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        if let Some(nb_insert_threads) = self.nb_insert_threads {
-            m.insert(
-                String::from("elasticsearch.insert_thread_count"),
-                Value::new(
-                    None,
-                    i64::try_from(nb_insert_threads).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert elasticsearch insert thread count to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        // DATABASE
-        #[cfg(feature = "db-storage")]
-        if let Some(db_file) = self.db_file.clone() {
-            m.insert(
-                String::from("database.file"),
-                Value::new(None, db_file.to_str().expect("valid utf-8 filename")),
-            );
-        }
-
-        #[cfg(feature = "db-storage")]
-        if let Some(db_buffer_size) = self.db_buffer_size {
-            m.insert(
-                String::from("database.buffer_size"),
-                Value::new(
-                    None,
-                    i64::try_from(db_buffer_size).map_err(|e| {
-                        ConfigError::Message(format!(
-                            "Could not convert database buffer size to integer: {}",
-                            e
-                        ))
-                    })?,
-                ),
-            );
-        }
-
-        Ok(m)
+    #[test]
+    fn should_override_elasticsearch_port_environment_variable() {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
+        std::env::set_var("OSM2MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
+        let opts = Opts {
+            config_dir,
+            run_mode: None,
+            settings: vec![],
+            cmd: Command::Run,
+            input: PathBuf::from("foo.osm.pbf"),
+        };
+        let settings = Settings::new(&opts);
+        assert!(
+            settings.is_ok(),
+            "Expected Ok, Got an Err: {}",
+            settings.unwrap_err().to_string()
+        );
+        assert_eq!(
+            settings.unwrap().elasticsearch.url.as_str(),
+            "http://localhost:9999/"
+        );
     }
 }

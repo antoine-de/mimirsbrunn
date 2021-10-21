@@ -1,7 +1,7 @@
 [package]
 name = "mimirsbrunn"
-version = "1.24.0"
-authors = ["Canal TP <dt.ro@canaltp.fr>"]
+version = "1.24.0-alpha"
+authors = ["Kisio Digital <team.core@kisio.com>", "Qwant", "Guillaume Pinot <texitoi@texitio.eu>"]
 build = "build.rs"
 autotests = false
 edition = "2018"
@@ -13,63 +13,113 @@ categories = [ "application" ]
 readme = "README.md"
 
 [workspace]
+members = [
+  "libs/mimir2",
+  "libs/places",
+  "libs/common",
+	"libs/tests",
+]
 
 [features]
 db-storage = [ "rusqlite" ]
 
 [dependencies]
-config = "0.10"
-log = { version = "0.4", features = ["release_max_level_debug"] }
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
-slog-scope = "4.3"
-slog-envlogger = "2.2"
-slog-async = "2.5"
-slog-term = "2.8"
-slog-stdlog = "4.1"
-structopt = "0.3"
-csv = "1.1"
-rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
-regex = "1"
-osmpbfreader = "0.14"
-osm_boundaries_utils = "0.8.2"
+address-formatter = "0.2.1"
+bincode = "1.3.3"
 chrono = "0.4"
 chrono-tz = "0.5"
-serde = {version = "1", features = ["rc"]}
-serde_json = "1"
-bincode = "1.2"
-geo = "0.16"
-geo-types = { version = "0.6.1", features = [ "rstar" ] }
-rstar = "0.8"
-itertools = "0.9"
-transit_model = "0.39.0"
-typed_index_collection = "2.0.0"
+clap = "2.33.1"
+cosmogony = "0.10.3"
+csv = "1.1"
+csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
 failure = "0.1"
-cosmogony = "0.9"
-par-map = "0.1.4"
-lazy_static = "1.4"
-num_cpus = "1.13"
-assert_float_eq = "1.1"
+flate2 = { version = "1.0", features = [ "tokio" ] }
+futures = "0.3"
+geo = "0.18"
+geo-types = { version = "0.7", features = [ "rstar" ] }
+http = "0.2"
 human-sort = "0.2"
-address-formatter = "0.2.1"
+itertools = "0.9"
+lazy_static = "1.4"
+log = { version = "0.4", features = ["release_max_level_debug"] }
 navitia-poi-model = "0.3"
-walkdir = "2.3"
+num_cpus = "1.13"
+osm_boundaries_utils = "0.9"
+osmpbfreader = "0.14"
+par-map = "0.1.4"
+regex = "1"
+rstar = "0.8"
 rusqlite = { version = "0.23", optional = true }
-flate2 = "1.0"
+serde_json = "1"
+serde = {version = "1", features = ["rc"]}
+slog-async = "2.5"
+slog-envlogger = "2.2"
+slog-json = "2.4"
+slog-scope = "4.3"
+slog-stdlog = "4.1"
+slog-term = "2.8"
+slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
+snafu = { version = "0.6.10", features = [ "futures" ] }
+structopt = "0.3"
+tokio-stream = { version = "0.1.7", features = [ "fs" ] }
+tokio = { version = "1.6.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
 toml = "0.5"
+tracing = "0.1.26"
+tracing-appender = "0.1.2"
+tracing-bunyan-formatter = { version = "0.2", default-features = false }
+tracing-futures = "0.2.5"
+tracing-log = "0.1.2"
+tracing-subscriber = "0.2.17"
+transit_model = "0.41.3"
+typed_index_collection = "2.0"
+walkdir = "2.3"
+warp = { version = "0.3.1" }
 
-mimir = { path = "libs/mimir" }
-bragi = { path = "libs/bragi" }
+common = { path = "libs/common" }
+mimir2 = { path = "libs/mimir2" }
+places = { path = "libs/places" }
+
+[dependencies.config]
+git = "https://github.com/mehcode/config-rs.git"
+branch = "master"
+default_features = false
+features = ["json", "toml"]
+
+[lib]
+name = "mimirsbrunn"
+path = "src/lib.rs"
 
 [dev-dependencies]
-reqwest = { version = "0.10", features = [ "blocking", "json" ] }
-approx = "0.3"
-actix-web = "1"
-tools = { path = "libs/tools" }
-docker_wrapper = { path = "libs/docker_wrapper" }
+async-trait = "0.1.50"
+url = { version = "2.2.2", features = [ "serde" ] }
+approx = "0.5"
+criterion = "0.3"
+cucumber = { package = "cucumber_rust", version = "0.9" }
+elasticsearch = "7.14.0-alpha.1"
+reqwest = { version = "0.11", features = [ "blocking", "json" ] }
+serial_test = "0.5.1"
+tests = { path = "libs/tests" }
+zip = "0.5.13"
 
 [build-dependencies]
 json = "0.12"
 
-# we just call one test method: cf. tests::all_tests()
+[[bin]]
+name = "bragi"
+path = "src/bragi/main.rs"
+
 [[test]]
-name = "tests"
+name = "end_to_end"
+harness = false # Allows Cucumber to print output instead of libtest
+
+[[test]]
+name = "idf"
+harness = false # Allows Cucumber to print output instead of libtest
+test = false
+
+[profile.bench]
+lto = true
+
+[[bench]]
+name = "benchmark"
+harness = false

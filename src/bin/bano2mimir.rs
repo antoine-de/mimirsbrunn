@@ -28,222 +28,96 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use failure::ensure;
-use lazy_static::lazy_static;
-use mimir::objects::Admin;
-use mimir::rubber::{IndexSettings, Rubber};
-use mimirsbrunn::addr_reader::{import_addresses_from_files, import_addresses_from_streams};
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::labels;
-use serde::{Deserialize, Serialize};
-use slog_scope::{info, warn};
-use std::collections::BTreeMap;
-use std::fs;
-use std::io::stdin;
-use std::ops::Deref;
-use std::path::PathBuf;
+use common::config::load_es_config_for;
+use futures::stream::StreamExt;
+use mimir2::adapters::secondary::elasticsearch;
+use mimir2::domain::ports::primary::list_documents::ListDocuments;
+use mimir2::domain::ports::secondary::remote::Remote;
+use mimirsbrunn::bano::Bano;
+use mimirsbrunn::settings::bano2mimir as settings;
+use places::addr::Addr;
+use places::admin::Admin;
+use slog_scope::warn;
+use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use structopt::StructOpt;
 
-type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
+    Settings { source: settings::Error },
 
-lazy_static! {
-    static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchConnection {
+        source: mimir2::domain::ports::secondary::remote::Error,
+    },
+
+    #[snafu(display("Execution Error {}", source))]
+    Execution { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Configuration Error {}", source))]
+    Configuration { source: common::config::Error },
+
+    #[snafu(display("Import Error {}", source))]
+    Import {
+        source: mimirsbrunn::addr_reader::Error,
+    },
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Bano {
-    pub id: String,
-    pub nb: String,
-    pub street: String,
-    pub zip: String,
-    pub city: String,
-    pub src: String,
-    pub lat: f64,
-    pub lon: f64,
-}
-
-impl Bano {
-    pub fn insee(&self) -> Result<&str, mimirsbrunn::Error> {
-        ensure!(self.id.len() >= 5, "id must be longer than 5 characters");
-        Ok(self.id[..5].trim_start_matches('0'))
-    }
-    pub fn fantoir(&self) -> Result<&str, mimirsbrunn::Error> {
-        ensure!(self.id.len() >= 10, "id must be longer than 10 characters");
-        Ok(&self.id[..10])
-    }
-    pub fn into_addr(
-        self,
-        admins_from_insee: &AdminFromInsee,
-        admins_geofinder: &AdminGeoFinder,
-        use_old_index_format: bool,
-    ) -> Result<mimir::Addr, mimirsbrunn::Error> {
-        let street_id = format!("street:{}", self.fantoir()?.to_string());
-        let mut admins = admins_geofinder.get(&geo::Coordinate {
-            x: self.lon,
-            y: self.lat,
-        });
-
-        // If we have an admin corresponding to the INSEE, we know
-        // that's the good one, thus we remove all the admins of its
-        // level found by the geofinder, and add our admin.
-        if let Some(admin) = admins_from_insee.get(self.insee()?) {
-            admins.retain(|a| a.level != admin.level);
-            admins.push(admin.clone());
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let opts = settings::Opts::from_args();
+    match opts.cmd {
+        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(run))
+            .await
+            .context(Execution),
+        settings::Command::Config => {
+            mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(config))
+                .await
+                .context(Execution)
         }
-
-        let country_codes = vec!["fr".to_owned()];
-
-        // to format the label of the addr/street, we use bano's city
-        // even if we already have found a city in the admin_geo_finder
-        let city = build_admin_from_bano_city(&self.city);
-        let zones_for_label_formatting = admins
-            .iter()
-            .filter(|a| a.is_city())
-            .map(|a| a.deref())
-            .chain(std::iter::once(&city));
-
-        let street_label = labels::format_street_label(
-            &self.street,
-            zones_for_label_formatting.clone(),
-            &country_codes,
-        );
-        let (addr_name, addr_label) = labels::format_addr_name_and_label(
-            &self.nb,
-            &self.street,
-            zones_for_label_formatting,
-            &country_codes,
-        );
-
-        let weight = admins
-            .iter()
-            .find(|a| a.level == 8)
-            .map_or(0., |a| a.weight);
-
-        let zip_codes: Vec<_> = self.zip.split(';').map(str::to_string).collect();
-        let coord = mimir::Coord::new(self.lon, self.lat);
-        let street = mimir::Street {
-            id: street_id,
-            name: self.street,
-            label: street_label,
-            administrative_regions: admins,
-            weight,
-            zip_codes: zip_codes.clone(),
-            coord,
-            approx_coord: None,
-            distance: None,
-            country_codes: country_codes.clone(),
-            context: None,
-        };
-        Ok(mimir::Addr {
-            id: format!(
-                "addr:{};{}{}",
-                self.lon,
-                self.lat,
-                if use_old_index_format {
-                    String::new()
-                } else {
-                    format!(
-                        ":{}",
-                        self.nb
-                            .replace(" ", "")
-                            .replace("\t", "")
-                            .replace("\r", "")
-                            .replace("\n", "")
-                            .replace("/", "-")
-                            .replace(".", "-")
-                            .replace(":", "-")
-                            .replace(";", "-")
-                    )
-                }
-            ),
-            name: addr_name,
-            label: addr_label,
-            house_number: self.nb,
-            street,
-            coord,
-            approx_coord: Some(coord.into()),
-            weight,
-            zip_codes,
-            distance: None,
-            country_codes,
-            context: None,
-        })
     }
 }
 
-fn build_admin_from_bano_city(city: &str) -> Admin {
-    mimir::Admin {
-        name: city.to_string(),
-        zone_type: Some(cosmogony::ZoneType::City),
-        ..Default::default()
-    }
+async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
+    let settings = settings::Settings::new(&opts).map_err(Box::new)?;
+    println!("{}", serde_json::to_string_pretty(&settings).unwrap());
+    Ok(())
 }
 
-#[derive(StructOpt, Debug)]
-struct Args {
-    /// Bano files. Can be either a directory or a file.
-    /// If this is left empty, addresses are read from standard input.
-    #[structopt(short = "i", long = "input", parse(from_os_str))]
-    input: Option<PathBuf>,
-    /// Elasticsearch parameters.
-    #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
-    )]
-    connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset", default_value = "fr")]
-    dataset: String,
-    /// Number of threads to use
-    #[structopt(
-        short = "t",
-        long = "nb-threads",
-        default_value = &DEFAULT_NB_THREADS
-    )]
-    nb_threads: usize,
-    /// Number of threads to use to insert into Elasticsearch. Note that Elasticsearch is not able
-    /// to handle values that are too high.
-    #[structopt(short = "T", long = "nb-insert-threads", default_value = "1")]
-    nb_insert_threads: usize,
-    /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "5")]
-    nb_shards: usize,
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
-    nb_replicas: usize,
-    /// If set to true, the number inside the address won't be used for the index generation,
-    /// therefore, different addresses with the same position will disappear.
-    #[structopt(long = "use-old-index-format")]
-    use_old_index_format: bool,
-}
+async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
+    let input = opts.input.clone(); // we save the input, because opts will be consumed by settings.
 
-fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
-    info!("importing bano into Mimir");
+    let settings = settings::Settings::new(&opts)
+        .context(Settings)
+        .map_err(Box::new)?;
 
-    let mut rubber =
-        Rubber::new(&args.connection_string).with_nb_insert_threads(args.nb_insert_threads);
+    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
+        .conn(settings.elasticsearch)
+        .await
+        .context(ElasticsearchConnection)
+        .map_err(Box::new)?;
 
-    let index_settings = IndexSettings {
-        nb_shards: args.nb_shards,
-        nb_replicas: args.nb_replicas,
-    };
-
-    // Fetch and index admins for `into_addr`
+    // TODO There might be an opportunity for optimization here:
+    // Lets say we're indexing a single bano department.... we don't need to retrieve
+    // the admins for other regions!
     let into_addr = {
-        let admins = rubber.get_all_admins().unwrap_or_else(|err| {
-            warn!(
-                "Administratives regions not found in es db for dataset {}. (error: {})",
-                &args.dataset, err
-            );
-            vec![]
-        });
-
-        let admins_geofinder = admins.iter().cloned().collect();
+        let admins: Vec<Admin> = match client.list_documents().await {
+            Ok(admins) => {
+                admins
+                    .map(|admin| admin.expect("could not parse admin"))
+                    .collect()
+                    .await
+            }
+            Err(err) => {
+                warn!("administratives regions not found in es db. {:?}", err);
+                Vec::new()
+            }
+        };
 
         let admins_by_insee = admins
-            .into_iter()
+            .iter()
+            .cloned()
             .filter(|a| !a.insee.is_empty())
             .map(|mut a| {
                 a.boundary = None; // to save some space we remove the admin boundary
@@ -251,47 +125,97 @@ fn run(args: Args) -> Result<(), mimirsbrunn::Error> {
             })
             .collect();
 
-        let use_old_index_format = args.use_old_index_format;
-        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder, use_old_index_format)
+        let admins_geofinder = admins.into_iter().collect();
+        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder)
     };
 
-    if let Some(input_path) = args.input {
-        // Import from file(s)
-        if input_path.is_dir() {
-            let paths: std::fs::ReadDir = fs::read_dir(&input_path)?;
-            import_addresses_from_files(
-                &mut rubber,
-                false,
-                args.nb_threads,
-                index_settings,
-                &args.dataset,
-                paths.map(|p| p.unwrap().path()),
-                into_addr,
-            )
-        } else {
-            import_addresses_from_files(
-                &mut rubber,
-                false,
-                args.nb_threads,
-                index_settings,
-                &args.dataset,
-                std::iter::once(input_path),
-                into_addr,
-            )
-        }
-    } else {
-        // Import from stdin
-        import_addresses_from_streams(
-            &mut rubber,
-            false,
-            args.nb_threads,
-            index_settings,
-            &args.dataset,
-            std::iter::once(stdin()),
-            into_addr,
-        )
-    }
+    let config = load_es_config_for::<Addr>(
+        opts.settings
+            .iter()
+            .filter_map(|s| {
+                if s.starts_with("elasticsearch.addr") {
+                    Some(s.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect(),
+        settings.container.dataset.clone(),
+    )
+    .context(Configuration)
+    .map_err(Box::new)?;
+
+    mimirsbrunn::addr_reader::import_addresses_from_input_path(&client, config, input, into_addr)
+        .await
+        .context(Import)
+        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
-fn main() {
-    mimirsbrunn::utils::launch_run(run);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::TryStreamExt;
+    use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
+    use mimir2::domain::ports::primary::list_documents::ListDocuments;
+    use mimir2::utils::docker;
+    use mimirsbrunn::settings::bano2mimir as settings;
+    use places::addr::Addr;
+    use serial_test::serial;
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_index_bano_file() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "sample-bano.csv",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let _res = mimirsbrunn::utils::launch::launch_async_args(run, opts).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_pool_url(&config.url)
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let addresses: Vec<Addr> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        assert_eq!(addresses.len(), 35);
+
+        let addr1 = addresses
+            .iter()
+            .find(|&addr| addr.name == "10 Place de la Mairie")
+            .unwrap();
+
+        assert_eq!(addr1.id, "addr:1.378886;43.668175:10");
+
+        let addr2 = addresses
+            .iter()
+            .find(|&addr| addr.name == "999 Rue Foncet")
+            .unwrap();
+
+        assert_eq!(addr2.zip_codes, vec!["06000", "06100", "06200", "06300"]);
+    }
 }

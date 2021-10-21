@@ -28,19 +28,55 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use config::Config;
+use osm_boundaries_utils::build_boundary;
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
+use std::collections::BTreeMap;
+use std::io;
+use std::ops::Deref;
+use std::path::PathBuf;
+use tracing::{info, instrument, warn};
+
 use super::osm_utils::get_way_coord;
 use super::osm_utils::make_centroid;
 use super::OsmPbfReader;
 use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, settings::osm2mimir::Settings, utils};
-use mimir::{rubber, Poi, PoiType};
-use osm_boundaries_utils::build_boundary;
-use serde::{Deserialize, Serialize};
-use slog_scope::{info, warn};
-use std::collections::BTreeMap;
-use std::error::Error;
-use std::io;
-use std::ops::Deref;
+use crate::labels;
+use common::document::ContainerDocument;
+use mimir2::{
+    domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
+};
+use places::{
+    coord::Coord,
+    i18n_properties::I18nProperties,
+    poi::{Poi, PoiType},
+    Address,
+};
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Obj Wrapper Error: {}", msg))]
+    ObjWrapperCreation { msg: String },
+
+    #[snafu(display("OsmPbfReader Extraction Error: {} [{}]", msg, source))]
+    OsmPbfReaderExtraction {
+        msg: String,
+        source: osmpbfreader::Error,
+    },
+
+    #[snafu(display("JSON Deserialization Error [{}]", source))]
+    JsonDeserialization { source: serde_json::Error },
+
+    #[snafu(display("Poi Validation Error: {}", msg))]
+    PoiValidation { msg: String },
+
+    #[snafu(display("Config Merge Error: {} [{}]", msg, source))]
+    ConfigMerge {
+        msg: String,
+        source: config::ConfigError,
+    },
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OsmTagsFilter {
@@ -62,21 +98,28 @@ pub struct PoiConfig {
     pub rules: Vec<Rule>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PoiWrapper {
+    pub pois: crate::settings::osm2mimir::Poi,
+}
+
 impl Default for PoiConfig {
     fn default() -> Self {
-        let default_settings: Settings = toml::from_str(include_str!("../../config/osm2mimir-default.toml"))
-            .expect("Could not read default osm2mimir settings for default poi types from osm2mimir-default.toml");
-        let config = default_settings
-            .poi
-            .and_then(|poi| poi.config)
-            .expect("osm2mimir-default.toml does not contain default poi types");
-        config.check().unwrap();
-        config
+        let base_path = env!("CARGO_MANIFEST_DIR");
+        let input_dir: PathBuf = [base_path, "config", "osm2mimir"].iter().collect();
+        let input_file = input_dir.join("default.toml");
+
+        Config::builder()
+            .add_source(config::File::from(input_file))
+            .build()
+            .expect("cannot build the default poi configuration")
+            .get("pois.config")
+            .expect("poi configuration")
     }
 }
 impl PoiConfig {
-    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Box<dyn Error>> {
-        let config: PoiConfig = serde_json::from_reader(r)?;
+    pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Error> {
+        let config: PoiConfig = serde_json::from_reader(r).context(JsonDeserialization)?;
         config.check()?;
         Ok(config)
     }
@@ -100,31 +143,30 @@ impl PoiConfig {
                     .find(|poi_type| poi_type.id == rule.poi_type_id)
             })
     }
-    pub fn check(&self) -> Result<(), Box<dyn Error>> {
+    pub fn check(&self) -> Result<(), Error> {
         use std::collections::BTreeSet;
         let mut ids = BTreeSet::<&str>::new();
         for poi_type in &self.poi_types {
             if !ids.insert(&poi_type.id) {
-                return Err(format!("poi_type_id {:?} present several times", poi_type.id).into());
+                return Err(Error::PoiValidation {
+                    msg: format!("poi_type_id {:?} present several times", poi_type.id),
+                });
             }
         }
         for rule in &self.rules {
             if !ids.contains(rule.poi_type_id.as_str()) {
-                return Err(
-                    format!("poi_type_id {:?} in a rule not declared", rule.poi_type_id).into(),
-                );
+                return Err(Error::PoiValidation {
+                    msg: format!("poi_type_id {:?} in a rule not declared", rule.poi_type_id),
+                });
             }
         }
         Ok(())
     }
 }
 
-fn make_properties(tags: &osmpbfreader::Tags) -> Vec<mimir::Property> {
+fn make_properties(tags: &osmpbfreader::Tags) -> BTreeMap<String, String> {
     tags.iter()
-        .map(|property| mimir::Property {
-            key: property.0.to_string(),
-            value: property.1.to_string(),
-        })
+        .map(|(tag, value)| (tag.as_str().into(), value.as_str().into()))
         .collect()
 }
 
@@ -133,7 +175,7 @@ fn parse_poi(
     obj_map: &BTreeMap<osmpbfreader::OsmId, osmpbfreader::OsmObj>,
     matcher: &PoiConfig,
     admins_geofinder: &AdminGeoFinder,
-) -> Option<mimir::Poi> {
+) -> Option<Poi> {
     let poi_type = match matcher.get_poi_type(osmobj.tags()) {
         Some(poi_type) => poi_type,
         None => {
@@ -147,7 +189,7 @@ fn parse_poi(
     let (id, coord) = match *osmobj {
         osmpbfreader::OsmObj::Node(ref node) => (
             format_poi_id("node", node.id.0),
-            mimir::Coord::new(node.lon(), node.lat()),
+            Coord::new(node.lon(), node.lat()),
         ),
         osmpbfreader::OsmObj::Way(ref way) => {
             (format_poi_id("way", way.id.0), get_way_coord(obj_map, way))
@@ -171,26 +213,26 @@ fn parse_poi(
         return None;
     }
 
-    let adms = admins_geofinder.get(&coord);
+    let admins = admins_geofinder.get(&coord);
     let zip_codes = match osmobj.tags().get("addr:postcode") {
         Some(val) if !val.is_empty() => vec![val.to_string()],
-        _ => utils::get_zip_codes_from_admins(&adms),
+        _ => places::admin::get_zip_codes_from_admins(&admins),
     };
-    let country_codes = utils::find_country_codes(adms.iter().map(|a| a.deref()));
-    Some(mimir::Poi {
+    let country_codes = places::admin::find_country_codes(admins.iter().map(|a| a.deref()));
+    Some(Poi {
         id,
         name: name.to_string(),
-        label: labels::format_poi_label(name, adms.iter().map(|a| a.deref()), &country_codes),
+        label: labels::format_poi_label(name, admins.iter().map(|a| a.deref()), &country_codes),
         coord,
         approx_coord: Some(coord.into()),
         zip_codes,
-        administrative_regions: adms,
+        administrative_regions: admins,
         weight: 0.,
         poi_type: poi_type.clone(),
         properties: make_properties(osmobj.tags()),
         address: None,
-        names: mimir::I18nProperties::default(),
-        labels: mimir::I18nProperties::default(),
+        names: I18nProperties::default(),
+        labels: I18nProperties::default(),
         distance: None,
         country_codes,
         context: None,
@@ -201,52 +243,118 @@ fn format_poi_id(osm_type: &str, id: i64) -> String {
     format!("poi:osm:{}:{}", osm_type, id)
 }
 
+// FIXME Should produce a stream
+#[instrument(skip(osm_reader, admins_geofinder))]
 pub fn pois(
-    pbf: &mut OsmPbfReader,
+    osm_reader: &mut OsmPbfReader,
     matcher: &PoiConfig,
     admins_geofinder: &AdminGeoFinder,
-) -> Vec<Poi> {
-    let objects = pbf.get_objs_and_deps(|o| matcher.is_poi(o.tags())).unwrap();
-    objects
+) -> Result<Vec<Poi>, Error> {
+    let objects = osm_reader
+        .get_objs_and_deps(|o| matcher.is_poi(o.tags()))
+        .context(OsmPbfReaderExtraction {
+            msg: String::from("Could not read objects and dependencies from pbf"),
+        })?;
+    Ok(objects
         .iter()
         .filter(|&(_, obj)| matcher.is_poi(obj.tags()))
         .filter_map(|(_, obj)| parse_poi(obj, &objects, matcher, admins_geofinder))
-        .collect()
+        .collect())
 }
 
-pub fn compute_poi_weight(pois_vec: &mut [Poi]) {
-    for poi in pois_vec {
-        for admin in &mut poi.administrative_regions {
-            if admin.is_city() {
-                poi.weight = admin.weight;
-                break;
+pub fn compute_weight(poi: Poi) -> Poi {
+    let weight = poi
+        .administrative_regions
+        .iter()
+        .find(|admin| admin.is_city())
+        .map(|admin| admin.weight);
+    match weight {
+        Some(weight) => Poi { weight, ..poi },
+        None => poi,
+    }
+}
+
+// FIXME Return a Result
+pub async fn add_address<T>(backend: &T, poi: Poi) -> Poi
+where
+    T: SearchDocuments,
+    T::Document: Into<serde_json::Value>,
+{
+    // FIXME 1km automagick
+    let reverse = mimir2::adapters::primary::common::dsl::build_reverse_query(
+        "1km",
+        poi.coord.lat(),
+        poi.coord.lon(),
+    );
+    let documents = backend
+        .search_documents(
+            vec![
+                places::addr::Addr::static_doc_type().to_string(),
+                places::street::Street::static_doc_type().to_string(),
+            ],
+            Query::QueryDSL(reverse),
+        )
+        .await
+        .map(|results| {
+            results
+                .into_iter()
+                .map(|json| serde_json::from_value::<Address>(json.into()).unwrap())
+                .collect::<Vec<Address>>()
+        });
+
+    // FIXME ladder code, should use Result<(), Error> and combinators
+    match documents {
+        // Ok(res) => match serde_json::from_value(res) {
+        Ok(addresses) => match addresses.into_iter().next() {
+            Some(a) => Poi {
+                address: Some(a),
+                ..poi
+            },
+            None => {
+                warn!(
+                    "Cannot find a closest address for poi {:?} at lat {} / lon {}",
+                    poi.id,
+                    poi.coord.lat(),
+                    poi.coord.lon()
+                );
+                poi
             }
-        }
+        },
+        Err(err) => {
+            warn!(
+                "Cannot deserialize reverse query for poi.id {:?}: {}",
+                poi.id,
+                err.to_string()
+            );
+            poi
+        } // },
+          // Err(err) => {
+          //     warn!(
+          //         "Cannot execute reverse query for poi {:?}: {}",
+          //         poi.id,
+          //         err.to_string()
+          //     );
+          // }
     }
-}
 
-pub fn add_address(pois_vec: &mut [Poi], rubber: &mut rubber::Rubber) {
-    for poi in pois_vec {
-        poi.address = rubber
-            .get_address(&poi.coord)
-            .ok()
-            .and_then(|addrs| addrs.into_iter().next())
-            .map(|addr| addr.address().unwrap());
-        if poi.address.is_none() {
-            warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
-        }
-    }
+    // poi.address = rubber
+    //     .get_address(&poi.coord)
+    //     .ok()
+    //     .and_then(|addrs| addrs.into_iter().next())
+    //     .map(|addr| addr.address().unwrap());
+    // if poi.address.is_none() {
+    //     warn!("The poi {:?} {:?} doesn't have address", poi.id, poi.name);
+    // }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::error::Error;
     use std::io;
     fn tags(v: &[(&str, &str)]) -> osmpbfreader::Tags {
         v.iter().map(|&(k, v)| (k.into(), v.into())).collect()
     }
-    fn from_str(s: &str) -> Result<PoiConfig, Box<dyn Error>> {
+    fn from_str(s: &str) -> Result<PoiConfig, Error> {
         PoiConfig::from_reader(io::Cursor::new(s))
     }
     #[test]

@@ -47,10 +47,18 @@ format: ## Check formatting of the code
 
 clippy: lint ## Check quality of the code (alias for 'lint')
 lint: ## Check quality of the code
-	cargo clippy --all-features --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
+	CLIPPY_EXTRA="--warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings"
+	cargo clippy --all-targets -- $$CLIPPY_EXTRA
+	cargo clippy --bins --all-features -- $$CLIPPY_EXTRA
 
 test: ## Launch all tests
-	cargo test --all-targets
+	cargo test --lib
+	cargo test --bins
+	cargo test --doc
+	cargo test --test end_to_end
+	cargo test --package mimir2
+	cargo test --package common
+	cargo test --package places
 
 .PHONY: version
 version: ## display version of bragi

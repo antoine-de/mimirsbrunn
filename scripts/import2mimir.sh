@@ -7,10 +7,13 @@ readonly SCRIPT_SRC="$(dirname "${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}")"
 readonly SCRIPT_DIR="$(cd "${SCRIPT_SRC}" >/dev/null 2>&1 && pwd)"
 readonly SCRIPT_NAME=$(basename "$0")
 
+
+DATA_DIR="${SCRIPT_DIR}/data"
+LOGS_DIR="${SCRIPT_DIR}/logs"
 APPLICATION="${SCRIPT_NAME%.*}"
 VERSION=0.0.1
 EXECUTION_DATE=`date '+%Y%m%d'`
-LOG_FILE="${APPLICATION}-${EXECUTION_DATE}.log"
+LOG_FILE="${LOGS_DIR}/${APPLICATION}-${EXECUTION_DATE}.log"
 CONFIG_FILE="${APPLICATION}.rc"
 QUIET=false
 DEFAULT_TASK="none"
@@ -109,10 +112,10 @@ check_arguments()
 {
     log_info "Checking arguments"
     # Check that the variable $ES_PORT is set and non-empty
-    [[ -z "${ES_PORT+xxx}" ]] &&
-    { log_error "The variable \$ES_PORT is not set. Make sure it is set in the configuration file."; usage; return 1; }
-    [[ -z "$ES_PORT" && "${ES_PORT+xxx}" = "xxx" ]] &&
-    { log_error "The variable \$ES_PORT is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
+    [[ -z "${ES_PORT_OFFSET+xxx}" ]] &&
+    { log_error "The variable \$ES_PORT_OFFSET is not set. Make sure it is set in the configuration file."; usage; return 1; }
+    [[ -z "$ES_PORT_OFFSET" && "${ES_PORT_OFFSET+xxx}" = "xxx" ]] &&
+    { log_error "The variable \$ES_PORT_OFFSET is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
 
     # Check that the variable $ES_INDEX is set and non-empty
     [[ -z "${ES_INDEX+xxx}" ]] &&
@@ -131,12 +134,6 @@ check_arguments()
     { log_error "The variable \$ES_IMAGE is not set. Make sure it is set in the configuration file."; usage; return 1; }
     [[ -z "$ES_IMAGE" && "${ES_IMAGE+xxx}" = "xxx" ]] &&
     { log_error "The variable \$ES_IMAGE is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
-
-    # Check that the variable $ES_NAME is set and non-empty
-    [[ -z "${ES_NAME+xxx}" ]] &&
-    { log_error "The variable \$ES_NAME is not set. Make sure it is set in the configuration file."; usage; return 1; }
-    [[ -z "$ES_NAME" && "${ES_NAME+xxx}" = "xxx" ]] &&
-    { log_error "The variable \$ES_NAME is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
 
     # Check that the variable $ES_NAME is set and non-empty
     [[ -z "${ES_NAME+xxx}" ]] &&
@@ -181,25 +178,29 @@ search_in()
 restart_docker_es() {
   log_info "Checking docker ${ES_NAME}"
   local DOCKER_NAMES=`docker ps --all --format '{{.Names}}'`
-  if [[ ${DOCKER_NAMES} =~ ${ES_NAME} ]]; then
-    log_info "docker container "${ES_NAME}" is running"
-    docker stop es > /dev/null 2> /dev/null
-    log_info "docker container "${ES_NAME}" stopped"
-    docker rm es > /dev/null 2> /dev/null
-    log_info "docker container "${ES_NAME}" removed"
+  if [[ $DOCKER_NAMES =~ (^|[[:space:]])$ES_NAME($|[[:space:]]) ]]; then
+    log_info "docker container ${ES_NAME} is running => stopping"
+    docker stop ${ES_NAME} > /dev/null 2>&1
+    log_info "docker container ${ES_NAME} stopped => removing"
+    docker rm ${ES_NAME} > /dev/null 2>&1
+    log_info "docker container ${ES_NAME} removed"
   fi
-  log_info "Starting docker container: ${ES_NAME}"
-  docker run -d --name ${ES_NAME} -p ${ES_PORT}:${ES_PORT} ${ES_IMAGE} > /dev/null 2> /dev/null
+  ES_PORT_1=$((9200+ES_PORT_OFFSET))
+  ES_PORT_2=$((9300+ES_PORT_OFFSET))
+  log_info "Starting docker container ${ES_NAME} on ports ${ES_PORT_1} and ${ES_PORT_2}"
+  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 -e "discovery.type=single-node" -d ${ES_IMAGE} > /dev/null 2>&1
+  log_info "Waiting for Elasticsearch to be up and running"
+  sleep 15
   return $?
 }
 
 import_templates() {
   log_info "Importing templates into ${ES_NAME}"
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/addr_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/poi_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/stop_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/admin_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://localhost:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/street_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/addr_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/poi_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/stop_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/admin_settings.json > /dev/null 2> /dev/null
+  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/street_settings.json > /dev/null 2> /dev/null
   return 0
 }
 
@@ -212,12 +213,15 @@ generate_cosmogony() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   local OUTPUT="${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz"
   [[ -f "${INPUT}" ]] || { log_error "cosmogony cannot run: Missing input ${INPUT}"; return 1; }
-  "${COSMOGONY}" --country-code FR --input "${INPUT}" --output "${OUTPUT}" > /dev/null 2> /dev/null
+  if [[ -f "${OUTPUT}" ]]; then
+      log_info "${OUTPUT} already exists, skipping cosmogony generation"
+      return 0
+  fi
+  "${COSMOGONY}" --country-code FR --input "${INPUT}" --output "${OUTPUT}"
   [[ $? != 0 ]] && { log_error "Could not generate cosmogony data for ${OSM_REGION}. Aborting"; return 1; }
   return 0
 }
 
-# Pre requisite: DATA_DIR exists.
 import_cosmogony() {
   log_info "Importing cosmogony into mimir"
   local COSMOGONY2MIMIR="${MIMIR_DIR}/target/release/cosmogony2mimir"
@@ -225,12 +229,11 @@ import_cosmogony() {
   local INPUT="${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz"
   [[ -f "${INPUT}" ]] || { log_error "cosmogony2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${COSMOGONY2MIMIR}" --connection-string "http://localhost:${ES_PORT}/${ES_INDEX}" --input "${INPUT}" > /dev/null 2> /dev/null
+  "${COSMOGONY2MIMIR}" -s "elasticsearch.url='http://${ES_HOST}:$((9200+ES_PORT_OFFSET))'" --input "${INPUT}" --config-dir "${SCRIPT_DIR}/../config" run
   [[ $? != 0 ]] && { log_error "Could not import cosmogony data from ${DATA_DIR}/cosmogony/${OSM_REGION}.json.gz into mimir. Aborting"; return 1; }
   return 0
 }
 
-# Pre requisite: DATA_DIR exists.
 import_osm() {
   log_info "Importing osm into mimir"
   local OSM2MIMIR="${MIMIR_DIR}/target/release/osm2mimir"
@@ -238,15 +241,18 @@ import_osm() {
   local INPUT="${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf"
   [[ -f "${INPUT}" ]] || { log_error "osm2mimir cannot run: Missing input ${INPUT}"; return 1; }
 
-  "${OSM2MIMIR}" --import-way true --import-poi true --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
+  "${OSM2MIMIR}" -s "elasticsearch.url='http://${ES_HOST}:$((9200+ES_PORT_OFFSET))'" -s "pois.import=true" -s "streets.import=true" --input "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" --config-dir "${SCRIPT_DIR}/../config" run
   [[ $? != 0 ]] && { log_error "Could not import OSM PBF data for ${OSM_REGION} into mimir. Aborting"; return 1; }
   return 0
 }
 
-# Pre requisite: DATA_DIR exists.
 download_osm() {
-  log_info "Downloading osm into mimir for ${OSM_REGION}"
-  mkdir -p "$DATA_DIR/osm"
+  log_info "Downloading OSM for ${OSM_REGION}"
+  mkdir -p "${DATA_DIR}/osm"
+  if [[ -f "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf" ]]; then
+    log_info "${DATA_DIR}/osm/${OSM_REGION}-latest.osm.pbf already exists, skipping download"
+    return 0
+  fi
   wget --quiet --directory-prefix="${DATA_DIR}/osm" "https://download.geofabrik.de/europe/france/${OSM_REGION}-latest.osm.pbf"
   [[ $? != 0 ]] && { log_error "Could not download OSM PBF data for ${OSM_REGION}. Aborting"; return 1; }
   return 0
@@ -257,7 +263,7 @@ import_ntfs() {
   log_info "Importing ntfs into mimir"
   local NTFS2MIMIR="${MIMIR_DIR}/target/release/ntfs2mimir"
   command -v "${NTFS2MIMIR}" > /dev/null 2>&1  || { log_error "osm2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  "${NTFS2MIMIR}" --input "${DATA_DIR}/ntfs" -c "http://localhost:${ES_PORT}/${ES_INDEX}" > /dev/null 2> /dev/null
+  "${NTFS2MIMIR}" -s "elasticsearch.url='http://${ES_HOST}:$((9200+ES_PORT_OFFSET))'" --input "${DATA_DIR}/ntfs" --config-dir "${SCRIPT_DIR}/../config" run
   [[ $? != 0 ]] && { log_error "Could not import NTFS data from ${DATA_DIR}/ntfs into mimir. Aborting"; return 1; }
   return 0
 }
@@ -265,15 +271,15 @@ import_ntfs() {
 # Pre requisite: DATA_DIR exists.
 download_ntfs() {
   log_info "Downloading ntfs for ${NTFS_REGION}"
-  mkdir -p "$DATA_DIR/ntfs"
-  wget --quiet -O "${DATA_DIR}/${NTFS_REGION}.csv" "https://navitia.opendatasoft.com/explore/dataset/${NTFS_REGION}/download/?format=csv"
+  mkdir -p "${DATA_DIR}/ntfs"
+  wget --quiet -O "${DATA_DIR}/${NTFS_REGION}.csv" "https://navitia.opendatasoft.com/explore/dataset/${NTFS_REGION}/download/?format=csv" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not download NTFS CSV data for ${NTFS_REGION}. Aborting"; return 1; }
   NTFS_URL=`cat ${DATA_DIR}/${NTFS_REGION}.csv | grep NTFS | cut -d';' -f 2`
   [[ $? != 0 ]] && { log_error "Could not find NTFS URL. Aborting"; return 1; }
-  wget --quiet --content-disposition --directory-prefix="${DATA_DIR}/ntfs" "${NTFS_URL}"
+  wget --quiet --content-disposition --directory-prefix="${DATA_DIR}/ntfs" "${NTFS_URL}" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not download NTFS from ${NTFS_URL}. Aborting"; return 1; }
-  rm "${DATA_DIR}/${NTFS_REGION}.csv"
-  unzip -d "${DATA_DIR}/ntfs" "${DATA_DIR}/ntfs/*.zip"
+  rm "${DATA_DIR}/${NTFS_REGION}.csv" > /dev/null 2>&1
+  unzip -o -d "${DATA_DIR}/ntfs" "${DATA_DIR}/ntfs/*.zip" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not unzip NTFS from ${DATA_DIR}/ntfs. Aborting"; return 1; }
   return 0
 }
@@ -283,20 +289,35 @@ import_bano() {
   log_info "Importing bano into mimir"
   local BANO2MIMIR="${MIMIR_DIR}/target/release/bano2mimir"
   command -v "${BANO2MIMIR}" > /dev/null 2>&1  || { log_error "bano2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  "${BANO2MIMIR}" --connection-string "http://localhost:${ES_PORT}/${ES_INDEX}" --input "${DATA_DIR}/bano" > /dev/null 2> /dev/null
+  # For Bano, we import the entire content of the directory
+  import_bano_region "${DATA_DIR}/bano"
   [[ $? != 0 ]] && { log_error "Could not import bano from ${DATA_DIR}/bano into mimir. Aborting"; return 1; }
   return 0
 }
 
 # Pre requisite: DATA_DIR exists.
+# BANO2MIMIR exists
+# $1: bano csv file for one region
+import_bano_region() {
+  local BANO_FILE="${1}"
+  log_info "- Importing ${BANO_FILE} into mimir"
+  "${BANO2MIMIR}" -s "elasticsearch.url='http://${ES_HOST}:$((9200+ES_PORT_OFFSET))'" --input "${BANO_FILE}" --config-dir "${SCRIPT_DIR}/../config" run
+  [[ $? != 0 ]] && { log_error "Could not import bano from ${BANO_FILE} into mimir. Aborting"; return 1; }
+  return 0
+}
+
+# Pre requisite: DATA_DIR exists.
 download_bano() {
-  log_info "Downloading bano"
-  mkdir -p "$DATA_DIR/bano"
-  for REGION in ${BANO_REGION}
-  do
+  log_info "Downloading bano:"
+  mkdir -p "${DATA_DIR}/bano"
+  OIFS=$IFS
+  IFS=" "
+  read -r -a BANO_ARRAY <<< "${BANO_REGION}"
+  for REGION in "${BANO_ARRAY[@]}"; do
     download_bano_region_csv "${REGION}" "${DATA_DIR}/bano"
     [[ $? != 0 ]] && { log_error "Could not download CSV data for ${REGION}. Aborting"; return 1; }
   done
+  IFS=$OIFS
   return 0
 }
 
@@ -307,7 +328,7 @@ download_bano_region_csv() {
   local DEPT=$(printf %02d $1)
   local FILENAME="bano-${DEPT}.csv"
   local DOWNLOAD_DIR="${2}"
-  log_info "Downloading ${FILENAME}"
+  log_info "- Downloading ${FILENAME}"
   wget http://bano.openstreetmap.fr/data/${FILENAME} --timestamping --directory-prefix=${DOWNLOAD_DIR} -c --no-verbose --quiet
   return $?
 }
@@ -331,6 +352,14 @@ done
 { echo -e "\e[91m config filename unset" >&2; echo "\e[0m" >&2; exit 1; }
 [[ -z "$CONFIG_FILE" && "${CONFIG_FILE+xxx}" = "xxx" ]] &&
 { echo -e "\e[91m config filename set but empty" >&2; echo "\e[0m" >&2; exit 1; }
+
+if [[ ! -d "${LOGS_DIR}" ]]; then
+  mkdir "${LOGS_DIR}"
+  if [[ $? != 0 ]]; then
+    echo "Cannot create a log directory at ${LOGS_DIR}. Aborting"
+    exit 1
+  fi
+fi
 
 # Source $CONFIG_FILE
 if [[ -f ${CONFIG_FILE} ]]; then
@@ -356,9 +385,6 @@ check_environment
 restart_docker_es 9200
 [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
 
-import_templates
-[[ $? != 0 ]] && { log_error "Could not import templates into elasticsearch. Aborting"; exit 1; }
-
 # The order in which the import are done into mimir is important!
 # First we generate the admin regions with cosmogony
 # Second we import the addresses with bano
@@ -383,6 +409,6 @@ import_bano
 
 import_osm
 [[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
-
+ 
 import_ntfs
 [[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }
