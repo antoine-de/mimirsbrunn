@@ -69,6 +69,62 @@ pub fn steps() -> Steps<State> {
         }),
     );
 
+    steps.then_regex_async(
+        "he finds \"(.*)\", \"(.*)\", \"(.*)\", and \"(.*)\" in the first \"(.*)\" results",
+        t!(|mut state, ctx| {
+            let house = Some(ctx.matches[1].clone()).and_then(|house| {
+                if house.is_empty() {
+                    None
+                } else {
+                    Some(house)
+                }
+            });
+            let street = Some(ctx.matches[2].clone()).and_then(|street| {
+                if street.is_empty() {
+                    None
+                } else {
+                    Some(street)
+                }
+            });
+            let city = Some(ctx.matches[3].clone()).and_then(|city| {
+                if city.is_empty() {
+                    None
+                } else {
+                    Some(city)
+                }
+            });
+            let postcode = Some(ctx.matches[4].clone()).and_then(|postcode| {
+                if postcode.is_empty() {
+                    None
+                } else {
+                    Some(postcode)
+                }
+            });
+            let limit = ctx.matches[5].clone();
+            let limit = if limit.is_empty() {
+                1
+            } else {
+                limit.parse().expect("limit as usize")
+            };
+
+            state
+                .execute(
+                    HasAddress {
+                        house,
+                        street,
+                        city,
+                        postcode,
+                        limit,
+                    },
+                    &ctx,
+                )
+                .await
+                .expect("failed to find document");
+
+            state
+        }),
+    );
+
     steps
 }
 
@@ -138,6 +194,52 @@ impl Step for HasDocument {
             .expect("document was not found in search results");
 
         assert!(rank < self.max_rank);
+        Ok(StepStatus::Done)
+    }
+}
+
+/// Check if given document is in the output.
+///
+/// It assumes that a Search has already been performed before.
+pub struct HasAddress {
+    house: Option<String>,
+    street: Option<String>,
+    city: Option<String>,
+    postcode: Option<String>,
+    limit: usize,
+}
+
+#[async_trait(?Send)]
+impl Step for HasAddress {
+    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
+        let (search, _) = state
+            .steps_for::<Search>()
+            .next_back()
+            .expect("the user must perform a search before checking results");
+
+        let (rank, _) = (search.results.iter().enumerate())
+            .find(|(_, doc)| {
+                if let Some(house) = &self.house {
+                    if house != doc["house_number"].as_str().unwrap() {
+                        return false;
+                    }
+                }
+                if let Some(street) = &self.street {
+                    if street != doc["street"]["name"].as_str().unwrap() {
+                        return false;
+                    }
+                }
+                // FIXME Need city check. Maybe add a city method to an address
+                // if let Some(city) = self.street {
+                //     if street != doc["street"]["name"] {
+                //         return false;
+                //     }
+                // }
+                true
+            })
+            .expect("document was not found in search results");
+
+        assert!(rank < self.limit);
         Ok(StepStatus::Done)
     }
 }
