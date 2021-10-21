@@ -4,6 +4,12 @@
 [container]
   dataset = "fr"
 
+# This section is ignored if mimirsbrunn is compiled without the `db-storage`
+# option.
+[database]
+  file = "/tmp/osm_db.tmp"
+  buffer_size = 50_000
+
 [pois]
   import = false
   [pois.config]

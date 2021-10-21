@@ -321,8 +321,8 @@ pub enum ObjWrapper {
 
 #[cfg(feature = "db-storage")]
 impl<'a> ObjWrapper<'a> {
-    pub fn new(db: &'a Option<Database>) -> Result<ObjWrapper<'a>, Error> {
-        Ok(if let Some(ref db) = db {
+    pub fn new(db: Option<&'a Database>) -> Result<ObjWrapper<'a>, Error> {
+        Ok(if let Some(db) = db {
             info!("Running with Db storage");
             ObjWrapper::Db(Db::new(&db.file, db.buffer_size)?)
         } else {

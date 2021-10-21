@@ -81,9 +81,9 @@ pub fn streets(
     osm_reader: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
     exclusions: &StreetExclusion,
-    database: Option<crate::settings::osm2mimir::Database>,
+    database: Option<&crate::settings::osm2mimir::Database>,
 ) -> Result<Vec<places::street::Street>, Error> {
-    let objs_map = ObjWrapper::new(&database).context(ObjWrapperCreation)?;
+    let objs_map = ObjWrapper::new(database).context(ObjWrapperCreation)?;
     inner_streets(osm_reader, admins_geofinder, exclusions, objs_map)
 }
 #[cfg(not(feature = "db-storage"))]
