@@ -14,15 +14,15 @@ use elasticsearch::{
     Error as ElasticsearchError,
 };
 use futures::stream::TryStreamExt;
+use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
 
 use crate::adapters::secondary::elasticsearch::remote;
 use crate::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
-
-const DOCKER_ES_VERSION: &str = "7.13.0";
 
 pub async fn initialize() -> Result<(), Error> {
     initialize_with_param(true).await
@@ -46,11 +46,15 @@ pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
     let is_available = docker.is_container_available().await?;
     if !is_available {
         return Err(Error::Misc {
-            msg: format!("Cannot get docker {} available", docker.docker_image),
+            msg: format!(
+                "Cannot get docker {} available",
+                docker.docker_config.container.name
+            ),
         });
     }
-    let _client = remote::connection_pool_url(&docker.config.url)
-        .conn(ElasticsearchStorageConfig::default_testing())
+    let config = ElasticsearchStorageConfig::default_testing();
+    let _client = remote::connection_pool_url(&config.url)
+        .conn(config)
         .await
         .context(ElasticsearchConnection)?;
     Ok(())
@@ -83,23 +87,105 @@ pub enum Error {
     Misc { msg: String },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DockerVersion {
+    pub major: usize,
+    pub minor: usize,
+}
+
+impl From<DockerVersion> for bollard::ClientVersion {
+    fn from(version: DockerVersion) -> bollard::ClientVersion {
+        bollard::ClientVersion {
+            major_version: version.major,
+            minor_version: version.minor,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerConfig {
+    pub image: String,
+    pub name: String,
+    pub memory: i64,
+    pub vars: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DockerConfig {
+    pub container: ContainerConfig,
+    pub timeout: u64,
+    pub version: DockerVersion,
+    pub container_wait: u64,
+    pub elasticsearch_wait: u64,
+    pub cleanup_wait: u64,
+}
+
+impl Default for DockerConfig {
+    /// We retrieve the docker configuration from ./config/elasticsearch/default.
+    fn default() -> Self {
+        let config = common::config::config_from(
+            &PathBuf::from("config"),
+            &["elasticsearch"],
+            None,
+            None,
+            None,
+        );
+
+        config
+            .expect("cannot build the configuration for testing from config")
+            .get("elasticsearch")
+            .expect("expected elasticsearch section in configuration from config")
+    }
+}
+
 pub struct DockerWrapper {
     ports: Vec<(u32, u32)>, // list of ports to publish (host port, container port)
-    docker_image: String,
-    container_name: String, // ip: String,
-    config: ElasticsearchStorageConfig,
+    docker_config: DockerConfig,
+}
+
+impl DockerConfig {
+    pub fn default_testing() -> Self {
+        let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../config");
+
+        let config = common::config::config_from(
+            config_dir.as_path(),
+            &["docker"],
+            "testing",
+            "MIMIR_TEST",
+            None,
+        );
+
+        config
+            .unwrap_or_else(|_| {
+                panic!(
+                    "cannot build the configuration for testing from {}",
+                    config_dir.display(),
+                )
+            })
+            .get("docker")
+            .unwrap_or_else(|_| {
+                panic!(
+                    "expected docker section in configuration from {}",
+                    config_dir.display(),
+                )
+            })
+    }
+    pub fn connect(&self) -> Result<Docker, Error> {
+        Docker::connect_with_unix(
+            "unix:///var/run/docker.sock",
+            self.timeout,
+            &self.version.clone().into(),
+        )
+        .context(DockerConnection)
+    }
 }
 
 impl Default for DockerWrapper {
     fn default() -> Self {
-        let config = ElasticsearchStorageConfig::default_testing();
+        let elasticsearch_config = ElasticsearchStorageConfig::default_testing();
+        let docker_config = DockerConfig::default_testing();
 
-        let docker_image = format!(
-            "docker.elastic.co/elasticsearch/elasticsearch:{}",
-            DOCKER_ES_VERSION
-        );
-
-        let port = config
+        let port = elasticsearch_config
             .url
             .port()
             .expect("expected port in elasticsearch url");
@@ -107,9 +193,7 @@ impl Default for DockerWrapper {
         let offset: u32 = (port - 9000).into();
         DockerWrapper {
             ports: vec![(9000 + offset, 9200), (9300 + offset, 9300)],
-            docker_image,
-            container_name: String::from("mimir-test-elasticsearch"),
-            config,
+            docker_config,
         }
     }
 }
@@ -119,25 +203,16 @@ impl DockerWrapper {
         DockerWrapper::default()
     }
 
-    // Returns true if the container self.container_name is running
-    // TODO Probably should run a check on Elasticsearch status
+    // Returns true if the container self.docker_config.container.name is running
     pub async fn is_container_available(&mut self) -> Result<bool, Error> {
-        let docker = Docker::connect_with_unix(
-            "unix:///var/run/docker.sock",
-            120,
-            &bollard::ClientVersion {
-                major_version: 1,
-                minor_version: 24,
-            },
-        )
-        .context(DockerConnection)?;
+        let docker = self.docker_config.connect()?;
 
         let docker = &docker.negotiate_version().await.context(Version)?;
 
         docker.version().await.context(Version)?;
 
         let mut filters = HashMap::new();
-        filters.insert("name", vec![self.container_name.as_str()]);
+        filters.insert("name", vec![self.docker_config.container.name.as_str()]);
 
         let options = Some(ListContainersOptions {
             all: false, // only running containers
@@ -156,22 +231,14 @@ impl DockerWrapper {
     // If the container is already created, then start it.
     // If it is not created, then create it and start it.
     pub async fn create_container(&mut self) -> Result<(), Error> {
-        let docker = Docker::connect_with_unix(
-            "unix:///var/run/docker.sock",
-            120,
-            &bollard::ClientVersion {
-                major_version: 1,
-                minor_version: 24,
-            },
-        )
-        .context(DockerConnection)?;
+        let docker = self.docker_config.connect()?;
 
         let docker = docker.negotiate_version().await.context(Version)?;
 
         let _ = docker.version().await.context(Version);
 
         let mut filters = HashMap::new();
-        filters.insert("name", vec![self.container_name.as_str()]);
+        filters.insert("name", vec![self.docker_config.container.name.as_str()]);
 
         let options = Some(ListContainersOptions {
             all: true, // only running containers
@@ -186,7 +253,7 @@ impl DockerWrapper {
 
         if containers.is_empty() {
             let options = CreateContainerOptions {
-                name: &self.container_name,
+                name: &self.docker_config.container.name,
             };
 
             let mut port_bindings = HashMap::new();
@@ -202,7 +269,7 @@ impl DockerWrapper {
 
             let host_config = HostConfig {
                 port_bindings: Some(port_bindings),
-                memory: Some(1_000_000_000), // limit docker container to use 1GB of ram
+                memory: Some(self.docker_config.container.memory * 1024 * 1024),
                 ..Default::default()
             };
 
@@ -212,20 +279,26 @@ impl DockerWrapper {
                 exposed_ports.insert(format!("{}/tcp", container), v);
             });
 
-            let env_vars = vec![String::from("discovery.type=single-node")];
+            let env = Some(self.docker_config.container.vars.clone()).and_then(|vars| {
+                if vars.is_empty() {
+                    None
+                } else {
+                    Some(vars)
+                }
+            });
 
             let config = BollardConfig {
-                image: Some(self.docker_image.clone()),
+                image: Some(self.docker_config.container.image.clone()),
                 exposed_ports: Some(exposed_ports),
                 host_config: Some(host_config),
-                env: Some(env_vars),
+                env,
                 ..Default::default()
             };
 
             docker
                 .create_image(
                     Some(CreateImageOptions {
-                        from_image: self.docker_image.clone(),
+                        from_image: self.docker_config.container.image.clone(),
                         ..Default::default()
                     }),
                     None,
@@ -240,14 +313,17 @@ impl DockerWrapper {
                 .await
                 .context(DockerEngine)?;
 
-            sleep(Duration::from_secs(5)).await;
+            sleep(Duration::from_millis(self.docker_config.container_wait)).await;
         }
         let _ = docker
-            .start_container(&self.container_name, None::<StartContainerOptions<String>>)
+            .start_container(
+                &self.docker_config.container.name,
+                None::<StartContainerOptions<String>>,
+            )
             .await
             .context(DockerEngine)?;
 
-        sleep(Duration::from_secs(30)).await;
+        sleep(Duration::from_millis(self.docker_config.elasticsearch_wait)).await;
 
         Ok(())
     }
@@ -288,7 +364,7 @@ impl DockerWrapper {
             .await
             .context(ElasticsearchClient)?;
 
-        sleep(Duration::from_secs(5)).await;
+        sleep(Duration::from_millis(self.docker_config.cleanup_wait)).await;
         Ok(())
     }
 
@@ -301,19 +377,14 @@ impl DockerWrapper {
             );
             return;
         }
-        let docker = Docker::connect_with_unix(
-            "unix:///var/run/docker.sock",
-            120,
-            &bollard::ClientVersion {
-                major_version: 1,
-                minor_version: 24,
-            },
-        )
-        .expect("docker connection");
+        let docker = self
+            .docker_config
+            .connect()
+            .expect("docker engine connection");
 
         let options = Some(bollard::container::StopContainerOptions { t: 0 });
         docker
-            .stop_container(&self.container_name, options)
+            .stop_container(&self.docker_config.container.name, options)
             .await
             .expect("stop container");
 
@@ -323,7 +394,7 @@ impl DockerWrapper {
         });
 
         let _res = docker
-            .remove_container(&self.container_name, options)
+            .remove_container(&self.docker_config.container.name, options)
             .await
             .expect("remove container");
     }
