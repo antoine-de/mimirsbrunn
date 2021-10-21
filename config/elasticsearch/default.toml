@@ -12,3 +12,9 @@ scroll_chunk_size = 1000
 
 # Liveness of the PIT while performing a `list_documents`.
 scroll_pit_alive = "1m"
+
+# Max of concurrent requests during insertion.
+insertion_concurrent_requests = 8
+
+# Number of document per request during insertion.
+insertion_chunk_size = 100

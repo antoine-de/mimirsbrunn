@@ -32,6 +32,8 @@ pub struct ElasticsearchStorageConfig {
     pub version_req: String,
     pub scroll_chunk_size: u64,
     pub scroll_pit_alive: String,
+    pub insertion_concurrent_requests: usize,
+    pub insertion_chunk_size: usize,
 }
 
 impl Default for ElasticsearchStorageConfig {
