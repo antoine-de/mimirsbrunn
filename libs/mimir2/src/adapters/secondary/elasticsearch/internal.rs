@@ -31,9 +31,6 @@ use crate::domain::model::{
 };
 use common::document::Document;
 
-/// Number of document inserted at once in indexes
-const INSERT_CHUNK_SIZE: usize = 100;
-
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
@@ -454,9 +451,8 @@ impl ElasticsearchStorage {
         let stats = Arc::new(Mutex::new(InsertStats::default()));
 
         documents
-            .chunks(INSERT_CHUNK_SIZE) // FIXME chunck size should be a variable.
-            .for_each_concurrent(32, |chunk| {
-                // FIXME 32 automagick!!??
+            .chunks(self.config.insertion_chunk_size)
+            .for_each_concurrent(self.config.insertion_concurrent_requests, |chunk| {
                 let stats = stats.clone();
                 let index = index.clone();
                 let client = self.clone();
