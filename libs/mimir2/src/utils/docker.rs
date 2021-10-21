@@ -17,7 +17,6 @@ use futures::stream::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
 
@@ -171,16 +170,11 @@ impl DockerConfig {
                 )
             })
     }
-}
-
-// This is to create a new connection to the docker engine from a docker configuration.
-impl TryFrom<DockerConfig> for Docker {
-    type Error = Error;
-    fn try_from(config: DockerConfig) -> Result<Self, Self::Error> {
+    pub fn connect(&self) -> Result<Docker, Error> {
         Docker::connect_with_unix(
             "unix:///var/run/docker.sock",
-            config.timeout,
-            &config.version.into(),
+            self.timeout,
+            &self.version.clone().into(),
         )
         .context(DockerConnection)
     }
@@ -211,7 +205,7 @@ impl DockerWrapper {
 
     // Returns true if the container self.docker_config.container.name is running
     pub async fn is_container_available(&mut self) -> Result<bool, Error> {
-        let docker = Docker::try_from(self.docker_config.clone())?;
+        let docker = self.docker_config.connect()?;
 
         let docker = &docker.negotiate_version().await.context(Version)?;
 
@@ -237,7 +231,7 @@ impl DockerWrapper {
     // If the container is already created, then start it.
     // If it is not created, then create it and start it.
     pub async fn create_container(&mut self) -> Result<(), Error> {
-        let docker = Docker::try_from(self.docker_config.clone())?;
+        let docker = self.docker_config.connect()?;
 
         let docker = docker.negotiate_version().await.context(Version)?;
 
@@ -275,7 +269,7 @@ impl DockerWrapper {
 
             let host_config = HostConfig {
                 port_bindings: Some(port_bindings),
-                memory: Some(self.docker_config.container.memory * 1024 * 1024), // limit docker container to use 1GB of ram
+                memory: Some(self.docker_config.container.memory * 1024 * 1024),
                 ..Default::default()
             };
 
@@ -383,7 +377,10 @@ impl DockerWrapper {
             );
             return;
         }
-        let docker = Docker::try_from(self.docker_config.clone()).expect("docker connection");
+        let docker = self
+            .docker_config
+            .connect()
+            .expect("docker engine connection");
 
         let options = Some(bollard::container::StopContainerOptions { t: 0 });
         docker
