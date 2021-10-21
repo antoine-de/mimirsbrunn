@@ -91,7 +91,7 @@ You also want to verify that the version of Debian you specify is supported! Che
 `docker/Dockerfile_bragi` for that. Your `docker` command will look like:
 
 ```
-docker build --build-arg DEBIAN_VERSION=buster --build-arg RUST_VERSION=1.47 ...
+DOCKER_BUILDKIT=1 docker build --build-arg DEBIAN_VERSION=buster --build-arg RUST_VERSION=1.55 ...
 ```
 
 Alternatively, there is a Makefile that can assist you with several tasks. See `make help` for

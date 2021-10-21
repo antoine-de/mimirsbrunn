@@ -29,18 +29,26 @@ WORKDIR /home/mimirsbrunn
 
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
-
-# TODO:
-# Build dummy files to run `cargo build` and cache dependencies ?
-
 COPY ./src ./src
 COPY ./libs ./libs
 COPY ./config ./config
 COPY ./docker ./docker
 COPY ./build.rs ./build.rs
 COPY ./tests ./tests
+COPY ./benches ./benches
 
-RUN cargo build --release --bins --locked --features db-storage
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/home/mimirsbrunn/target  \
+    cargo build --release --bins --locked --features db-storage
+
+# Extract binaries from build cache
+RUN mkdir bin
+RUN --mount=type=cache,target=/home/mimirsbrunn/target \
+    cp target/release/osm2mimir                        \
+       target/release/cosmogony2mimir                  \
+       target/release/bano2mimir                       \
+       target/release/openaddresses2mimir              \
+       bin/
 
 ARG DEBIAN_VERSION
 
@@ -66,10 +74,8 @@ else \
   echo "Unsupported debian version '$DEBIAN_VERSION'"; \
 fi
 
-RUN mkdir /etc/mimirsbrunn
+COPY --from=builder /home/mimirsbrunn/bin/* /usr/bin
+COPY --from=builder /home/mimirsbrunn/config /etc/mimirsbrunn
+COPY docker/run_with_default_config.sh .
 
-COPY --from=builder /home/mimirsbrunn/target/release/osm2mimir /usr/bin/osm2mimir
-COPY --from=builder /home/mimirsbrunn/target/release/cosmogony2mimir /usr/bin/cosmogony2mimir
-COPY --from=builder /home/mimirsbrunn/target/release/bano2mimir /usr/bin/bano2mimir
-COPY --from=builder /home/mimirsbrunn/target/release/openaddresses2mimir /usr/bin/openaddresses2mimir
-COPY --from=builder /home/mimirsbrunn/config/* /etc/mimirsbrunn/
+ENTRYPOINT [ "./run_with_default_config.sh" ]
