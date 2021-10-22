@@ -1,5 +1,5 @@
-ARG RUST_VERSION
-ARG DEBIAN_VERSION
+ARG RUST_VERSION="1.55"
+ARG DEBIAN_VERSION="buster"
 
 FROM rust:${RUST_VERSION}-${DEBIAN_VERSION} as builder
 
@@ -29,43 +29,23 @@ WORKDIR /home/mimirsbrunn
 
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
-
-RUN echo "// dummy file" > src/lib.rs
-RUN echo "fn main () { }" > ./build.rs
-
-RUN mkdir -p libs/bragi/src
-COPY ./libs/bragi/Cargo.toml ./libs/bragi/Cargo.toml
-RUN echo "// dummy file" > ./libs/bragi/src/lib.rs
-
-RUN mkdir -p libs/mimir/src
-COPY ./libs/mimir/Cargo.toml ./libs/mimir/Cargo.toml
-RUN echo "// dummy file" > ./libs/mimir/src/lib.rs
-
-RUN mkdir -p libs/docker_wrapper/src
-COPY ./libs/docker_wrapper/Cargo.toml ./libs/docker_wrapper/Cargo.toml
-RUN echo "// dummy file" > ./libs/docker_wrapper/src/lib.rs
-
-RUN mkdir -p libs/tools/src
-COPY ./libs/tools/Cargo.toml ./libs/tools/Cargo.toml
-RUN echo "// dummy file" > ./libs/tools/src/lib.rs
-
-RUN mkdir -p tests
-RUN echo "// dummy file" > ./tests/tests.rs
-
-RUN cargo build --release
-RUN rm src/*.rs
-
 COPY ./src ./src
 COPY ./libs ./libs
 COPY ./config ./config
 COPY ./docker ./docker
 COPY ./build.rs ./build.rs
+COPY ./tests ./tests
+COPY ./benches ./benches
 
-RUN rm ./target/release/deps/libmimir*
-RUN rm ./target/release/deps/libbragi*
-RUN rm ./target/release/deps/mimirsbrunn*
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/home/mimirsbrunn/target  \
+    cargo build --release --bin bragi --locked --features db-storage
 
-RUN cargo build --release --features db-storage
+# Extract binary from build cache
+RUN mkdir bin
+RUN --mount=type=cache,target=/home/mimirsbrunn/target \
+    cp target/release/bragi bin/
+
 
 ARG DEBIAN_VERSION
 
@@ -91,10 +71,14 @@ else \
   echo "Unsupported debian version '$DEBIAN_VERSION'"; \
 fi
 
-COPY --from=builder /home/mimirsbrunn/target/release/bragi /usr/bin/bragi
+COPY --from=builder /home/mimirsbrunn/bin/bragi /usr/bin/bragi
+COPY --from=builder /home/mimirsbrunn/config /etc/bragi
 
 EXPOSE 4000
-ENV BRAGI_ES http://localhost:9200/munin
-ENV RUST_LOG=info,hyper=info
 
-CMD ["/usr/bin/bragi", "-b", "0.0.0.0:4000"]
+ENV RUST_LOG                    info,hyper=info
+ENV BRAGI_ELASTICSEARCH_URL     http://localhost:9200/munin
+ENV BRAGI_SERVICE_HOST          0.0.0.0
+ENV BRAGI_SERVICE_PORT          4000
+
+CMD ["/usr/bin/bragi", "--config-dir", "/etc/bragi", "run"]

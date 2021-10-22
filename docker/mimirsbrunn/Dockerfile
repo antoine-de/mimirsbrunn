@@ -50,6 +50,7 @@ RUN --mount=type=cache,target=/home/mimirsbrunn/target \
        target/release/openaddresses2mimir              \
        bin/
 
+
 ARG DEBIAN_VERSION
 
 FROM debian:${DEBIAN_VERSION}-slim
