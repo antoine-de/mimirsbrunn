@@ -116,7 +116,7 @@ impl Settings {
                 opts.config_dir.as_ref(),
                 &["osm2mimir", "elasticsearch"],
                 opts.run_mode.as_deref(),
-                "OSM2MIMIR",
+                "MIMIR",
                 opts.settings.clone(),
             )
             .context(ConfigCompilation)?,
@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn should_override_elasticsearch_port_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        std::env::set_var("OSM2MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
+        std::env::set_var("MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
         let opts = Opts {
             config_dir,
             run_mode: None,
