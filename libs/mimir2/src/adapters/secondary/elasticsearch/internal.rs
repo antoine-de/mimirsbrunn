@@ -60,6 +60,10 @@ pub enum Error {
     #[snafu(display("Elasticsearch Response: Not Acknowledged: {}", details))]
     NotAcknowledged { details: String },
 
+    /// Elasticsearch Failed
+    #[snafu(display("Elasticsearch Response: Failed: {}", details))]
+    Failed { details: String },
+
     /// Elasticsearch Document Insertion Exception
     #[snafu(display("Elasticsearch Failure without Exception: {}", details))]
     ElasticsearchFailureWithoutException { details: String },
@@ -740,12 +744,17 @@ impl ElasticsearchStorage {
         }
     }
 
-    pub(super) async fn force_merge(&self, indices: Vec<String>) -> Result<(), Error> {
+    pub(super) async fn force_merge(
+        &self,
+        indices: Vec<String>,
+        max_num_segments: i64,
+    ) -> Result<(), Error> {
         let indices: Vec<_> = indices.iter().map(String::as_str).collect();
         let response = self
             .client
             .indices()
             .forcemerge(IndicesForcemergeParts::Index(&indices))
+            .max_num_segments(max_num_segments)
             .request_timeout(self.config.timeout)
             .send()
             .await
@@ -766,10 +775,10 @@ impl ElasticsearchStorage {
             .await
             .context(ElasticsearchDeserialization)?;
 
-        if json["acknowledged"] == true {
+        if json["_shards"]["successful"] == 1 {
             Ok(())
         } else {
-            Err(Error::NotAcknowledged {
+            Err(Error::Failed {
                 details: format!(
                     "cannot force merge '{}'",
                     indices

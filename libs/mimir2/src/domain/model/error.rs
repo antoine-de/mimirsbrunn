@@ -17,6 +17,9 @@ pub enum Error {
     #[snafu(display("Index Publication Error: {}", source))]
     IndexPublication { source: Box<dyn std::error::Error> },
 
+    #[snafu(display("Index Optimization Error: {}", source))]
+    IndexOptimization { source: Box<dyn std::error::Error> },
+
     #[snafu(display("Storage Connection Error: {}", source))]
     StorageConnection { source: Box<dyn std::error::Error> },
 
@@ -25,6 +28,9 @@ pub enum Error {
 
     #[snafu(display("Expected Index: {}", index))]
     ExpectedIndex { index: String },
+
+    #[snafu(display("Configuration Error: {}", source))]
+    Configuration { source: config::ConfigError },
 
     #[snafu(display("Status Error: {}", source))]
     Status { source: Box<dyn std::error::Error> },

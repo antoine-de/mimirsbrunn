@@ -188,8 +188,12 @@ impl Storage for ElasticsearchStorage {
         Ok(())
     }
 
-    async fn force_merge(&self, indices: Vec<String>) -> Result<(), StorageError> {
-        self.force_merge(indices)
+    async fn force_merge(
+        &self,
+        indices: Vec<String>,
+        max_num_segments: i64,
+    ) -> Result<(), StorageError> {
+        self.force_merge(indices, max_num_segments)
             .await
             .map_err(|err| StorageError::ForceMergeError {
                 source: Box::new(err),
