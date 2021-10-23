@@ -31,10 +31,12 @@ pub enum Place {
     Stop(Stop),
 }
 
-/// Object stored in Elasticsearch
+/// There are two kinds of addresses:
+/// Note that the enum is 'untagged' with regards to serde because
+/// each of `Addr` and `Street` already has a 'type' field.
 #[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case", tag = "type")]
+#[serde(rename_all = "snake_case", untagged)]
 pub enum Address {
     Street(Street),
     Addr(Addr),
