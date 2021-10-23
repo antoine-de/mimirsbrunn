@@ -3,11 +3,11 @@ Feature: Baseline
 
     Background:
         Given admins have been indexed for ile-de-france as idf
-				And addresses (bano) have been indexed for 92, 75, 94 into ile-de-france as idf
+				And addresses (bano) have been indexed for 75, 77, 78, 91, 92, 93, 94, 95 into ile-de-france as idf
         And streets have been indexed for ile-de-france as idf
 
     Scenario Outline: Geocoder Tester Ile-de-France Addresses
-        When the user searches for "<query>"
+        When the user searches "addr" for "<query>"
         Then he finds "<house num>", "<street>", "<city>", and "<postcode>" in the first "<limit>" results
 
         Examples:

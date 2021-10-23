@@ -755,7 +755,9 @@ impl ElasticsearchStorage {
             .indices()
             .forcemerge(IndicesForcemergeParts::Index(&indices))
             .max_num_segments(max_num_segments)
-            .request_timeout(self.config.timeout)
+            // .request_timeout(self.config.timeout) This call is not using timeout because
+            // it can take a long time and would require the timeout to become very large,
+            // and meaningless for other operations.
             .send()
             .await
             .and_then(|res| res.error_for_status_code())
