@@ -52,13 +52,6 @@ rstar = "0.8"
 rusqlite = { version = "0.23", optional = true }
 serde_json = "1"
 serde = {version = "1", features = ["rc"]}
-slog-async = "2.5"
-slog-envlogger = "2.2"
-slog-json = "2.4"
-slog-scope = "4.3"
-slog-stdlog = "4.1"
-slog-term = "2.8"
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
 snafu = { version = "0.6.10", features = [ "futures" ] }
 structopt = "0.3"
 tokio-stream = { version = "0.1.7", features = [ "fs" ] }
@@ -127,3 +120,9 @@ harness = false
 [[bench]]
 name = "indexing"
 harness = false
+
+[[bench]]
+name = "searching"
+harness = false
+
+

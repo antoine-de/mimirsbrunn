@@ -38,9 +38,9 @@ use mimirsbrunn::openaddresses::OpenAddress;
 use mimirsbrunn::settings::openaddresses2mimir as settings;
 use places::addr::Addr;
 use places::admin::Admin;
-use slog_scope::{info, warn};
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
+use tracing::{info, warn};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

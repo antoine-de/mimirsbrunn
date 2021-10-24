@@ -3,7 +3,7 @@
 /// the {nice name} being for addresses the housenumber and the street (correctly ordered)
 /// and for the rest of the objects, only their names
 use places::{admin::Admin, i18n_properties::I18nProperties, Property};
-use slog_scope::warn;
+use tracing::warn;
 
 fn format_label<'a>(
     nice_name: String,

@@ -33,8 +33,8 @@ use cosmogony::ZoneType;
 use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
 use osm_boundaries_utils::build_boundary;
-use slog_scope::{info, warn};
 use std::collections::BTreeSet;
+use tracing::{info, warn};
 
 pub type StreetsVec = Vec<places::street::Street>;
 

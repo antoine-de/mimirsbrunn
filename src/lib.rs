@@ -33,7 +33,6 @@ pub mod admin;
 pub mod admin_geofinder;
 pub mod bano;
 pub mod labels;
-pub mod logger;
 pub mod openaddresses;
 pub mod osm_reader;
 pub mod settings;

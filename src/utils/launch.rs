@@ -28,12 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use crate::logger::logger_init;
 use futures::future::Future;
 use lazy_static::lazy_static;
+use std::path::Path;
 use std::process::exit;
 use structopt::StructOpt;
 use tracing::error;
+
+use super::logger::logger_init;
 
 lazy_static! {
     pub static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
@@ -72,7 +74,9 @@ where
     F: FnOnce(O) -> Fut,
     Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
 {
-    let (guard, _) = logger_init();
+    // FIXME I hardcode the logging path, but it should come from settings.
+    let path = Path::new("./logs");
+    let guard = logger_init(path).map_err(Box::new)?;
     let res = if let Err(err) = run(args).await {
         // To revisit when rust #58520 is resolved
         // for cause in err.chain() {
@@ -119,7 +123,8 @@ where
     F: FnOnce(O) -> Result<(), Box<dyn std::error::Error>>,
     O: StructOpt,
 {
-    let _guard = logger_init();
+    let path = Path::new("./logs");
+    let _guard = logger_init(path).map_err(Box::new)?;
     if let Err(err) = run(O::from_args()) {
         // To revisit when rust #58520 is resolved
         // for cause in err.chain() {
