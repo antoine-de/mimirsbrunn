@@ -35,11 +35,11 @@ use geo::algorithm::{
 use geo_types::{MultiPolygon, Point};
 use places::admin::Admin;
 use rstar::{Envelope, PointDistance, RTree, RTreeObject, SelectionFunction, AABB};
-use slog_scope::{info, warn};
 use std::collections::{HashMap, HashSet};
 use std::iter::Extend;
 use std::iter::FromIterator;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 // This is a structure which is used in the RTree to customize the list of objects returned
 // when searching at a given location. This version just focuses on the envelope of the object,
