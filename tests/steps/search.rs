@@ -112,8 +112,8 @@ pub fn steps() -> Steps<State> {
                     HasAddress {
                         house,
                         street,
-                        city,
-                        postcode,
+                        _city: city,
+                        _postcode: postcode,
                         limit,
                     },
                     &ctx,
@@ -204,8 +204,8 @@ impl Step for HasDocument {
 pub struct HasAddress {
     house: Option<String>,
     street: Option<String>,
-    city: Option<String>,
-    postcode: Option<String>,
+    _city: Option<String>,
+    _postcode: Option<String>,
     limit: usize,
 }
 
