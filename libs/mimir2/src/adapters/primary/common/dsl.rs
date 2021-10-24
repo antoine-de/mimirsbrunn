@@ -1,6 +1,7 @@
 use geojson::Geometry;
 use serde_json::json;
 
+use super::coord::Coord;
 use super::{filters, settings};
 
 pub fn build_query(
@@ -9,26 +10,23 @@ pub fn build_query(
     _langs: &[&str],
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
-    let string_query = build_string_query(q, &settings.string_query);
-    let importance_query = build_importance_query(q, settings);
-
     let filters::Filters {
-        coord: _,
+        coord,
         shape,
         datasets: _,
         zone_types: _,
         poi_types: _,
     } = filters;
 
-    let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
-    let filters: Vec<_> = vec![geoshape_filter].into_iter().flatten().collect();
-
+    let string_query = build_string_query(q, &settings.string_query);
+    let boosts = build_boosts(q, settings, coord);
+    let filters = build_filters(shape);
     if filters.is_empty() {
         json!({
             "query": {
                 "bool": {
                     "must": [ string_query ],
-                    "should": importance_query,
+                    "should": boosts
                 }
             }
         })
@@ -37,7 +35,7 @@ pub fn build_query(
             "query": {
                 "bool": {
                     "must": [ string_query ],
-                    "should": importance_query,
+                    "should": boosts,
                     "filter": {
                         "bool": {
                             "must": filters
@@ -80,9 +78,26 @@ fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::
     })
 }
 
-fn build_importance_query(_q: &str, settings: &settings::QuerySettings) -> serde_json::Value {
+fn build_filters(shape: Option<(Geometry, Vec<String>)>) -> Vec<serde_json::Value> {
+    let mut filters: Vec<Option<serde_json::Value>> = Vec::new();
+    let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
+    filters.push(geoshape_filter);
+    filters.into_iter().flatten().collect()
+}
+
+fn build_boosts(
+    _q: &str,
+    settings: &settings::QuerySettings,
+    coord: Option<Coord>,
+) -> Vec<serde_json::Value> {
+    let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
     // TODO: in production, admins are boosted by their weight only in prefix mode.
-    json!([build_admin_weight_query(&settings.importance_query)])
+    let admin_weight_boost = Some(build_admin_weight_query(&settings.importance_query));
+    boosts.push(admin_weight_boost);
+    let proximity_boost =
+        coord.map(|coord| build_proximity_boost(coord, &settings.importance_query.proximity.decay));
+    boosts.push(proximity_boost);
+    boosts.into_iter().flatten().collect()
 }
 
 fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde_json::Value {
@@ -108,72 +123,32 @@ fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde
     })
 }
 
-// fn build_coverage_condition(datasets: &[&str]) -> serde_json::Value {
-//     json!({
-//         "bool": {
-//             "should": [
-//                 { "bool": { "must_not": { "exists": { "field": "coverages" } } } },
-//                 { "terms": { "coverages": datasets } }
-//             ]
-//         }
-//     })
-// }
-//
-// #[derive(Debug)]
-// enum DecayFn {
-//     Gauss,
-//     Exp,
-//     Linear,
-// }
-//
-// impl std::fmt::Display for DecayFn {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         write!(f, "{:?}", self)
-//     }
-// }
-//
-// #[derive(Debug)]
-// struct DecayFnParam {
-//     pub func: DecayFn,
-//     pub scale: f32,
-//     pub offset: f32,
-//     pub decay: f32,
-// }
+fn build_proximity_boost(coord: Coord, decay: &settings::Decay) -> serde_json::Value {
+    let settings::Decay {
+        func,
+        scale,
+        offset,
+        decay,
+    } = decay;
 
-// // The decay function takes 4 parameters:
-// // - origin: Here the origin is a geo-point, so we can express it as an object:
-// //    { "location": { "lat": ..., "lon": ... } }
-// // - scale
-// // - offset
-// // - decay
-// // FIXME Probably use something like Into<Coord>
-// fn build_proximity_with_boost(coord: Coord, decay_fn_param: DecayFnParam) -> String {
-//     format!(
-//         r#"{{
-//             "function_score": {{
-//                 "{func}": {{
-//                     "coord": {{
-//                         "origin": {{
-//                             "location": {{
-//                                 "lat": {lat},
-//                                 "lon": {lon}
-//                             }}
-//                         }},
-//                         "scale": "{scale}km",
-//                         "offset": "{offset}km",
-//                         "decay": {decay}
-//                     }}
-//                 }}
-//             }}
-//         }}"#,
-//         lat = coord.lat,
-//         lon = coord.lon,
-//         func = decay_fn_param.func,
-//         scale = decay_fn_param.scale,
-//         offset = decay_fn_param.offset,
-//         decay = decay_fn_param.decay
-//     )
-// }
+    json!({
+        "function_score": {
+            func.clone(): {
+                "coord": {
+                    "origin": {
+                        "location": {
+                            "lat": coord.lat,
+                            "lon": coord.lon
+                        }
+                    },
+                    "scale": format!("{}km", scale),
+                    "offset": format!("{}km", offset),
+                    "decay": decay
+                }
+            }
+        }
+    })
+}
 
 pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Value {
     json!({
