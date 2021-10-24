@@ -12,6 +12,9 @@ use tests::bano;
 pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
+    // The first parameter is the region, it must match a directory name in the fixtures.
+    // The second parameter is optional, and it is the dataset. If no dataset is give,
+    // then the dataset is set to be the same as the region.
     steps.given_regex_async(
         r#"bano file has been indexed for ([^\s]*)(?: as (.*))?"#,
         t!(|mut state, ctx| {

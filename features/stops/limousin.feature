@@ -10,9 +10,9 @@ Feature: Stops
     # With 'Exact Match', we expect the query to be found at the top of the
     # result because the query exactly matches the name / label of the target.
     Scenario Outline: Stops exact match
-        When the user searches "stop" for "<query>"
+        When the user searches stop datatype for "<query>"
         Then he finds "<id>" as the first result
 
         Examples:
             | query                  | id               |
-	    | charles de gaulle      | stop_area:CDG    |
+            | charles de gaulle      | stop_area:CDG    |

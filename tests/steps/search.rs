@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use common::document::ContainerDocument;
 use cucumber::{t, StepContext, Steps};
 use mimir2::adapters::primary::{
-    common::dsl::build_query, common::filters::Filters, common::settings::QuerySettings,
+    common::coord::Coord, common::dsl::build_query, common::filters::Filters,
+    common::settings::QuerySettings,
 };
 use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir2::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
@@ -14,49 +15,51 @@ pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.when_regex_async(
-        "the user searches for \"(.*)\"",
+        r#"the user searches (.*) datatype(?: in (.*))? for "(.*)"(?: at \((.*),(.*)\))?"#,
         t!(|mut state, ctx| {
-            let domain = vec![
-                Addr::static_doc_type().to_string(),
-                Admin::static_doc_type().to_string(),
-                Street::static_doc_type().to_string(),
-                Stop::static_doc_type().to_string(),
-                Poi::static_doc_type().to_string(),
-            ];
+            let places = ctx.matches[1].clone();
+            let places = if places == "all" {
+                vec![
+                    Addr::static_doc_type().to_string(),
+                    Admin::static_doc_type().to_string(),
+                    Street::static_doc_type().to_string(),
+                    Stop::static_doc_type().to_string(),
+                    Poi::static_doc_type().to_string(),
+                ]
+            } else {
+                places.split(',').map(|s| s.trim().to_string()).collect()
+            };
+            let lat = ctx.matches[4].trim();
+            let lon = ctx.matches[5].trim();
+            let coord = if lat.is_empty() {
+                None
+            } else {
+                // round to 4 digits
+                let lat = (lat.parse::<f32>().expect("lat is f32") * 10000.0).round() / 10000.0;
+                let lon = (lon.parse::<f32>().expect("lon is f32") * 10000.0).round() / 10000.0;
+                Some(Coord::new(lat, lon))
+            };
+            let filters = Filters {
+                coord,
+                ..Default::default()
+            };
 
-            let query = ctx.matches[1].clone();
+            let query = ctx.matches[3].clone();
+            let search = Search {
+                filters,
+                places,
+                query,
+                results: Vec::new(),
+            };
 
-            state
-                .execute(Search::new(domain, query), &ctx)
-                .await
-                .expect("failed to search");
-
-            state
-        }),
-    );
-
-    steps.when_regex_async(
-        "the user searches \"(.*)\" for \"(.*)\"",
-        t!(|mut state, ctx| {
-            let domain: Vec<String> = ctx.matches[1]
-                .clone()
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect();
-
-            let query = ctx.matches[2].clone();
-
-            state
-                .execute(Search::new(domain, query), &ctx)
-                .await
-                .expect("failed to search");
+            state.execute(search, &ctx).await.expect("failed to search");
 
             state
         }),
     );
 
     steps.then_regex_async(
-        "he finds \"(.*)\" as the first result",
+        r#"he finds "(.*)" as the first result"#,
         t!(|mut state, ctx| {
             let id = ctx.matches[1].clone();
 
@@ -70,7 +73,7 @@ pub fn steps() -> Steps<State> {
     );
 
     steps.then_regex_async(
-        "he finds \"(.*)\", \"(.*)\", \"(.*)\", and \"(.*)\" in the first \"(.*)\" results",
+        r#"he finds "(.*)", "(.*)", "(.*)", and "(.*)" in the first "(.*)" results"#,
         t!(|mut state, ctx| {
             let house = Some(ctx.matches[1].clone()).and_then(|house| {
                 if house.is_empty() {
@@ -112,8 +115,8 @@ pub fn steps() -> Steps<State> {
                     HasAddress {
                         house,
                         street,
-                        _city: city,
-                        _postcode: postcode,
+                        city,
+                        postcode,
                         limit,
                     },
                     &ctx,
@@ -129,39 +132,32 @@ pub fn steps() -> Steps<State> {
 }
 
 /// Perform a search in current Elasticsearch DB.
+#[derive(Debug)]
 pub struct Search {
-    domain: Vec<String>,
-    query: String,
+    places: Vec<String>, // What kind of places we're searching
+    query: String,       // The search string
+    filters: Filters,    // Search filters
     results: Vec<serde_json::Value>,
-}
-
-impl Search {
-    pub fn new(domain: Vec<String>, query: String) -> Self {
-        Self {
-            domain,
-            query,
-            results: Vec::new(),
-        }
-    }
 }
 
 #[async_trait(?Send)]
 impl Step for Search {
     async fn execute(&mut self, _state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
         let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
-
         // Build ES query
         let dsl = build_query(
             &self.query,
-            Filters::default(),
+            self.filters.clone(),
             &["fr"],
             &QuerySettings::default(),
         );
 
+        // println!("{}", serde_json::to_string_pretty(&dsl).unwrap());
+
         // Fetch documents
         self.results = {
             client
-                .search_documents(self.domain.clone(), Query::QueryDSL(dsl))
+                .search_documents(self.places.clone(), Query::QueryDSL(dsl))
                 .await
                 .unwrap()
         };
@@ -204,8 +200,8 @@ impl Step for HasDocument {
 pub struct HasAddress {
     house: Option<String>,
     street: Option<String>,
-    _city: Option<String>,
-    _postcode: Option<String>,
+    city: Option<String>,
+    postcode: Option<String>,
     limit: usize,
 }
 
@@ -217,25 +213,34 @@ impl Step for HasAddress {
             .next_back()
             .expect("the user must perform a search before checking results");
 
-        let (rank, _) = (search.results.iter().enumerate())
-            .find(|(_, doc)| {
+        let rank = search
+            .results
+            .clone()
+            .into_iter()
+            .enumerate()
+            .find_map(|(num, doc)| {
+                let addr: Addr = serde_json::from_value(doc).expect("address");
                 if let Some(house) = &self.house {
-                    if house != doc["house_number"].as_str().unwrap() {
-                        return false;
+                    if house != addr.house_number.as_str() {
+                        return None;
                     }
                 }
                 if let Some(street) = &self.street {
-                    if street != doc["street"]["name"].as_str().unwrap() {
-                        return false;
+                    if street != addr.street.name.as_str() {
+                        return None;
                     }
                 }
-                // FIXME Need city check. Maybe add a city method to an address
-                // if let Some(city) = self.street {
-                //     if street != doc["street"]["name"] {
-                //         return false;
-                //     }
-                // }
-                true
+                if let Some(postcode) = &self.postcode {
+                    if postcode != addr.zip_codes[0].as_str() {
+                        return None;
+                    }
+                }
+                if let Some(city) = &self.city {
+                    if city != addr.city().expect("city").as_str() {
+                        return None;
+                    }
+                }
+                Some(num)
             })
             .expect("document was not found in search results");
 
