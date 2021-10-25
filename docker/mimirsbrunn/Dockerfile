@@ -1,5 +1,5 @@
-ARG RUST_VERSION
-ARG DEBIAN_VERSION
+ARG RUST_VERSION="1.55"
+ARG DEBIAN_VERSION="buster"
 
 FROM rust:${RUST_VERSION}-${DEBIAN_VERSION} as builder
 
@@ -49,6 +49,7 @@ RUN --mount=type=cache,target=/home/mimirsbrunn/target \
        target/release/bano2mimir                       \
        target/release/openaddresses2mimir              \
        bin/
+
 
 ARG DEBIAN_VERSION
 
