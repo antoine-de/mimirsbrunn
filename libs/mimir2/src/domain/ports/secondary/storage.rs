@@ -28,6 +28,15 @@ pub enum Error {
 
     #[snafu(display("Force Merge Error: {}", source))]
     ForceMergeError { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Template '{}' creation error: {}", template, source))]
+    TemplateCreationError {
+        template: String,
+        source: Box<dyn std::error::Error>,
+    },
+
+    #[snafu(display("Unrecognized directive: {}", details))]
+    UnrecognizedDirective { details: String },
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -51,6 +60,8 @@ pub trait Storage {
     async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error>;
 
     async fn force_merge(&self, indices: Vec<String>, max_num_segments: i64) -> Result<(), Error>;
+
+    async fn configure(&self, directive: String, config: Config) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -88,5 +99,9 @@ where
 
     async fn force_merge(&self, indices: Vec<String>, max_num_segments: i64) -> Result<(), Error> {
         (**self).force_merge(indices, max_num_segments).await
+    }
+
+    async fn configure(&self, directive: String, config: Config) -> Result<(), Error> {
+        (**self).configure(directive, config).await
     }
 }

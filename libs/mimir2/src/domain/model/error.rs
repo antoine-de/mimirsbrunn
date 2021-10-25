@@ -34,6 +34,9 @@ pub enum Error {
 
     #[snafu(display("Status Error: {}", source))]
     Status { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Backend Configuration Error: {}", source))]
+    BackendConfiguration { source: Box<dyn std::error::Error> },
 }
 
 impl Error {

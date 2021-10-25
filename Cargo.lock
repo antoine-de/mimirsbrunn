@@ -2009,6 +2009,7 @@ dependencies = [
  "serial_test",
  "snafu",
  "tokio",
+ "tokio-stream",
  "toml",
  "tracing",
  "tracing-appender",

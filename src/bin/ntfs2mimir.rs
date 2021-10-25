@@ -28,13 +28,14 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use snafu::{ResultExt, Snafu};
+use structopt::StructOpt;
+
 use common::config::load_es_config_for;
 use mimir2::adapters::secondary::elasticsearch;
 use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::settings::cosmogony2mimir as settings;
 use places::stop::Stop;
-use snafu::{ResultExt, Snafu};
-use structopt::StructOpt;
 
 #[derive(Debug, Snafu)]
 pub enum Error {

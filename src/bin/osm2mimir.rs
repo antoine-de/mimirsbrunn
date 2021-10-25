@@ -13,6 +13,8 @@ use mimir2::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::osm_reader::street::streets;
 use mimirsbrunn::settings::osm2mimir as settings;
+use places::poi::Poi;
+use places::street::Street;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -109,7 +111,7 @@ async fn run(
     };
 
     if settings.streets.import {
-        let config = common::config::load_es_config_for::<places::street::Street>(
+        let config = common::config::load_es_config_for::<Street>(
             opts.settings
                 .iter()
                 .filter_map(|s| {
@@ -137,7 +139,7 @@ async fn run(
     }
 
     if settings.pois.import {
-        let config = common::config::load_es_config_for::<places::poi::Poi>(
+        let config = common::config::load_es_config_for::<Poi>(
             opts.settings
                 .iter()
                 .filter_map(|s| {
@@ -259,7 +261,7 @@ async fn import_pois(
 //         index_cosmogony(
 //             "./tests/fixtures/cosmogony.json".into(),
 //             vec![],
-//             load_es_config_for::<Admin>(
+//             load_es_config_for(
 //                 None,
 //                 None,
 //                 vec!["container.dataset=osm2mimir-test".into()],

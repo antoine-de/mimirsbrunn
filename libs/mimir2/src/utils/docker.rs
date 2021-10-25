@@ -9,6 +9,7 @@ use bollard::{
     Docker,
 };
 use elasticsearch::{
+    cluster::ClusterDeleteComponentTemplateParts,
     http::transport::BuildError as TransportBuilderError,
     indices::{IndicesDeleteAliasParts, IndicesDeleteIndexTemplateParts, IndicesDeleteParts},
     Error as ElasticsearchError,
@@ -20,6 +21,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
 
+use crate::adapters::primary::templates;
 use crate::adapters::secondary::elasticsearch::remote;
 use crate::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
@@ -53,11 +55,40 @@ pub async fn initialize_with_param(cleanup: bool) -> Result<(), Error> {
         });
     }
     let config = ElasticsearchStorageConfig::default_testing();
-    let _client = remote::connection_pool_url(&config.url)
+    let client = remote::connection_pool_url(&config.url)
         .conn(config)
         .await
         .context(ElasticsearchConnection)?;
-    Ok(())
+
+    let path: PathBuf = [
+        env!("CARGO_MANIFEST_DIR"),
+        "..",
+        "..",
+        "config",
+        "elasticsearch",
+        "templates",
+        "components",
+    ]
+    .iter()
+    .collect();
+    templates::import(client.clone(), path, templates::Template::Component)
+        .await
+        .context(TemplateLoading)?;
+
+    let path: PathBuf = [
+        env!("CARGO_MANIFEST_DIR"),
+        "..",
+        "..",
+        "config",
+        "elasticsearch",
+        "templates",
+        "indices",
+    ]
+    .iter()
+    .collect();
+    templates::import(client, path, templates::Template::Index)
+        .await
+        .context(TemplateLoading)
 }
 
 #[derive(Debug, Snafu)]
@@ -85,6 +116,9 @@ pub enum Error {
 
     #[snafu(display("error: {}", msg))]
     Misc { msg: String },
+
+    #[snafu(display("Template Loading Error: {}", source))]
+    TemplateLoading { source: templates::Error },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -358,7 +392,16 @@ impl DockerWrapper {
         let _ = storage
             .client
             .indices()
-            .delete_index_template(IndicesDeleteIndexTemplateParts::Name("*"))
+            .delete_index_template(IndicesDeleteIndexTemplateParts::Name("munin_*"))
+            .request_timeout(storage.config.timeout)
+            .send()
+            .await
+            .context(ElasticsearchClient)?;
+
+        let _ = storage
+            .client
+            .cluster()
+            .delete_component_template(ClusterDeleteComponentTemplateParts::Name("mimir-*"))
             .request_timeout(storage.config.timeout)
             .send()
             .await

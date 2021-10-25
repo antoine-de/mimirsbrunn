@@ -1,0 +1,21 @@
+{
+	"elasticsearch": {
+		"index_patterns": ["munin_admin*"],
+		"template": {
+			"mappings": {
+				"properties": {
+					"level": {
+						"type": "long",
+						"index": false
+					},
+					"zone_type": {
+						"type": "keyword"
+					}
+				}
+			}
+		},
+		"composed_of": ["mimir-base", "mimir-text", "mimir-dynamic-mappings"],
+		"version": 3,
+		"priority": 10
+	}
+}

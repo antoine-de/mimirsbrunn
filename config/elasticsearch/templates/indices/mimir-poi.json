@@ -1,0 +1,40 @@
+{
+	"elasticsearch": {
+		"index_patterns": ["munin_poi*"],
+		"template": {
+			"settings": {
+				"analysis": {
+					"analyzer": {
+						"word":{
+							"filter":[
+								"lowercase",
+								"asciifolding"
+							],
+							"type":"custom",
+							"tokenizer":"standard"
+						}
+					}
+				}
+			},
+			"mappings": {
+				"properties": {
+					"poi_type": {
+						"properties": {
+							"id": {
+								"type": "keyword"
+							},
+							"name": {
+								"type": "text",
+								"index_options": "docs",
+								"analyzer": "word"
+							}
+						}
+					}
+				}
+			}
+		},
+		"composed_of": ["mimir-base", "mimir-text", "mimir-dynamic-mappings"],
+		"version": 3,
+		"priority": 10
+	}
+}

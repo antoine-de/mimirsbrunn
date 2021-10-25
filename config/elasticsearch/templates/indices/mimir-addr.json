@@ -1,0 +1,32 @@
+{
+	"elasticsearch": {
+		"index_patterns": ["munin_addr*"],
+		"template": {
+			"settings": {
+				"analysis": {
+					"analyzer": {
+						"word":{
+							"filter":[
+								"lowercase",
+								"asciifolding"
+							],
+							"type":"custom",
+							"tokenizer":"standard"
+						}
+					}
+				}
+			},
+			"mappings": {
+				"properties": {
+					"house_number": {
+						"type": "text",
+						"analyzer": "word"
+					}
+				}
+			}
+		},
+		"composed_of": ["mimir-base", "mimir-text", "mimir-dynamic-mappings"],
+		"version": 3,
+		"priority": 10
+	}
+}

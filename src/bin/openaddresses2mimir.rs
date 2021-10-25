@@ -28,8 +28,12 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use common::config::load_es_config_for;
 use futures::stream::StreamExt;
+use snafu::{ResultExt, Snafu};
+use structopt::StructOpt;
+use tracing::{info, warn};
+
+use common::config::load_es_config_for;
 use mimir2::adapters::secondary::elasticsearch;
 use mimir2::domain::ports::primary::list_documents::ListDocuments;
 use mimir2::domain::ports::secondary::remote::Remote;
@@ -38,9 +42,6 @@ use mimirsbrunn::openaddresses::OpenAddress;
 use mimirsbrunn::settings::openaddresses2mimir as settings;
 use places::addr::Addr;
 use places::admin::Admin;
-use snafu::{ResultExt, Snafu};
-use structopt::StructOpt;
-use tracing::{info, warn};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

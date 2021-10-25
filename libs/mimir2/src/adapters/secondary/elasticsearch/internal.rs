@@ -1,9 +1,9 @@
 use elasticsearch::cat::CatIndicesParts;
-use elasticsearch::cluster::ClusterHealthParts;
+use elasticsearch::cluster::{ClusterHealthParts, ClusterPutComponentTemplateParts};
 use elasticsearch::http::response::Exception;
 use elasticsearch::indices::{
     IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
-    IndicesRefreshParts,
+    IndicesPutIndexTemplateParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
@@ -20,7 +20,10 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
-use super::configuration::IndexConfiguration;
+use super::configuration::{
+    ComponentTemplateConfiguration, Error as ConfigurationError, IndexConfiguration,
+    IndexTemplateConfiguration,
+};
 use super::models::{ElasticsearchBulkInsertResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
 use crate::domain::model::{
@@ -41,7 +44,7 @@ pub enum Error {
         source: config::ConfigError,
     },
 
-    /// Elasticsearch Error
+    /// Elasticsearch Errorx
     #[snafu(display("Elasticsearch Error: {} [{}]", source, details))]
     ElasticsearchClient {
         details: String,
@@ -126,6 +129,14 @@ pub enum Error {
     /// Elasticsearch Response Has Not PIT
     #[snafu(display("Elasticsearch Response is Missing a PIT"))]
     ElasticsearchResponseMissingPIT,
+
+    /// Invalid Template
+    #[snafu(display("Invalid Template: {}", details))]
+    InvalidTemplate { details: String },
+
+    /// Invalid Configuration
+    #[snafu(display("Invalid Configuration: {}", source))]
+    InvalidTemplateConfiguration { source: ConfigurationError },
 }
 
 impl From<Exception> for Error {
@@ -199,18 +210,22 @@ impl From<Exception> for Error {
 
 impl ElasticsearchStorage {
     pub(super) async fn create_index(&self, config: IndexConfiguration) -> Result<(), Error> {
-        let body = json!({ "mappings": config.mappings, "settings": config.settings });
+        let index_name = config.name.clone();
+        let body = config
+            .clone() // we have to clone, otherwise we cannot access parameters.
+            .into_json_body()
+            .context(InvalidTemplateConfiguration)?;
         let response = self
             .client
             .indices()
-            .create(IndicesCreateParts::Index(&config.name))
+            .create(IndicesCreateParts::Index(index_name.as_str()))
             .request_timeout(self.config.timeout)
             .wait_for_active_shards(&config.parameters.wait_for_active_shards)
             .body(body)
             .send()
             .await
             .context(ElasticsearchClient {
-                details: format!("cannot create index '{}'", config.name),
+                details: format!("cannot create index '{}'", index_name),
             })?;
 
         if response.status_code().is_success() {
@@ -242,7 +257,139 @@ impl ElasticsearchStorage {
                 Ok(())
             } else {
                 Err(Error::NotCreated {
-                    details: format!("index creation {}", config.name),
+                    details: format!("index creation {}", index_name),
+                })
+            }
+        } else {
+            let exception = response.exception().await.ok().unwrap();
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
+    }
+
+    pub(super) async fn create_component_template(
+        &self,
+        config: ComponentTemplateConfiguration,
+    ) -> Result<(), Error> {
+        let template_name = config.name.clone();
+        let body = config
+            .into_json_body()
+            .context(InvalidTemplateConfiguration)?;
+        let response = self
+            .client
+            .cluster()
+            .put_component_template(ClusterPutComponentTemplateParts::Name(&template_name))
+            .request_timeout(self.config.timeout)
+            .body(body)
+            .send()
+            .await
+            .context(ElasticsearchClient {
+                details: format!("cannot create component template '{}'", template_name),
+            })?;
+
+        if response.status_code().is_success() {
+            // Response similar to:
+            // { "acknowledged": true }
+            // We verify that acknowledge is true, then add the cat indices API to get the full index.
+            let json = response
+                .json::<Value>()
+                .await
+                .context(ElasticsearchDeserialization)?;
+
+            let acknowledged = json
+                .as_object()
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected JSON object"),
+                    json: json.clone(),
+                })?
+                .get("acknowledged")
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected 'acknowledged'"),
+                    json: json.clone(),
+                })?
+                .as_bool()
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected JSON bool"),
+                    json: json.clone(),
+                })?;
+            if acknowledged {
+                Ok(())
+            } else {
+                Err(Error::NotCreated {
+                    details: format!("component template creation {}", template_name),
+                })
+            }
+        } else {
+            let exception = response.exception().await.ok().unwrap();
+            match exception {
+                Some(exception) => {
+                    let err = Error::from(exception);
+                    Err(err)
+                }
+                None => Err(Error::ElasticsearchFailureWithoutException {
+                    details: String::from("Fail status without exception"),
+                }),
+            }
+        }
+    }
+
+    pub(super) async fn create_index_template(
+        &self,
+        config: IndexTemplateConfiguration,
+    ) -> Result<(), Error> {
+        let template_name = config.name.clone();
+        let body = config
+            .into_json_body()
+            .context(InvalidTemplateConfiguration)?;
+        let response = self
+            .client
+            .indices()
+            .put_index_template(IndicesPutIndexTemplateParts::Name(template_name.as_str()))
+            .request_timeout(self.config.timeout)
+            .body(body)
+            .send()
+            .await
+            .context(ElasticsearchClient {
+                details: format!("cannot create component template '{}'", template_name),
+            })?;
+
+        if response.status_code().is_success() {
+            // Response similar to:
+            // { "acknowledged": true }
+            // We verify that acknowledge is true, then add the cat indices API to get the full index.
+            let json = response
+                .json::<Value>()
+                .await
+                .context(ElasticsearchDeserialization)?;
+
+            let acknowledged = json
+                .as_object()
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected JSON object"),
+                    json: json.clone(),
+                })?
+                .get("acknowledged")
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected 'acknowledged'"),
+                    json: json.clone(),
+                })?
+                .as_bool()
+                .ok_or(Error::JsonInvalid {
+                    details: String::from("expected JSON bool"),
+                    json: json.clone(),
+                })?;
+            if acknowledged {
+                Ok(())
+            } else {
+                Err(Error::NotCreated {
+                    details: format!("component template creation {}", template_name),
                 })
             }
         } else {

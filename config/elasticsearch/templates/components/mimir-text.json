@@ -1,0 +1,152 @@
+{
+	"elasticsearch": {
+		"template": {
+			"settings":{
+				"index":{
+					"analysis":{
+						"filter":{
+							"synonym_filter":{
+								"type":"synonym",
+								"synonyms":[
+									"cc,centre commercial",
+									"hotel de ville,mairie",
+									"gare sncf,gare",
+									"chu,chr,hopital",
+									"ld,lieu-dit",
+									"st,saint",
+									"ste,sainte",
+									"bvd,bld,bd,boulevard",
+									"pt,pont",
+									"rle,ruelle",
+									"rte,route",
+									"vla,villa",
+									"grand-champ,grandchamp",
+									"fac,faculte,ufr,universite",
+									"embarcadere,gare maritime",
+									"cpam,securite sociale",
+									"anpe,pole emploi"
+								]
+							},
+							"elision_filter":{
+								"type":"elision",
+								"articles":[
+									"l",
+									"d"
+								]
+							},
+							"ngram_filter":{
+								"type":"ngram",
+								"min_gram":"3",
+								"max_gram":"3"
+							},
+							"prefix_filter":{
+								"type":"edge_ngram",
+								"min_gram":"1",
+								"max_gram":"20"
+							}
+						},
+						"analyzer":{
+							"word_elision":{
+								"filter":[
+									"lowercase",
+									"elision_filter",
+									"asciifolding"
+								],
+								"type":"custom",
+								"tokenizer":"standard"
+							},
+							"ngram":{
+								"filter":[
+									"lowercase",
+									"asciifolding"
+								],
+								"tokenizer":"my_ngram_tokenizer"
+							},
+							"ngram_with_synonyms":{
+								"filter":[
+									"lowercase",
+									"asciifolding",
+									"synonym_filter",
+									"ngram_filter"
+								],
+								"type":"custom",
+								"tokenizer":"standard"
+							},
+							"prefix_elision":{
+								"filter":[
+									"lowercase",
+									"elision_filter",
+									"asciifolding",
+									"synonym_filter",
+									"prefix_filter"
+								],
+								"type":"custom",
+								"tokenizer":"standard"
+							},
+							"word":{
+								"filter":[
+									"lowercase",
+									"asciifolding"
+								],
+								"type":"custom",
+								"tokenizer":"standard"
+							},
+							"prefix":{
+								"filter":[
+									"lowercase",
+									"asciifolding",
+									"synonym_filter",
+									"prefix_filter"
+								],
+								"type":"custom",
+								"tokenizer":"standard"
+							}
+						},
+						"tokenizer":{
+							"my_ngram_tokenizer":{
+								"token_chars":[
+									"letter",
+									"digit"
+								],
+								"min_gram":"3",
+								"type":"ngram",
+								"max_gram":"3"
+							}
+						}
+					}
+				}
+			},
+			"mappings": {
+				"properties": {
+					"full_label": {
+						"type": "text",
+						"index": false,
+						"norms": false,
+						"fields": {
+							"prefix": {
+								"type": "text",
+								"index_options": "docs",
+								"analyzer": "prefix_elision",
+								"search_analyzer": "word_elision",
+								"norms": false
+							},
+							"ngram": {
+								"type": "text",
+								"index_options": "docs",
+								"analyzer": "ngram",
+								"search_analyzer": "ngram",
+								"norms": false
+							}
+						}
+					},
+					"zip_codes": {
+						"type": "text",
+						"index_options": "docs",
+						"analyzer": "word",
+						"copy_to": "full_label"
+					}
+				}
+			}
+		}
+	}
+}

@@ -112,7 +112,7 @@ pub async fn index_pois(
     let elasticsearch_config =
         common::config::load_es_config_for::<Poi>(vec![], dataset.to_string()).context(Config)?;
 
-    let pois: Vec<places::poi::Poi> = futures::stream::iter(pois)
+    let pois: Vec<Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
         .map(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
         .buffer_unordered(POI_REVERSE_GEOCODING_CONCURRENCY)

@@ -1,0 +1,34 @@
+{
+	"elasticsearch": {
+		"template": {
+			"settings": {
+				"number_of_shards": "1",
+				"number_of_replicas": "0",
+				"refresh_interval": "-1"
+			},
+			"mappings": {
+				"properties": {
+					"approx_coord": {
+						"type": "geo_shape"
+					},
+					"coord": {
+						"type": "geo_point"
+					},
+					"id": {
+						"type": "keyword",
+						"index": false
+					},
+					"indexed_at": {
+		  			"type": "date"
+		  		},
+		  		"type": {
+		  			"type": "constant_keyword"
+		  		},
+		  		"weight": {
+		  			"type": "double"
+		  		}
+				}
+			}
+		}
+	}
+}

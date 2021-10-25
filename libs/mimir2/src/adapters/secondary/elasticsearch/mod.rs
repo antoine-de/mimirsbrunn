@@ -118,7 +118,7 @@ pub mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("Invalid Elasticsearch Index Configuration"));
+            .contains("Container Creation Error: Invalid Configuration"));
     }
 
     #[tokio::test]
