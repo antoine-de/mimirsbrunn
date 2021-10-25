@@ -152,8 +152,6 @@ impl Step for Search {
             &QuerySettings::default(),
         );
 
-        // println!("{}", serde_json::to_string_pretty(&dsl).unwrap());
-
         // Fetch documents
         self.results = {
             client
