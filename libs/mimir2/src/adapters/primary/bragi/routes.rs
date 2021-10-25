@@ -227,9 +227,9 @@ pub fn reverse_geocoder_query(
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
     let reply = warp::reply::reply();
 
-    if rejection.find::<warp::reject::InvalidQuery>().is_some() {
-        Ok(warp::reply::with_status(reply, StatusCode::BAD_REQUEST))
-    } else if let Some(_invalid_request) = rejection.find::<InvalidRequest>() {
+    if rejection.find::<warp::reject::InvalidQuery>().is_some()
+        || rejection.find::<InvalidRequest>().is_some()
+    {
         Ok(warp::reply::with_status(reply, StatusCode::BAD_REQUEST))
     } else {
         // Do better error handling here

@@ -47,13 +47,13 @@ pub fn get_way_coord<T: StoreObjs + Getter>(
     way.nodes
         .iter()
         .skip(nb_nodes / 2)
-        .filter_map(|node_id| obj_map.get(&(*node_id).into()))
-        .filter_map(|obj| {
-            obj.node()
+        .find_map(|node_id| {
+            obj_map
+                .get(&(*node_id).into())?
+                .node()
                 .map(|node| places::coord::Coord::new(node.lon(), node.lat()))
         })
-        .next()
-        .unwrap_or_else(places::coord::Coord::default)
+        .unwrap_or_default()
 }
 
 pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> places::coord::Coord {
@@ -63,7 +63,7 @@ pub fn make_centroid(boundary: &Option<MultiPolygon<f64>>) -> places::coord::Coo
             b.centroid()
                 .map(|c| places::coord::Coord::new(c.x(), c.y()))
         })
-        .unwrap_or_else(places::coord::Coord::default);
+        .unwrap_or_default();
     if coord.is_valid() {
         coord
     } else {
