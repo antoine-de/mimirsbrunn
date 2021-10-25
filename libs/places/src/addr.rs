@@ -50,6 +50,16 @@ impl Document for Addr {
     }
 }
 
+impl Addr {
+    pub fn city(&self) -> Option<String> {
+        self.street
+            .administrative_regions
+            .iter()
+            .find(|&admin| admin.is_city())
+            .map(|admin| admin.name.clone())
+    }
+}
+
 crate::impl_container_document!(Addr, "addr");
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

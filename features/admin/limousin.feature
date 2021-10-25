@@ -13,7 +13,7 @@ Feature: Admins
     # These queries are for varying levels of administrative regions (city,
     # department, ...).
     Scenario Outline: Admins exact match
-        When the user searches "admin" for "<query>"
+        When the user searches admin datatype for "<query>"
         Then he finds "<id>" as the first result
 
         Examples:

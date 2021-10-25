@@ -136,10 +136,8 @@ fn build_proximity_boost(coord: Coord, decay: &settings::Decay) -> serde_json::V
             func.clone(): {
                 "coord": {
                     "origin": {
-                        "location": {
-                            "lat": coord.lat,
-                            "lon": coord.lon
-                        }
+                        "lat": coord.lat,
+                        "lon": coord.lon
                     },
                     "scale": format!("{}km", scale),
                     "offset": format!("{}km", offset),
