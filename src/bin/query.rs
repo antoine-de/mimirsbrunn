@@ -1,7 +1,8 @@
 use common::document::ContainerDocument;
 use mimir2::{
-    adapters::primary::common::settings::QuerySettings,
-    adapters::primary::common::{dsl::build_query, filters::Filters},
+    adapters::primary::common::{
+        coord::Coord, dsl::build_query, filters::Filters, settings::QuerySettings,
+    },
     adapters::secondary::elasticsearch::remote::connection_test_pool,
     domain::model::query::Query,
     domain::ports::primary::search_documents::SearchDocuments,
@@ -9,22 +10,51 @@ use mimir2::{
 };
 use places::addr::Addr;
 use places::admin::Admin;
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "query", about = "Querying Bragi from the commandline")]
+struct Opt {
+    /// Activate debug mode
+    // short and long flags (-d, --debug) will be deduced from the field's name
+    #[structopt(short, long)]
+    debug: bool,
+
+    /// latitude
+    #[structopt(long = "lat")]
+    latitude: Option<f32>,
+
+    /// longitude
+    #[structopt(long = "lon")]
+    longitude: Option<f32>,
+
+    /// Search String
+    q: String,
+}
 
 #[tokio::main]
 async fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    let q = &args[1];
+    let opt = Opt::from_args();
 
     let client = connection_test_pool()
         .conn(Default::default())
         .await
         .expect("Elasticsearch Connection Established");
 
-    let filters = Filters::default();
+    let filters = match opt.latitude {
+        Some(latitude) => {
+            let longitude = opt.longitude.expect("longitude");
+            Filters {
+                coord: Some(Coord::new(longitude, latitude)),
+                ..Default::default()
+            }
+        }
+        None => Filters::default(),
+    };
 
     let settings = QuerySettings::default();
 
-    let dsl = build_query(q, filters, &["fr"], &settings);
+    let dsl = build_query(&opt.q, filters, &["fr"], &settings);
 
     println!("{}", dsl);
 
