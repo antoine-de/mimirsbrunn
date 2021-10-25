@@ -52,7 +52,8 @@ pub fn load_es_config_for<D: ContainerDocument>(
 // * In each subdirectory, it will look for a default configuration file.
 // * If a run_mode is provided, then the corresponding file is sourced in each of these
 //   subdirectory.
-// * Then, if a prefix is given, we source environment variables starting with that string.
+// * Then, if a prefix is given, we source environment variables starting with
+//   that string, if it is not given it defaults to the `MIMIR` prefix.
 // * And finally, we can make manual adjusts with a list of key value pairs.
 pub fn config_from<
     'a,
@@ -91,12 +92,11 @@ pub fn config_from<
             builder
         });
 
-    // Add in settings from the environment (with a prefix of OMS2MIMIR)
+    // Add in settings from the environment
     // Eg.. `<prefix>_DEBUG=1 ./target/app` would set the `debug` key
-    builder = if let Some(prefix) = prefix.into() {
-        builder.add_source(Environment::with_prefix(prefix).separator("_"))
-    } else {
-        builder
+    if let Some(prefix) = prefix.into() {
+        let prefix = Environment::with_prefix(prefix).separator("_");
+        builder = builder.add_source(prefix);
     };
 
     // Add command line overrides
