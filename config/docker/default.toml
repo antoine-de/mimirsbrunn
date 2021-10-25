@@ -19,7 +19,7 @@
 		name = "mimir-test"
 
 		# Memory usage allocated by the docker engine
-		memory = 1024 # In Mb
+		memory = 4096 # In Mb
 
 		# List of environment variables passed to the docker engine for
 		# the creation of the image.
