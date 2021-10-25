@@ -37,10 +37,10 @@ use mimirsbrunn::bano::Bano;
 use mimirsbrunn::settings::bano2mimir as settings;
 use places::addr::Addr;
 use places::admin::Admin;
-use slog_scope::warn;
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use structopt::StructOpt;
+use tracing::warn;
 
 #[derive(Debug, Snafu)]
 pub enum Error {

@@ -2,7 +2,6 @@ use flate2::read::GzDecoder;
 use futures::future;
 use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use serde::de::DeserializeOwned;
-use slog_scope::{info, warn};
 use snafu::futures::TryStreamExt as SnafuTryStreamExt;
 use snafu::{ResultExt, Snafu};
 use std::io::Read;
@@ -10,6 +9,7 @@ use std::marker::{Send, Sync};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::File;
+use tracing::{info, warn};
 
 use config::Config;
 use mimir2::{
