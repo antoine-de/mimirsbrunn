@@ -69,6 +69,7 @@ impl IndexMappings {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename = "snake_case")]
 pub struct IndexParameters {
-    pub timeout: String,                // TODO How should we set this value
-    pub wait_for_active_shards: String, // TODO How should we set this value
+    pub force_merge: bool,
+    pub max_number_segments: i64,
+    pub wait_for_active_shards: String,
 }
