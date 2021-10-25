@@ -20,10 +20,6 @@ macro_rules! impl_container_document {
                     .unwrap()
                     .set_default("container.dataset", "default")
                     .unwrap()
-                    .set_default("elasticsearch.parameters.timeout", "10s")
-                    .unwrap()
-                    .set_default("elasticsearch.parameters.wait_for_active_shards", "1")
-                    .unwrap()
                     .add_source(config::File::from_str(
                         include_str!(concat!(
                             "../../../config/elasticsearch/",
@@ -37,6 +33,14 @@ macro_rules! impl_container_document {
                             "../../../config/elasticsearch/",
                             $doc_type,
                             "/mappings.json"
+                        )),
+                        config::FileFormat::Json,
+                    ))
+                    .add_source(config::File::from_str(
+                        include_str!(concat!(
+                            "../../../config/elasticsearch/",
+                            $doc_type,
+                            "/parameters.json"
                         )),
                         config::FileFormat::Json,
                     ))

@@ -2,7 +2,8 @@ use elasticsearch::cat::CatIndicesParts;
 use elasticsearch::cluster::ClusterHealthParts;
 use elasticsearch::http::response::Exception;
 use elasticsearch::indices::{
-    IndicesCreateParts, IndicesDeleteParts, IndicesGetAliasParts, IndicesRefreshParts,
+    IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
+    IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
 use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
@@ -58,6 +59,10 @@ pub enum Error {
     /// Elasticsearch Not Acknowledged
     #[snafu(display("Elasticsearch Response: Not Acknowledged: {}", details))]
     NotAcknowledged { details: String },
+
+    /// Elasticsearch Failed
+    #[snafu(display("Elasticsearch Response: Failed: {}", details))]
+    Failed { details: String },
 
     /// Elasticsearch Document Insertion Exception
     #[snafu(display("Elasticsearch Failure without Exception: {}", details))]
@@ -736,6 +741,53 @@ impl ElasticsearchStorage {
                     details: String::from("Fail status without exception"),
                 }),
             }
+        }
+    }
+
+    pub(super) async fn force_merge(
+        &self,
+        indices: Vec<String>,
+        max_num_segments: i64,
+    ) -> Result<(), Error> {
+        let indices: Vec<_> = indices.iter().map(String::as_str).collect();
+        let response = self
+            .client
+            .indices()
+            .forcemerge(IndicesForcemergeParts::Index(&indices))
+            .max_num_segments(max_num_segments)
+            .request_timeout(self.config.timeout)
+            .send()
+            .await
+            .and_then(|res| res.error_for_status_code())
+            .context(ElasticsearchClient {
+                details: format!(
+                    "cannot force merge indices '{}'",
+                    indices
+                        .iter()
+                        .map(|s| &**s)
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                ),
+            })?;
+
+        let json = response
+            .json::<Value>()
+            .await
+            .context(ElasticsearchDeserialization)?;
+
+        if json["_shards"]["successful"] == 1 {
+            Ok(())
+        } else {
+            Err(Error::Failed {
+                details: format!(
+                    "cannot force merge '{}'",
+                    indices
+                        .iter()
+                        .map(|s| &**s)
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                ),
+            })
         }
     }
 

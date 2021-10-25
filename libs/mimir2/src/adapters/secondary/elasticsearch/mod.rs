@@ -154,6 +154,8 @@ pub mod tests {
                     "elasticsearch": {
                         "parameters": {
                             "timeout": "10s",
+                            "force_merge": true,
+                            "max_number_segments": 1,
                             "wait_for_active_shards": "1"
                         },
                         "settings": {
@@ -251,6 +253,10 @@ pub mod tests {
                 .set_default("container.dataset", "default")
                 .unwrap()
                 .set_default("elasticsearch.parameters.timeout", "10s")
+                .unwrap()
+                .set_default("elasticsearch.parameters.force_merge", true)
+                .unwrap()
+                .set_default("elasticsearch.parameters.max_number_segments", 1)
                 .unwrap()
                 .set_default("elasticsearch.parameters.wait_for_active_shards", "1")
                 .unwrap()
