@@ -26,6 +26,8 @@ async fn main() {
 
     let dsl = build_query(q, filters, &["fr"], &settings);
 
+    println!("{}", dsl);
+
     client
         .search_documents(
             vec![
