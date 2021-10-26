@@ -63,17 +63,19 @@ ARG DEBIAN_VERSION
 
 RUN if [ "${DEBIAN_VERSION}" = "buster" ]; then \
   apt-get update \
-    && apt-get install -y libcurl4 sqlite3 \
+    && apt-get install -y libcurl4 sqlite3 npm \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
 elif [ "${DEBIAN_VERSION}" = "stretch" ]; then \
   apt-get update \
-    && apt-get install -y libcurl3 sqlite3 \
+    && apt-get install -y libcurl3 sqlite3 npm \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
 else \
   echo "Unsupported debian version '$DEBIAN_VERSION'"; \
 fi
+
+RUN npm install -g bunyan
 
 COPY --from=builder /home/mimirsbrunn/bin/* /usr/bin
 COPY --from=builder /home/mimirsbrunn/config /etc/mimirsbrunn

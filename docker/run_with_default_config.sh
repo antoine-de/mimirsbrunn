@@ -9,4 +9,5 @@ CMD=$1
 shift
 ARG=$@
 
-$CMD --config-dir /etc/mimirsbrunn --run-mode docker $@
+export RUST_LOG="tracing=info,mimir2=info"
+$CMD --config-dir /etc/mimirsbrunn --run-mode docker $@ | bunyan
