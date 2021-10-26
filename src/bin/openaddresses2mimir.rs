@@ -148,23 +148,15 @@ async fn run(
                 f
             });
 
-        import_addresses_from_files(
-            &client,
-            config,
-            true,
-            settings.concurrency.nb_threads,
-            path_iter,
-            into_addr,
-        )
-        .await
-        .context(Import)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>)
+        import_addresses_from_files(&client, config, true, path_iter, into_addr)
+            .await
+            .context(Import)
+            .map_err(|err| Box::new(err) as Box<dyn snafu::Error>)
     } else {
         import_addresses_from_files(
             &client,
             config,
             true,
-            settings.concurrency.nb_threads,
             std::iter::once(opts.input),
             into_addr,
         )

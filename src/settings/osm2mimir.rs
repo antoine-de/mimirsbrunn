@@ -114,7 +114,7 @@ impl Settings {
         builder = builder.add_source(
             common::config::config_from(
                 opts.config_dir.as_ref(),
-                &["osm2mimir", "elasticsearch"],
+                &["osm2mimir", "elasticsearch", "logging"],
                 opts.run_mode.as_deref(),
                 "MIMIR",
                 opts.settings.clone(),

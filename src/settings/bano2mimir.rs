@@ -34,12 +34,6 @@ pub struct Container {
     pub dataset: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Concurrency {
-    pub nb_threads: usize,
-    pub nb_insert_threads: usize,
-}
-
 #[cfg(feature = "db-storage")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
@@ -51,7 +45,6 @@ pub struct Database {
 pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
-    pub concurrency: Concurrency,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: Container,
     #[cfg(feature = "db-storage")]
@@ -107,7 +100,7 @@ impl Settings {
         builder = builder.add_source(
             common::config::config_from(
                 opts.config_dir.as_ref(),
-                &["bano2mimir", "elasticsearch"],
+                &["bano2mimir", "elasticsearch", "logging"],
                 opts.run_mode.as_deref(),
                 "MIMIR",
                 opts.settings.clone(),

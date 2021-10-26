@@ -35,12 +35,6 @@ pub struct Container {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Concurrency {
-    pub nb_threads: usize,
-    pub nb_insert_threads: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coordinates {
     pub id_precision: usize,
 }
@@ -56,7 +50,6 @@ pub struct Database {
 pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
-    pub concurrency: Concurrency,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: Container,
     pub coordinates: Coordinates,
@@ -113,7 +106,7 @@ impl Settings {
         builder = builder.add_source(
             common::config::config_from(
                 opts.config_dir.as_ref(),
-                &["openaddresses2mimir", "elasticsearch"],
+                &["openaddresses2mimir", "elasticsearch", "logging"],
                 opts.run_mode.as_deref(),
                 "MIMIR",
                 opts.settings.clone(),

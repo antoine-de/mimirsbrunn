@@ -82,7 +82,10 @@ pub fn config_from<
                 .or_else(|| run_mode.clone().into().map(String::from))
             {
                 let run_mode_path = dir_path.join(&run_mode).with_extension("toml");
-                builder = builder.add_source(File::from(run_mode_path).required(false));
+
+                if run_mode_path.is_file() {
+                    builder = builder.add_source(File::from(run_mode_path).required(false));
+                }
             }
 
             // Add in a local configuration file

@@ -9,4 +9,4 @@ CMD=$1
 shift
 ARG=$@
 
-$CMD --config-dir=/etc/mimirsbrunn $@
+$CMD --config-dir /etc/mimirsbrunn --run-mode docker $@

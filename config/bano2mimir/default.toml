@@ -1,9 +1,2 @@
-[logging]
-  path = "./logs"
-
-[concurrency]
-  nb_threads = 2
-  nb_insert_threads = 1
-
 [container]
   dataset = "fr"
