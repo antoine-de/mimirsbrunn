@@ -38,7 +38,7 @@ pub struct Poi {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Logging {
-    pub path: String,
+    pub path: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -59,34 +59,33 @@ pub enum Error {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let opts = settings::Opts::from_args();
+
+    let settings = settings::Settings::new(&opts)
+        .and_then(settings::validate)
+        .context(Settings)?;
+
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(run))
-            .await
-            .context(Execution),
+        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
+            &settings.logging.path.clone(),
+            move || run(opts, settings),
+        )
+        .await
+        .context(Execution),
         settings::Command::Config => {
-            mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(config))
-                .await
-                .context(Execution)
+            println!("{}", serde_json::to_string_pretty(&settings).unwrap());
+            Ok(())
         }
     }
 }
 
 const POI_REVERSE_GEOCODING_CONCURRENCY: usize = 8;
 
-async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
-    let settings = settings::Settings::new(&opts).map_err(Box::new)?;
-    println!("{}", serde_json::to_string_pretty(&settings).unwrap());
-    Ok(())
-}
-
-async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
-    let input = opts.input.clone(); // we save the input, because opts will be consumed by settings.
-
-    let settings = &settings::Settings::new(&opts)
-        .and_then(settings::validate)
-        .context(Settings)?;
-
-    let mut osm_reader = mimirsbrunn::osm_reader::make_osm_reader(&input).context(OsmPbfReader)?;
+async fn run(
+    opts: settings::Opts,
+    settings: settings::Settings,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut osm_reader =
+        mimirsbrunn::osm_reader::make_osm_reader(&opts.input).context(OsmPbfReader)?;
 
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch.clone())

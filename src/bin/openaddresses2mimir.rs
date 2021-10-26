@@ -67,32 +67,27 @@ pub enum Error {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let opts = settings::Opts::from_args();
+    let settings = settings::Settings::new(&opts).context(Settings)?;
+
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(run))
-            .await
-            .context(Execution),
+        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
+            &settings.logging.path.clone(),
+            move || run(opts, settings),
+        )
+        .await
+        .context(Execution),
         settings::Command::Config => {
-            mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(config))
-                .await
-                .context(Execution)
+            println!("{}", serde_json::to_string_pretty(&settings).unwrap());
+            Ok(())
         }
     }
 }
 
-async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
-    let settings = settings::Settings::new(&opts).map_err(Box::new)?;
-    println!("{}", serde_json::to_string_pretty(&settings).unwrap());
-    Ok(())
-}
-
-async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
+async fn run(
+    opts: settings::Opts,
+    settings: settings::Settings,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("importing open addresses into Mimir");
-
-    let input = opts.input.clone(); // we save the input, because opts will be consumed by settings.
-
-    let settings = settings::Settings::new(&opts)
-        .context(Settings)
-        .map_err(Box::new)?;
 
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
@@ -136,8 +131,8 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
     .map_err(Box::new)?;
 
     // Import from file(s)
-    if input.is_dir() {
-        let paths = walkdir::WalkDir::new(&input);
+    if opts.input.is_dir() {
+        let paths = walkdir::WalkDir::new(&opts.input);
         let path_iter = paths
             .into_iter()
             .map(|p| p.unwrap().into_path())
@@ -170,7 +165,7 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
             config,
             true,
             settings.concurrency.nb_threads,
-            std::iter::once(input),
+            std::iter::once(opts.input),
             into_addr,
         )
         .await
@@ -216,7 +211,8 @@ mod tests {
             cmd: settings::Command::Run,
         };
 
-        let _res = mimirsbrunn::utils::launch::launch_async_args(run, opts).await;
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
