@@ -4,6 +4,8 @@ use async_trait::async_trait;
 use common::document::ContainerDocument;
 use futures::stream::{Stream, StreamExt};
 use std::pin::Pin;
+use tracing::info_span;
+use tracing_futures::Instrument;
 
 type PinnedStream<T> = Pin<Box<dyn Stream<Item = T> + Send + 'static>>;
 
@@ -24,9 +26,11 @@ where
         let documents = self
             .list_documents(Parameters { doc_type })
             .await?
-            .map(|raw| {
-                raw.map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })
-            });
+            .map(|raw| raw.map_err(|err| ModelError::DocumentRetrievalError { source: err.into() }))
+            .instrument(info_span!(
+                "List documents",
+                doc_type = D::static_doc_type(),
+            ));
 
         Ok(documents.boxed())
     }

@@ -31,8 +31,6 @@
 use futures::future::Future;
 use lazy_static::lazy_static;
 use std::path::Path;
-use std::process::exit;
-use structopt::StructOpt;
 use tracing::error;
 
 use super::logger::logger_init;
@@ -41,43 +39,19 @@ lazy_static! {
     pub static ref DEFAULT_NB_THREADS: String = num_cpus::get().to_string();
 }
 
-pub async fn launch_async_args<O, F, Fut>(run: F, args: O) -> Result<(), Box<dyn std::error::Error>>
-where
-    O: StructOpt,
-    F: FnOnce(O) -> Fut,
-    Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
-{
-    let res = if let Err(err) = run(args).await {
-        // To revisit when rust #58520 is resolved
-        // for cause in err.chain() {
-        //     eprintln!("{}", cause);
-        // }
-        if let Some(source) = err.source() {
-            eprintln!("{}", source);
-        }
-        Err(err)
-    } else {
-        Ok(())
-    };
-
-    res
-}
-
 // Ensures the logger is initialized prior to launching a function, and also making sure the logger
 // is flushed at the end. Whatever is returned by the main function is forwarded out.
-pub async fn wrapped_launch_async_args<O, F, Fut>(
+pub async fn wrapped_launch_async<F, Fut>(
+    logging_path: &Path,
     run: F,
-    args: O,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
-    O: StructOpt,
-    F: FnOnce(O) -> Fut,
+    F: FnOnce() -> Fut,
     Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
 {
-    // FIXME I hardcode the logging path, but it should come from settings.
-    let path = Path::new("./logs");
-    let guard = logger_init(path).map_err(Box::new)?;
-    let res = if let Err(err) = run(args).await {
+    let guard = logger_init(logging_path).map_err(Box::new)?;
+
+    let res = if let Err(err) = run().await {
         // To revisit when rust #58520 is resolved
         // for cause in err.chain() {
         //     error!("{}", cause);
@@ -96,57 +70,23 @@ where
     res
 }
 
-pub async fn wrapped_launch_async<O, F, Fut>(run: F) -> Result<(), Box<dyn std::error::Error>>
+pub async fn launch_async<F, Fut>(run: F) -> Result<(), Box<dyn std::error::Error>>
 where
-    O: StructOpt,
-    F: FnOnce(O) -> Fut,
+    F: FnOnce() -> Fut,
     Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
 {
-    wrapped_launch_async_args(run, O::from_args()).await
-}
-
-pub async fn launch_async<O, F, Fut>(run: F)
-where
-    O: StructOpt,
-    F: FnOnce(O) -> Fut,
-    Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
-{
-    if wrapped_launch_async(run).await.is_err() {
-        // we wrap the real stuff in another method to std::exit after
-        // the destruction of the logger (so we won't loose any messages)
-        exit(1);
-    }
-}
-
-pub fn wrapped_launch_run<O, F>(run: F) -> Result<(), Box<dyn std::error::Error>>
-where
-    F: FnOnce(O) -> Result<(), Box<dyn std::error::Error>>,
-    O: StructOpt,
-{
-    let path = Path::new("./logs");
-    let _guard = logger_init(path).map_err(Box::new)?;
-    if let Err(err) = run(O::from_args()) {
+    let res = if let Err(err) = run().await {
         // To revisit when rust #58520 is resolved
         // for cause in err.chain() {
-        //     error!("{}", cause);
+        //     eprintln!("{}", cause);
         // }
         if let Some(source) = err.source() {
-            error!("{}", source);
+            eprintln!("{}", source);
         }
         Err(err)
     } else {
         Ok(())
-    }
-}
+    };
 
-pub fn launch_run<O, F>(run: F)
-where
-    F: FnOnce(O) -> Result<(), Box<dyn std::error::Error>>,
-    O: StructOpt,
-{
-    if wrapped_launch_run(run).is_err() {
-        // we wrap the real stuff in another method to std::exit after
-        // the destruction of the logger (so we won't loose any messages)
-        exit(1);
-    }
+    res
 }

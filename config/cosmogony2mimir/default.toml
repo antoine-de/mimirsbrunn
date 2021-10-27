@@ -1,8 +1,4 @@
 langs = [ "fr" ]
 
-[logging]
-  path = "./logs"
-
 [container]
   dataset = "fr"
-

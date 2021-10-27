@@ -95,7 +95,6 @@ pub async fn import_addresses_from_reads<T, F>(
     client: &ElasticsearchStorage,
     config: Config,
     has_headers: bool,
-    _nb_threads: usize,
     inputs: Vec<impl Read + Send + Sync + 'static>,
     into_addr: F,
 ) -> Result<(), Error>
@@ -125,7 +124,6 @@ pub async fn import_addresses_from_files<T, F>(
     client: &ElasticsearchStorage,
     config: Config,
     has_headers: bool,
-    nb_threads: usize,
     files: impl IntoIterator<Item = PathBuf>,
     into_addr: F,
 ) -> Result<(), Error>
@@ -157,7 +155,7 @@ where
         })
         .collect();
 
-    import_addresses_from_reads(client, config, has_headers, nb_threads, files, into_addr).await
+    import_addresses_from_reads(client, config, has_headers, files, into_addr).await
 }
 
 /// Import the addresses found in path, using the given (Elastiscsearch) configuration and client.

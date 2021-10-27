@@ -67,31 +67,26 @@ pub enum Error {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let opts = settings::Opts::from_args();
+    let settings = settings::Settings::new(&opts).context(Settings)?;
+
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(run))
-            .await
-            .context(Execution),
+        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
+            &settings.logging.path.clone(),
+            move || run(opts, settings),
+        )
+        .await
+        .context(Execution),
         settings::Command::Config => {
-            mimirsbrunn::utils::launch::wrapped_launch_async(Box::new(config))
-                .await
-                .context(Execution)
+            println!("{}", serde_json::to_string_pretty(&settings).unwrap());
+            Ok(())
         }
     }
 }
 
-async fn config(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
-    let settings = settings::Settings::new(&opts).map_err(Box::new)?;
-    println!("{}", serde_json::to_string_pretty(&settings).unwrap());
-    Ok(())
-}
-
-async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
-    let input = opts.input.clone(); // we save the input, because opts will be consumed by settings.
-
-    let settings = settings::Settings::new(&opts)
-        .context(Settings)
-        .map_err(Box::new)?;
-
+async fn run(
+    opts: settings::Opts,
+    settings: settings::Settings,
+) -> Result<(), Box<dyn std::error::Error>> {
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
@@ -145,10 +140,12 @@ async fn run(opts: settings::Opts) -> Result<(), Box<dyn std::error::Error>> {
     .context(Configuration)
     .map_err(Box::new)?;
 
-    mimirsbrunn::addr_reader::import_addresses_from_input_path(&client, config, input, into_addr)
-        .await
-        .context(Import)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    mimirsbrunn::addr_reader::import_addresses_from_input_path(
+        &client, config, opts.input, into_addr,
+    )
+    .await
+    .context(Import)
+    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]
@@ -183,7 +180,8 @@ mod tests {
             cmd: settings::Command::Run,
         };
 
-        let _res = mimirsbrunn::utils::launch::launch_async_args(run, opts).await;
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.

@@ -27,7 +27,7 @@ pub enum Error {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Logging {
-    pub path: String,
+    pub path: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,7 +93,7 @@ impl Settings {
         builder = builder.add_source(
             common::config::config_from(
                 opts.config_dir.as_ref(),
-                &["cosmogony2mimir", "elasticsearch"],
+                &["cosmogony2mimir", "elasticsearch", "logging"],
                 opts.run_mode.as_deref(),
                 "MIMIR",
                 opts.settings.clone(),
