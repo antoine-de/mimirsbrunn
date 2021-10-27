@@ -143,6 +143,11 @@ Bragi exposes a small REST API summarized in the table below:
 <td><a href="#reverse-geocoding">link</a></td>
 </tr>
 <tr class="odd">
+<td><code>autocomplete-explain</code></td>
+<td><p>Explain information about why a specific document matches (or doesn’t match) a query.</p>
+<td><a href="https://www.elastic.co/guide/en/elasticsearch/reference/7.14/search-explain.html">link</a></td>
+</tr>
+<tr class="odd">
 <td><code>features</code></td>
 <td>Returns Bragi’s status as well al the backend’s.</td>
 <td><a href="#features">link</a></td>
