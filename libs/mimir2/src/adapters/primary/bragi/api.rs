@@ -8,6 +8,14 @@ use crate::adapters::primary::common::filters::Filters;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForwardGeocoderExplainQuery {
+    pub query: ForwardGeocoderQuery,
+    pub id: String,
+    pub doc_type: String,
+}
+
 /// This structure contains all the query parameters that
 /// can be submitted for the autocomplete endpoint.
 ///
@@ -150,7 +158,21 @@ macro_rules! forward_geocoder {
             .and_then(handlers::forward_geocoder)
     };
 }
+
 pub use forward_geocoder;
+
+#[macro_export]
+macro_rules! forward_geocoder_explain {
+    ($cl:expr, $st:expr) => {
+        routes::forward_geocoder_explain_get()
+            .or(routes::forward_geocoder_explain_post())
+            .unify()
+            .and(routes::with_client($cl))
+            .and(routes::with_settings($st))
+            .and_then(handlers::forward_geocoder_explain)
+    };
+}
+pub use forward_geocoder_explain;
 
 #[macro_export]
 macro_rules! reverse_geocoder {

@@ -319,11 +319,11 @@ TODO
 ## Architecture
 
 Bragi is a web application providing a REST interface for querying
-Elasticsearch in the context of Mimirksbrunn. By that I mean it can only be used
+Elasticsearch in the context of Mimirsbrunn. By that I mean it can only be used
 to query data that have been previously stored in Elasticsearch by one of
 mimirsbrunn's binary.
 
-Since Mimirsbrunn follows an hexagonal architecture, one part of bragi must be
+Since Mimirsbrunn follows a hexagonal architecture, one part of bragi must be
 an adapter (aka controller).  That is, one component of bragi must _adapt_ the
 input data from the http / REST interface to the primary port.
 

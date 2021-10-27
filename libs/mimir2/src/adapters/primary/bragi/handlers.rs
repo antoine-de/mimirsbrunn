@@ -4,6 +4,7 @@ use tracing::{debug, instrument};
 use warp::http::StatusCode;
 use warp::reply::{json, with_status};
 
+use crate::adapters::primary::bragi::api::ForwardGeocoderExplainQuery;
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
@@ -15,6 +16,7 @@ use crate::adapters::primary::{
     },
 };
 use crate::domain::model::query::Query;
+use crate::domain::ports::primary::explain_query::ExplainDocument;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
@@ -69,6 +71,39 @@ where
                 )),
             }
         }
+        Err(err) => Ok(with_status(
+            json(&format!(
+                "Error while searching {}: {}",
+                &q,
+                err.to_string()
+            )),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
+    }
+}
+
+#[instrument(skip(client, settings))]
+pub async fn forward_geocoder_explain<S>(
+    params: ForwardGeocoderExplainQuery,
+    geometry: Option<Geometry>,
+    client: S,
+    settings: settings::QuerySettings,
+) -> Result<impl warp::Reply, warp::Rejection>
+where
+    S: ExplainDocument,
+    S::Document: Serialize + Into<serde_json::Value>,
+{
+    let q = params.query.q.clone();
+    let filters = filters::Filters::from((params.query, geometry));
+    let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
+
+    debug!("{}", serde_json::to_string(&dsl).unwrap());
+
+    match client
+        .explain_document(Query::QueryDSL(dsl), params.id, params.doc_type)
+        .await
+    {
+        Ok(res) => Ok(with_status(json(&res), StatusCode::OK)),
         Err(err) => Ok(with_status(
             json(&format!(
                 "Error while searching {}: {}",
