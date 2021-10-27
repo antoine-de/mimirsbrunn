@@ -14,8 +14,8 @@ jobs:
       - name: Setup rust
         uses: actions-rs/toolchain@v1
         with:
+          components: rustc, cargo, clippy, rustfmt
           profile: minimal
-          toolchain: 1.54.0
 
       - uses: Swatinem/rust-cache@v1
 
