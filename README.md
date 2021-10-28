@@ -2,16 +2,17 @@
 [![GitHub license](https://img.shields.io/github/license/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/blob/master/LICENSE)
 [![GitHub tag](https://img.shields.io/github/tag/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/tag)
 
-Table of Contents
+Mimirsbrunn
 =================
 
   * [What's a Geocoder](#whats-a-geocoder)
   * [Getting Started](#getting-started)
-	  * [Prerequisites](#prerequisites)
-		* [Installing](#installing)
+    * [Prerequisites](#prerequisites)
+    * [Installing](#installing)
     * [Running](#running)
-		* [Testing](#testing)
-	* [Development](#development)
+    * [Testing](#testing)
+    * [Where to Go From There](#where-to-go-from-there)
+  * [Development](#development)
     * [Contributing](#contributing)
     * [Versioning](#versioning)
     * [Authors](#authors)
@@ -22,14 +23,13 @@ Table of Contents
   * [License](#license)
   * [Acknowledgments](#acknowledgments)
 
-# Mimirsbrunn
 
 Mimirsbrunn (also called Mimir) is an independent geocoding and reverse-geocoding system written in
 [Rust](https://www.rust-lang.org/en-US/), and built upon [Elasticsearch](https://www.elastic.co). It
 can handle addresses, streets, points-of-interest (POI), administrative regions and public transport
 stops.
 
-## What's a Geocoder ?
+# What's a Geocoder ?
 
 Usually [geocoding](https://en.wikipedia.org/wiki/Geocoding) refers to "the process of transforming
 a physical address description to a location on the Earth's surface". However Mimir is more a
@@ -45,7 +45,7 @@ mal`, and mimir returns possible candidates in a dropdown box.
 
 ![qwant maps](https://user-images.githubusercontent.com/3987698/56976025-53ed1180-6b72-11e9-9c81-9718e92061ce.png)
 
-## Getting Started
+# Getting Started
 
 For an introduction to the project, you can have a look at the [Introduction to
 Mimirsbrunn](docs/tutorials/introduction.md).
@@ -55,7 +55,7 @@ These instructions will give you a copy of the project up and running on your lo
 development and testing purposes. See deployment for notes on deploying the project on a live
 system.
 
-### Prerequisites
+## Prerequisites
 
 Mimirsbrunn is a rust project, so you need to have a rust development environment. Instructions on
 how to do that are found on the [rust website](https://www.rust-lang.org/tools/install).
@@ -65,7 +65,7 @@ create so called cosmogony files which are used for indexing administrative regi
 
 For running end to end or unit tests, you need the docker engine available.
 
-### Installing
+## Installing
 
 You can install Mimirsbrunn from debian packages available as build artifacts on the repository
 homepage. [FIXME Where are .deb ?]
@@ -80,7 +80,7 @@ cd mimirsbrunn
 cargo build --release
 ```
 
-### Running
+## Running
 
 Having built the project, you can now perform a sanity check. This will serve as a test that the
 program works, and as a basic example of the two main functionalities: indexing and querying.
@@ -112,8 +112,8 @@ We'll start an Elasticsearch version 7.13, available on ports 9200 and 9300.
 ```
 docker run --name mimirsbrunn-test \
   -p 9200:9200 -p 9300:9300 \
-	-e "discovery.type=single-node" \
-	-d docker.elastic.co/elasticsearch/elasticsearch:7.13.0
+  -e "discovery.type=single-node" \
+  -d docker.elastic.co/elasticsearch/elasticsearch:7.13.0
 ```
 
 You can check that Elasticsearch has correctly started (maybe wait for about 10/20s for
@@ -123,9 +123,9 @@ Elasticsearch to be available):
 curl 'http://localhost:9200'
 {
   "name": "...",
-	"cluster_name": "docker-cluster",
-	...
-k	"tagline": "You Know, for Search"
+  "cluster_name": "docker-cluster",
+  ...
+k  "tagline": "You Know, for Search"
 }
 ```
 
@@ -143,11 +143,11 @@ more details about using cosmogony2mimir)
 cd mimirsbrunn
 ./target/release/cosmogony2mimir \
   -c ./config \
-	-m testing \
-	-s elasticsearch.url='http://localhost:9200' \
-	-s langs=['en', 'da'] \
-	-i <path/to/denmark.jsonl.gz> \
-	run
+  -m testing \
+  -s elasticsearch.url='http://localhost:9200' \
+  -s langs=['en', 'da'] \
+  -i <path/to/denmark.jsonl.gz> \
+  run
 ```
 
 You can follow in the `mimirsbrunn/logs` directory.
@@ -165,7 +165,7 @@ curl 'http://localhost:9200/_cat/indices'
 
 7. Query Bragi
 
-### Testing
+## Testing
 
 Since this is a rust project, we are well instrumented to run all sorts of tests:
 * style
@@ -182,48 +182,26 @@ make check
 
 See this [page](/docs/testing.md) for a more in depth introduction to testing this project.
 
-#### Style
+## Where to Go from There
 
-We don't follow any particular style, just the default rust style, and you can check that your
-contribution follows the style with:
+Maybe you find that some the results you get are not ranked correctly, and want to adjust the way
+Elasticsearch is configured. You can start by reading [this](/docs/process/elasticsearch.md)
 
-```
-cargo fmt --all -- --check
-```
-
-#### Lint
-
-Again we follow the linting suggestions given by *clippy*:
-
-```
-cargo clippy --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
-```
-
-#### Unit Tests
-
-TODO
-
-#### End to End Tests
-
-TODO
-
-More information about the project can be found in [the docs subdirectory](docs/README.md).
-
-## Development
+# Development
 
 You can find more developer oriented documentation [here](/docs/developer.md)
 
-### Contributing
+## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process
 for submitting pull requests to us.
 
-### Versioning
+## Versioning
 
 We use [Semantic Versioning](http://semver.org/) for versioning. For the versions available, see the
 [tags on this repository](https://github.com/CanalTP/mimirsbrunn/tags).
 
-### Authors
+## Authors
 
 Mimirsbrunn is a project initially started by [Guillaume Pinot](texitoi@texitio.eu) and [Antoine
 Desbordes]() for [Navitia](http://navitia.io). 
@@ -231,16 +209,18 @@ Desbordes]() for [Navitia](http://navitia.io).
 See also the list of [contributors](https://github.com/CanalTP/mimirsbrunn/contributors) who
 participated in this project.
 
-## Processes
+# Processes
 
-## Who Uses It ?
+[processes](/docs/process/README.md)
+
+# Who Uses It ?
 
 * [Navitia](https://github.com/CanalTP/navitia)
 * [Qwant Maps](https://www.qwant.com/maps)
 
 If you use it too, feel free to open a pull request, we'll be happy to add your project here!
 
-## Alternatives
+# Alternatives
 
 * [pelias](https://github.com/pelias/pelias)
 * [photon](https://github.com/komoot/photon)
@@ -253,16 +233,16 @@ All those projects use quite the same APIs, and you can compare their results us
 
 For a more visual comparison, you can also use [a comparator](https://github.com/CanalTP/autocomplete-comparator).
 
-## Ressources
+# Ressources
 
 * [A french presentation of Mimirsbrunn](https://github.com/TeXitoi/pinot2017bano/blob/master/pinot2017bano.pdf)
 
-## License
+# License
 
 This project is licensed under the [AGPLv3](LICENSE.md) GNU Affero General Public License - see the
 [LICENSE.md](LICENSE.md) file for details
 
-## Acknowledgments
+# Acknowledgments
 
   - **Billie Thompson** - *Provided README Template* - [PurpleBooth](https://github.com/PurpleBooth)
 
