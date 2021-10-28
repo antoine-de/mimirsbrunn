@@ -13,6 +13,7 @@ pub fn build_query(
     let filters::Filters {
         coord,
         shape,
+        limit,
         datasets: _,
         zone_types: _,
         poi_types: _,
@@ -21,8 +22,19 @@ pub fn build_query(
     let string_query = build_string_query(q, &settings.string_query);
     let boosts = build_boosts(q, settings, coord);
     let filters = build_filters(shape);
-    if filters.is_empty() {
+    if filters.is_empty() & !limit.is_some() {
         json!({
+            "query": {
+                "bool": {
+                    "must": [ string_query ],
+                    "should": boosts
+                }
+            }
+        })
+    } else if filters.is_empty() & limit.is_some() {
+        json!({
+            "from":0,
+            "size":limit.unwrap_or(10),
             "query": {
                 "bool": {
                     "must": [ string_query ],
@@ -32,6 +44,8 @@ pub fn build_query(
         })
     } else {
         json!({
+            "from":0,
+            "size":limit.unwrap_or(10),
             "query": {
                 "bool": {
                     "must": [ string_query ],

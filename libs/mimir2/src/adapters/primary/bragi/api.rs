@@ -35,6 +35,7 @@ pub struct ForwardGeocoderQuery {
     #[serde(default, rename = "zone_type")]
     pub zone_types: Option<Vec<ZoneType>>,
     pub poi_types: Option<Vec<String>>,
+    pub limit: Option<i64>,
 }
 
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
@@ -49,6 +50,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                 types: _,
                 zone_types,
                 poi_types,
+                limit,
             },
             geometry,
         ) = source;
@@ -87,6 +89,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
             datasets,
             zone_types,
             poi_types,
+            limit,
         }
     }
 }

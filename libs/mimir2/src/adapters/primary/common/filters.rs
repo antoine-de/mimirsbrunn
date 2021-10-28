@@ -12,4 +12,5 @@ pub struct Filters {
     pub datasets: Option<Vec<String>>,
     pub zone_types: Option<Vec<String>>,
     pub poi_types: Option<Vec<String>>,
+    pub limit: Option<i64>,
 }
