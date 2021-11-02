@@ -65,6 +65,7 @@ async fn main() {
                 Addr::static_doc_type().to_string(),
             ],
             Query::QueryDSL(dsl),
+            None,
         )
         .await
         .unwrap()

@@ -7,6 +7,7 @@ use snafu::Snafu;
 pub struct Parameters {
     pub doc_types: Vec<String>,
     pub query: Query,
+    pub result_limit: Option<i64>,
 }
 
 #[derive(Debug, Snafu)]

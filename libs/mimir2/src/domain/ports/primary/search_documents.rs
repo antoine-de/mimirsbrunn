@@ -19,6 +19,7 @@ pub trait SearchDocuments {
         &self,
         doc_types: Vec<String>,
         query: Query,
+        result_limit: Option<i64>,
     ) -> Result<Vec<Self::Document>, ModelError>;
 }
 
@@ -34,9 +35,14 @@ where
         &self,
         doc_types: Vec<String>,
         query: Query,
+        result_limit: Option<i64>,
     ) -> Result<Vec<Self::Document>, ModelError> {
-        self.search_documents(Parameters { doc_types, query })
-            .await
-            .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })
+        self.search_documents(Parameters {
+            doc_types,
+            query,
+            result_limit,
+        })
+        .await
+        .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })
     }
 }

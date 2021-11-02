@@ -293,6 +293,7 @@ where
                 places::street::Street::static_doc_type().to_string(),
             ],
             Query::QueryDSL(reverse),
+            None,
         )
         .await
         .map(|results| {

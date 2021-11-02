@@ -38,12 +38,12 @@ where
     let q = params.q.clone();
     let search_types = types_to_indices(&params.types);
     let filters = filters::Filters::from((params, geometry));
-    let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
+    let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
-        .search_documents(search_types, Query::QueryDSL(dsl))
+        .search_documents(search_types, Query::QueryDSL(dsl), filters.limit)
         .await
     {
         Ok(res) => {
@@ -134,6 +134,7 @@ where
                 String::from(Addr::static_doc_type()),
             ],
             Query::QueryDSL(dsl),
+            None,
         )
         .await
     {

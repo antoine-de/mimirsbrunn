@@ -223,6 +223,7 @@ mod tests {
                     .search_documents(
                         vec![String::from(Addr::static_doc_type())],
                         Query::QueryString(format!("full_label.prefix:({})", query)),
+                        None,
                     )
                     .await
                     .unwrap()
