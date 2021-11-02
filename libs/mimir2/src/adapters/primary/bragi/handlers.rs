@@ -100,7 +100,7 @@ where
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
-        .explain_document(Query::QueryDSL(dsl), params.id, params.doc_type)
+        .explain_document(Query::QueryDSL(dsl), params.doc_id, params.doc_type)
         .await
     {
         Ok(res) => Ok(with_status(json(&res), StatusCode::OK)),

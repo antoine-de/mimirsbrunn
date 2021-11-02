@@ -11,7 +11,7 @@ use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForwardGeocoderExplainQuery {
-    pub id: String,
+    pub doc_id: String,
     pub doc_type: String,
 
     #[serde(flatten)]
