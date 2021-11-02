@@ -1,4 +1,5 @@
 use common::document::ContainerDocument;
+use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir2::{
     adapters::primary::common::{
         coord::Coord, dsl::build_query, filters::Filters, settings::QuerySettings,
@@ -65,7 +66,7 @@ async fn main() {
                 Addr::static_doc_type().to_string(),
             ],
             Query::QueryDSL(dsl),
-            None,
+            DEFAULT_LIMIT_RESULT_ES,
         )
         .await
         .unwrap()

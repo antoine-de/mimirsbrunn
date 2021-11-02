@@ -155,7 +155,7 @@ impl Step for Search {
         // Fetch documents
         self.results = {
             client
-                .search_documents(self.places.clone(), Query::QueryDSL(dsl), None)
+                .search_documents(self.places.clone(), Query::QueryDSL(dsl), 10)
                 .await
                 .unwrap()
         };

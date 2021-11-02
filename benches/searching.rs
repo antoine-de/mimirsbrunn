@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use tokio::fs::File;
 
 use common::document::ContainerDocument;
+use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir2::adapters::secondary::elasticsearch::{
     remote::connection_test_pool, ElasticsearchStorageConfig,
 };
@@ -110,7 +111,7 @@ fn bench(c: &mut Criterion) {
                                         Poi::static_doc_type().to_string(),
                                     ],
                                     Query::QueryDSL(dsl),
-                                    None,
+                                    DEFAULT_LIMIT_RESULT_ES,
                                 )
                                 .await
                                 .unwrap();

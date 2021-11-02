@@ -899,7 +899,7 @@ impl ElasticsearchStorage {
         &self,
         indices: Vec<String>,
         query: Query,
-        limit_result: Option<i64>,
+        limit_result: i64,
     ) -> Result<Vec<D>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
@@ -908,7 +908,7 @@ impl ElasticsearchStorage {
         let search = self
             .client
             .search(SearchParts::Index(&indices))
-            .size(limit_result.unwrap_or(10))
+            .size(limit_result)
             .request_timeout(self.config.timeout);
 
         let response = match query {

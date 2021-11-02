@@ -134,7 +134,7 @@ where
                 String::from(Addr::static_doc_type()),
             ],
             Query::QueryDSL(dsl),
-            None,
+            params.limit,
         )
         .await
     {

@@ -8,6 +8,8 @@ use crate::adapters::primary::common::filters::Filters;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
+pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ForwardGeocoderExplainQuery {
@@ -35,7 +37,12 @@ pub struct ForwardGeocoderQuery {
     #[serde(default, rename = "zone_type")]
     pub zone_types: Option<Vec<ZoneType>>,
     pub poi_types: Option<Vec<String>>,
-    pub limit: Option<i64>,
+    #[serde(default = "default_result_limit")]
+    pub limit: i64,
+}
+
+fn default_result_limit() -> i64 {
+    DEFAULT_LIMIT_RESULT_ES
 }
 
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
@@ -100,6 +107,8 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
 pub struct ReverseGeocoderQuery {
     pub lat: f64,
     pub lon: f64,
+    #[serde(default = "default_result_limit")]
+    pub limit: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
