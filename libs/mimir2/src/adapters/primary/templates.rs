@@ -25,7 +25,7 @@ pub enum Error {
     Backend { source: ModelError },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Template {
     Index,
     Component,
@@ -46,7 +46,6 @@ pub async fn import<C: Clone + ConfigureBackend>(
                 .expect("template_name")
                 .to_string();
             let client = client.clone();
-            let template_type = template_type.clone();
             async move {
                 let config = config::Config::builder()
                     .set_default("elasticsearch.name", template_name)
