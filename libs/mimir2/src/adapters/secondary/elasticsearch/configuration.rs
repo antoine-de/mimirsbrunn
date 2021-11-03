@@ -23,14 +23,6 @@ pub enum Error {
     },
 }
 
-// impl From<serde_json::Error> for Error {
-//     fn from(source: serde_json::Error) -> Self {
-//         Self::InvalidConfiguration {
-//             details: source.to_string(),
-//         }
-//     }
-// }
-
 /// The indices create index API has 4 components, which are
 /// reproduced below:
 /// - Path parameter: The index name
