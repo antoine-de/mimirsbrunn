@@ -13,6 +13,7 @@ pub fn build_query(
     let filters::Filters {
         coord,
         shape,
+        limit: _,
         datasets: _,
         zone_types: _,
         poi_types: _,

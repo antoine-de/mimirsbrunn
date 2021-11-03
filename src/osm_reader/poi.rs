@@ -28,22 +28,19 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use config::Config;
-use osm_boundaries_utils::build_boundary;
-use serde::{Deserialize, Serialize};
-use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::io;
 use std::ops::Deref;
 use std::path::PathBuf;
+
+use config::Config;
+use osm_boundaries_utils::build_boundary;
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use tracing::{info, instrument, warn};
 
-use super::osm_utils::get_way_coord;
-use super::osm_utils::make_centroid;
-use super::OsmPbfReader;
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::labels;
 use common::document::ContainerDocument;
+use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir2::{
     domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
 };
@@ -53,6 +50,13 @@ use places::{
     poi::{Poi, PoiType},
     Address,
 };
+
+use crate::admin_geofinder::AdminGeoFinder;
+use crate::labels;
+
+use super::osm_utils::get_way_coord;
+use super::osm_utils::make_centroid;
+use super::OsmPbfReader;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -117,6 +121,7 @@ impl Default for PoiConfig {
             .expect("poi configuration")
     }
 }
+
 impl PoiConfig {
     pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Error> {
         let config: PoiConfig = serde_json::from_reader(r).context(JsonDeserialization)?;
@@ -293,6 +298,7 @@ where
                 places::street::Street::static_doc_type().to_string(),
             ],
             Query::QueryDSL(reverse),
+            DEFAULT_LIMIT_RESULT_ES,
         )
         .await
         .map(|results| {
@@ -349,14 +355,18 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io;
+
+    use super::*;
+
     fn tags(v: &[(&str, &str)]) -> osmpbfreader::Tags {
         v.iter().map(|&(k, v)| (k.into(), v.into())).collect()
     }
+
     fn from_str(s: &str) -> Result<PoiConfig, Error> {
         PoiConfig::from_reader(io::Cursor::new(s))
     }
+
     #[test]
     fn default_test() {
         let c = PoiConfig::default();
@@ -384,6 +394,7 @@ mod tests {
             );
         }
     }
+
     #[test]
     fn parsing_errors() {
         from_str("").unwrap_err();
@@ -397,6 +408,7 @@ mod tests {
         from_str(r#"{"types": [{"name": "bar"}], "rules": []}"#).unwrap_err();
         from_str(r#"{"types": [{"id": "poi_type:foo", "name": "bar"}], "rules": []}"#).unwrap();
     }
+
     #[test]
     fn check_tests() {
         from_str(
@@ -422,6 +434,7 @@ mod tests {
         )
         .unwrap_err();
     }
+
     #[test]
     fn check_with_colon() {
         let json = r#"{
@@ -454,6 +467,7 @@ mod tests {
             c.get_poi_id(&tags(&[("amenity", "parking:effia")]))
         );
     }
+
     #[test]
     fn check_all_tags_first_match() {
         let json = r#"{

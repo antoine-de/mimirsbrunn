@@ -1,6 +1,5 @@
-use geojson::Geometry;
-
 use super::coord::Coord;
+use geojson::Geometry;
 
 // How to restrict the range of the query... Except for the place type (ie what indices we're
 // searching, since we use the list of types to create the list of indices to search for just
@@ -12,4 +11,5 @@ pub struct Filters {
     pub datasets: Option<Vec<String>>,
     pub zone_types: Option<Vec<String>>,
     pub poi_types: Option<Vec<String>>,
+    pub limit: i64,
 }

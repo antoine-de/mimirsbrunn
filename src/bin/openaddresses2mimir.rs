@@ -172,6 +172,7 @@ mod tests {
     use serial_test::serial;
 
     use common::document::ContainerDocument;
+    use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
     use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
     use mimir2::domain::model::query::Query;
     use mimir2::domain::ports::primary::list_documents::ListDocuments;
@@ -223,6 +224,7 @@ mod tests {
                     .search_documents(
                         vec![String::from(Addr::static_doc_type())],
                         Query::QueryString(format!("full_label.prefix:({})", query)),
+                        DEFAULT_LIMIT_RESULT_ES,
                     )
                     .await
                     .unwrap()

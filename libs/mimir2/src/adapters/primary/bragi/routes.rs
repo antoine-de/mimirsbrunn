@@ -5,7 +5,7 @@ use url::Url;
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::{
-    ForwardGeocoderQuery, JsonParam, ReverseGeocoderQuery, Type,
+    ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam, ReverseGeocoderQuery, Type,
 };
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
@@ -53,6 +53,30 @@ pub fn forward_geocoder_post(
         .and(warp::path("autocomplete"))
         .and(warp::path::end())
         .and(forward_geocoder_query()) // Query Parameters
+        .and(forward_geocoder_body()) // Shape
+}
+
+#[instrument]
+pub fn forward_geocoder_explain_get(
+) -> impl Filter<Extract = (ForwardGeocoderExplainQuery, Option<Geometry>), Error = Rejection> + Clone
+{
+    warp::get()
+        .and(path_prefix())
+        .and(warp::path("autocomplete-explain"))
+        .and(warp::path::end())
+        .and(forward_geocoder_explain_query()) // We get the query parameters
+        .and(warp::any().map(move || None)) // And the shape is None
+}
+
+#[instrument]
+pub fn forward_geocoder_explain_post(
+) -> impl Filter<Extract = (ForwardGeocoderExplainQuery, Option<Geometry>), Error = Rejection> + Clone
+{
+    warp::post()
+        .and(path_prefix())
+        .and(warp::path("autocomplete-explain"))
+        .and(warp::path::end())
+        .and(forward_geocoder_explain_query()) // Query Parameters
         .and(forward_geocoder_body()) // Shape
 }
 
@@ -124,6 +148,19 @@ pub fn forward_geocoder_query(
         .and_then(ensure_poi_type_consistent)
         .and_then(ensure_zone_type_consistent)
         .and_then(ensure_lat_lon_consistent)
+}
+
+/// Extract and Validate input parameters from the query
+#[instrument]
+pub fn forward_geocoder_explain_query(
+) -> impl Filter<Extract = (ForwardGeocoderExplainQuery,), Error = Rejection> + Copy {
+    warp::filters::query::raw().and_then(|param: String| async move {
+        serde_qs::from_str::<ForwardGeocoderExplainQuery>(&param).map_err(|_| {
+            warp::reject::custom(InvalidRequest {
+                reason: InvalidRequestReason::CannotDeserialize,
+            })
+        })
+    })
 }
 
 pub async fn ensure_query_string_not_empty(

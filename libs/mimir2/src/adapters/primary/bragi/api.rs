@@ -8,6 +8,18 @@ use crate::adapters::primary::common::filters::Filters;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
+pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForwardGeocoderExplainQuery {
+    pub doc_id: String,
+    pub doc_type: String,
+
+    #[serde(flatten)]
+    pub query: ForwardGeocoderQuery,
+}
+
 /// This structure contains all the query parameters that
 /// can be submitted for the autocomplete endpoint.
 ///
@@ -25,6 +37,12 @@ pub struct ForwardGeocoderQuery {
     #[serde(default, rename = "zone_type")]
     pub zone_types: Option<Vec<ZoneType>>,
     pub poi_types: Option<Vec<String>>,
+    #[serde(default = "default_result_limit")]
+    pub limit: i64,
+}
+
+fn default_result_limit() -> i64 {
+    DEFAULT_LIMIT_RESULT_ES
 }
 
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
@@ -39,6 +57,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                 types: _,
                 zone_types,
                 poi_types,
+                limit,
             },
             geometry,
         ) = source;
@@ -77,6 +96,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
             datasets,
             zone_types,
             poi_types,
+            limit,
         }
     }
 }
@@ -87,6 +107,8 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
 pub struct ReverseGeocoderQuery {
     pub lat: f64,
     pub lon: f64,
+    #[serde(default = "default_result_limit")]
+    pub limit: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -150,7 +172,21 @@ macro_rules! forward_geocoder {
             .and_then(handlers::forward_geocoder)
     };
 }
+
 pub use forward_geocoder;
+
+#[macro_export]
+macro_rules! forward_geocoder_explain {
+    ($cl:expr, $st:expr) => {
+        routes::forward_geocoder_explain_get()
+            .or(routes::forward_geocoder_explain_post())
+            .unify()
+            .and(routes::with_client($cl))
+            .and(routes::with_settings($st))
+            .and_then(handlers::forward_geocoder_explain)
+    };
+}
+pub use forward_geocoder_explain;
 
 #[macro_export]
 macro_rules! reverse_geocoder {

@@ -1,12 +1,15 @@
-use crate::domain::model::query::Query;
 use async_trait::async_trait;
+
 use serde::de::DeserializeOwned;
 use snafu::Snafu;
+
+use crate::domain::model::query::Query;
 
 #[derive(Debug, Clone)]
 pub struct Parameters {
     pub doc_types: Vec<String>,
     pub query: Query,
+    pub result_limit: i64,
 }
 
 #[derive(Debug, Snafu)]

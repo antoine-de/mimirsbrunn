@@ -3,6 +3,7 @@ use crate::state::{State, Step, StepStatus};
 use async_trait::async_trait;
 use common::document::ContainerDocument;
 use cucumber::{t, StepContext, Steps};
+use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir2::adapters::primary::{
     common::coord::Coord, common::dsl::build_query, common::filters::Filters,
     common::settings::QuerySettings,
@@ -155,7 +156,11 @@ impl Step for Search {
         // Fetch documents
         self.results = {
             client
-                .search_documents(self.places.clone(), Query::QueryDSL(dsl))
+                .search_documents(
+                    self.places.clone(),
+                    Query::QueryDSL(dsl),
+                    DEFAULT_LIMIT_RESULT_ES,
+                )
                 .await
                 .unwrap()
         };
