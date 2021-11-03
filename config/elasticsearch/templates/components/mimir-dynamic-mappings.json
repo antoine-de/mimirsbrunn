@@ -1,46 +1,46 @@
 {
-	"elasticsearch": {
-		"template": {
-		  "mappings": {
-		  	"dynamic_templates": [
-		  		{
-		  			"i18n_names": {
-		  				"match_pattern": "regex",
-		  				"path_match": "^name($|s\\.\\w+)",
-		  				"mapping": {
-		  					"type": "search_as_you_type"
-		  				}
-		  			}
-		  		},
-		  		{
-		  			"i18n_labels": {
-		  				"match_pattern": "regex",
-		  				"path_match": "^label($|s\\.\\w+)",
-		  				"mapping": {
-		  					"type": "search_as_you_type"
-		  				}
-		  			}
-		  		},
-		  		{
-		  			"dynamic_objects": {
-		  				"match_mapping_type": "object",
-		  				"mapping": {
-		  					"dynamic": true
-		  				}
-		  			}
-		  		},
-		  		{
-		  			"disable_other_dynamic_fields": {
-		  				"match_mapping_type": "*",
-		  				"mapping": {
-		  					"type": "object",
-		  					"dynamic": false,
-		  					"enabled": false
-		  				}
-		  			}
-		  		}
-		  	]
-		  }
-		}
-	}
+  "elasticsearch": {
+    "template": {
+      "mappings": {
+        "dynamic_templates": [
+          {
+            "i18n_names": {
+              "match_pattern": "regex",
+              "path_match": "^name($|s\\.\\w+)",
+              "mapping": {
+                "type": "search_as_you_type"
+              }
+            }
+          },
+          {
+            "i18n_labels": {
+              "match_pattern": "regex",
+              "path_match": "^label($|s\\.\\w+)",
+              "mapping": {
+                "type": "search_as_you_type"
+              }
+            }
+          },
+          {
+            "dynamic_objects": {
+              "match_mapping_type": "object",
+              "mapping": {
+                "dynamic": true
+              }
+            }
+          },
+          {
+            "disable_other_dynamic_fields": {
+              "match_mapping_type": "*",
+              "mapping": {
+                "type": "object",
+                "dynamic": false,
+                "enabled": false
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
 }

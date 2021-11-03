@@ -77,7 +77,7 @@ pub fn steps() -> Steps<State> {
     );
 
     steps.then_regex_async(
-        r#"he finds admin "(.*)", a "(.*)", in the first "(.*)" results"#,
+        r#"he finds admin "(.*)", a "(.*)", in the first (.*) results"#,
         t!(|mut state, ctx| {
             let name = Some(ctx.matches[1].clone()).and_then(|name| {
                 if name.is_empty() {
@@ -86,13 +86,13 @@ pub fn steps() -> Steps<State> {
                     Some(name)
                 }
             });
-            let zone_type = Some(ctx.matches[2].clone()).and_then(|zone_type| {
-                if zone_type.is_empty() {
-                    None
-                } else {
-                    Some(zone_type)
-                }
-            });
+            //let zone_type = Some(ctx.matches[2].clone()).and_then(|zone_type| {
+            //    if zone_type.is_empty() {
+            //        None
+            //    } else {
+            //        Some(zone_type)
+            //    }
+            //});
             let limit = ctx.matches[3].clone();
             let limit = if limit.is_empty() {
                 1
@@ -104,7 +104,8 @@ pub fn steps() -> Steps<State> {
                 .execute(
                     HasAdmin {
                         name,
-                        zone_type,
+                        // zone_type,
+                        zone_type: None,
                         limit,
                     },
                     &ctx,

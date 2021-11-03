@@ -58,9 +58,8 @@ fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::
                         "query": q,
                         "type": "bool_prefix",
                         "fields": [
-                            "label", "label._2gram", "label._3gram"
-                        ],
-                        "boost": settings.boosts.label
+                            "label", "label._2gram", "label._3gram", "name"
+                        ]
                     }
                 }
             ]

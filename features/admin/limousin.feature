@@ -18,7 +18,7 @@ Feature: Admins
 
         Examples:
             | query             | name           | zone type   | limit  |
-            | Creuse            | creuse         | state       | 1      |
-            | Haute-Vienne      | haute-vienne   | state       | 1      |
-            | Limoges           | limoges        | city        | 1      |
-            | Saint-Junien      | saint-junien   | city        | 1      |
+            | Creuse            | Creuse         | state       | 1      |
+            | Haute-Vienne      | Haute-Vienne   | state       | 1      |
+            | Limoges           | Limoges        | city        | 1      |
+            | Saint-Junien      | Saint-Junien   | city        | 1      |
