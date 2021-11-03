@@ -224,7 +224,7 @@ mod tests {
                 client
                     .search_documents(
                         vec![String::from(Addr::static_doc_type())],
-                        Query::QueryString(format!("full_label.prefix:({})", query)),
+                        Query::QueryString(format!("label:({})", query)),
                         DEFAULT_LIMIT_RESULT_ES,
                     )
                     .await

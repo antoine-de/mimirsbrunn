@@ -1,7 +1,7 @@
 {
 	"elasticsearch": {
 		"index_patterns": ["munin_street*"],
-		"composed_of": ["mimir-base", "mimir-text", "mimir-dynamic-mappings"],
+		"composed_of": ["mimir-base"],
 		"version": 3,
 		"priority": 10
 	}

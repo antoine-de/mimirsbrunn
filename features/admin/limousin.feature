@@ -14,11 +14,11 @@ Feature: Admins
     # department, ...).
     Scenario Outline: Admins exact match
         When the user searches admin datatype for "<query>"
-        Then he finds "<id>" as the first result
+        Then he finds admin "<name>", a "<zone type>", in the first <limit> results
 
         Examples:
-            | query             | id                        |
-            | Creuse            | admin:osm:relation:7459   |
-            | Haute-Vienne      | admin:osm:relation:7418   |
-            | Limoges           | admin:osm:relation:114172 |
-            | Saint-Junien      | admin:osm:relation:116547 |
+            | query             | name           | zone type   | limit  |
+            | Creuse            | creuse         | state       | 1      |
+            | Haute-Vienne      | haute-vienne   | state       | 1      |
+            | Limoges           | limoges        | city        | 1      |
+            | Saint-Junien      | saint-junien   | city        | 1      |

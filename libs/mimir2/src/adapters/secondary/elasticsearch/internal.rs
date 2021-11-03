@@ -593,6 +593,10 @@ impl ElasticsearchStorage {
             })?;
 
         if resp.status_code().is_success() {
+            // let json = resp.json().await.unwrap();
+            // println!("{}", serde_json::to_string_pretty(&json).unwrap());
+            // let body: ElasticsearchBulkInsertResponse = serde_json::from_value(json).unwrap();
+
             let body: ElasticsearchBulkInsertResponse =
                 resp.json().await.context(ElasticsearchDeserialization)?;
 

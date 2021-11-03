@@ -8,15 +8,7 @@
 		  				"match_pattern": "regex",
 		  				"path_match": "^name($|s\\.\\w+)",
 		  				"mapping": {
-		  					"type": "text",
-		  					"analyzer": "word",
-		  					"fields": {
-		  						"prefix": {
-		  							"type": "text",
-		  							"analyzer": "prefix",
-		  							"search_analyzer": "word"
-		  						}
-		  					}
+		  					"type": "search_as_you_type"
 		  				}
 		  			}
 		  		},
@@ -25,27 +17,7 @@
 		  				"match_pattern": "regex",
 		  				"path_match": "^label($|s\\.\\w+)",
 		  				"mapping": {
-		  					"type": "text",
-		  					"index_options": "docs",
-		  					"analyzer": "word",
-		  					"copy_to": "full_label",
-		  					"norms": false,
-		  					"fields": {
-		  						"prefix": {
-		  							"type": "text",
-		  							"index_options": "docs",
-		  							"analyzer": "prefix",
-		  							"search_analyzer": "word",
-		  							"norms": false
-		  						},
-		  						"ngram": {
-		  							"type": "text",
-		  							"index_options": "docs",
-		  							"analyzer": "ngram",
-		  							"search_analyzer": "ngram",
-		  							"norms": false
-		  						}
-		  					}
+		  					"type": "search_as_you_type"
 		  				}
 		  			}
 		  		},

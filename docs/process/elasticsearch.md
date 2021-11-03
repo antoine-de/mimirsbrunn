@@ -175,7 +175,7 @@ exclude what would be skipped (marked as `skip`) by the serializer.
 </tbody>
 </table>
 
-## [Address](/libs/places/src/addr.rs)
+## <a id="addresses-fields"></a> [Address](/libs/places/src/addr.rs)
 
 Addresses, compared to administrative regions, have very little unique fields, just house number and
 street:
@@ -325,7 +325,7 @@ No particular fields for streets:
 </tbody>
 </table>
 
-## [Point of Interest](/libs/places/src/poi.rs)
+## <a id="pois-fields"></a> [Point of Interest](/libs/places/src/poi.rs)
 
 <!-- docs/assets/tbl/fields-poi.md -->
 
@@ -422,7 +422,7 @@ No particular fields for streets:
 </tbody>
 </table>
 
-## [Stop](/libs/places/src/stop.rs) (Public Transportations)
+## <a id="stops-fields"></a> [Stop](/libs/places/src/stop.rs) (Public Transportations)
 
 <!-- docs/assets/tbl/fields-stop.md -->
 
@@ -1218,10 +1218,11 @@ The treatment of labels and names is done in a separate template, using dynamic 
 This leaves the remaining fields to be indexed with the
 [mimir-admin.json](/config/elasticsearch/templates/indices/mimir-admin.json) index template.
 
-### Address
+### <a id="addresses-template"></a> Address
 
-If we look back at the list of fields present in the administrative region document, and remove all
-the fields that are part of the common template, we have the following list of remaining fields:
+If we look back at the [list of fields](#addresses-fields) present in the administrative region
+document, and remove all the fields that are part of the common template, we have the following list
+of remaining fields:
 
 <!-- docs/assets/tbl/fields-2-addr.md -->
 
@@ -1262,5 +1263,172 @@ the fields that are part of the common template, we have the following list of r
 
 This leaves the remaining fields to be indexed with the
 [mimir-addr.json](/config/elasticsearch/templates/indices/mimir-addr.json) index template.
+
+### <a id="streets-template"></a> Streets
+
+For streets, its quite easy, because all the documents can be indexed with the base template,
+leaving [mimir-street.json](/config/elasticsearch/templates/indices/mimir-street.json) index
+template.
+
+### <a id="pois-template"></a> POIs
+
+If we look back at the [list of fields](#pois-fields) present in the poi document, and remove all
+the fields that are part of the common template, we have the following list of remaining fields:
+
+<!-- docs/assets/tbl/fields-2-poi.md -->
+
+<table>
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 31%" />
+<col style="width: 16%" />
+<col style="width: 8%" />
+<col style="width: 29%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>field</th>
+<th>type</th>
+<th>Elasticsearch</th>
+<th>Index</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>address</td>
+<td>Option
+<Address></td>
+<td>object</td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>boundary</td>
+<td><code>Option&lt;MultiPolygon&lt;f64&gt;&gt;</code></td>
+<td>geo_shape</td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>labels</td>
+<td><code>I18nProperties</code></td>
+<td>??</td>
+<td>✓</td>
+<td>used in dynamic templates</td>
+</tr>
+<tr class="even">
+<td>names</td>
+<td><code>I18nProperties</code></td>
+<td></td>
+<td>✓</td>
+<td>used in dynamic templates</td>
+</tr>
+<tr class="odd">
+<td>poi_type</td>
+<td><code>PoiType</code></td>
+<td>keyword</td>
+<td>✓</td>
+<td>used for filtering</td>
+</tr>
+<tr class="even">
+<td>properties</td>
+<td><code>BTreeMap&lt;String, String&gt;</code></td>
+<td>object</td>
+<td>✓</td>
+<td>used for filtering</td>
+</tr>
+</tbody>
+</table>
+
+This leaves the remaining fields to be indexed with the
+[mimir-poi.json](/config/elasticsearch/templates/indices/mimir-poi.json) index template.
+
+### <a id="stops-template"></a> Stops
+
+If we look back at the [list of fields](#stops-fields) present in the stop document, and remove all
+the fields that are part of the common template, we have the following list of remaining fields:
+
+<!-- docs/assets/tbl/fields-2-stop.md -->
+
+<table style="width:100%;">
+<colgroup>
+<col style="width: 23%" />
+<col style="width: 33%" />
+<col style="width: 20%" />
+<col style="width: 10%" />
+<col style="width: 12%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>field</th>
+<th>type</th>
+<th>Elasticsearch</th>
+<th>Index</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>comments</td>
+<td>Vec<Comment></td>
+<td></td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>commercial_modes</td>
+<td>Vec<CommercialMode></td>
+<td></td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>coverages</td>
+<td>Vec<String></td>
+<td></td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>feed_publishers</td>
+<td>Vec<FeedPublisher></td>
+<td></td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>lines</td>
+<td>Vec<Line></td>
+<td></td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>physical_modes</td>
+<td>Vec<PhysicalMode></td>
+<td></td>
+<td>✗</td>
+<td></td>
+</tr>
+<tr class="odd">
+<td>properties</td>
+<td>BTreeMap&lt;String, String&gt;</td>
+<td>flattened</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>timezone</td>
+<td>String</td>
+<td></td>
+<td>✗</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+This leaves the remaining fields to be indexed with the
+[mimir-stop.json](/config/elasticsearch/templates/indices/mimir-stop.json) index template.
 
 

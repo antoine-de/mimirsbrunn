@@ -2,7 +2,7 @@
 	"elasticsearch": {
 		"index_patterns": ["munin_poi*"],
 		"template": {
-			"settings": {
+      "settings": {
 				"analysis": {
 					"analyzer": {
 						"word":{
@@ -18,22 +18,31 @@
 			},
 			"mappings": {
 				"properties": {
+          "address": {
+            "enabled": false
+          },
+          "boundary": {
+            "enabled": false
+          },
 					"poi_type": {
-						"properties": {
-							"id": {
-								"type": "keyword"
-							},
-							"name": {
-								"type": "text",
-								"index_options": "docs",
-								"analyzer": "word"
-							}
-						}
-					}
+            "properties": {
+						  "id": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "word"
+              }
+            }
+					},
+          "properties": {
+            "type": "flattened"
+          }
 				}
 			}
 		},
-		"composed_of": ["mimir-base", "mimir-text", "mimir-dynamic-mappings"],
+		"composed_of": ["mimir-base", "mimir-dynamic-mappings"],
 		"version": 3,
 		"priority": 10
 	}

@@ -39,7 +39,7 @@ geo = "0.18"
 geo-types = { version = "0.7", features = [ "rstar" ] }
 http = "0.2"
 human-sort = "0.2"
-itertools = "0.9"
+itertools = "0.10"
 lazy_static = "1.4"
 log = { version = "0.4", features = ["release_max_level_debug"] }
 navitia-poi-model = "0.3"
