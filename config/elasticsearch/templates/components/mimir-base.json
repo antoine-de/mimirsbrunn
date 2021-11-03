@@ -4,29 +4,57 @@
 			"settings": {
 				"number_of_shards": "1",
 				"number_of_replicas": "0",
-				"refresh_interval": "-1"
+				"refresh_interval": "-1",
+        "analysis": {
+          "analyzer": {
+            "word": {
+              "tokenizer": "standard",
+              "filter": [
+                "lowercase",
+                "asciifolding"
+              ],
+              "char_filter": []
+            }
+          }
+        }
 			},
 			"mappings": {
 				"properties": {
+          "administrative_regions": {
+            "enabled": false
+          },
 					"approx_coord": {
-						"type": "geo_shape"
+            "enabled": false
 					},
+          "context": {
+            "enabled": false
+          },
 					"coord": {
 						"type": "geo_point"
 					},
+					"country_codes": {
+            "enabled": false
+					},
 					"id": {
-						"type": "keyword",
-						"index": false
+						"type": "keyword"
 					},
 					"indexed_at": {
-		  			"type": "date"
+            "enabled": false
 		  		},
-		  		"type": {
-		  			"type": "constant_keyword"
-		  		},
+          "label": {
+            "type": "search_as_you_type"
+          },
+          "name": {
+            "enabled": false
+          },
 		  		"weight": {
-		  			"type": "double"
-		  		}
+            "enabled": false
+		  		},
+          "zip_codes": {
+            "type": "text",
+            "index_options": "docs",
+            "analyzer": "word"
+          }
 				}
 			}
 		}

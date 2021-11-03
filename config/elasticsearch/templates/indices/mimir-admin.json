@@ -4,17 +4,31 @@
 		"template": {
 			"mappings": {
 				"properties": {
+          "bbox": {
+            "enabled": false
+          },
+          "boundary": {
+            "enabled": false
+          },
+          "codes": {
+            "enabled": false
+          },
+          "insee": {
+            "enabled": false
+          },
 					"level": {
-						"type": "long",
-						"index": false
+						"enabled": false
 					},
+          "parent_id": {
+            "enabled": false
+          },
 					"zone_type": {
 						"type": "keyword"
 					}
 				}
 			}
 		},
-		"composed_of": ["mimir-base", "mimir-text", "mimir-dynamic-mappings"],
+		"composed_of": ["mimir-base", "mimir-dynamic-mappings"],
 		"version": 3,
 		"priority": 10
 	}

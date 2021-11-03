@@ -21,11 +21,14 @@
 					"house_number": {
 						"type": "text",
 						"analyzer": "word"
-					}
+					},
+          "street": {
+            "enabled": false
+          }
 				}
 			}
 		},
-		"composed_of": ["mimir-base", "mimir-text", "mimir-dynamic-mappings"],
+		"composed_of": ["mimir-base"],
 		"version": 3,
 		"priority": 10
 	}

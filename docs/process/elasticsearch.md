@@ -8,6 +8,8 @@ Elasticsearch
     * [POI](#point-of-interest)
     * [Stop](#stop)
   * [Templates](#templates)
+    * [Common Templates](#common-templates)
+    * [Index Templates](#index-templates)
 
 This document describes the process of configuring Elasticsearch.
 
@@ -31,13 +33,35 @@ Elasticsearch, and play with lots of parameters to push the ranking of documents
 
 To configure Elasticsearch, we'll first address settings, and mappings
 
+# Process
+
+Configuring Elasticsearch templates is an iterative process, which, when done right, results in:
+* reduced memory consumption in Elasticsearch, by reducing the size / number of indices.
+* reduced search duration, by simplifying the query
+* better ranking
+
+These measures should be taken into account when modifying the templates: Like most iterative
+process, we make a change, evaluate the results, estimate what needs to be changed to improve the
+measure, and loop again.
+
+Evaluating the templates can be done with:
+
+* ctlmimir, which is a binary used to import the templates found in
+  `/config/elasticsearchs/templates`. With this tool, we just check that we can actually import the
+  templates.
+* import2mimir.sh can be used to evaluate the whole indexing process, using ctl2mimir, and the other
+  indexing tools.
+* end to end tests are used to make sure that the indexing process is correct, and that searching 
+  predefined queries results are correct.
+* benchmark are used to estimate the time it takes to either index or search.
+
 # Gathering Fields
 
 We'll construct a table with all the fields, for each type of document. The source of information is
 the document, which is a rust structure serialized to JSON. When building this resource, be sure to
 exclude what would be skipped (marked as `skip`) by the serializer.
 
-## [Administrative Region](/libs/places/src/admin.rs)
+## <a id="administrative-regions-fields"></a> [Administrative Region](/libs/places/src/admin.rs)
 
 <table>
 <colgroup>
@@ -151,7 +175,7 @@ exclude what would be skipped (marked as `skip`) by the serializer.
 </tbody>
 </table>
 
-## [Address](/libs/places/src/addr.rs
+## [Address](/libs/places/src/addr.rs)
 
 Addresses, compared to administrative regions, have very little unique fields, just house number and
 street:
@@ -232,6 +256,8 @@ street:
 
 No particular fields for streets:
 
+<!-- docs/assets/tbl/fields-street.md -->
+
 <table style="width:81%;">
 <colgroup>
 <col style="width: 34%" />
@@ -300,6 +326,8 @@ No particular fields for streets:
 </table>
 
 ## [Point of Interest](/libs/places/src/poi.rs)
+
+<!-- docs/assets/tbl/fields-poi.md -->
 
 <table>
 <colgroup>
@@ -395,6 +423,8 @@ No particular fields for streets:
 </table>
 
 ## [Stop](/libs/places/src/stop.rs) (Public Transportations)
+
+<!-- docs/assets/tbl/fields-stop.md -->
 
 <table>
 <colgroup>
@@ -512,6 +542,8 @@ No particular fields for streets:
 
 When we combine together all the fields from the previous documents, we obtain the following table,
 which shows all the fields in use, and by what type of document.
+
+<!-- docs/assets/tbl/fields.md -->
 
 <table>
 <colgroup>
@@ -851,22 +883,28 @@ which shows all the fields in use, and by what type of document.
 </tbody>
 </table>
 
+Talk about `type`, `indexed_at` (and pipeline)
+
+## Component Templates
+
 We can extract from this table a list of fields that are (almost) common to all the documents. In
 this table of common fields, we indicate what type is used for Elasticsearch, whether we should
 index the field, and some comments.
 
+<!-- docs/assets/tbl/fields-common.md -->
+
 <table style="width:100%;">
 <colgroup>
-<col style="width: 18%" />
-<col style="width: 15%" />
-<col style="width: 4%" />
-<col style="width: 4%" />
-<col style="width: 4%" />
-<col style="width: 4%" />
-<col style="width: 4%" />
-<col style="width: 11%" />
+<col style="width: 16%" />
+<col style="width: 13%" />
+<col style="width: 3%" />
+<col style="width: 3%" />
+<col style="width: 3%" />
+<col style="width: 3%" />
+<col style="width: 3%" />
+<col style="width: 10%" />
 <col style="width: 5%" />
-<col style="width: 27%" />
+<col style="width: 34%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -904,8 +942,8 @@ index the field, and some comments.
 <td>✓</td>
 <td>✓</td>
 <td>??</td>
-<td>??</td>
-<td>Improved coord in Elasticsearch may render <code>approx_coord</code> obsolete</td>
+<td>✗</td>
+<td>Improved geo_point in Elasticsearch may render <code>approx_coord</code> obsolete</td>
 </tr>
 <tr class="odd">
 <td>context</td>
@@ -940,7 +978,7 @@ index the field, and some comments.
 <td>✓</td>
 <td>✓</td>
 <td>??</td>
-<td>??</td>
+<td>✗</td>
 <td>Are we searching with these ?</td>
 </tr>
 <tr class="even">
@@ -953,7 +991,7 @@ index the field, and some comments.
 <td>✓</td>
 <td>keyword</td>
 <td>✓</td>
-<td>Index for features API</td>
+<td>Index for features API. <strong>Really need to index??</strong></td>
 </tr>
 <tr class="odd">
 <td>label</td>
@@ -963,9 +1001,9 @@ index the field, and some comments.
 <td>✓</td>
 <td>✓</td>
 <td>✓</td>
-<td>text</td>
+<td>SAYT</td>
 <td>✓</td>
-<td>??</td>
+<td>Field created by binaries (contains name and other informations, like admin, country code, …)</td>
 </tr>
 <tr class="even">
 <td>name</td>
@@ -1006,259 +1044,223 @@ index the field, and some comments.
 </tbody>
 </table>
 
-We use component templates and index templates.
+Now we'll turn this table into an actual [component
+template](/config/elasticsearch/templates/components/mimir-base.json), responsible for handling all
+the common fields.
 
-Component templates must not depend from other component templates. So component templates must be
-self-contained. This means that if you have, in a component template, a mapping which uses a
-specific analyzer, which in turn uses a specific tokenizer for example, then the definitions of the
-analyzer and the tokenizer must be present in that component template. This suggest that the
-strategy used to breakdown templates into components should be to include small reusable components:
+A few points are important to notice:
+* The text based search is happening on the label. The label is created by the indexing program, and
+  contains the name, some information about the administrative region it belongs to, maybe a
+  country code. So we're not indexing the name, because the search is happening on the label.
 
-We'll have:
+The component template also contains additional fields, that are not present in the document sent by
+the binaries:
 
-* **mimir-base**: a component which includes fields that are present in all types of documents, and
-	that don't necessitate a specific tokenizer, analyzer, or filter.
-* **mimir-text**: a component for indexing text based fields.
-* **mimir-dynamic**: a component for dynamic templates.
-
-This is of course facilitated by the fact that few, if any, field specific to a place need its own
-analyzer.
-
-All template names are prefixed with 'mimir-', so that it is easy to list them, or delete them with 
-a regular expression.
-
-The following table shows all the fields that are used in documents, what types they are, what
-indexes they belong to, and possibly what template they belong to:
+<!-- docs/assets/tbl/fields-common-additional.md -->
 
 <table>
 <colgroup>
-<col style="width: 13%" />
-<col style="width: 9%" />
-<col style="width: 8%" />
-<col style="width: 26%" />
-<col style="width: 6%" />
-<col style="width: 8%" />
-<col style="width: 7%" />
-<col style="width: 4%" />
+<col style="width: 11%" />
 <col style="width: 5%" />
-<col style="width: 10%" />
+<col style="width: 5%" />
+<col style="width: 5%" />
+<col style="width: 5%" />
+<col style="width: 5%" />
+<col style="width: 5%" />
+<col style="width: 16%" />
+<col style="width: 6%" />
+<col style="width: 34%" />
 </colgroup>
+<thead>
+<tr class="header">
+<th>field</th>
+<th>type</th>
+<th>adm</th>
+<th>add</th>
+<th>poi</th>
+<th>stp</th>
+<th>str</th>
+<th>Elasticsearch</th>
+<th>Index</th>
+<th>Comment</th>
+</tr>
+</thead>
 <tbody>
 <tr class="odd">
-<td></td>
-<td>type</td>
-<td>indexed</td>
-<td>description</td>
-<td>admin</td>
-<td>address</td>
-<td>street</td>
-<td>poi</td>
-<td>stop</td>
-<td>component template</td>
-</tr>
-<tr class="even">
-<td>admin_regions</td>
-<td></td>
-<td>✗</td>
-<td>hierarchy of admin regions</td>
-<td>✓</td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td>approx_coord</td>
-<td>geo_shape</td>
-<td>?</td>
-<td>FIXME to be removed ?? duplicate of coord</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="even">
-<td>coord</td>
-<td>geo_shape</td>
-<td>✓</td>
-<td>lat / lon coordinate</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="odd">
-<td>coverages</td>
-<td>text</td>
-<td>✗</td>
-<td>names of datasets (FIXME ref)</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-</tr>
-<tr class="even">
-<td>full_label</td>
-<td>text</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-text</td>
-</tr>
-<tr class="odd">
-<td>house_number</td>
-<td>text</td>
-<td></td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td>id</td>
-<td>keyword</td>
-<td>✗</td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="odd">
 <td>indexed_at</td>
+<td><ul>
+<li></li>
+</ul></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
 <td>date</td>
+<td>✗</td>
+<td>Generated by an Elasticsearch pipeline</td>
+</tr>
+<tr class="even">
+<td>type</td>
+<td><ul>
+<li></li>
+</ul></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>constant_keyword</td>
+<td>✗</td>
+<td>Set in individual index templates</td>
+</tr>
+</tbody>
+</table>
+
+The search template has to reflect the information found in the common template.
+
+## Index Templates
+
+### <a id="administrative-regions-template"></a> Admin
+
+If we look back at the [list of fields](#administrative-regions-fields) present in the
+administrative region document, and remove all the fields that are part of the common template, we
+have the following list of remaining fields:
+
+<!-- docs/assets/tbl/fields-2-admin.md -->
+
+<table>
+<colgroup>
+<col style="width: 12%" />
+<col style="width: 31%" />
+<col style="width: 17%" />
+<col style="width: 8%" />
+<col style="width: 29%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>field</th>
+<th>type</th>
+<th>Elasticsearch</th>
+<th>Index</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>bbox</td>
+<td><code>Option&lt;Rect&lt;f64&gt;&gt;</code></td>
+<td>Bounding Box</td>
+<td>✗</td>
 <td></td>
+</tr>
+<tr class="even">
+<td>boundary</td>
+<td><code>Option&lt;MultiPolygon&lt;f64&gt;&gt;</code></td>
+<td>geo_shape</td>
+<td>✗</td>
 <td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
+</tr>
+<tr class="odd">
+<td>codes</td>
+<td><code>BTreeMap&lt;String, String&gt;</code></td>
+<td></td>
+<td>✗</td>
+<td></td>
 </tr>
 <tr class="even">
 <td>insee</td>
-<td>keyword</td>
+<td><code>String</code></td>
 <td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
+<td>✗</td>
 <td></td>
 </tr>
 <tr class="odd">
-<td>level</td>
-<td>long</td>
-<td>✗</td>
-<td>admin level (FIXME ref)</td>
+<td>labels</td>
+<td><code>I18nProperties</code></td>
+<td>??</td>
 <td>✓</td>
+<td>used in dynamic templates</td>
+</tr>
+<tr class="even">
+<td>level</td>
+<td><code>u32</code></td>
 <td></td>
+<td>✗</td>
+<td>used for ranking</td>
+</tr>
+<tr class="odd">
+<td>names</td>
+<td><code>I18nProperties</code></td>
 <td></td>
-<td></td>
-<td></td>
-<td></td>
+<td>✓</td>
+<td>used in dynamic templates</td>
 </tr>
 <tr class="even">
 <td>parent_id</td>
-<td>keyword</td>
+<td><code>Option&lt;String&gt;</code></td>
 <td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
+<td>✗</td>
 <td></td>
 </tr>
 <tr class="odd">
-<td>poi_type</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td>properties</td>
-<td>flattened</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td>street</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td>weight</td>
-<td>double</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="odd">
-<td>zip_codes</td>
-<td>text</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-text</td>
-</tr>
-<tr class="even">
 <td>zone_type</td>
+<td><code>Option&lt;ZoneType&gt;</code></td>
 <td>keyword</td>
-<td></td>
-<td></td>
 <td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
+<td>used for filtering</td>
+</tr>
+</tbody>
+</table>
+
+The treatment of labels and names is done in a separate template, using dynamic templates.
+
+This leaves the remaining fields to be indexed with the
+[mimir-admin.json](/config/elasticsearch/templates/indices/mimir-admin.json) index template.
+
+### Address
+
+If we look back at the list of fields present in the administrative region document, and remove all
+the fields that are part of the common template, we have the following list of remaining fields:
+
+<!-- docs/assets/tbl/fields-2-addr.md -->
+
+<table style="width:100%;">
+<colgroup>
+<col style="width: 13%" />
+<col style="width: 8%" />
+<col style="width: 46%" />
+<col style="width: 7%" />
+<col style="width: 24%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>field</th>
+<th>type</th>
+<th>Elasticsearch</th>
+<th>Index</th>
+<th>Comment</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>house_number</td>
+<td>String</td>
+<td>text</td>
+<td>✓</td>
+<td>?? Should we index it ?</td>
+</tr>
+<tr class="even">
+<td>street</td>
+<td>Street</td>
+<td>Reference to the street the address belongs to.</td>
+<td>✗</td>
 <td></td>
 </tr>
 </tbody>
 </table>
+
+This leaves the remaining fields to be indexed with the
+[mimir-addr.json](/config/elasticsearch/templates/indices/mimir-addr.json) index template.
+
+

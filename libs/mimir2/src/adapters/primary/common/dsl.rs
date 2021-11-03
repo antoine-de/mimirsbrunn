@@ -56,22 +56,11 @@ fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::
                 {
                     "multi_match": {
                         "query": q,
-                        "fields": ["name"],
-                        "boost": settings.boosts.name
-                    }
-                },
-                {
-                    "multi_match": {
-                        "query": q,
-                        "fields": ["label"],
+                        "type": "bool_prefix",
+                        "fields": [
+                            "label", "label._2gram", "label._3gram"
+                        ],
                         "boost": settings.boosts.label
-                    }
-                },
-                {
-                    "multi_match": {
-                        "query": q,
-                        "fields": ["label.prefix"],
-                        "boost": settings.boosts.label_prefix
                     }
                 }
             ]
