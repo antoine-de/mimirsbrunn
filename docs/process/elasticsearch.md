@@ -1,17 +1,21 @@
-Elasticsearch
-=============
+Elasticsearch Process
+=====================
 
-  * [Gathering Fields](#gathering-fields)
-    * [Administrative Region](#administrative-region)
-    * [Address](#address)
-    * [Street](#street)
-    * [POI](#point-of-interest)
-    * [Stop](#stop)
-  * [Templates](#templates)
-    * [Common Templates](#common-templates)
-    * [Index Templates](#index-templates)
+  * [Creating Templates](#creating-templates)
+    * [Gathering Fields](#gathering-fields)
+      * [Administrative Region](#administrative-region)
+      * [Address](#address)
+      * [Street](#street)
+      * [POI](#point-of-interest)
+      * [Stop](#stop)
+    * [Partitioning Templates](#partitioning-templates)
+      * [Common Templates](#common-templates)
+      * [Index Templates](#index-templates)
+      * [Search Templates](#search-templates)
+  * [Updating Templates](#updating-templates)
+    * [Evaluating Templates](#evaluating-templates)
 
-This document describes the process of configuring Elasticsearch.
+This document describes the process of configuring Elasticsearch templates for Mimirsbrunn.
 
 We can picture Elasticsearch as a black box, where we store JSON documents. These documents are of
 different kinds, and depend on our business. Since we deal with geospatial data, and Navitia in
@@ -26,42 +30,28 @@ particular works with public transportations, the types of documents we store ar
 We first submit configuration files to Elasticsearch to describe how we want each document type to
 be handled. These are so called component templates, and index templates, which include:
 * settings: how do we want the text to be handled? do we want to use synonyms, lowercase, use stems,…
-* mappings: how each type field of each type of document listed above is handled.
+* mappings: how each field of each type of document listed above is handled.
 
 When the documents are indexed according to our settings and mappings, we can then query
-Elasticsearch, and play with lots of parameters to push the ranking of documents up or down
+Elasticsearch, and play with lots of parameters to push the ranking of documents up or down.
 
-To configure Elasticsearch, we'll first address settings, and mappings
-
-# Process
+This document describes how we establish a baseline for these templates, and the process of updating
+them.
 
 Configuring Elasticsearch templates is an iterative process, which, when done right, results in:
 * reduced memory consumption in Elasticsearch, by reducing the size / number of indices.
 * reduced search duration, by simplifying the query
 * better ranking
 
-These measures should be taken into account when modifying the templates: Like most iterative
-process, we make a change, evaluate the results, estimate what needs to be changed to improve the
-measure, and loop again.
+# Creating Templates
 
-Evaluating the templates can be done with:
-
-* ctlmimir, which is a binary used to import the templates found in
-  `/config/elasticsearchs/templates`. With this tool, we just check that we can actually import the
-  templates.
-* import2mimir.sh can be used to evaluate the whole indexing process, using ctl2mimir, and the other
-  indexing tools.
-* end to end tests are used to make sure that the indexing process is correct, and that searching 
-  predefined queries results are correct.
-* benchmark are used to estimate the time it takes to either index or search.
-
-# Gathering Fields
+## Gathering Fields
 
 We'll construct a table with all the fields, for each type of document. The source of information is
 the document, which is a rust structure serialized to JSON. When building this resource, be sure to
 exclude what would be skipped (marked as `skip`) by the serializer.
 
-## <a id="administrative-regions-fields"></a> [Administrative Region](/libs/places/src/admin.rs)
+### <a id="administrative-regions-fields"></a> [Administrative Region](/libs/places/src/admin.rs)
 
 <table>
 <colgroup>
@@ -175,7 +165,7 @@ exclude what would be skipped (marked as `skip`) by the serializer.
 </tbody>
 </table>
 
-## <a id="addresses-fields"></a> [Address](/libs/places/src/addr.rs)
+### <a id="addresses-fields"></a> [Address](/libs/places/src/addr.rs)
 
 Addresses, compared to administrative regions, have very little unique fields, just house number and
 street:
@@ -252,7 +242,7 @@ street:
 </tbody>
 </table>
 
-## [Street](/libs/places/src/street.rs)
+### [Street](/libs/places/src/street.rs)
 
 No particular fields for streets:
 
@@ -325,7 +315,7 @@ No particular fields for streets:
 </tbody>
 </table>
 
-## <a id="pois-fields"></a> [Point of Interest](/libs/places/src/poi.rs)
+### <a id="pois-fields"></a> [Point of Interest](/libs/places/src/poi.rs)
 
 <!-- docs/assets/tbl/fields-poi.md -->
 
@@ -422,7 +412,7 @@ No particular fields for streets:
 </tbody>
 </table>
 
-## <a id="stops-fields"></a> [Stop](/libs/places/src/stop.rs) (Public Transportations)
+### <a id="stops-fields"></a> [Stop](/libs/places/src/stop.rs) (Public Transportations)
 
 <!-- docs/assets/tbl/fields-stop.md -->
 
@@ -538,7 +528,7 @@ No particular fields for streets:
 </tbody>
 </table>
 
-# Templates
+## Partitioning Templates
 
 When we combine together all the fields from the previous documents, we obtain the following table,
 which shows all the fields in use, and by what type of document.
@@ -885,7 +875,7 @@ which shows all the fields in use, and by what type of document.
 
 Talk about `type`, `indexed_at` (and pipeline)
 
-## Component Templates
+### Component Templates
 
 We can extract from this table a list of fields that are (almost) common to all the documents. In
 this table of common fields, we indicate what type is used for Elasticsearch, whether we should
@@ -1119,9 +1109,9 @@ the binaries:
 
 The search template has to reflect the information found in the common template.
 
-## Index Templates
+### Index Templates
 
-### <a id="administrative-regions-template"></a> Admin
+#### <a id="administrative-regions-template"></a> Admin
 
 If we look back at the [list of fields](#administrative-regions-fields) present in the
 administrative region document, and remove all the fields that are part of the common template, we
@@ -1218,7 +1208,7 @@ The treatment of labels and names is done in a separate template, using dynamic 
 This leaves the remaining fields to be indexed with the
 [mimir-admin.json](/config/elasticsearch/templates/indices/mimir-admin.json) index template.
 
-### <a id="addresses-template"></a> Address
+#### <a id="addresses-template"></a> Address
 
 If we look back at the [list of fields](#addresses-fields) present in the administrative region
 document, and remove all the fields that are part of the common template, we have the following list
@@ -1264,13 +1254,13 @@ of remaining fields:
 This leaves the remaining fields to be indexed with the
 [mimir-addr.json](/config/elasticsearch/templates/indices/mimir-addr.json) index template.
 
-### <a id="streets-template"></a> Streets
+#### <a id="streets-template"></a> Streets
 
 For streets, its quite easy, because all the documents can be indexed with the base template,
 leaving [mimir-street.json](/config/elasticsearch/templates/indices/mimir-street.json) index
 template.
 
-### <a id="pois-template"></a> POIs
+#### <a id="pois-template"></a> POIs
 
 If we look back at the [list of fields](#pois-fields) present in the poi document, and remove all
 the fields that are part of the common template, we have the following list of remaining fields:
@@ -1344,7 +1334,7 @@ the fields that are part of the common template, we have the following list of r
 This leaves the remaining fields to be indexed with the
 [mimir-poi.json](/config/elasticsearch/templates/indices/mimir-poi.json) index template.
 
-### <a id="stops-template"></a> Stops
+#### <a id="stops-template"></a> Stops
 
 If we look back at the [list of fields](#stops-fields) present in the stop document, and remove all
 the fields that are part of the common template, we have the following list of remaining fields:
@@ -1430,5 +1420,32 @@ the fields that are part of the common template, we have the following list of r
 
 This leaves the remaining fields to be indexed with the
 [mimir-stop.json](/config/elasticsearch/templates/indices/mimir-stop.json) index template.
+
+# Updating Templates
+
+Updating templates is essentially an iterative process, and we try to use a TDD approach:
+
+* A new feature, a bug, and we create a new scenario in the *features* directory.
+* We run the end to end tests (`cargo test --test end_to_end`), it fails
+* We update the templates, and run the test again.
+
+Playing with templates, analyzers, tokenizers, and so on, boosting some results with regards to
+others requires an intimate knowledge of how 
+## Evaluating Templates
+
+These measures should be taken into account when modifying the templates: Like most iterative
+process, we make a change, evaluate the results, estimate what needs to be changed to improve the
+measure, and loop again.
+
+Evaluating the templates can be done with:
+
+* ctlmimir, which is a binary used to import the templates found in
+  `/config/elasticsearchs/templates`. With this tool, we just check that we can actually import the
+  templates.
+* import2mimir.sh can be used to evaluate the whole indexing process, using ctl2mimir, and the other
+  indexing tools.
+* end to end tests are used to make sure that the indexing process is correct, and that searching 
+  predefined queries results are correct.
+* benchmark are used to estimate the time it takes to either index or search.
 
 

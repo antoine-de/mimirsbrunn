@@ -1,260 +1,113 @@
 # Elasticsearch
 
-## Templates
+We use component templates, index templates, and search templates.
 
-We use component templates and index templates.
+This document describes the details of the templates and how they relate to search rankings. It is
+the result of the [process](/docs/process/elasticsearch.md), and so it can evolve.
 
-Component templates must not depend from other component templates. So component templates must be
-self-contained. This means that if you have, in a component template, a mapping which uses a
-specific analyzer, which in turn uses a specific tokenizer for example, then the definitions of the
-analyzer and the tokenizer must be present in that component template. This suggest that the
-strategy used to breakdown templates into components should be to include small reusable components:
+## Baseline
 
-We'll have:
+We consider the baseline to be a *basic* text base search.
 
-* **mimir-base**: a component which includes fields that are present in all types of documents, and
-	that don't necessitate a specific tokenizer, analyzer, or filter.
-* **mimir-text**: a component for indexing text based fields.
-* **mimir-dynamic**: a component for dynamic templates.
+### Search As You Type
 
-This is of course facilitated by the fact that few, if any, field specific to a place need its own
-analyzer.
+The text search is primarily based on the
+[Search-as-you-type](https://www.elastic.co/guide/en/elasticsearch/reference/current/search-as-you-type.html)
+Elasticsearch functionality, applied to the label.
 
-All template names are prefixed with 'mimir-', so that it is easy to list them, or delete them with 
-a regular expression.
+The **name** is a text field identifying the place, while the **label** is a text field, created
+before indexing into Elasticsearch (see [labels.rs](/src/labels.rs]) for details), which contains
+the name and some context. For example, for the city of Amsterdam (an administrative region), we
+have `{ "name": "Amsterdam", "label": "Amsterdam, Noord-Hollad, Nederland" }`.
 
-The following table shows all the fields that are used in documents, what types they are, what
-indexes they belong to, and possibly what template they belong to:
+We also have two other fields that have internationalized versions of both name and label. These are 
+**names** and **labels**, and they are both key/value maps, where the key is a two letter code for
+the language, and the value is the name or the label in that language. For example, for Amsterdam,
+the complete set of names and labels looks like:
 
-<table>
-<colgroup>
-<col style="width: 13%" />
-<col style="width: 9%" />
-<col style="width: 8%" />
-<col style="width: 26%" />
-<col style="width: 6%" />
-<col style="width: 8%" />
-<col style="width: 7%" />
-<col style="width: 4%" />
-<col style="width: 5%" />
-<col style="width: 10%" />
-</colgroup>
-<tbody>
-<tr class="odd">
-<td></td>
-<td>type</td>
-<td>indexed</td>
-<td>description</td>
-<td>admin</td>
-<td>address</td>
-<td>street</td>
-<td>poi</td>
-<td>stop</td>
-<td>component template</td>
-</tr>
-<tr class="even">
-<td>admin_regions</td>
-<td></td>
-<td>✗</td>
-<td>hierarchy of admin regions</td>
-<td>✓</td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td>approx_coord</td>
-<td>geo_shape</td>
-<td>?</td>
-<td>FIXME to be removed ?? duplicate of coord</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="even">
-<td>coord</td>
-<td>geo_shape</td>
-<td>✓</td>
-<td>lat / lon coordinate</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="odd">
-<td>coverages</td>
-<td>text</td>
-<td>✗</td>
-<td>names of datasets (FIXME ref)</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-</tr>
-<tr class="even">
-<td>full_label</td>
-<td>text</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-text</td>
-</tr>
-<tr class="odd">
-<td>house_number</td>
-<td>text</td>
-<td></td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td>id</td>
-<td>keyword</td>
-<td>✗</td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="odd">
-<td>indexed_at</td>
-<td>date</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="even">
-<td>insee</td>
-<td>keyword</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="odd">
-<td>level</td>
-<td>long</td>
-<td>✗</td>
-<td>admin level (FIXME ref)</td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td>parent_id</td>
-<td>keyword</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="odd">
-<td>poi_type</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td>properties</td>
-<td>flattened</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td></td>
-</tr>
-<tr class="odd">
-<td>street</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="even">
-<td>weight</td>
-<td>double</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-base</td>
-</tr>
-<tr class="odd">
-<td>zip_codes</td>
-<td>text</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>✓</td>
-<td>mimir-text</td>
-</tr>
-<tr class="even">
-<td>zone_type</td>
-<td>keyword</td>
-<td></td>
-<td></td>
-<td>✓</td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table>
+```json
+{
+  ...
+  "level": 10,
+  "name": "Amsterdam",
+  "names": [
+    { "ja": "アムステルダム" },
+    { "ru": "Амстердам" }
+  ],
+  "label": "Amsterdam, Noord-Hollad, Nederland",
+  "labels": [
+    { "ja": "アムステルダム, Noord-Holland, オランダ" },
+    { "it": "Amsterdam, Noord-Holland, Paesi Bassi" },
+    { "fr": "Amsterdam, Hollande-Septentrionale, Pays-Bas" },
+    { "ru": "Амстердам, Северная Голландия, Нидерланды" }
+  ],
+  "zone_type": "city",
+  ...
+}
+```
+
+The label field is found in the
+[mimir-base](/config/elasticsearch/templates/component/mimir-base.json) component template. We add
+an analyzer so that we can correctly handle elision and synonyms:
+
+```
+{
+  "elasticsearch": {
+    "template": {
+      "settings": {
+        ...
+        "analysis": {
+          "analyzer": {
+            "label_analyzer": {
+              "tokenizer": "standard",
+              "filter": [ "lowercase", "asciifolding", "synonym", "elision" ],
+              "char_filter": []
+            }
+          },
+          "filter": {
+            "synonym": {
+              "type": "synonym",
+              "synonyms": [ "cc,centre commercial", "st,saint", ... ]
+            },
+            "elision": {
+              "type": "elision",
+              "articles": [ "l", "d" ]
+            }
+          }
+        }
+      },
+      "mappings": {
+        "properies": {
+          ...
+          "label": {
+            "type": "search_as_you_type",
+            "analyzer": "label_analyzer"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Then in the search template, we have the following:
+
+```json
+{
+  "bool": {
+      "boost": "{{settings.global}}",
+      "should": [
+          {
+              "multi_match": {
+                  "query": "{{query_string}}",
+                  "type": "bool_prefix",
+                  "fields": [
+                      "label", "label._2gram", "label._3gram", "name"
+                  ]
+              }
+          }
+      ]
+  }
+}
+```
+

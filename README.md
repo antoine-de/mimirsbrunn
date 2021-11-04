@@ -185,7 +185,8 @@ See this [page](/docs/testing.md) for a more in depth introduction to testing th
 ## Where to Go from There
 
 Maybe you find that some the results you get are not ranked correctly, and want to adjust the way
-Elasticsearch is configured. You can start by reading [this](/docs/process/elasticsearch.md)
+Elasticsearch is configured. So you may want to learn [how Elasticsearch templates are
+configured](/docs/elasticsearch.md) and [how to get there](/docs/process/elasticsearch.md).
 
 # Development
 
