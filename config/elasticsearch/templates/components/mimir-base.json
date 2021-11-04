@@ -15,18 +15,19 @@
               ],
               "char_filter": []
             },
-            "standard_with_synonyms": {
+            "label_analyzer": {
               "tokenizer": "standard",
               "filter": [
                 "lowercase",
                 "asciifolding",
-                "synonyms"
+                "synonym",
+                "elision"
               ],
               "char_filter": []
             }
           },
           "filter":{
-            "synonyms":{
+            "synonym":{
               "type":"synonym",
               "synonyms":[
                 "cc,centre commercial",
@@ -46,6 +47,13 @@
                 "embarcadere,gare maritime",
                 "cpam,securite sociale",
                 "anpe,pole emploi"
+              ]
+            },
+            "elision": {
+              "type": "elision",
+              "articles": [
+                "l",
+                "d"
               ]
             }
           }
@@ -76,7 +84,7 @@
           },
           "label": {
             "type": "search_as_you_type",
-            "analyzer": "standard_with_synonyms"
+            "analyzer": "label_analyzer"
           },
           "name": {
             "type": "text",

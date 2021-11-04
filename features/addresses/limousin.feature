@@ -14,10 +14,10 @@ Feature: Addresses
         Then he finds address "<house num>", "<street>", "<city>", and "<postcode>" in the first "<limit>" results
 
         Examples:
-            | query                           | house num     | street             | city            | postcode  | limit |
-            | 14 Place Allègre, Allassac      | 14            | Place Allègre      | Allassac        | 19240     | 1     |
-            | Rue du Puy Grasset 1470         | 1470          | Rue du Puy Grasset | Argentat        | 19400     | 1     |
-            | 32BIS Avenue du Limousin 19230  | 32Bis         | Avenue du Limousin | Arnac-Pompadour | 19230     | 1     |
+            | query                           | house num     | street             | city                   | postcode  | limit |
+            | 14 Place Allègre, Allassac      | 14            | Place Allègre      | Allassac               | 19240     | 1     |
+            | Rue du Puy Grasset 1470         | 1470          | Rue du Puy Grasset | Argentat-sur-Dordogne  | 19400     | 1     |
+            | 32BIS Avenue du Limousin 19230  | 32Bis         | Avenue du Limousin | Arnac-Pompadour        | 19230     | 1     |
 
     # When using aliases, we should still fetch the query at the top of the
     # result.
@@ -26,9 +26,9 @@ Feature: Addresses
         Then he finds address "<house num>", "<street>", "<city>", and "<postcode>" in the first "<limit>" results
 
         Examples:
-            | query                      | house num     | street             | city            | postcode  | limit |
-            | 14 p Allègre, Allassac     | 14            | Place Allègre      | Allassac        | 19240     | 1     |
-            | 1470 r du Puy Grasset      | 1470          | Rue du Puy Grasset | Argentat        | 19400     | 1     |
-            | 32BIS av du Limousin 19230 | 32Bis         | Avenue du Limousin | Arnac-Pompadour | 19230     | 1     |
-            | 2 rte du chastang          | 2             | Route du Chastang  | Argentat        | 19400     | 1     |
-            | 1042 rle bridaine          | 1042          | Ruelle Bridaine    | Argentat        | 19400     | 1     |
+            | query                      | house num     | street             | city                     | postcode  | limit |
+            | 14 p Allègre, Allassac     | 14            | Place Allègre      | Allassac                 | 19240     | 1     |
+            | 1470 r du Puy Grasset      | 1470          | Rue du Puy Grasset | Argentat-sur-Dordogne    | 19400     | 1     |
+            | 32BIS av du Limousin 19230 | 32Bis         | Avenue du Limousin | Arnac-Pompadour          | 19230     | 1     |
+            | 2 rte du chastang          | 2             | Route du Chastang  | Argentat-sur-Dordogne    | 19400     | 1     |
+            | 1042 rle bridaine          | 1042          | Ruelle Bridaine    | Argentat-sur-Dordogne    | 19400     | 1     |
