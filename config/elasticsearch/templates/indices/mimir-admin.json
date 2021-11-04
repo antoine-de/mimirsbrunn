@@ -2,6 +2,9 @@
   "elasticsearch": {
     "index_patterns": ["munin_admin*"],
     "template": {
+      "settings": {
+        "number_of_replicas": "2"
+      },
       "mappings": {
         "properties": {
           "bbox": {

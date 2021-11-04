@@ -129,7 +129,47 @@ k  "tagline": "You Know, for Search"
 }
 ```
 
-4. Index cosmogony into Elasticsearch
+4. Prepare Elasticsearch
+
+We use templates, such that if you create an index that starts with a certain prefix, if a templates
+is configured for that prefix, it will create the index with the values found in that template. So,
+before creating any index, you need to import all the templates in Elasticsearch.
+
+```
+cd mimirsbrunn
+./target/release/ctlmimir \
+  -c ./config \
+  -m testing \
+  run
+```
+
+You should see all the index templates by querying your Elasticsearch. For example, the template for
+administrative regions:
+
+```
+curl 'http://localhost:9200/_index_template/mimir-admin*'
+{
+  "index_templates": [
+    {
+      "name": "mimir-admin",
+      "index_template": {
+        "index_patterns": [
+          "munin_admin*"
+        ],
+        ...
+        "composed_of": [
+          "mimir-base",
+          "mimir-dynamic-mappings"
+        ],
+        "priority": 10,
+        "version": 3
+      }
+    }
+  ]
+}
+```
+
+5. Index cosmogony into Elasticsearch
 
 The result of building the mimirsbrunn project includes several binaries located in
 `/target/releases`, one of which is used to index cosmogony files:
@@ -159,6 +199,8 @@ Elasticsearch like so.
 
 ```
 curl 'http://localhost:9200/_cat/indices'
+health status index                                    uuid                   pri rep docs.count docs.deleted store.size pri.store.size
+yellow open   munin_admin_fr_20211104_152535_346903898 FrWbs7PiRi26w-cbsIXjbg   1   4       1841            0     16.3mb         16.3mb
 ```
 
 6. Start Bragi

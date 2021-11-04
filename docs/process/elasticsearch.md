@@ -12,6 +12,9 @@ Elasticsearch Process
       * [Common Templates](#common-templates)
       * [Index Templates](#index-templates)
       * [Search Templates](#search-templates)
+  * [Using Templates](#using-templates)
+    * [Importing Templates](#importing-templates)
+    * [Overriding Templates](#overriding-templates)
   * [Updating Templates](#updating-templates)
     * [Evaluating Templates](#evaluating-templates)
 
@@ -1420,6 +1423,75 @@ the fields that are part of the common template, we have the following list of r
 
 This leaves the remaining fields to be indexed with the
 [mimir-stop.json](/config/elasticsearch/templates/indices/mimir-stop.json) index template.
+
+# Using Templates
+
+## Importing Templates
+
+For now there is a single binary that is used to insert templates in Elasticsearch. It must be
+used prior to the creation of any index. This binary uses the same configuration / command line
+configuration as the other binaries.
+
+```
+./target/release/ctlmimir -c ./config -m testing run
+```
+
+This program will look for the directories `<config>/ctlmimir`, and `<config>/elasticsearch` to read
+some configuration values. and then scan `<config>/elasticsearch/templates/components` and import
+all the templates in there, and same thing for `<config>/elasticsearch/templates/indices`.
+
+You can check that all the templates directly in Elasticsearch: Since Mimirsbrunn's templates are
+prefixed with 'mimir-', you can run:
+
+```
+curl -X GET 'http://localhost:9200/_component_template/mimir-*' | jq '.'
+```
+
+Same thing for index templates:
+
+```
+curl -X GET 'http://localhost:9200/_component_template/mimir-*' | jq '.'
+```
+
+## Overriding Templates
+
+There are scenarios in which you may want to override certain values.
+
+### For a certain type of index
+
+Let's say you want to make sure that all administrative region indices have a certain number of
+replicas, different from the default one. So, prior to importing the templates, you can change
+the index template in `config/elasticsearch/templates/indices/mimir-admin.json` and change the
+settings:
+
+```json
+{
+  "elasticsearch": {
+    "index_patterns": ["munin_admin*"],
+    "template": {
+      "settings": {
+        "number_of_replicas": "2"
+      }
+      ...
+    }
+  }
+}
+```
+
+Then, when you run ctlmimir, you will have a unique value for the number of replicas for all indices
+starting with `munin_admin*`. You can then test that when you are creating a new index with
+`cosmogony2mimir` you will have the correct number of replicas.
+
+### For a certain index
+
+Lets say that, following the previous scenario, you'd want to create a new admin index, but with 
+a different number of replicas than that found in the index template.
+
+In that case you can still use command line overrides:
+
+```
+cosmogony2mimir -s elasticsearch.settings.number_of_replicas=9 ...
+```
 
 # Updating Templates
 
