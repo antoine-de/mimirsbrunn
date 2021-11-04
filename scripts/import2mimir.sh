@@ -196,11 +196,9 @@ restart_docker_es() {
 
 import_templates() {
   log_info "Importing templates into ${ES_NAME}"
-  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/addr_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/poi_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/stop_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/admin_settings.json > /dev/null 2> /dev/null
-  curl -X PUT "http://${ES_HOST}:${ES_PORT}/${ES_INDEX}" -H 'Content-Type: application/json' --data @config/street_settings.json > /dev/null 2> /dev/null
+  local CTLMIMIR="${MIMIR_DIR}/target/release/ctlmimir"
+  command -v "${CTLMIMIR}" > /dev/null 2>&1  || { log_error "ctlmimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
+  "${CTLMIMIR}" -s "elasticsearch.url='http://${ES_HOST}:$((9200+ES_PORT_OFFSET))'" --config-dir "${SCRIPT_DIR}/../config" run
   return 0
 }
 
@@ -382,12 +380,15 @@ check_requirements
 check_environment
 [[ $? != 0 ]] && { log_error "Invalid environment. Aborting"; exit 1; }
 
-restart_docker_es 9200
+restart_docker_es
 [[ $? != 0 ]] && { log_error "Could not restart the elastic search docker. Aborting"; exit 1; }
 
 # The order in which the import are done into mimir is important!
 # First we generate the admin regions with cosmogony
 # Second we import the addresses with bano
+
+import_templates
+[[ $? != 0 ]] && { log_error "Could not import templates. Aborting"; exit 1; }
 
 download_osm
 [[ $? != 0 ]] && { log_error "Could not download osm. Aborting"; exit 1; }

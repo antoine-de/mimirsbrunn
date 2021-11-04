@@ -2,7 +2,7 @@
 url = "http://localhost:9200"
 
 # Timeout in milliseconds on client calls to Elasticsearch.
-timeout = 5000
+timeout = 10000
 
 # Constraint on the version of Elasticsearch.
 version_req = ">=7.13.0"
