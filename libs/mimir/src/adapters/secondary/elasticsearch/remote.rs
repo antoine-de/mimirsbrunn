@@ -68,9 +68,9 @@ impl Remote for SingleNodeConnectionPool {
     /// ```rust,no_run
     /// // You can have rust code between fences inside the comments
     /// // If you pass --test to `rustdoc`, it will even test it for you!
-    /// use mimir2::domain::ports::secondary::remote::Remote;
-    /// use mimir2::adapters::secondary::elasticsearch;
-    /// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+    /// use mimir::domain::ports::secondary::remote::Remote;
+    /// use mimir::adapters::secondary::elasticsearch;
+    /// use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
     ///
     /// #[tokio::main]
     /// async fn main() {

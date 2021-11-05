@@ -1,4 +1,4 @@
-use mimir2::utils::docker;
+use mimir::utils::docker;
 
 mod error;
 mod state;

@@ -4,9 +4,9 @@ use std::path::PathBuf;
 
 use super::utils::{create_dir_if_not_exists, file_exists};
 use common::document::ContainerDocument;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::model::configuration::root_doctype_dataset;
-use mimir2::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::domain::model::configuration::root_doctype_dataset;
+use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use places::admin::Admin;
 
 use super::utils;

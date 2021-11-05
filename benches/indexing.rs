@@ -1,11 +1,11 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
-use mimir2::adapters::secondary::elasticsearch::{
+use mimir::adapters::secondary::elasticsearch::{
     remote::connection_test_pool, ElasticsearchStorageConfig,
 };
-use mimir2::domain::ports::secondary::remote::Remote;
-use mimir2::utils::docker;
+use mimir::domain::ports::secondary::remote::Remote;
+use mimir::utils::docker;
 use tests::{bano, cosmogony, download};
 
 fn bench(c: &mut Criterion) {

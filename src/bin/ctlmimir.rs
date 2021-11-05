@@ -2,9 +2,9 @@ use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use mimir2::adapters::primary::templates;
-use mimir2::adapters::secondary::elasticsearch;
-use mimir2::domain::ports::secondary::remote::Remote;
+use mimir::adapters::primary::templates;
+use mimir::adapters::secondary::elasticsearch;
+use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::settings::ctlmimir as settings;
 
 #[derive(Debug, Snafu)]
@@ -14,7 +14,7 @@ pub enum Error {
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
-        source: mimir2::domain::ports::secondary::remote::Error,
+        source: mimir::domain::ports::secondary::remote::Error,
     },
 
     #[snafu(display("Execution Error {}", source))]

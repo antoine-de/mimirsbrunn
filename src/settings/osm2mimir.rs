@@ -1,5 +1,5 @@
 use config::Config;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 /// This module contains the definition for osm2mimir configuration and command line arguments.
 ///
 use serde::{Deserialize, Serialize};

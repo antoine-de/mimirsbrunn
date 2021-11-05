@@ -28,7 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-/// In this module we put the code related to stops, that need to draw on 'places', 'mimir2',
+/// In this module we put the code related to stops, that need to draw on 'places', 'mimir',
 /// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
 use futures::stream::{Stream, TryStreamExt};
 use snafu::{ResultExt, Snafu};
@@ -42,11 +42,9 @@ use tracing::info;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
 use config::Config;
-use mimir2::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir2::domain::model::index::IndexVisibility;
-use mimir2::domain::ports::primary::{
-    generate_index::GenerateIndex, list_documents::ListDocuments,
-};
+use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
+use mimir::domain::model::index::IndexVisibility;
+use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
 use places::admin::Admin;
 use places::stop::Stop;
 
@@ -61,14 +59,14 @@ pub enum Error {
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
-        source: mimir2::domain::ports::secondary::remote::Error,
+        source: mimir::domain::ports::secondary::remote::Error,
     },
 
     // #[snafu(display("Cosmogony Error: {}", details))]
     // Cosmogony { details: String },
     #[snafu(display("Index Generation Error {}", source))]
     IndexGeneration {
-        source: mimir2::domain::model::error::Error,
+        source: mimir::domain::model::error::Error,
     },
 
     // transit_model uses failure::Error, which does not implement std::Error, so

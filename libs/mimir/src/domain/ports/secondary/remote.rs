@@ -27,9 +27,9 @@ pub trait Remote {
     ///
     /// ```rust,no_run
     /// use url::Url;
-    /// use mimir2::domain::ports::secondary::remote::Remote;
-    /// use mimir2::adapters::secondary::elasticsearch;
-    /// use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+    /// use mimir::domain::ports::secondary::remote::Remote;
+    /// use mimir::adapters::secondary::elasticsearch;
+    /// use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
     ///
     /// #[tokio::main]
     /// async fn main() {

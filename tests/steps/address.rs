@@ -6,7 +6,7 @@ use crate::error::{self, Error};
 use crate::state::{State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
 use crate::steps::download::DownloadBano;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use tests::bano;
 
 pub fn steps() -> Steps<State> {

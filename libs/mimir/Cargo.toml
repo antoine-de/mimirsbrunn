@@ -1,6 +1,6 @@
 [package]
-name = "mimir2"
-version = "0.1.0"
+name = "mimir"
+version = "1.0.0-rc1"
 authors = ["crocme10 <matt@area403.org>"]
 edition = "2018"
 description = "library for manipulating document index, based on elasticsearch"
@@ -61,7 +61,7 @@ rand = "0.8"
 serial_test = "0.5.1"
 
 [lib]
-name = "mimir2"
+name = "mimir"
 path = "src/lib.rs"
 
 

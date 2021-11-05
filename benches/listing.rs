@@ -2,12 +2,12 @@ use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use futures::stream::TryStreamExt;
 
-use mimir2::adapters::secondary::elasticsearch::{
+use mimir::adapters::secondary::elasticsearch::{
     remote::connection_test_pool, ElasticsearchStorageConfig,
 };
-use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::domain::ports::secondary::remote::Remote;
-use mimir2::utils::docker;
+use mimir::domain::ports::primary::list_documents::ListDocuments;
+use mimir::domain::ports::secondary::remote::Remote;
+use mimir::utils::docker;
 use places::addr::Addr;
 use tests::{bano, cosmogony, download};
 

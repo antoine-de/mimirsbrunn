@@ -32,8 +32,8 @@ use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
 use common::config::load_es_config_for;
-use mimir2::adapters::secondary::elasticsearch;
-use mimir2::domain::ports::secondary::remote::Remote;
+use mimir::adapters::secondary::elasticsearch;
+use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::settings::cosmogony2mimir as settings;
 use places::stop::Stop;
 
@@ -44,7 +44,7 @@ pub enum Error {
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
-        source: mimir2::domain::ports::secondary::remote::Error,
+        source: mimir::domain::ports::secondary::remote::Error,
     },
 
     #[snafu(display("Execution Error {}", source))]
@@ -114,9 +114,9 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    use mimir2::utils::docker;
+    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
+    use mimir::domain::ports::primary::list_documents::ListDocuments;
+    use mimir::utils::docker;
     use places::stop::Stop;
 
     #[tokio::test]

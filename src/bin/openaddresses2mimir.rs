@@ -34,9 +34,9 @@ use structopt::StructOpt;
 use tracing::{info, warn};
 
 use common::config::load_es_config_for;
-use mimir2::adapters::secondary::elasticsearch;
-use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::domain::ports::secondary::remote::Remote;
+use mimir::adapters::secondary::elasticsearch;
+use mimir::domain::ports::primary::list_documents::ListDocuments;
+use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::addr_reader::import_addresses_from_files;
 use mimirsbrunn::openaddresses::OpenAddress;
 use mimirsbrunn::settings::openaddresses2mimir as settings;
@@ -50,7 +50,7 @@ pub enum Error {
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
-        source: mimir2::domain::ports::secondary::remote::Error,
+        source: mimir::domain::ports::secondary::remote::Error,
     },
 
     #[snafu(display("Execution Error {}", source))]
@@ -173,12 +173,12 @@ mod tests {
     use serial_test::serial;
 
     use common::document::ContainerDocument;
-    use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-    use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir2::domain::model::query::Query;
-    use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    use mimir2::domain::ports::primary::search_documents::SearchDocuments;
-    use mimir2::utils::docker;
+    use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
+    use mimir::domain::model::query::Query;
+    use mimir::domain::ports::primary::list_documents::ListDocuments;
+    use mimir::domain::ports::primary::search_documents::SearchDocuments;
+    use mimir::utils::docker;
     use places::{addr::Addr, Place};
 
     use super::*;

@@ -1,6 +1,6 @@
 [package]
 name = "mimirsbrunn"
-version = "1.24.0-alpha"
+version = "2.0.0-rc1"
 authors = ["Kisio Digital <team.core@kisio.com>", "Qwant", "Guillaume Pinot <texitoi@texitio.eu>"]
 build = "build.rs"
 autotests = false
@@ -14,7 +14,7 @@ readme = "README.md"
 
 [workspace]
 members = [
-  "libs/mimir2",
+  "libs/mimir",
   "libs/places",
   "libs/common",
 	"libs/tests",
@@ -69,7 +69,7 @@ walkdir = "2.3"
 warp = { version = "0.3.1" }
 
 common = { path = "libs/common" }
-mimir2 = { path = "libs/mimir2" }
+mimir  = { path = "libs/mimir" }
 places = { path = "libs/places" }
 
 [dependencies.config]

@@ -1,10 +1,10 @@
 use cucumber::{async_trait, criteria::feature, futures::FutureExt, Context, Cucumber, World};
 use elasticsearch::http::transport::SingleNodeConnectionPool;
-use mimir2::adapters::primary::common::settings::QuerySettings;
-use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir2::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
-use mimir2::domain::ports::secondary::remote::Remote;
-use mimir2::utils::docker;
+use mimir::adapters::primary::common::settings::QuerySettings;
+use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir::adapters::secondary::elasticsearch::{ES_DEFAULT_TIMEOUT, ES_DEFAULT_VERSION_REQ};
+use mimir::domain::ports::secondary::remote::Remote;
+use mimir::utils::docker;
 use std::convert::Infallible;
 
 mod steps;

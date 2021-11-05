@@ -6,13 +6,13 @@ use std::cmp::Ordering;
 use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use common::document::ContainerDocument;
-use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-use mimir2::adapters::primary::{
+use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::primary::{
     common::coord::Coord, common::dsl::build_query, common::filters::Filters,
     common::settings::QuerySettings,
 };
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
 pub fn steps() -> Steps<State> {
