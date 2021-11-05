@@ -86,6 +86,8 @@ fn build_boosts(
     let proximity_boost =
         coord.map(|coord| build_proximity_boost(coord, &settings.importance_query.proximity.decay));
     boosts.push(proximity_boost);
+    let place_type_boost = Some(build_place_type_boost(&settings.type_query.boosts));
+    boosts.push(place_type_boost);
     boosts.into_iter().flatten().collect()
 }
 
@@ -107,6 +109,20 @@ fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde
                     // TODO: in production, this weight depends of the focus radius
                     "weight": settings.weights.max_radius.admin
                 }
+            ]
+        }
+    })
+}
+
+fn build_place_type_boost(settings: &settings::Types) -> serde_json::Value {
+    json!({
+        "bool": {
+            "should": [
+                { "term": { "type": { "value": "admin", "boost": settings.admin } } },
+                { "term": { "type": { "value": "addr", "boost": settings.address } } },
+                { "term": { "type": { "value": "stop", "boost": settings.stop } } },
+                { "term": { "type": { "value": "poi", "boost": settings.poi } } },
+                { "term": { "type": { "value": "street", "boost": settings.street } } },
             ]
         }
     })

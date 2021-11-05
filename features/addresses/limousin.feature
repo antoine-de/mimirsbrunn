@@ -2,9 +2,7 @@ Feature: Addresses
     Some scenarios for testing addresses in Limousin, France.
 
     Background:
-        Given osm file has been downloaded for limousin
-        And osm file has been processed by cosmogony for limousin
-        And cosmogony file has been indexed for limousin
+        Given admins have been indexed for limousin
         And bano file has been indexed for limousin
 
     # With 'Exact Match', we expect the query to be found at the top of the

@@ -75,7 +75,7 @@ pub fn steps() -> Steps<State> {
 
     // This step is a condensed format for download + index bano
     steps.given_regex_async(
-        r"addresses \(bano\) have been indexed for (.*) into (.*) as (.*)",
+        r"addresses \(bano\) have been indexed for (.*) into ([^\s]*)(?: as (.*))?",
         t!(|mut state, ctx| {
             let departments = ctx.matches[1]
                 .split(',')
@@ -83,7 +83,20 @@ pub fn steps() -> Steps<State> {
                 .collect();
 
             let region = ctx.matches[2].clone();
-            let dataset = ctx.matches[3].clone();
+            let dataset = ctx
+                .matches
+                .get(3)
+                .map(|d| {
+                    if d.is_empty() {
+                        region.to_string()
+                    } else {
+                        d.to_string()
+                    }
+                })
+                .unwrap_or_else(|| region.clone())
+                .clone();
+            assert!(!region.is_empty());
+            assert!(!dataset.is_empty());
 
             state
                 .execute_once(
