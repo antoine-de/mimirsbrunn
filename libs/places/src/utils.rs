@@ -24,28 +24,8 @@ macro_rules! impl_container_document {
                         include_str!(concat!(
                             "../../../config/elasticsearch/",
                             $doc_type,
-                            "/settings.json"
-                        )),
-                        config::FileFormat::Json,
-                    ))
-                    .add_source(config::File::from_str(
-                        include_str!(concat!(
-                            "../../../config/elasticsearch/",
-                            $doc_type,
-                            "/mappings.json"
-                        )),
-                        config::FileFormat::Json,
-                    ))
-                    .add_source(config::File::from_str(
-                        include_str!(concat!(
-                            "../../../config/elasticsearch/",
-                            $doc_type,
                             "/parameters.json"
                         )),
-                        config::FileFormat::Json,
-                    ))
-                    .add_source(config::File::from_str(
-                        include_str!("../../../config/elasticsearch/synonyms_settings.json"),
                         config::FileFormat::Json,
                     ))
                     .build()

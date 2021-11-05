@@ -23,7 +23,7 @@ test: ## Launch all tests
 	cargo test --bins
 	cargo test --doc
 	cargo test --test end_to_end
-	cargo test --package mimir2
+	cargo test --package mimir
 	cargo test --package common
 	cargo test --package places
 

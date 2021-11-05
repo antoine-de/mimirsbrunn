@@ -113,10 +113,10 @@ function setRelease() {
 function setReleaseProject() {
   local VERSION="$1"
   sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" Cargo.toml
-  sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" libs/bragi/Cargo.toml
   sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" libs/mimir/Cargo.toml
-  sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" libs/tools/Cargo.toml
-  sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" libs/docker_wrapper/Cargo.toml
+  sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" libs/places/Cargo.toml
+  sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" libs/common/Cargo.toml
+  sed -i -e "s/^version\s*=\s*\".*\"/version = \"$VERSION\"/" libs/tests/Cargo.toml
 }
 
 # Not used

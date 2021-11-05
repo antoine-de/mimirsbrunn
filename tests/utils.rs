@@ -1,10 +1,10 @@
 use cucumber::{Context, Cucumber};
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 
 use crate::state;
 use crate::steps;
-use mimir2::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir2::domain::ports::secondary::remote::Remote;
+use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir::domain::ports::secondary::remote::Remote;
 
 /// Build test context with commonly used handles.
 async fn build_context(reindex: bool) -> Context {

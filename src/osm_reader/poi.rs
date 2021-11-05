@@ -40,8 +40,8 @@ use snafu::{ResultExt, Snafu};
 use tracing::{info, instrument, warn};
 
 use common::document::ContainerDocument;
-use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-use mimir2::{
+use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::{
     domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
 };
 use places::{
@@ -286,7 +286,7 @@ where
     T::Document: Into<serde_json::Value>,
 {
     // FIXME 1km automagick
-    let reverse = mimir2::adapters::primary::common::dsl::build_reverse_query(
+    let reverse = mimir::adapters::primary::common::dsl::build_reverse_query(
         "1km",
         poi.coord.lat(),
         poi.coord.lon(),

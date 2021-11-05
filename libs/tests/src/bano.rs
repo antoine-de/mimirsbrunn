@@ -6,10 +6,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use common::document::ContainerDocument;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::model::configuration::root_doctype_dataset;
-use mimir2::domain::ports::primary::list_documents::ListDocuments;
-use mimir2::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::domain::model::configuration::root_doctype_dataset;
+use mimir::domain::ports::primary::list_documents::ListDocuments;
+use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use mimirsbrunn::bano::Bano;
 use places::addr::Addr;
 use places::admin::Admin;

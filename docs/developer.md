@@ -1,26 +1,27 @@
-# Developer Documentation
-
-Table of Contents
-=================
+Developer Documentation
+=======================
 
   * [Design](#design)
-	  * [Software Architecture](#software-architecture)
-	* [Contributing](#contributing)
+    * [Software Architecture](#software-architecture)
+  * [Contributing](#contributing)
   * [Dependencies](#dependencies)
-	* [Development Process](#development-process)
-	* [Testing](#testing)
-	* [Tools](#tools)
-    * [import2mimir](#import2mimir)
+    * [Crates](#crates)
+  * [Development Process](#development-process)
+  * [Testing](#testing)
+  * [Tools](#tools)
+     * [import2mimir](#import2mimir)
 
-## Design
+# Design
 
-### Software Architecture
+## Software Architecture
 
-## Contributing
+# Contributing
 
-## Dependencies
+# Dependencies
 
-### Crates
+## Crates
+
+This is a list of (some of) the main crates the projects depends on:
 
 <table>
 <colgroup>
@@ -75,18 +76,18 @@ Table of Contents
 </tbody>
 </table>
 
-## Development Process
+# Development Process
 
-## Testing
+# Testing
 
 You will find information about tests in general [here](/docs/process/testing.md).
 
 This section is meant for developing your own tests.
 
-### 
-## Tools
+ 
+# Tools
 
-### import2mimir
+## import2mimir
 
 
-### autocomplete
+## autocomplete

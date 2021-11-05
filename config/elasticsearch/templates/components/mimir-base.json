@@ -1,0 +1,105 @@
+{
+  "elasticsearch": {
+    "template": {
+      "settings": {
+        "number_of_shards": "1",
+        "number_of_replicas": "0",
+        "refresh_interval": "-1",
+        "analysis": {
+          "analyzer": {
+            "word": {
+              "tokenizer": "standard",
+              "filter": [
+                "lowercase",
+                "asciifolding"
+              ],
+              "char_filter": []
+            },
+            "label_analyzer": {
+              "tokenizer": "standard",
+              "filter": [
+                "lowercase",
+                "asciifolding",
+                "synonym",
+                "elision"
+              ],
+              "char_filter": []
+            }
+          },
+          "filter":{
+            "synonym":{
+              "type":"synonym",
+              "synonyms":[
+                "cc,centre commercial",
+                "hotel de ville,mairie",
+                "gare sncf,gare",
+                "chu,chr,hopital",
+                "ld,lieu-dit",
+                "st,saint",
+                "ste,sainte",
+                "bvd,bld,bd,boulevard",
+                "pt,pont",
+                "rle,ruelle",
+                "rte,route",
+                "vla,villa",
+                "grand-champ,grandchamp",
+                "fac,faculte,ufr,universite",
+                "embarcadere,gare maritime",
+                "cpam,securite sociale",
+                "anpe,pole emploi"
+              ]
+            },
+            "elision": {
+              "type": "elision",
+              "articles": [
+                "l",
+                "d"
+              ]
+            }
+          }
+        }
+      },
+      "mappings": {
+        "properties": {
+          "administrative_regions": {
+            "enabled": false
+          },
+          "approx_coord": {
+            "enabled": false
+          },
+          "context": {
+            "enabled": false
+          },
+          "coord": {
+            "type": "geo_point"
+          },
+          "country_codes": {
+            "enabled": false
+          },
+          "id": {
+            "type": "keyword"
+          },
+          "indexed_at": {
+            "enabled": false
+          },
+          "label": {
+            "type": "search_as_you_type",
+            "analyzer": "label_analyzer"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "word"
+          },
+          "weight": {
+            "enabled": false
+          },
+          "zip_codes": {
+            "type": "text",
+            "index_options": "docs",
+            "analyzer": "word"
+          }
+        }
+      }
+    }
+  }
+}

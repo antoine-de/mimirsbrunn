@@ -6,12 +6,12 @@ use std::path::PathBuf;
 use tokio::fs::File;
 
 use common::document::ContainerDocument;
-use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-use mimir2::adapters::secondary::elasticsearch::{
+use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::secondary::elasticsearch::{
     remote::connection_test_pool, ElasticsearchStorageConfig,
 };
-use mimir2::utils::docker;
-use mimir2::{
+use mimir::utils::docker;
+use mimir::{
     adapters::primary::common::settings::QuerySettings,
     adapters::primary::common::{dsl::build_query, filters::Filters},
     domain::model::query::Query,

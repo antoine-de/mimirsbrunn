@@ -1,0 +1,38 @@
+{
+  "elasticsearch": {
+    "index_patterns": ["munin_stop*"],
+    "template": {
+      "mappings": {
+        "properties": {
+          "comments": {
+            "enabled": false
+          },
+          "commercial_modes": {
+            "enabled": false
+          },
+          "coverages": {
+            "enabled": false
+          },
+          "feed_publishers": {
+            "enabled": false
+          },
+          "lines": {
+            "enabled": false
+          },
+          "physical_modes": {
+            "enabled": false
+          },
+          "properties": {
+            "type": "flattened"
+          },
+          "timezone": {
+            "enabled": false
+          }
+        }
+      }
+    },
+    "composed_of": ["mimir-base"],
+    "version": 3,
+    "priority": 10
+  }
+}

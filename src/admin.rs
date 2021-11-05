@@ -42,7 +42,7 @@ use tracing::{info, warn};
 
 use crate::osm_reader::admin;
 use crate::osm_reader::osm_utils;
-use mimir2::{
+use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
     domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
@@ -59,7 +59,7 @@ pub enum Error {
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
-        source: mimir2::domain::ports::secondary::remote::Error,
+        source: mimir::domain::ports::secondary::remote::Error,
     },
 
     // Cosmogony uses failure::Error, which does not implement std::Error, so
@@ -69,7 +69,7 @@ pub enum Error {
 
     #[snafu(display("Index Generation Error {}", source))]
     IndexGeneration {
-        source: mimir2::domain::model::error::Error,
+        source: mimir::domain::model::error::Error,
     },
 }
 

@@ -6,7 +6,7 @@ use crate::error;
 use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
 use crate::steps::download::DownloadOsm;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use tests::cosmogony;
 
 pub fn steps() -> Steps<State> {

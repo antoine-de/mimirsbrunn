@@ -1,0 +1,38 @@
+{
+  "elasticsearch": {
+    "index_patterns": ["munin_admin*"],
+    "template": {
+      "settings": {
+        "number_of_replicas": "2"
+      },
+      "mappings": {
+        "properties": {
+          "bbox": {
+            "enabled": false
+          },
+          "boundary": {
+            "enabled": false
+          },
+          "codes": {
+            "enabled": false
+          },
+          "insee": {
+            "enabled": false
+          },
+          "level": {
+            "enabled": false
+          },
+          "parent_id": {
+            "enabled": false
+          },
+          "zone_type": {
+            "type": "keyword"
+          }
+        }
+      }
+    },
+    "composed_of": ["mimir-base", "mimir-dynamic-mappings"],
+    "version": 3,
+    "priority": 10
+  }
+}

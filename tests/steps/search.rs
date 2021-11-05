@@ -1,15 +1,18 @@
+use async_trait::async_trait;
+use cucumber::{t, StepContext, Steps};
+use itertools::{EitherOrBoth::*, Itertools};
+use std::cmp::Ordering;
+
 use crate::error::Error;
 use crate::state::{State, Step, StepStatus};
-use async_trait::async_trait;
 use common::document::ContainerDocument;
-use cucumber::{t, StepContext, Steps};
-use mimir2::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-use mimir2::adapters::primary::{
+use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::primary::{
     common::coord::Coord, common::dsl::build_query, common::filters::Filters,
     common::settings::QuerySettings,
 };
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
 pub fn steps() -> Steps<State> {
@@ -74,7 +77,48 @@ pub fn steps() -> Steps<State> {
     );
 
     steps.then_regex_async(
-        r#"he finds "(.*)", "(.*)", "(.*)", and "(.*)" in the first "(.*)" results"#,
+        r#"he finds admin "(.*)", a "(.*)", in the first (.*) results"#,
+        t!(|mut state, ctx| {
+            let name = Some(ctx.matches[1].clone()).and_then(|name| {
+                if name.is_empty() {
+                    None
+                } else {
+                    Some(name)
+                }
+            });
+            //let zone_type = Some(ctx.matches[2].clone()).and_then(|zone_type| {
+            //    if zone_type.is_empty() {
+            //        None
+            //    } else {
+            //        Some(zone_type)
+            //    }
+            //});
+            let limit = ctx.matches[3].clone();
+            let limit = if limit.is_empty() {
+                1
+            } else {
+                limit.parse().expect("limit as usize")
+            };
+
+            state
+                .execute(
+                    HasAdmin {
+                        name,
+                        // zone_type,
+                        zone_type: None,
+                        limit,
+                    },
+                    &ctx,
+                )
+                .await
+                .expect("failed to find document");
+
+            state
+        }),
+    );
+
+    steps.then_regex_async(
+        r#"he finds address "(.*)", "(.*)", "(.*)", and "(.*)" in the first "(.*)" results"#,
         t!(|mut state, ctx| {
             let house = Some(ctx.matches[1].clone()).and_then(|house| {
                 if house.is_empty() {
@@ -197,7 +241,54 @@ impl Step for HasDocument {
     }
 }
 
-/// Check if given document is in the output.
+/// Check if given admin is in the output.
+///
+/// It assumes that a Search has already been performed before.
+pub struct HasAdmin {
+    name: Option<String>,
+    zone_type: Option<String>,
+    limit: usize,
+}
+
+#[async_trait(?Send)]
+impl Step for HasAdmin {
+    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
+        let (search, _) = state
+            .steps_for::<Search>()
+            .next_back()
+            .expect("the user must perform a search before checking results");
+
+        let rank = search
+            .results
+            .clone()
+            .into_iter()
+            .enumerate()
+            .find_map(|(num, doc)| {
+                let admin: Admin = serde_json::from_value(doc).expect("admin");
+                if let Some(name) = &self.name {
+                    if !equal_ignore_case_utf8(name, admin.name.as_str()) {
+                        return None;
+                    }
+                }
+                if let Some(zone_type) = &self.zone_type {
+                    if !equal_ignore_case_utf8(
+                        zone_type,
+                        admin.zone_type.expect("zone type").as_str(),
+                    ) {
+                        // is it justified to expect a zone type?
+                        return None;
+                    }
+                }
+                Some(num)
+            })
+            .expect("document was not found in search results");
+
+        assert!(rank < self.limit);
+        Ok(StepStatus::Done)
+    }
+}
+
+/// Check if given address is in the output.
 ///
 /// It assumes that a Search has already been performed before.
 pub struct HasAddress {
@@ -224,22 +315,22 @@ impl Step for HasAddress {
             .find_map(|(num, doc)| {
                 let addr: Addr = serde_json::from_value(doc).expect("address");
                 if let Some(house) = &self.house {
-                    if house != addr.house_number.as_str() {
+                    if !equal_ignore_case_utf8(house, addr.house_number.as_str()) {
                         return None;
                     }
                 }
                 if let Some(street) = &self.street {
-                    if street != addr.street.name.as_str() {
+                    if !equal_ignore_case_utf8(street, addr.street.name.as_str()) {
                         return None;
                     }
                 }
                 if let Some(postcode) = &self.postcode {
-                    if postcode != addr.zip_codes[0].as_str() {
+                    if !equal_ignore_case_utf8(postcode, addr.zip_codes[0].as_str()) {
                         return None;
                     }
                 }
                 if let Some(city) = &self.city {
-                    if city != addr.city().expect("city").as_str() {
+                    if !equal_ignore_case_utf8(city, addr.city().expect("city").as_str()) {
                         return None;
                     }
                 }
@@ -250,4 +341,26 @@ impl Step for HasAddress {
         assert!(rank < self.limit);
         Ok(StepStatus::Done)
     }
+}
+
+// Based on https://stackoverflow.com/questions/63871601/what-is-an-efficient-way-to-compare-strings-while-ignoring-case
+// Its a case insensitive comparison, returning true if equal, false otherwise
+fn equal_ignore_case_utf8(a: &str, b: &str) -> bool {
+    let abs = a
+        .chars()
+        .flat_map(char::to_lowercase)
+        .zip_longest(b.chars().flat_map(char::to_lowercase));
+
+    for ab in abs {
+        match ab {
+            Left(_) => return false,
+            Right(_) => return false,
+            Both(a, b) => {
+                if a.cmp(&b) != Ordering::Equal {
+                    return false;
+                }
+            }
+        }
+    }
+    true
 }

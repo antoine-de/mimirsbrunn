@@ -8,7 +8,7 @@ use tracing_subscriber::{EnvFilter, Registry};
 use warp::Filter;
 
 use super::settings::{Error as SettingsError, Opts, Settings};
-use mimir2::{
+use mimir::{
     adapters::primary::bragi::api::{
         forward_geocoder, forward_geocoder_explain, reverse_geocoder, status,
     },
@@ -47,7 +47,7 @@ pub async fn run(opts: &Opts) -> Result<(), Error> {
     // Filter traces based on the RUST_LOG env var, or, if it's not set,
     // default to show the output of the example.
     let filter =
-        std::env::var("RUST_LOG").unwrap_or_else(|_| "tracing=info,mimir2=debug".to_owned());
+        std::env::var("RUST_LOG").unwrap_or_else(|_| "tracing=info,mimir=debug".to_owned());
 
     // following code mostly from https://betterprogramming.pub/production-grade-logging-in-rust-applications-2c7fffd108a6
     let app_name = concat!(env!("CARGO_PKG_NAME"), "-", env!("CARGO_PKG_VERSION")).to_string();

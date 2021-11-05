@@ -547,7 +547,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "config",
  "serde",
@@ -1979,8 +1979,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "mimir2"
-version = "0.1.0"
+name = "mimir"
+version = "1.0.0-rc1"
 dependencies = [
  "async-graphql",
  "async-graphql-warp",
@@ -2009,6 +2009,7 @@ dependencies = [
  "serial_test",
  "snafu",
  "tokio",
+ "tokio-stream",
  "toml",
  "tracing",
  "tracing-appender",
@@ -2022,7 +2023,7 @@ dependencies = [
 
 [[package]]
 name = "mimirsbrunn"
-version = "1.24.0-alpha"
+version = "2.0.0-rc1"
 dependencies = [
  "address-formatter",
  "approx 0.5.0",
@@ -2046,11 +2047,11 @@ dependencies = [
  "geo-types 0.7.2",
  "http",
  "human-sort",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "json",
  "lazy_static",
  "log",
- "mimir2",
+ "mimir",
  "navitia-poi-model",
  "num_cpus",
  "osm_boundaries_utils",
@@ -2599,7 +2600,7 @@ checksum = "7c9b1041b4387893b91ee6746cddfc28516aff326a3519fb2adf820932c5e6cb"
 
 [[package]]
 name = "places"
-version = "0.1.0"
+version = "1.0.0-rc1"
 dependencies = [
  "chrono-tz",
  "common",
@@ -3663,7 +3664,7 @@ checksum = "78fbf2dd23e79c28ccfa2472d3e6b3b189866ffef1aeb91f17c2d968b6586378"
 
 [[package]]
 name = "tests"
-version = "1.24.0-alpha"
+version = "1.0.0-rc1"
 dependencies = [
  "approx 0.5.0",
  "async-trait",
@@ -3672,7 +3673,7 @@ dependencies = [
  "cucumber_rust",
  "elasticsearch",
  "futures 0.3.17",
- "mimir2",
+ "mimir",
  "mimirsbrunn",
  "osmpbfreader",
  "places",

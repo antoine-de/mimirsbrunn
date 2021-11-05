@@ -28,13 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use common::config::load_es_config_for;
-use mimir2::adapters::secondary::elasticsearch;
-use mimir2::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::cosmogony2mimir as settings;
-use places::admin::Admin;
+use config::Config;
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
+
+use common::config::load_es_config_for;
+use mimir::adapters::secondary::elasticsearch;
+use mimir::domain::ports::secondary::remote::Remote;
+use mimirsbrunn::settings::cosmogony2mimir as settings;
+use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -43,7 +45,7 @@ pub enum Error {
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
-        source: mimir2::domain::ports::secondary::remote::Error,
+        source: mimir::domain::ports::secondary::remote::Error,
     },
 
     #[snafu(display("Execution Error {}", source))]
@@ -85,26 +87,17 @@ async fn run(
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
 
-    let config = load_es_config_for::<Admin>(
-        opts.settings
-            .iter()
-            .filter_map(|s| {
-                if s.starts_with("elasticsearch.admin") {
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            })
-            .collect(),
-        settings.container.dataset.clone(),
-    )
-    .context(Configuration)
-    .map_err(Box::new)?;
+    let config =
+        get_elasticsearch_config(opts.settings, settings.container.dataset).map_err(Box::new)?;
 
     mimirsbrunn::admin::index_cosmogony(&opts.input, settings.langs.clone(), config, &client)
         .await
         .context(Import)
         .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+}
+
+fn get_elasticsearch_config(overrides: Vec<String>, dataset: String) -> Result<Config, Error> {
+    load_es_config_for::<Admin>(overrides, dataset).context(Configuration)
 }
 
 #[cfg(test)]
@@ -114,9 +107,10 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use mimir2::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir2::domain::ports::primary::list_documents::ListDocuments;
-    use mimir2::utils::docker;
+    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
+    use mimir::domain::ports::primary::list_documents::ListDocuments;
+    use mimir::utils::docker;
+    use places::admin::Admin;
 
     #[tokio::test]
     #[serial]
@@ -228,6 +222,40 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Cosmogony Error: could not read zones from file"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_override_some_settings() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("elasticsearch.settings.number_of_shards=7")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony.json",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).expect("settings");
+
+        let config =
+            get_elasticsearch_config(opts.settings, settings.container.dataset).expect("config");
+
+        assert_eq!(
+            config
+                .get::<u32>("elasticsearch.settings.number_of_shards")
+                .expect("number of shards"),
+            7
+        );
     }
 
     #[tokio::test]

@@ -8,7 +8,7 @@ Feature: Baseline
 
     Scenario Outline: Geocoder Tester Ile-de-France Addresses
         When the user searches addr datatype for "<query>" at (<lat>,<lon>)
-        Then he finds "<house num>", "<street>", "<city>", and "<postcode>" in the first "<limit>" results
+        Then he finds address "<house num>", "<street>", "<city>", and "<postcode>" in the first "<limit>" results
 
         Examples:
            | query                                                        | lat        | lon        | limit      | house num  | street                                   | city                           | postcode   |

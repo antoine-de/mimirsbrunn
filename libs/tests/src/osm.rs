@@ -3,13 +3,11 @@ use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
 use common::document::ContainerDocument;
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir2::domain::model::configuration::root_doctype_dataset;
-use mimir2::domain::model::index::IndexVisibility;
-use mimir2::domain::ports::primary::{
-    generate_index::GenerateIndex, list_documents::ListDocuments,
-};
-use mimir2::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::domain::model::configuration::root_doctype_dataset;
+use mimir::domain::model::index::IndexVisibility;
+use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
+use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use places::street::Street;
@@ -41,12 +39,12 @@ pub enum Error {
 
     #[snafu(display("Poi Index Creation Error {}", source))]
     PoiIndexCreation {
-        source: mimir2::domain::model::error::Error,
+        source: mimir::domain::model::error::Error,
     },
 
     #[snafu(display("List Document Error {}", source))]
     ListDocument {
-        source: mimir2::domain::model::error::Error,
+        source: mimir::domain::model::error::Error,
     },
 
     #[snafu(display("Could not get Config {}", source))]
@@ -112,7 +110,7 @@ pub async fn index_pois(
     let elasticsearch_config =
         common::config::load_es_config_for::<Poi>(vec![], dataset.to_string()).context(Config)?;
 
-    let pois: Vec<places::poi::Poi> = futures::stream::iter(pois)
+    let pois: Vec<Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
         .map(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
         .buffer_unordered(POI_REVERSE_GEOCODING_CONCURRENCY)

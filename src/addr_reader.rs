@@ -12,7 +12,7 @@ use tokio::fs::File;
 use tracing::{info, warn};
 
 use config::Config;
-use mimir2::{
+use mimir::{
     adapters::secondary::elasticsearch::ElasticsearchStorage,
     domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
 };
@@ -24,7 +24,7 @@ pub enum Error {
     // which makes a stream of Result<T, Error> not `Send`.
     // #[snafu(display("Index Generation Error: {}", source))]
     // IndexGeneration {
-    //     source: mimir2::domain::model::error::Error,
+    //     source: mimir::domain::model::error::Error,
     // },
     #[snafu(display("CSV Error: {}", source))]
     Csv { source: csv_async::Error },

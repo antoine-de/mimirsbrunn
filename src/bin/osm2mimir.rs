@@ -4,15 +4,15 @@ use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 use tracing::{instrument, warn};
 
-use mimir2::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir2::domain::model::index::IndexVisibility;
-use mimir2::domain::ports::primary::{
-    generate_index::GenerateIndex, list_documents::ListDocuments,
-};
-use mimir2::domain::ports::secondary::remote::Remote;
+use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
+use mimir::domain::model::index::IndexVisibility;
+use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
+use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::osm_reader::street::streets;
 use mimirsbrunn::settings::osm2mimir as settings;
+use places::poi::Poi;
+use places::street::Street;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -26,7 +26,7 @@ pub enum Error {
 
     #[snafu(display("Elasticsearch Connection Pool {}", source))]
     ElasticsearchConnection {
-        source: mimir2::domain::ports::secondary::remote::Error,
+        source: mimir::domain::ports::secondary::remote::Error,
     },
 
     #[snafu(display("Street Extraction from OSM PBF Error {}", source))]
@@ -36,7 +36,7 @@ pub enum Error {
 
     #[snafu(display("Street Index Creation Error {}", source))]
     StreetIndexCreation {
-        source: mimir2::domain::model::error::Error,
+        source: mimir::domain::model::error::Error,
     },
 
     #[snafu(display("Poi Extraction from OSM PBF Error {}", source))]
@@ -46,7 +46,7 @@ pub enum Error {
 
     #[snafu(display("Poi Index Creation Error {}", source))]
     PoiIndexCreation {
-        source: mimir2::domain::model::error::Error,
+        source: mimir::domain::model::error::Error,
     },
 
     #[snafu(display("Elasticsearch Configuration {}", source))]
@@ -109,7 +109,7 @@ async fn run(
     };
 
     if settings.streets.import {
-        let config = common::config::load_es_config_for::<places::street::Street>(
+        let config = common::config::load_es_config_for::<Street>(
             opts.settings
                 .iter()
                 .filter_map(|s| {
@@ -137,7 +137,7 @@ async fn run(
     }
 
     if settings.pois.import {
-        let config = common::config::load_es_config_for::<places::poi::Poi>(
+        let config = common::config::load_es_config_for::<Poi>(
             opts.settings
                 .iter()
                 .filter_map(|s| {
@@ -242,10 +242,10 @@ async fn import_pois(
 //     use common::config::load_es_config_for;
 //     use common::document::ContainerDocument;
 //     use futures::TryStreamExt;
-//     use mimir2::domain::model::query::Query;
-//     use mimir2::domain::ports::primary::list_documents::ListDocuments;
-//     use mimir2::domain::ports::primary::search_documents::SearchDocuments;
-//     use mimir2::{adapters::secondary::elasticsearch::remote, utils::docker};
+//     use mimir::domain::model::query::Query;
+//     use mimir::domain::ports::primary::list_documents::ListDocuments;
+//     use mimir::domain::ports::primary::search_documents::SearchDocuments;
+//     use mimir::{adapters::secondary::elasticsearch::remote, utils::docker};
 //     use mimirsbrunn::admin::index_cosmogony;
 //     use places::{admin::Admin, street::Street, Place};
 //     use serial_test::serial;
@@ -259,7 +259,7 @@ async fn import_pois(
 //         index_cosmogony(
 //             "./tests/fixtures/cosmogony.json".into(),
 //             vec![],
-//             load_es_config_for::<Admin>(
+//             load_es_config_for(
 //                 None,
 //                 None,
 //                 vec!["container.dataset=osm2mimir-test".into()],

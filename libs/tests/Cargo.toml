@@ -1,6 +1,6 @@
 [package]
 name = "tests"
-version = "1.24.0-alpha"
+version = "1.0.0-rc1"
 authors = ["Kisio Digital <team.core@kisio.com>", "Qwant", "Guillaume Pinot <texitoi@texitio.eu>"]
 edition = "2018"
 description = "Set of test utilities for Mimirsbrunn"
@@ -17,7 +17,7 @@ common = { path = "../common" }
 cucumber = { package = "cucumber_rust", version = "0.9" }
 elasticsearch = "7.14.0-alpha.1"
 futures = "0.3"
-mimir2 = { path = "../mimir2" }
+mimir = { path = "../mimir" }
 mimirsbrunn = { path = "../.." }
 osmpbfreader = "0.14"
 places = { path = "../places" }

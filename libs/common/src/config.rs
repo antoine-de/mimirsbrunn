@@ -1,8 +1,9 @@
-use crate::document::ContainerDocument;
 use config::{Config, Environment, File};
 use snafu::{ResultExt, Snafu};
 use std::env;
 use std::path::Path;
+
+use crate::document::ContainerDocument;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -19,29 +20,15 @@ pub enum Error {
     UnrecognizedValueType { details: String },
 }
 
-/// Create a new configuration specific for the document of type D.
-///
-/// It loads the default Elasticsearch configuration for the document of type D,
-/// overrides some of the values if necessary, and assigns the value
-/// of `container.dataset`
-// FIXME  Use more flexible version instead:
-// pub fn load_es_config_for<D: ContainerDocument, O: AsRef<str>>(
-// overrides: &[O],
+/// FIXME Need documentation, and a change of name
 pub fn load_es_config_for<D: ContainerDocument>(
     overrides: Vec<String>,
     dataset: String,
 ) -> Result<Config, Error> {
-    let mut cfg_builder = Config::builder().add_source(D::default_es_container_config());
-
-    let config_dataset = config::Config::builder()
+    Config::builder()
+        .add_source(D::default_es_container_config())
         .set_override("container.dataset", dataset)
-        .unwrap()
-        .build()
-        .context(ConfigCompilation)?;
-
-    cfg_builder = cfg_builder.add_source(config_dataset);
-
-    cfg_builder
+        .context(ConfigCompilation)?
         .add_source(config_from_args(overrides)?)
         .build()
         .context(ConfigCompilation)

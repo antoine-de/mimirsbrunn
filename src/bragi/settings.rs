@@ -1,4 +1,4 @@
-use mimir2::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use snafu::Snafu;
@@ -6,7 +6,7 @@ use std::env;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-use mimir2::adapters::primary::common::settings::QuerySettings;
+use mimir::adapters::primary::common::settings::QuerySettings;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
