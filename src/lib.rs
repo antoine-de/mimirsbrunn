@@ -35,6 +35,7 @@ pub mod bano;
 pub mod labels;
 pub mod openaddresses;
 pub mod osm_reader;
+pub mod pois;
 pub mod settings;
 pub mod stops;
 pub mod utils;
