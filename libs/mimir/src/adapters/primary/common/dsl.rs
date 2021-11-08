@@ -15,13 +15,13 @@ pub fn build_query(
         shape,
         limit: _,
         datasets: _,
-        zone_types: _,
-        poi_types: _,
+        zone_types,
+        poi_types,
     } = filters;
 
     let string_query = build_string_query(q, &settings.string_query);
     let boosts = build_boosts(q, settings, coord);
-    let filters = build_filters(shape);
+    let filters = build_filters(shape, poi_types, zone_types);
     if filters.is_empty() {
         json!({
             "query": {
@@ -67,10 +67,18 @@ fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::
     })
 }
 
-fn build_filters(shape: Option<(Geometry, Vec<String>)>) -> Vec<serde_json::Value> {
+fn build_filters(
+    shape: Option<(Geometry, Vec<String>)>,
+    poi_types: Option<Vec<String>>,
+    zone_types: Option<Vec<String>>,
+) -> Vec<serde_json::Value> {
     let mut filters: Vec<Option<serde_json::Value>> = Vec::new();
     let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
     filters.push(geoshape_filter);
+    let poi_types_filter = poi_types.map(|poi_types| build_poi_types_filter(poi_types));
+    filters.push(poi_types_filter);
+    let zone_types_filter = zone_types.map(|zone_types| build_zone_types_filter(zone_types));
+    filters.push(zone_types_filter);
     filters.into_iter().flatten().collect()
 }
 
@@ -208,7 +216,7 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
                 "bool": {
                     "must": {
                         "terms": {
-                            "_type": scope
+                            "_source.type": scope
                         }
                     },
                     "filter": {
@@ -225,11 +233,103 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
                 "bool": {
                     "must_not": {
                         "terms": {
-                            "_type": scope
+                            "_source.type": scope
                         }
                     }
                 }
             }
+            ]
+        }
+    })
+}
+
+// If we search for POIs and we specify poi_types, then we add a filter that should say something
+// like:
+// If the place is a POI, then its poi_type must be part of the given list
+// So if poi_types = {A, B}, we should end up with something like
+// should [
+//   must {               => for pois, filter their poi types
+//     type: poi
+//     filter: poi_types = {A, B}
+//   },
+//   must_not {            => or don't filter for poi types on other places
+//      type: poi
+//   }
+// ]
+pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
+    json!({
+        "bool": {
+            "should": [
+            {
+                "bool": {
+                    "must": {
+                        "term": {
+                            "_source.type": "poi"
+                        }
+                    },
+                    "filter": {
+                        "terms": {
+                            "_source.poi_type.id": poi_types
+                        }
+                    }
+                }
+            },
+            {
+                "bool": {
+                    "must_not": {
+                        "term": {
+                            "_source.type": "poi"
+                        }
+                    }
+                }
+            }
+            ]
+        }
+    })
+}
+
+// If we search for administrative regions and we specify zone_types, then we add a filter that should say something
+// like:
+// If the place is an administrative region, then its zone_type must be part of the given list
+// So if zone_type = {A, B}, we should end up with something like
+// should [
+//   must {               => for admins, make sure they have the right zone type
+//     type: admin
+//     filter: zone_types
+//   },
+//   must_not {            => no filter on zone types for other places
+//      type: admin
+//   }
+// ]
+//
+//
+pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
+    json!({
+        "bool": {
+            "should": [
+                {
+                    "bool": {
+                        "must": {
+                            "term": {
+                                "_source.type": "admin"
+                            }
+                        },
+                        "filter": {
+                            "terms": {
+                                "_source.zone_type.id": zone_types
+                            }
+                        }
+                    }
+                },
+                {
+                    "bool": {
+                        "must_not": {
+                            "term": {
+                                "_source.type": "admin"
+                            }
+                        }
+                    }
+                }
             ]
         }
     })

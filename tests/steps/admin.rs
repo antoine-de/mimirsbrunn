@@ -93,6 +93,8 @@ pub fn steps() -> Steps<State> {
     );
 
     // This step is a condensed format for download + generate + index
+    // FIXME This is the same code has the previous step, except the dataset is not optional.
+    // The previous one is more general, so this step should probably be deleted.
     steps.given_regex_async(
         "admins have been indexed for (.*) as (.*)",
         t!(|mut state, ctx| {

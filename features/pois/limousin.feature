@@ -7,10 +7,6 @@ Feature: Pois
         Given admins have been indexed for limousin
         And pois have been indexed for limousin
 
-    # With 'Exact Match', we expect the query to be found at the top of the
-    # result because the query exactly matches the name / label of the target.
-    # These queries are for varying levels of administrative regions (city,
-    # department, ...).
     Scenario Outline: Pois exact match
         When the user searches poi datatype for "<query>"
         Then he finds poi "<label>", a "<poi type>", located near <lat>/<lon>, in the first <limit> results
