@@ -1,9 +1,20 @@
-# Bragi
+Bragi
+=====
+
+  * [Getting Started](#getting-started)
+  * [Usage](#usage)
+    * [Configuration](#configuration)
+  * [REST API](#rest-api)
+    * [Forward Geocoding](#forward-geocoding)
+    * [Reverse Geocoding](#reverse-geocoding)
+    * [Status](#status)
+    * [Features](#features)
+    * [Explain Geocoding](#explain-geocoding)
 
 Bragi is a web application providing a REST interface for querying a geospatial backend.
 Bragi currently only works with Elasticsearch.
 
-## Getting Started
+# Getting Started
 
 Bragi is a part of Mimirsbrunn, and so it is built like any other rust project. Assuming
 you have setup a rust environment,
@@ -18,7 +29,7 @@ cargo build --release
 
 This will create an executable in `./target/release/bragi`
 
-## Usage
+# Usage
 
 Before using Bragi, you need to have an Elasticsearch backend available with data
 indexed beforehand. Instructions on indexing are found [there](./indexing.md).
@@ -34,9 +45,10 @@ repository's config directory, run the following command.
 
 ## Configuration
 
-Bragi's configuration is split into two sections:
-- one part contains parameters needed to tune the performance of the query.
-- and the rest, which describes the connection to the backend, how to serve the REST API.
+Bragi's configuration is split into three sections:
+- parameters needed to tune the performance of the query.
+- parameters to connect to the backend
+- and the rest, focused bragi as a service (logging, port, ...)
 
 The reason to split the configuration is that the part related to the query is
 used in other contexts than Bragi.
@@ -52,6 +64,10 @@ config
   ├── query
   │     └── default.toml
   │
+  ├── elasticsearch
+        ├── default.toml
+  │     └── testing.toml
+  │
   └── bragi
         ├── default.toml
         ├── testing.toml
@@ -59,16 +75,14 @@ config
         └── [...]
 ```
 
-Bragi uses a layered approach to configuration. It will start by reading the
-`default.toml` configuration, and override it with the file corresponding to
-the run mode. So, in the previous example, if you run `bragi -c ./config -m
-testing run`, it will read `./config/bragi/default.toml`, and override any
-value with those found in `./config/bragi/testing.toml`. You can still override
+Bragi uses a layered approach to configuration. It will start by reading the `default.toml`
+configuration, and override it with the file corresponding to the run mode. So, in the previous
+example, if you run `bragi -c ./config -m testing run`, it will read `./config/bragi/default.toml`,
+and override any value with those found in `./config/bragi/testing.toml`. You can still override
 some settings with local values, using a `./config/bragi/local.toml`.
 
 The Bragi configuration allows you to specify
 * where the log files are stored,
-* how to connect to the elasticsearch backend 
 * and on what address / port to serve Bragi
 
 Here is an example:
@@ -77,20 +91,13 @@ Here is an example:
 [logging]
 path = "./logs"
 
-[elasticsearch]
-host = "localhost"
-port = 9200
-timeout = 500 # ms
-version_req = ">=7.12.0"
-
 [service]
 host = "0.0.0.0"
 port = "6010"
 ```
 
-Before running bragi, you may find it useful to see what bragi will use as a configuration.
-So there is a `config` subcommand, which compiles the configuration, and prints it
-as a json object:
+Before running bragi, you may find it useful to see what bragi will use as a configuration. So there
+is a `config` subcommand, which compiles the configuration, and prints it as a json object:
 
 ```
 bragi -c ./config -m testing -s elasticsearch.port=9208 config
@@ -112,15 +119,17 @@ bragi -c ./config -m testing -s elasticsearch.port=9208 config
 }
 ```
 
-## REST API
+# REST API
 
 Bragi exposes a small REST API summarized in the table below:
 
+<!-- docs/assets/tbl/bragi-api.md -->
+
 <table>
 <colgroup>
-<col style="width: 15%" />
-<col style="width: 57%" />
-<col style="width: 26%" />
+<col style="width: 21%" />
+<col style="width: 53%" />
+<col style="width: 24%" />
 </colgroup>
 <thead>
 <tr class="header">
@@ -143,11 +152,6 @@ Bragi exposes a small REST API summarized in the table below:
 <td><a href="#reverse-geocoding">link</a></td>
 </tr>
 <tr class="odd">
-<td><code>autocomplete-explain</code></td>
-<td><p>Explain information about why a specific document matches (or doesn’t match) a query.</p>
-<td><a href="https://www.elastic.co/guide/en/elasticsearch/reference/7.14/search-explain.html">link</a></td>
-</tr>
-<tr class="odd">
 <td><code>features</code></td>
 <td>Returns Bragi’s status as well al the backend’s.</td>
 <td><a href="#features">link</a></td>
@@ -157,10 +161,15 @@ Bragi exposes a small REST API summarized in the table below:
 <td>Returns Bragi’s status as well al the backend’s.</td>
 <td><a href="#status">link</a></td>
 </tr>
+<tr class="odd">
+<td><code>autocomplete-explain</code></td>
+<td>Return scoring details to analyze rankings</td>
+<td><a href="#explain">link</a></td>
+</tr>
 </tbody>
 </table>
 
-### Forward Geocoding
+## Forward Geocoding
 
 Get a list of places (administrative regions, streets, ...) that best match your query string
 
@@ -168,9 +177,11 @@ Get a list of places (administrative regions, streets, ...) that best match your
 
 **Method** : `GET`
 
-#### Query Parameters
+### Query Parameters
 
 TODO How to specify negative long lat ?
+
+<!-- docs/assets/tbl/autocomplete-query-param.md -->
 
 <table>
 <colgroup>
@@ -248,7 +259,7 @@ pub shape_scope: Option<Vec<String>>,
 pub datasets: Option<Vec<String>>,
 pub timeout: u32, // timeout to Elasticsearch in milliseconds
 
-#### Success Response
+### Success Response
 
 **Code** : `200 OK`
 
@@ -295,27 +306,94 @@ Here is an example:
 }
 ```
 
-#### Failure Response
+### Failure Response
 
-##### Bad Request
-
-**Code** : `503 Internal Server Error`
-
-**Content examples**
-
-##### Internal Server Error
+#### Bad Request
 
 **Code** : `503 Internal Server Error`
 
 **Content examples**
 
-#### Notes
+#### Internal Server Error
 
-### Reverse Geocoding
+**Code** : `503 Internal Server Error`
 
-### Status
+**Content examples**
 
-### Features
+### Notes
+
+## Reverse Geocoding
+
+Reverse geocoding is an API endpoint to retrieve a list of places around geospatial coordinates.
+This is to answer questions such as 'What are the public transportation stops around position x,y'.
+
+Note that this functionality is used internally during the indexing step. For example, when we index
+POIs, we try to enrich the raw input data by assigning an address. So we retrieve the POIs
+coordinate, and ask the backend for the closest address.
+
+### Query Parameters
+
+<!-- docs/assets/tbl/reverse-query-param.md -->
+
+<table>
+<colgroup>
+<col style="width: 7%" />
+<col style="width: 15%" />
+<col style="width: 58%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>name</th>
+<th>type</th>
+<th>description</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>lat</td>
+<td>double</td>
+<td></td>
+<td><code>lat=45.3456</code></td>
+</tr>
+<tr class="even">
+<td>lon</td>
+<td>double</td>
+<td></td>
+<td><code>lon=2.4554</code></td>
+</tr>
+<tr class="odd">
+<td>radius</td>
+<td>string</td>
+<td>Search radius, including a unit.</td>
+<td><code>radius=50m</code></td>
+</tr>
+<tr class="even">
+<td>type</td>
+<td>list of strings (optional)</td>
+<td><p>restrics the search to the given place types.</p>
+<p>Possible values are: * house, * poi, * public_transport:stop_area, * street, * zone</p>
+<ol type="1">
+<li>If no type is given, only streets and addresses are searched.</li>
+<li>This type parameter is featured in the response.</li>
+</ol></td>
+<td><code>type[]=streets&amp;</code> <code>type[]=zone</code></td>
+</tr>
+<tr class="odd">
+<td>limit</td>
+<td>integer</td>
+<td>maximum number of places returned</td>
+<td><code>limit=3</code></td>
+</tr>
+</tbody>
+</table>
+
+## Status
+
+## Features
+
+## Explain
 
 ## Testing
 

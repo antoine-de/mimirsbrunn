@@ -230,6 +230,11 @@ Maybe you find that some the results you get are not ranked correctly, and want 
 Elasticsearch is configured. So you may want to learn [how Elasticsearch templates are
 configured](/docs/elasticsearch.md) and [how to get there](/docs/process/elasticsearch.md).
 
+You want to know more about indexing data into Elasticsearch.
+
+You want to know more about bragi and how to query Elasticsearch via mimir, start
+[here](/docs/bragi.md).
+
 # Development
 
 You can find more developer oriented documentation [here](/docs/developer.md)
