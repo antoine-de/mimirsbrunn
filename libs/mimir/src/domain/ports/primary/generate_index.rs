@@ -10,11 +10,14 @@ use tracing_futures::Instrument;
 
 #[async_trait]
 pub trait GenerateIndex {
-    async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
+    async fn generate_index<D, S>(
         &self,
         config: &ContainerConfig,
-        documents: impl Stream<Item = D> + Send + Sync + 'static,
-    ) -> Result<Index, ModelError>;
+        documents: S,
+    ) -> Result<Index, ModelError>
+    where
+        D: ContainerDocument + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync;
 }
 
 #[async_trait]
@@ -23,11 +26,15 @@ where
     T: Storage + Send + Sync + 'static,
 {
     #[tracing::instrument(skip(self, config, documents))]
-    async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
+    async fn generate_index<D, S>(
         &self,
         config: &ContainerConfig,
-        documents: impl Stream<Item = D> + Send + Sync + 'static,
-    ) -> Result<Index, ModelError> {
+        documents: S,
+    ) -> Result<Index, ModelError>
+    where
+        D: ContainerDocument + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync,
+    {
         // 1. We create the index
         // 2. We insert the document stream in that newly created index
         // 3. We publish the index

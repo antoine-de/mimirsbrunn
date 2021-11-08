@@ -516,7 +516,7 @@ impl ElasticsearchStorage {
     ) -> Result<InsertStats, Error>
     where
         D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync,
     {
         let stats = Arc::new(Mutex::new(InsertStats::default()));
 

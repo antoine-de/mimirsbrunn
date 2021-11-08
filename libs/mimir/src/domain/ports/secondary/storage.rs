@@ -56,7 +56,7 @@ pub trait Storage {
     ) -> Result<InsertStats, Error>
     where
         D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + 'static;
+        S: Stream<Item = D> + Send + Sync;
 
     async fn publish_index(
         &self,
@@ -91,7 +91,7 @@ where
     ) -> Result<InsertStats, Error>
     where
         D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync,
     {
         (**self).insert_documents(index, documents).await
     }
