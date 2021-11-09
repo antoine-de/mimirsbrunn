@@ -9,5 +9,9 @@ CMD=$1
 shift
 ARG=$@
 
-export RUST_LOG="tracing=info,mimir2=info"
+# By default, a pipeline's exit code is the exit code of the last command. This
+# will make this script exit with code 1 if $CMD fails, even if bunyan exits
+# with code 0.
+set -o pipefail
+
 $CMD --config-dir /etc/mimirsbrunn --run-mode docker $@ | bunyan
