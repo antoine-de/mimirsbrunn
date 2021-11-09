@@ -137,11 +137,16 @@ pub async fn index_admins(
     .collect();
     let input_file = input_dir.join(format!("{}.jsonl.gz", region));
 
-    let config: mimirsbrunn::settings::cosmogony2mimir::Settings =
-        common::config::config_from(&config_dir, &["cosmogony2mimir"], "testing", None, vec![])
-            .expect("could not load cosmogony2mimir configuration")
-            .try_into()
-            .expect("invalid cosmogony2mimir configuration");
+    let config: mimirsbrunn::settings::cosmogony2mimir::Settings = common::config::config_from(
+        &config_dir,
+        &["cosmogony2mimir", "elasticsearch", "logging"],
+        "testing",
+        None,
+        vec![],
+    )
+    .expect("could not load cosmogony2mimir configuration")
+    .try_into()
+    .expect("invalid cosmogony2mimir configuration");
 
     mimirsbrunn::admin::index_cosmogony(
         &input_file,

@@ -1,5 +1,6 @@
 /// This module contains the definition for bano2mimir configuration and command line arguments.
 use config::Config;
+use mimir::domain::model::configuration::ContainerConfig;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::env;
@@ -27,12 +28,7 @@ pub enum Error {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Logging {
-    pub path: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Container {
-    pub dataset: String,
+    pub path: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,7 +36,7 @@ pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
-    pub container: Container,
+    pub container: ContainerConfig,
 }
 
 #[derive(Debug, StructOpt)]
@@ -150,7 +146,7 @@ mod tests {
             settings.unwrap_err().to_string()
         );
         assert_eq!(
-            settings.unwrap().elasticsearch.url,
+            settings.unwrap().elasticsearch.url.as_str(),
             "http://localhost:9999/"
         );
     }
@@ -173,7 +169,7 @@ mod tests {
             settings.unwrap_err().to_string()
         );
         assert_eq!(
-            settings.unwrap().elasticsearch.url,
+            settings.unwrap().elasticsearch.url.as_str(),
             "http://localhost:9999/"
         );
     }

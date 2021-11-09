@@ -33,7 +33,7 @@ use structopt::StructOpt;
 
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::cosmogony2mimir as settings;
+use mimirsbrunn::settings::ntfs2mimir as settings;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -84,7 +84,7 @@ async fn run(
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
 
-    mimirsbrunn::stops::index_ntfs(opts.input, settings.container, &client)
+    mimirsbrunn::stops::index_ntfs(opts.input, &settings.container, &client)
         .await
         .context(Import)
         .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?

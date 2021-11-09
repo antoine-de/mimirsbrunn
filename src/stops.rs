@@ -150,7 +150,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
 /// from the information found in the NTFS directory.
 pub async fn index_ntfs(
     input: PathBuf,
-    config: ContainerConfig,
+    config: &ContainerConfig,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
@@ -202,7 +202,7 @@ pub async fn index_ntfs(
         stop.weight = (stop.weight + admin_weight) / 2.0;
     }
 
-    import_stops(client, &config, futures::stream::iter(stops)).await
+    import_stops(client, config, futures::stream::iter(stops)).await
 }
 
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex

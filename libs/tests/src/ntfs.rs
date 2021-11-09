@@ -48,13 +48,18 @@ pub async fn index_stops(
         .iter()
         .collect();
 
-    let config: mimirsbrunn::settings::openaddresses2mimir::Settings =
-        common::config::config_from(&config_dir, &["ntfs2mimir"], "testing", None, vec![])
-            .expect("could not load ntfs2mimir configuration")
-            .try_into()
-            .expect("invalid ntfs2mimir configuration");
+    let config: mimirsbrunn::settings::ntfs2mimir::Settings = common::config::config_from(
+        &config_dir,
+        &["ntfs2mimir", "elasticsearch", "logging"],
+        "testing",
+        None,
+        vec![],
+    )
+    .expect("could not load ntfs2mimir configuration")
+    .try_into()
+    .expect("invalid ntfs2mimir configuration");
 
-    mimirsbrunn::stops::index_ntfs(input_dir, config.container, client)
+    mimirsbrunn::stops::index_ntfs(input_dir, &config.container, client)
         .await
         .expect("error while indexing Ntfs");
 
