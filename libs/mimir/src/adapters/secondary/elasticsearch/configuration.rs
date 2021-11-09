@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
-use crate::domain::model::configuration::root_doctype_dataset_ts;
-
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub))]
 pub enum Error {
@@ -21,27 +19,6 @@ pub enum Error {
         details: String,
         source: config::ConfigError,
     },
-}
-
-/// The indices create index API has 4 components, which are
-/// reproduced below:
-/// - Path parameter: The index name
-/// - Query parameters: Things like timeout, wait for active shards, ...
-/// - Request body, including
-///   - Aliases (not implemented here)
-///   - Mappings
-///   - Settings
-///   See https://www.elastic.co/guide/en/elasticsearch/reference/7.12/indices-create-index.html
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IndexConfiguration {
-    #[serde(skip_serializing)]
-    pub name: String, // name does not appear in the body of the index creation request
-    #[serde(skip_serializing)]
-    pub parameters: IndexParameters, // parameters don't appear in the body of the request
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub settings: Option<IndexSettings>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mappings: Option<IndexMappings>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -77,77 +54,7 @@ impl IndexMappings {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename = "snake_case")]
 pub struct IndexParameters {
-    pub force_merge: bool,
-    pub max_number_segments: i64,
     pub wait_for_active_shards: String,
-}
-
-impl IndexConfiguration {
-    // We have an input configuration that looks like
-    // config
-    //   ├─ container
-    //   │   ├─ name: eg 'admin'
-    //   │   └─ dataset: eg 'fr-idf'
-    //   └─ elasticsearch
-    //       ├─ mappings
-    //       ├─ settings
-    //       └─ parameters
-    // We build the name of the index from the container name and dataset, and create a new
-    // configuration that looks like
-    // config
-    //   └─ elasticsearch
-    //       ├─ name
-    //       ├─ mappings
-    //       ├─ settings
-    //       └─ parameters
-    // Finally we turn the 'config.elasticsearch' part into an IndexConfiguration.
-    pub fn new_from_config(config: Config) -> Result<Self, Error> {
-        let container_name = config
-            .get_string("container.name")
-            .context(InvalidConfiguration {
-                details: String::from("could not get key 'container.name' from configuration"),
-            })?;
-        let container_dataset =
-            config
-                .get_string("container.dataset")
-                .context(InvalidConfiguration {
-                    details: String::from(
-                        "could not get key 'container.dataset' from configuration",
-                    ),
-                })?;
-        let elasticsearch_name = root_doctype_dataset_ts(&container_name, &container_dataset);
-        let builder = Config::builder()
-            .set_default("elasticsearch.name", elasticsearch_name.clone())
-            .context(InvalidConfiguration {
-                details: format!(
-                    "could not set key 'elasticsearch.name' to {}",
-                    elasticsearch_name
-                ),
-            })?;
-
-        let config = builder
-            .add_source(config)
-            .build()
-            .context(InvalidConfiguration {
-                details: format!(
-                    "could not build configuration from builder for container {}",
-                    container_name
-                ),
-            })?;
-
-        config.get("elasticsearch").context(InvalidConfiguration {
-            details: format!(
-                "could not get key 'elasticsearch' from configuration for container {}",
-                container_name
-            ),
-        })
-    }
-    pub fn into_json_body(self) -> Result<serde_json::Value, Error> {
-        let name = self.name.clone();
-        serde_json::to_value(self).context(JsonSerialization {
-            details: format!("could not serialize component template {}", name),
-        })
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

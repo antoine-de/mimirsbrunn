@@ -28,15 +28,12 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use config::Config;
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
-use common::config::load_es_config_for;
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::settings::cosmogony2mimir as settings;
-use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -87,17 +84,15 @@ async fn run(
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
 
-    let config =
-        get_elasticsearch_config(opts.settings, settings.container.dataset).map_err(Box::new)?;
-
-    mimirsbrunn::admin::index_cosmogony(&opts.input, settings.langs.clone(), config, &client)
-        .await
-        .context(Import)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
-}
-
-fn get_elasticsearch_config(overrides: Vec<String>, dataset: String) -> Result<Config, Error> {
-    load_es_config_for::<Admin>(overrides, dataset).context(Configuration)
+    mimirsbrunn::admin::index_cosmogony(
+        &opts.input,
+        settings.langs.clone(),
+        &settings.container,
+        &client,
+    )
+    .await
+    .context(Import)
+    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]
@@ -233,7 +228,7 @@ mod tests {
         let opts = settings::Opts {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
             run_mode: Some("testing".to_string()),
-            settings: vec![String::from("elasticsearch.settings.number_of_shards=7")],
+            settings: vec![String::from("elasticsearch.create.number_of_shards=7")],
             input: [
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
@@ -246,16 +241,7 @@ mod tests {
         };
 
         let settings = settings::Settings::new(&opts).expect("settings");
-
-        let config =
-            get_elasticsearch_config(opts.settings, settings.container.dataset).expect("config");
-
-        assert_eq!(
-            config
-                .get::<u32>("elasticsearch.settings.number_of_shards")
-                .expect("number of shards"),
-            7
-        );
+        assert_eq!(&settings.elasticsearch.create.number_of_shards, "7");
     }
 
     #[tokio::test]

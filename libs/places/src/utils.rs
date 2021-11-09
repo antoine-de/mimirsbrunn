@@ -4,40 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use tracing::warn;
 
-/// Build default configuration for given place type. By convention this will look in
-/// ../../../config/<doc_type> for files settings.json and mappings.json.
-#[macro_export]
-macro_rules! impl_container_document {
-    ( $type: ty, $doc_type: literal ) => {
-        impl common::document::ContainerDocument for $type {
-            fn static_doc_type() -> &'static str {
-                $doc_type
-            }
-
-            fn default_es_container_config() -> config::Config {
-                config::Config::builder()
-                    .set_default("container.name", Self::static_doc_type())
-                    .unwrap()
-                    .set_default("container.dataset", "default")
-                    .unwrap()
-                    .add_source(config::File::from_str(
-                        include_str!(concat!(
-                            "../../../config/elasticsearch/",
-                            $doc_type,
-                            "/parameters.json"
-                        )),
-                        config::FileFormat::Json,
-                    ))
-                    .build()
-                    .expect(concat!(
-                        "default configuration is invalid for ",
-                        stringify!($type)
-                    ))
-            }
-        }
-    };
-}
-
 pub fn serialize_rect<S>(bbox: &Option<Rect<f64>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,

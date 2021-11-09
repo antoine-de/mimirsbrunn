@@ -1,2 +1,7 @@
 [container]
+  name = "stop"
   dataset = "fr"
+
+  [container.force_merge]
+    enabled = true
+    max_number_segments = 1

@@ -34,6 +34,13 @@ pub struct ElasticsearchStorageConfig {
     pub scroll_pit_alive: String,
     pub insertion_concurrent_requests: usize,
     pub insertion_chunk_size: usize,
+    pub create: ElasticsearchStorageConfigCreate,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ElasticsearchStorageConfigCreate {
+    pub wait_for_active_shards: String,
+    pub number_of_shards: String,
 }
 
 impl Default for ElasticsearchStorageConfig {

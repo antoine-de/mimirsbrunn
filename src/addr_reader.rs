@@ -1,6 +1,7 @@
 use flate2::read::GzDecoder;
 use futures::future;
 use futures::stream::{self, Stream, StreamExt, TryStreamExt};
+use mimir::domain::model::configuration::ContainerConfig;
 use serde::de::DeserializeOwned;
 use snafu::futures::TryStreamExt as SnafuTryStreamExt;
 use snafu::{ResultExt, Snafu};
@@ -11,7 +12,6 @@ use std::sync::Arc;
 use tokio::fs::File;
 use tracing::{info, warn};
 
-use config::Config;
 use mimir::{
     adapters::secondary::elasticsearch::ElasticsearchStorage,
     domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
@@ -35,7 +35,7 @@ pub enum Error {
 
 async fn import_addresses<S, F, T>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
     records: S,
     into_addr: F,
 ) -> Result<(), Error>
@@ -93,7 +93,7 @@ where
 
 pub async fn import_addresses_from_reads<T, F>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
     has_headers: bool,
     inputs: Vec<impl Read + Send + Sync + 'static>,
     into_addr: F,
@@ -122,7 +122,7 @@ where
 
 pub async fn import_addresses_from_files<T, F>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
     has_headers: bool,
     files: impl IntoIterator<Item = PathBuf>,
     into_addr: F,
@@ -163,7 +163,7 @@ where
 /// address.
 pub async fn import_addresses_from_input_path<F, T>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
     path: PathBuf,
     into_addr: F,
 ) -> Result<(), Error>

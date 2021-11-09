@@ -28,11 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use config::Config;
 use cosmogony::ZoneType::City;
 use cosmogony::{Zone, ZoneIndex};
-// use failure::{format_err, Error};
 use futures::stream::Stream;
+use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -86,7 +85,7 @@ trait IntoAdmin {
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
 pub async fn import_admins<S>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
     admins: S,
 ) -> Result<(), Error>
 where
@@ -205,7 +204,7 @@ fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone>, Error> {
 pub async fn index_cosmogony(
     path: &Path,
     langs: Vec<String>,
-    config: Config,
+    config: &ContainerConfig,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     info!("building map cosmogony id => osm id");

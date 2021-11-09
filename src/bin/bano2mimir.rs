@@ -34,13 +34,11 @@ use std::sync::Arc;
 use structopt::StructOpt;
 use tracing::warn;
 
-use common::config::load_es_config_for;
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::primary::list_documents::ListDocuments;
 use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::bano::Bano;
 use mimirsbrunn::settings::bano2mimir as settings;
-use places::addr::Addr;
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
@@ -125,24 +123,11 @@ async fn run(
         move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder)
     };
 
-    let config = load_es_config_for::<Addr>(
-        opts.settings
-            .iter()
-            .filter_map(|s| {
-                if s.starts_with("elasticsearch.addr") {
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            })
-            .collect(),
-        settings.container.dataset.clone(),
-    )
-    .context(Configuration)
-    .map_err(Box::new)?;
-
     mimirsbrunn::addr_reader::import_addresses_from_input_path(
-        &client, config, opts.input, into_addr,
+        &client,
+        &settings.container,
+        opts.input,
+        into_addr,
     )
     .await
     .context(Import)

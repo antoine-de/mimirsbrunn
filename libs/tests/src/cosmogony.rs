@@ -1,4 +1,3 @@
-use config::Config;
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
@@ -124,6 +123,7 @@ pub async fn index_admins(
     }
 
     let base_path = env!("CARGO_MANIFEST_DIR");
+    let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
     let input_dir: PathBuf = [
         base_path,
         "..",
@@ -137,15 +137,16 @@ pub async fn index_admins(
     .collect();
     let input_file = input_dir.join(format!("{}.jsonl.gz", region));
 
+    let config: mimirsbrunn::settings::cosmogony2mimir::Settings =
+        common::config::config_from(&config_dir, &["cosmogony2mimir"], "testing", None, vec![])
+            .expect("could not load cosmogony2mimir configuration")
+            .try_into()
+            .expect("invalid cosmogony2mimir configuration");
+
     mimirsbrunn::admin::index_cosmogony(
         &input_file,
         vec!["fr".to_string()],
-        Config::builder()
-            .add_source(Admin::default_es_container_config())
-            .set_override("container.dataset", dataset.to_string())
-            .expect("failed to set dataset name")
-            .build()
-            .expect("failed to build configuration"),
+        &config.container,
         client,
     )
     .await

@@ -1,9 +1,0 @@
-{
-    "elasticsearch": {
-        "parameters": {
-            "force_merge": true,
-            "max_number_segments": 1,
-            "wait_for_active_shards": "1"
-        }
-    }
-}

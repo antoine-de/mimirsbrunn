@@ -3,11 +3,10 @@ use config::Config;
 use futures::future::TryFutureExt;
 use futures::stream::Stream;
 
-use super::configuration::{
-    ComponentTemplateConfiguration, IndexConfiguration, IndexTemplateConfiguration,
-};
+use super::configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration};
 use super::internal;
 use super::ElasticsearchStorage;
+use crate::domain::model::configuration::{root_doctype_dataset_ts, ContainerConfig};
 use crate::domain::model::{
     configuration,
     index::{Index, IndexVisibility},
@@ -20,19 +19,15 @@ use common::document::Document;
 impl Storage for ElasticsearchStorage {
     // This function delegates to elasticsearch the creation of the index. But since this
     // function returns nothing, we follow with a find index to return some details to the caller.
-    async fn create_container(&self, config: Config) -> Result<Index, StorageError> {
-        let config = IndexConfiguration::new_from_config(config).map_err(|err| {
-            StorageError::ContainerCreationError {
-                source: Box::new(err),
-            }
-        })?;
-        let name = config.name.clone();
-        self.create_index(config)
+    async fn create_container(&self, config: &ContainerConfig) -> Result<Index, StorageError> {
+        let index_name = root_doctype_dataset_ts(&config.name, &config.dataset);
+
+        self.create_index(&index_name)
             .and_then(|_| {
-                self.find_index(name.clone()).and_then(|res| {
-                    futures::future::ready(
-                        res.ok_or(internal::Error::ElasticsearchUnknownIndex { index: name }),
-                    )
+                self.find_index(index_name.clone()).and_then(|res| {
+                    futures::future::ready(res.ok_or(internal::Error::ElasticsearchUnknownIndex {
+                        index: index_name.to_string(),
+                    }))
                 })
             })
             .await

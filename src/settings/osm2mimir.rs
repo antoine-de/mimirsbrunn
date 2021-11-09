@@ -1,5 +1,6 @@
 use config::Config;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::domain::model::configuration::ContainerConfig;
 /// This module contains the definition for osm2mimir configuration and command line arguments.
 ///
 use serde::{Deserialize, Serialize};
@@ -41,11 +42,6 @@ pub struct Logging {
     pub path: PathBuf,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Container {
-    pub dataset: String,
-}
-
 #[cfg(feature = "db-storage")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
@@ -60,7 +56,10 @@ pub struct Settings {
     pub elasticsearch: ElasticsearchStorageConfig,
     pub pois: Poi,
     pub streets: Street,
-    pub container: Container,
+    #[serde(rename = "container-poi")]
+    pub container_poi: ContainerConfig,
+    #[serde(rename = "container-street")]
+    pub container_street: ContainerConfig,
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,
 }

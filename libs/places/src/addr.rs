@@ -1,4 +1,4 @@
-use common::document::Document;
+use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -60,7 +60,11 @@ impl Addr {
     }
 }
 
-crate::impl_container_document!(Addr, "addr");
+impl ContainerDocument for Addr {
+    fn static_doc_type() -> &'static str {
+        "addr"
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AliasOperations {

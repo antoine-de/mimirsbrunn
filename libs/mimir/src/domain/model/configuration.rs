@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 
 // FIXME The code in this module should probably not be in 'configuration.rs'
@@ -17,6 +18,19 @@ pub enum Error {
 
     #[snafu(display("Invalid Name: {}", details))]
     InvalidName { details: String },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ContainerConfig {
+    pub name: String,
+    pub dataset: String,
+    pub force_merge: ContainerConfigForceMerge,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ContainerConfigForceMerge {
+    pub enabled: bool,
+    pub max_number_segments: i64,
 }
 
 pub fn root_doctype_dataset_ts(doc_type: &str, dataset: &str) -> String {

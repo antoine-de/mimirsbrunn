@@ -31,11 +31,9 @@
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
-use common::config::load_es_config_for;
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::settings::cosmogony2mimir as settings;
-use places::stop::Stop;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -86,23 +84,7 @@ async fn run(
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
 
-    let config = load_es_config_for::<Stop>(
-        opts.settings
-            .iter()
-            .filter_map(|s| {
-                if s.starts_with("elasticsearch.stop") {
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            })
-            .collect(),
-        settings.container.dataset.clone(),
-    )
-    .context(Configuration)
-    .map_err(Box::new)?;
-
-    mimirsbrunn::stops::index_ntfs(opts.input, config, &client)
+    mimirsbrunn::stops::index_ntfs(opts.input, settings.container, &client)
         .await
         .context(Import)
         .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?

@@ -31,6 +31,7 @@
 /// In this module we put the code related to stops, that need to draw on 'places', 'mimir',
 /// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
 use futures::stream::{Stream, TryStreamExt};
+use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
 use std::collections::{hash_map::DefaultHasher, HashMap};
 use std::hash::BuildHasherDefault;
@@ -41,7 +42,6 @@ use tracing::info;
 
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
-use config::Config;
 use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
 use mimir::domain::model::index::IndexVisibility;
 use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
@@ -150,7 +150,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
 /// from the information found in the NTFS directory.
 pub async fn index_ntfs(
     input: PathBuf,
-    config: Config,
+    config: ContainerConfig,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
@@ -183,13 +183,9 @@ pub async fn index_ntfs(
 
     attach_stops_to_admins(stops.iter_mut(), client).await?;
 
-    let dataset = config
-        .get_string("container.dataset")
-        .expect("container.dataset in config");
-
     // FIXME Should be done concurrently (for_each_concurrent....)
     for stop in &mut stops {
-        stop.coverages.push(dataset.clone());
+        stop.coverages.push(config.dataset.clone());
         let mut admin_weight = stop
             .administrative_regions
             .iter()
@@ -206,13 +202,13 @@ pub async fn index_ntfs(
         stop.weight = (stop.weight + admin_weight) / 2.0;
     }
 
-    import_stops(client, config, futures::stream::iter(stops)).await
+    import_stops(client, &config, futures::stream::iter(stops)).await
 }
 
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
 pub async fn import_stops<S>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
     stops: S,
 ) -> Result<(), Error>
 where

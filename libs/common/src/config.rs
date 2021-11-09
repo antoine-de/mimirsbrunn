@@ -3,8 +3,6 @@ use snafu::{ResultExt, Snafu};
 use std::env;
 use std::path::Path;
 
-use crate::document::ContainerDocument;
-
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Key Value Splitting Error: {}", msg))]
@@ -18,20 +16,6 @@ pub enum Error {
 
     #[snafu(display("Unrecognized Value Type Error: {}", details))]
     UnrecognizedValueType { details: String },
-}
-
-/// FIXME Need documentation, and a change of name
-pub fn load_es_config_for<D: ContainerDocument>(
-    overrides: Vec<String>,
-    dataset: String,
-) -> Result<Config, Error> {
-    Config::builder()
-        .add_source(D::default_es_container_config())
-        .set_override("container.dataset", dataset)
-        .context(ConfigCompilation)?
-        .add_source(config_from_args(overrides)?)
-        .build()
-        .context(ConfigCompilation)
 }
 
 // This function produces a new configuration based on the arguments:
