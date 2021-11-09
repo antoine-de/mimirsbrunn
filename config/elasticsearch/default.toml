@@ -19,7 +19,6 @@
   # Number of document per request during insertion.
   insertion_chunk_size = 100
 
-# Parameters passed to the index creation requests.
-[elasticsearch.create]
+  # Number of shards copies that must be active before performing indexing
+  # operations.
   wait_for_active_shards = 1
-  number_of_shards = 1

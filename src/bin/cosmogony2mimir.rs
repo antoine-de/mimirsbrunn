@@ -228,7 +228,7 @@ mod tests {
         let opts = settings::Opts {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
             run_mode: Some("testing".to_string()),
-            settings: vec![String::from("elasticsearch.create.number_of_shards=7")],
+            settings: vec![String::from("elasticsearch.wait_for_active_shards=1")],
             input: [
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
@@ -241,7 +241,7 @@ mod tests {
         };
 
         let settings = settings::Settings::new(&opts).expect("settings");
-        assert_eq!(&settings.elasticsearch.create.number_of_shards, "7");
+        assert_eq!(settings.elasticsearch.wait_for_active_shards, 1);
     }
 
     #[tokio::test]

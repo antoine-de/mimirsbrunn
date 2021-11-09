@@ -51,12 +51,6 @@ impl IndexMappings {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[serde(rename = "snake_case")]
-pub struct IndexParameters {
-    pub wait_for_active_shards: String,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Template {
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -34,13 +34,7 @@ pub struct ElasticsearchStorageConfig {
     pub scroll_pit_alive: String,
     pub insertion_concurrent_requests: usize,
     pub insertion_chunk_size: usize,
-    pub create: ElasticsearchStorageConfigCreate,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct ElasticsearchStorageConfigCreate {
-    pub wait_for_active_shards: String,
-    pub number_of_shards: String,
+    pub wait_for_active_shards: u64,
 }
 
 impl Default for ElasticsearchStorageConfig {
@@ -98,9 +92,11 @@ pub mod tests {
 
     use super::*;
 
-    use crate::domain::model::configuration::ContainerConfigForceMerge;
     use crate::domain::ports::secondary::storage::Storage;
-    use crate::domain::{model::configuration::ContainerConfig, ports::secondary::remote::Remote};
+    use crate::domain::{
+        model::configuration::ContainerConfig, model::configuration::ContainerConfigForceMerge,
+        ports::secondary::remote::Remote,
+    };
     use crate::utils::docker;
     use common::document::{ContainerDocument, Document};
 

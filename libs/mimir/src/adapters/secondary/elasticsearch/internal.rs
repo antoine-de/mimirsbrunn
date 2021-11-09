@@ -214,7 +214,7 @@ impl ElasticsearchStorage {
             .indices()
             .create(IndicesCreateParts::Index(index_name))
             .request_timeout(self.config.timeout)
-            .wait_for_active_shards(&self.config.create.wait_for_active_shards)
+            .wait_for_active_shards(&self.config.wait_for_active_shards.to_string())
             .send()
             .await
             .context(ElasticsearchClient {
