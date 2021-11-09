@@ -83,7 +83,7 @@ impl Settings {
         builder = builder.add_source(
             common::config::config_from(
                 opts.config_dir.as_ref(),
-                &["ctlmimir", "elasticsearch"],
+                &["elasticsearch", "logging"],
                 opts.run_mode.as_deref(),
                 "CTLMIMIR",
                 opts.settings.clone(),
@@ -92,11 +92,11 @@ impl Settings {
         );
 
         let config = builder.build().context(ConfigMerge {
-            msg: String::from("Cannot build the configuration from sources"),
+            msg: "Cannot build the configuration from sources",
         })?;
 
         config.try_into().context(ConfigMerge {
-            msg: String::from("Cannot convert configuration into ctlmimir settings"),
+            msg: "Cannot convert configuration into ctlmimir settings",
         })
     }
 }
