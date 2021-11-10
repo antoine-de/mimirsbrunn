@@ -42,10 +42,9 @@ use tracing::{instrument, warn};
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
 use common::document::ContainerDocument;
-use config::Config;
 use mimir::adapters::primary::common::dsl;
 use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::model::{index::IndexVisibility, query::Query};
+use mimir::domain::model::{configuration::ContainerConfig, query::Query};
 use mimir::domain::ports::primary::{
     generate_index::GenerateIndex, list_documents::ListDocuments, search_documents::SearchDocuments,
 };
@@ -102,7 +101,7 @@ pub enum Error {
 pub async fn index_pois(
     input: PathBuf,
     client: &ElasticsearchStorage,
-    config: Config,
+    config: ContainerConfig,
 ) -> Result<(), Error> {
     let NavitiaModel { pois, poi_types } =
         NavitiaModel::try_from_path(&input).map_err(|err| Error::NavitiaModelExtraction {
@@ -133,18 +132,13 @@ pub async fn index_pois(
     let poi_types = Arc::new(poi_types);
 
     let pois: Vec<_> = futures::stream::iter(pois.into_iter())
-        .filter_map(|(_id, poi)| {
+        .map(|(_id, poi)| {
             let poi_types = poi_types.clone();
             let admins_geofinder = admins_geofinder.clone();
-
-            async move {
-                into_poi(poi, poi_types.clone(), client, admins_geofinder.clone())
-                    .await
-                    .ok()
-            }
+            into_poi(poi, poi_types, client, admins_geofinder)
         })
-        // FIXME Why can't I do that?
-        //.buffer_unordered(POI_REVERSE_GEOCODING_CONCURRENCY)
+        .buffer_unordered(8)
+        .filter_map(|poi_res| futures::future::ready(poi_res.ok()))
         .collect()
         .await;
 
@@ -154,14 +148,14 @@ pub async fn index_pois(
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
 pub async fn import_pois<S>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: ContainerConfig,
     pois: S,
 ) -> Result<(), Error>
 where
     S: Stream<Item = Poi> + Send + Sync + Unpin + 'static,
 {
     client
-        .generate_index(config, pois, IndexVisibility::Public)
+        .generate_index(&config, pois)
         .await
         .context(IndexGeneration)?;
 
@@ -188,7 +182,7 @@ async fn into_poi(
 
     let poi_type = poi_types
         .get(&poi_type_id)
-        .ok_or_else(|| Error::UnrecognizedPoiType {
+        .ok_or(Error::UnrecognizedPoiType {
             details: poi_type_id,
         })
         .map(PoiType::from)?;
@@ -209,11 +203,11 @@ async fn into_poi(
         .context(ReverseAddressSearch)
         .and_then(|values| match values.into_iter().next() {
             None => Ok(None), // If we didn't get any result, return 'no place'
-            Some(value) => serde_json::from_value::<Place>(value.into())
+            Some(value) => serde_json::from_value::<Place>(value)
                 .context(Json {
                     details: "could no deserialize place",
                 })
-                .map(|place| Some(place)),
+                .map(Some),
         })?;
 
     let addr = place.as_ref().and_then(|place| {

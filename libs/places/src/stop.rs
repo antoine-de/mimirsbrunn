@@ -11,6 +11,7 @@ use super::context::Context;
 use super::coord::Coord;
 use super::Members;
 use crate::admin::Admin;
+use crate::utils::normalize_id;
 use common::document::{ContainerDocument, Document};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]

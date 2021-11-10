@@ -75,9 +75,9 @@ fn build_filters(
     let mut filters: Vec<Option<serde_json::Value>> = Vec::new();
     let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
     filters.push(geoshape_filter);
-    let poi_types_filter = poi_types.map(|poi_types| build_poi_types_filter(poi_types));
+    let poi_types_filter = poi_types.map(build_poi_types_filter);
     filters.push(poi_types_filter);
-    let zone_types_filter = zone_types.map(|zone_types| build_zone_types_filter(zone_types));
+    let zone_types_filter = zone_types.map(build_zone_types_filter);
     filters.push(zone_types_filter);
     filters.into_iter().flatten().collect()
 }

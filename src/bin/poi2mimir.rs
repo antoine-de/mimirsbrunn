@@ -1,12 +1,9 @@
-use config::Config;
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
-use common::config::load_es_config_for;
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::osm2mimir as settings;
-use places::poi::Poi;
+use mimirsbrunn::settings::poi2mimir as settings;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -29,9 +26,7 @@ pub enum Error {
 async fn main() -> Result<(), Error> {
     let opts = settings::Opts::from_args();
 
-    let settings = settings::Settings::new(&opts)
-        .and_then(settings::validate)
-        .context(Settings)?;
+    let settings = settings::Settings::new(&opts).context(Settings)?;
 
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
@@ -56,14 +51,7 @@ async fn run(
         .await
         .context(ElasticsearchConnection)?;
 
-    let config =
-        get_elasticsearch_config(opts.settings, settings.container.dataset).map_err(Box::new)?;
-
-    mimirsbrunn::pois::index_pois(opts.input, &client, config).await?;
+    mimirsbrunn::pois::index_pois(opts.input, &client, settings.container).await?;
 
     Ok(())
-}
-
-fn get_elasticsearch_config(overrides: Vec<String>, dataset: String) -> Result<Config, Error> {
-    load_es_config_for::<Poi>(overrides, dataset).context(Configuration)
 }

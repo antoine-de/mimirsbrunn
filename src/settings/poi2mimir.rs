@@ -7,6 +7,7 @@ use structopt::StructOpt;
 
 use config::Config;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::domain::model::configuration::ContainerConfig;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -25,12 +26,6 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Poi {
-    pub private: bool,
-    pub config: Option<crate::osm_reader::poi::PoiConfig>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Logging {
     pub path: PathBuf,
 }
@@ -45,8 +40,7 @@ pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
-    pub pois: Poi,
-    pub container: Container,
+    pub container: ContainerConfig,
 }
 
 #[derive(Debug, StructOpt)]
@@ -59,7 +53,7 @@ author = AUTHORS
 pub struct Opts {
     /// Defines the config directory
     ///
-    /// This directory must contain 'elasticsearch' and 'osm2mimir' subdirectories.
+    /// This directory must contain 'elasticsearch' and 'poi2mimir' subdirectories.
     #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
     pub config_dir: PathBuf,
 

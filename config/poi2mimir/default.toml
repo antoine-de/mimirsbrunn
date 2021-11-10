@@ -1,0 +1,4 @@
+[container]
+  name = "poi"
+  dataset = "fr"
+  visibility = "public"
