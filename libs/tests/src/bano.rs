@@ -1,4 +1,5 @@
 use futures::stream::StreamExt;
+use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use snafu::{ResultExt, Snafu};
 
 use std::path::PathBuf;
@@ -87,16 +88,15 @@ pub async fn index_addresses(
     .try_into()
     .expect("invalid bano2mimir configuration");
 
-    mimirsbrunn::addr_reader::import_addresses_from_input_path(
-        client,
-        &config.container,
-        input_file,
-        into_addr,
-    )
-    .await
-    .map_err(|err| Error::Indexing {
-        details: format!("could not index bano: {}", err.to_string(),),
-    })?;
+    let addresses =
+        mimirsbrunn::addr_reader::import_addresses_from_input_path(input_file, false, into_addr);
+
+    client
+        .generate_index(&config.container, addresses)
+        .await
+        .map_err(|err| Error::Indexing {
+            details: format!("could not index bano: {}", err.to_string(),),
+        })?;
 
     Ok(Status::Done)
 }
