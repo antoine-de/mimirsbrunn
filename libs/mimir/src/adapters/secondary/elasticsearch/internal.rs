@@ -815,14 +815,13 @@ impl ElasticsearchStorage {
 
     pub(super) async fn force_merge(
         &self,
-        indices: Vec<String>,
+        indices: &[&str],
         max_num_segments: i64,
     ) -> Result<(), Error> {
-        let indices: Vec<_> = indices.iter().map(String::as_str).collect();
         let response = self
             .client
             .indices()
-            .forcemerge(IndicesForcemergeParts::Index(&indices))
+            .forcemerge(IndicesForcemergeParts::Index(indices))
             .max_num_segments(max_num_segments)
             // .request_timeout(self.config.timeout) This call is not using timeout because
             // it can take a long time and would require the timeout to become very large,

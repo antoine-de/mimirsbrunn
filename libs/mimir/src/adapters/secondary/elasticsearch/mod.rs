@@ -35,6 +35,13 @@ pub struct ElasticsearchStorageConfig {
     pub insertion_concurrent_requests: usize,
     pub insertion_chunk_size: usize,
     pub wait_for_active_shards: u64,
+    pub force_merge: ElasticsearchStorageForceMergeConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ElasticsearchStorageForceMergeConfig {
+    pub enabled: bool,
+    pub max_number_segments: i64,
 }
 
 impl Default for ElasticsearchStorageConfig {

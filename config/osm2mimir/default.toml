@@ -2,17 +2,9 @@
   name = "poi"
   dataset = "fr"
 
-  [container-poi.force_merge]
-    enabled = true
-    max_number_segments = 1
-
 [container-street]
   name = "stop"
   dataset = "fr"
-
-  [container-street.force_merge]
-    enabled = true
-    max_number_segments = 1
 
 # This section is ignored if mimirsbrunn is compiled without the `db-storage`
 # option.

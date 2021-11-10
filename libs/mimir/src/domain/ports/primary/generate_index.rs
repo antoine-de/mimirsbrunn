@@ -55,18 +55,6 @@ where
             .await
             .map_err(|err| ModelError::IndexPublication { source: err.into() })?;
 
-        // See forcemerge documentation on Elasticsearch website. Note that 'force merge should
-        // only be called against an index after you have finished writing to it'.
-        if config.force_merge.enabled {
-            self.force_merge(
-                vec![index.name.clone()],
-                config.force_merge.max_number_segments,
-            )
-            .instrument(info_span!("Force merge"))
-            .await
-            .map_err(|err| ModelError::IndexOptimization { source: err.into() })?;
-        }
-
         self.find_container(index.name.clone())
             .await
             .map_err(|err| ModelError::DocumentStreamInsertion { source: err.into() })?

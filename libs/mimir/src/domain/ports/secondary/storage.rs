@@ -60,8 +60,6 @@ pub trait Storage {
 
     async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error>;
 
-    async fn force_merge(&self, indices: Vec<String>, max_num_segments: i64) -> Result<(), Error>;
-
     async fn configure(&self, directive: String, config: Config) -> Result<(), Error>;
 }
 
@@ -96,10 +94,6 @@ where
 
     async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error> {
         (**self).publish_index(index, visibility).await
-    }
-
-    async fn force_merge(&self, indices: Vec<String>, max_num_segments: i64) -> Result<(), Error> {
-        (**self).force_merge(indices, max_num_segments).await
     }
 
     async fn configure(&self, directive: String, config: Config) -> Result<(), Error> {

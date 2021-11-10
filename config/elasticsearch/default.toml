@@ -22,3 +22,12 @@
   # Number of shards copies that must be active before performing indexing
   # operations.
   wait_for_active_shards = 1
+
+[elasticsearch.force_merge]
+  # If this is set to `true` a force merge will be performed after an index
+  # is published. For more details see
+  # https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-forcemerge.html
+  enabled = true
+
+  # Number of segments to merge to.
+  max_number_segments = 1
