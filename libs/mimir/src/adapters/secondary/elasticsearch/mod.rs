@@ -99,11 +99,9 @@ pub mod tests {
 
     use super::*;
 
+    use crate::domain::model::configuration::ContainerVisibility;
     use crate::domain::ports::secondary::storage::Storage;
-    use crate::domain::{
-        model::configuration::ContainerConfig, model::configuration::ContainerConfigForceMerge,
-        ports::secondary::remote::Remote,
-    };
+    use crate::domain::{model::configuration::ContainerConfig, ports::secondary::remote::Remote};
     use crate::utils::docker;
     use common::document::{ContainerDocument, Document};
 
@@ -134,10 +132,7 @@ pub mod tests {
         let config = ContainerConfig {
             name: "foo".to_string(),
             dataset: "bar".to_string(),
-            force_merge: ContainerConfigForceMerge {
-                enabled: true,
-                max_number_segments: 1,
-            },
+            visibility: ContainerVisibility::Public,
         };
 
         let res = client.create_container(&config).await;
@@ -176,10 +171,7 @@ pub mod tests {
         let config = ContainerConfig {
             name: TestObj::static_doc_type().to_string(),
             dataset: "default".to_string(),
-            force_merge: ContainerConfigForceMerge {
-                enabled: true,
-                max_number_segments: 1,
-            },
+            visibility: ContainerVisibility::Public,
         };
 
         client
