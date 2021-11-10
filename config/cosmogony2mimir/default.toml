@@ -3,3 +3,4 @@ langs = [ "fr" ]
 [container]
   name = "admin"
   dataset = "fr"
+  visibility = "public"

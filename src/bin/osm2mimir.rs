@@ -5,7 +5,6 @@ use structopt::StructOpt;
 use tracing::{instrument, warn};
 
 use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::model::index::IndexVisibility;
 use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
 use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -144,11 +143,7 @@ async fn import_streets(
         .map(|street| street.set_weight_from_admins());
 
     let _index = client
-        .generate_index(
-            config,
-            futures::stream::iter(streets),
-            IndexVisibility::Public,
-        )
+        .generate_index(config, futures::stream::iter(streets))
         .await
         .context(StreetIndexCreation)?;
 
@@ -174,7 +169,7 @@ async fn import_pois(
         .await;
 
     let _ = client
-        .generate_index(config, futures::stream::iter(pois), IndexVisibility::Public)
+        .generate_index(config, futures::stream::iter(pois))
         .await
         .context(PoiIndexCreation)?;
 

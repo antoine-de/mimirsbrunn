@@ -14,7 +14,7 @@ use tracing::{info, warn};
 
 use mimir::{
     adapters::secondary::elasticsearch::ElasticsearchStorage,
-    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
+    domain::ports::primary::generate_index::GenerateIndex,
 };
 use places::addr::Addr;
 
@@ -81,10 +81,7 @@ where
         .buffered(num_cpus::get())
         .flatten();
 
-    client
-        .generate_index(config, addrs, IndexVisibility::Public)
-        .await
-        .unwrap();
+    client.generate_index(config, addrs).await.unwrap();
     // FIXME See above in definition of the enum Error.
     //.context(IndexGeneration)?;
 

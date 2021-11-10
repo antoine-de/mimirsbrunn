@@ -43,7 +43,7 @@ use crate::osm_reader::admin;
 use crate::osm_reader::osm_utils;
 use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
-    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
+    domain::ports::primary::generate_index::GenerateIndex,
 };
 use places::admin::Admin;
 
@@ -92,7 +92,7 @@ where
     S: Stream<Item = Admin> + Send + Sync + Unpin + 'static,
 {
     let _ = client
-        .generate_index(config, admins, IndexVisibility::Public)
+        .generate_index(config, admins)
         .await
         .context(IndexGeneration)?;
     Ok(())

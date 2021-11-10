@@ -6,12 +6,10 @@ use futures::stream::Stream;
 use super::configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration};
 use super::internal;
 use super::ElasticsearchStorage;
-use crate::domain::model::configuration::{root_doctype_dataset_ts, ContainerConfig};
-use crate::domain::model::{
-    configuration,
-    index::{Index, IndexVisibility},
-    stats::InsertStats,
+use crate::domain::model::configuration::{
+    root_doctype_dataset_ts, ContainerConfig, ContainerVisibility,
 };
+use crate::domain::model::{configuration, index::Index, stats::InsertStats};
 use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use common::document::Document;
 
@@ -84,7 +82,7 @@ impl Storage for ElasticsearchStorage {
     async fn publish_index(
         &self,
         index: Index,
-        visibility: IndexVisibility,
+        visibility: ContainerVisibility,
     ) -> Result<(), StorageError> {
         self.refresh_index(index.name.clone())
             .await
@@ -110,7 +108,7 @@ impl Storage for ElasticsearchStorage {
             source: Box::new(err),
         })?;
 
-        if visibility == IndexVisibility::Public {
+        if visibility == ContainerVisibility::Public {
             let doctype_alias = configuration::root_doctype(&index.doc_type);
             self.update_alias(
                 doctype_alias.clone(),

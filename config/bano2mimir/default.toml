@@ -1,3 +1,4 @@
 [container]
   name = "addr"
   dataset = "fr"
+  visibility = "public"

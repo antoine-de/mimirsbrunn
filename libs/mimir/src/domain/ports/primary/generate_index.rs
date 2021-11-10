@@ -1,7 +1,5 @@
 use crate::domain::model::{
-    configuration::ContainerConfig,
-    error::Error as ModelError,
-    index::{Index, IndexVisibility},
+    configuration::ContainerConfig, error::Error as ModelError, index::Index,
 };
 use crate::domain::ports::secondary::storage::Storage;
 use async_trait::async_trait;
@@ -16,7 +14,6 @@ pub trait GenerateIndex {
         &self,
         config: &ContainerConfig,
         documents: impl Stream<Item = D> + Send + Sync + 'static,
-        visibility: IndexVisibility,
     ) -> Result<Index, ModelError>;
 }
 
@@ -30,7 +27,6 @@ where
         &self,
         config: &ContainerConfig,
         documents: impl Stream<Item = D> + Send + Sync + 'static,
-        visibility: IndexVisibility,
     ) -> Result<Index, ModelError> {
         // 1. We create the index
         // 2. We insert the document stream in that newly created index
@@ -50,7 +46,7 @@ where
 
         info!("Index generation stats: {:?}", stats);
 
-        self.publish_index(index.clone(), visibility)
+        self.publish_index(index.clone(), config.visibility)
             .instrument(info_span!("Publish index"))
             .await
             .map_err(|err| ModelError::IndexPublication { source: err.into() })?;

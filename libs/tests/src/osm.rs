@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use common::document::ContainerDocument;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir::domain::model::configuration::root_doctype_dataset;
-use mimir::domain::model::index::IndexVisibility;
 use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
 use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -123,11 +122,7 @@ pub async fn index_pois(
         .collect()
         .await;
     let _ = client
-        .generate_index(
-            &config.container_poi,
-            futures::stream::iter(pois),
-            IndexVisibility::Public,
-        )
+        .generate_index(&config.container_poi, futures::stream::iter(pois))
         .await
         .context(PoiIndexCreation)?;
 
@@ -195,11 +190,7 @@ pub async fn index_streets(
     .collect();
 
     let _ = client
-        .generate_index(
-            &config.container_street,
-            futures::stream::iter(streets),
-            IndexVisibility::Public,
-        )
+        .generate_index(&config.container_street, futures::stream::iter(streets))
         .await
         .context(PoiIndexCreation)?;
 

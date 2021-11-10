@@ -43,7 +43,6 @@ use tracing::info;
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
 use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::model::index::IndexVisibility;
 use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
 use places::admin::Admin;
 use places::stop::Stop;
@@ -215,7 +214,7 @@ where
     S: Stream<Item = Stop> + Send + Sync + Unpin + 'static,
 {
     client
-        .generate_index(config, stops, IndexVisibility::Public)
+        .generate_index(config, stops)
         .await
         .context(IndexGeneration)?;
 

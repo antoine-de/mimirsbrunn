@@ -4,8 +4,8 @@ use futures::stream::Stream;
 use snafu::Snafu;
 
 use crate::domain::model::{
-    configuration::ContainerConfig,
-    index::{Index, IndexVisibility},
+    configuration::{ContainerConfig, ContainerVisibility},
+    index::Index,
     stats::InsertStats,
 };
 use common::document::Document;
@@ -58,7 +58,11 @@ pub trait Storage {
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + 'static;
 
-    async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error>;
+    async fn publish_index(
+        &self,
+        index: Index,
+        visibility: ContainerVisibility,
+    ) -> Result<(), Error>;
 
     async fn configure(&self, directive: String, config: Config) -> Result<(), Error>;
 }
@@ -92,7 +96,11 @@ where
         (**self).insert_documents(index, documents).await
     }
 
-    async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error> {
+    async fn publish_index(
+        &self,
+        index: Index,
+        visibility: ContainerVisibility,
+    ) -> Result<(), Error> {
         (**self).publish_index(index, visibility).await
     }
 

@@ -4,18 +4,6 @@ pub enum IndexStatus {
     NotAvailable,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum IndexVisibility {
-    Private,
-    Public,
-}
-
-impl Default for IndexVisibility {
-    fn default() -> Self {
-        IndexVisibility::Public
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Index {
     pub name: String,

@@ -20,10 +20,18 @@ pub enum Error {
     InvalidName { details: String },
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ContainerVisibility {
+    Public,
+    Private,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ContainerConfig {
     pub name: String,
     pub dataset: String,
+    pub visibility: ContainerVisibility,
 }
 
 pub fn root_doctype_dataset_ts(doc_type: &str, dataset: &str) -> String {
