@@ -1,18 +1,15 @@
-use config::Config;
 use futures::stream::StreamExt;
+use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 use tracing::{instrument, warn};
 
 use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::model::index::IndexVisibility;
 use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
 use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use mimirsbrunn::osm_reader::street::streets;
 use mimirsbrunn::settings::osm2mimir as settings;
-use places::poi::Poi;
-use places::street::Street;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -109,21 +106,6 @@ async fn run(
     };
 
     if settings.streets.import {
-        let config = common::config::load_es_config_for::<Street>(
-            opts.settings
-                .iter()
-                .filter_map(|s| {
-                    if s.starts_with("elasticsearch.street") {
-                        Some(s.to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-            settings.container.dataset.clone(),
-        )
-        .context(StreetElasticsearchConfiguration)?;
-
         let streets = streets(
             &mut osm_reader,
             &admins_geofinder,
@@ -133,31 +115,16 @@ async fn run(
         )
         .context(StreetOsmExtraction)?;
 
-        import_streets(streets, &client, config).await?;
+        import_streets(streets, &client, &settings.container_street).await?;
     }
 
     if settings.pois.import {
-        let config = common::config::load_es_config_for::<Poi>(
-            opts.settings
-                .iter()
-                .filter_map(|s| {
-                    if s.starts_with("elasticsearch.poi") {
-                        Some(s.to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-            settings.container.dataset.clone(),
-        )
-        .context(StreetElasticsearchConfiguration)?;
-
         import_pois(
             &mut osm_reader,
             &admins_geofinder,
             &settings.pois.config.clone().unwrap_or_default(),
             &client,
-            config,
+            &settings.container_poi,
         )
         .await?;
     }
@@ -169,18 +136,14 @@ async fn run(
 async fn import_streets(
     streets: Vec<places::street::Street>,
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
 ) -> Result<(), Error> {
     let streets = streets
         .into_iter()
         .map(|street| street.set_weight_from_admins());
 
     let _index = client
-        .generate_index(
-            config,
-            futures::stream::iter(streets),
-            IndexVisibility::Public,
-        )
+        .generate_index(config, futures::stream::iter(streets))
         .await
         .context(StreetIndexCreation)?;
 
@@ -193,7 +156,7 @@ async fn import_pois(
     admins_geofinder: &AdminGeoFinder,
     poi_config: &mimirsbrunn::osm_reader::poi::PoiConfig,
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
 ) -> Result<(), Error> {
     let pois = mimirsbrunn::osm_reader::poi::pois(osm_reader, poi_config, admins_geofinder)
         .context(PoiOsmExtraction)?;
@@ -206,7 +169,7 @@ async fn import_pois(
         .await;
 
     let _ = client
-        .generate_index(config, futures::stream::iter(pois), IndexVisibility::Public)
+        .generate_index(config, futures::stream::iter(pois))
         .await
         .context(PoiIndexCreation)?;
 

@@ -1,4 +1,4 @@
-use common::document::Document;
+use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -65,7 +65,11 @@ impl Document for Poi {
     }
 }
 
-crate::impl_container_document!(Poi, "poi");
+impl ContainerDocument for Poi {
+    fn static_doc_type() -> &'static str {
+        "poi"
+    }
+}
 
 impl Members for Poi {
     fn label(&self) -> &str {

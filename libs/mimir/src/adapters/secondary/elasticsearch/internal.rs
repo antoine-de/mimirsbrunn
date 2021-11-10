@@ -21,8 +21,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use super::configuration::{
-    ComponentTemplateConfiguration, Error as ConfigurationError, IndexConfiguration,
-    IndexTemplateConfiguration,
+    ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
 };
 use super::models::{ElasticsearchBulkInsertResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
@@ -209,19 +208,13 @@ impl From<Exception> for Error {
 }
 
 impl ElasticsearchStorage {
-    pub(super) async fn create_index(&self, config: IndexConfiguration) -> Result<(), Error> {
-        let index_name = config.name.clone();
-        let body = config
-            .clone() // we have to clone, otherwise we cannot access parameters.
-            .into_json_body()
-            .context(InvalidTemplateConfiguration)?;
+    pub(super) async fn create_index(&self, index_name: &str) -> Result<(), Error> {
         let response = self
             .client
             .indices()
-            .create(IndicesCreateParts::Index(index_name.as_str()))
+            .create(IndicesCreateParts::Index(index_name))
             .request_timeout(self.config.timeout)
-            .wait_for_active_shards(&config.parameters.wait_for_active_shards)
-            .body(body)
+            .wait_for_active_shards(&self.config.wait_for_active_shards.to_string())
             .send()
             .await
             .context(ElasticsearchClient {
@@ -822,14 +815,13 @@ impl ElasticsearchStorage {
 
     pub(super) async fn force_merge(
         &self,
-        indices: Vec<String>,
+        indices: &[&str],
         max_num_segments: i64,
     ) -> Result<(), Error> {
-        let indices: Vec<_> = indices.iter().map(String::as_str).collect();
         let response = self
             .client
             .indices()
-            .forcemerge(IndicesForcemergeParts::Index(&indices))
+            .forcemerge(IndicesForcemergeParts::Index(indices))
             .max_num_segments(max_num_segments)
             // .request_timeout(self.config.timeout) This call is not using timeout because
             // it can take a long time and would require the timeout to become very large,

@@ -1,4 +1,4 @@
-use common::document::Document;
+use common::document::{ContainerDocument, Document};
 use cosmogony::ZoneType;
 use geo_types::{MultiPolygon, Rect};
 use geojson::Geometry;
@@ -120,7 +120,11 @@ impl Document for Admin {
     }
 }
 
-crate::impl_container_document!(Admin, "admin");
+impl ContainerDocument for Admin {
+    fn static_doc_type() -> &'static str {
+        "admin"
+    }
+}
 
 impl Ord for Admin {
     fn cmp(&self, other: &Self) -> Ordering {

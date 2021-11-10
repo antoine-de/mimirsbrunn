@@ -4,7 +4,8 @@ use futures::stream::Stream;
 use snafu::Snafu;
 
 use crate::domain::model::{
-    index::{Index, IndexVisibility},
+    configuration::{ContainerConfig, ContainerVisibility},
+    index::Index,
     stats::InsertStats,
 };
 use common::document::Document;
@@ -42,7 +43,7 @@ pub enum Error {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait Storage {
-    async fn create_container(&self, config: Config) -> Result<Index, Error>;
+    async fn create_container(&self, config: &ContainerConfig) -> Result<Index, Error>;
 
     async fn delete_container(&self, index: String) -> Result<(), Error>;
 
@@ -57,9 +58,11 @@ pub trait Storage {
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + 'static;
 
-    async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error>;
-
-    async fn force_merge(&self, indices: Vec<String>, max_num_segments: i64) -> Result<(), Error>;
+    async fn publish_index(
+        &self,
+        index: Index,
+        visibility: ContainerVisibility,
+    ) -> Result<(), Error>;
 
     async fn configure(&self, directive: String, config: Config) -> Result<(), Error>;
 }
@@ -69,7 +72,7 @@ impl<'a, T: ?Sized> Storage for Box<T>
 where
     T: Storage + Send + Sync,
 {
-    async fn create_container(&self, config: Config) -> Result<Index, Error> {
+    async fn create_container(&self, config: &ContainerConfig) -> Result<Index, Error> {
         (**self).create_container(config).await
     }
 
@@ -93,12 +96,12 @@ where
         (**self).insert_documents(index, documents).await
     }
 
-    async fn publish_index(&self, index: Index, visibility: IndexVisibility) -> Result<(), Error> {
+    async fn publish_index(
+        &self,
+        index: Index,
+        visibility: ContainerVisibility,
+    ) -> Result<(), Error> {
         (**self).publish_index(index, visibility).await
-    }
-
-    async fn force_merge(&self, indices: Vec<String>, max_num_segments: i64) -> Result<(), Error> {
-        (**self).force_merge(indices, max_num_segments).await
     }
 
     async fn configure(&self, directive: String, config: Config) -> Result<(), Error> {

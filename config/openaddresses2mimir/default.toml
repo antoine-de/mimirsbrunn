@@ -1,5 +1,7 @@
 [container]
+  name = "addr"
   dataset = "fr"
+  visibility = "public"
 
 [coordinates]
   id_precision = 6

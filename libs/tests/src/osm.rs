@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use common::document::ContainerDocument;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use mimir::domain::model::configuration::root_doctype_dataset;
-use mimir::domain::model::index::IndexVisibility;
 use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
 use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
@@ -98,17 +97,23 @@ pub async fn index_pois(
     // Read the poi configuration from the osm2mimir configuration / testing mode.
     let base_path = env!("CARGO_MANIFEST_DIR");
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
-    let poi_config: mimirsbrunn::osm_reader::poi::PoiConfig =
-        common::config::config_from(&config_dir, &["osm2mimir"], "testing", None, vec![])
-            .context(Config)?
-            .get("pois.config")
-            .context(ConfigInvalid)?;
+    let config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
+        &config_dir,
+        &["osm2mimir", "elasticsearch", "logging"],
+        "testing",
+        None,
+        vec![],
+    )
+    .context(Config)?
+    .try_into()
+    .context(ConfigInvalid)?;
 
-    let pois = mimirsbrunn::osm_reader::poi::pois(&mut osm_reader, &poi_config, &admins_geofinder)
-        .context(PoiOsmExtraction)?;
-
-    let elasticsearch_config =
-        common::config::load_es_config_for::<Poi>(vec![], dataset.to_string()).context(Config)?;
+    let pois = mimirsbrunn::osm_reader::poi::pois(
+        &mut osm_reader,
+        &config.pois.config.unwrap(),
+        &admins_geofinder,
+    )
+    .context(PoiOsmExtraction)?;
 
     let pois: Vec<Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
@@ -117,11 +122,7 @@ pub async fn index_pois(
         .collect()
         .await;
     let _ = client
-        .generate_index(
-            elasticsearch_config,
-            futures::stream::iter(pois),
-            IndexVisibility::Public,
-        )
+        .generate_index(&config.container_poi, futures::stream::iter(pois))
         .await
         .context(PoiIndexCreation)?;
 
@@ -167,32 +168,29 @@ pub async fn index_streets(
     // Read the street configuration from the osm2mimir configuration / testing mode.
     let base_path = env!("CARGO_MANIFEST_DIR");
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
-    let street_config: mimirsbrunn::osm_reader::street::StreetExclusion =
-        common::config::config_from(&config_dir, &["osm2mimir"], "testing", None, vec![])
-            .context(Config)?
-            .get("streets.exclusions")
-            .context(ConfigInvalid)?;
+    let config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
+        &config_dir,
+        &["osm2mimir", "elasticsearch", "logging"],
+        "testing",
+        None,
+        vec![],
+    )
+    .context(Config)?
+    .try_into()
+    .context(ConfigInvalid)?;
 
     let streets: Vec<Street> = mimirsbrunn::osm_reader::street::streets(
         &mut osm_reader,
         &admins_geofinder,
-        &street_config,
+        &config.streets.exclusions,
     )
     .context(StreetOsmExtraction)?
     .into_iter()
     .map(|street| street.set_weight_from_admins())
     .collect();
 
-    let elasticsearch_config =
-        common::config::load_es_config_for::<Street>(vec![], dataset.to_string())
-            .context(Config)?;
-
     let _ = client
-        .generate_index(
-            elasticsearch_config,
-            futures::stream::iter(streets),
-            IndexVisibility::Public,
-        )
+        .generate_index(&config.container_street, futures::stream::iter(streets))
         .await
         .context(PoiIndexCreation)?;
 

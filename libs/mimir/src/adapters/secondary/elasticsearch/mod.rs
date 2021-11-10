@@ -34,6 +34,14 @@ pub struct ElasticsearchStorageConfig {
     pub scroll_pit_alive: String,
     pub insertion_concurrent_requests: usize,
     pub insertion_chunk_size: usize,
+    pub wait_for_active_shards: u64,
+    pub force_merge: ElasticsearchStorageForceMergeConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ElasticsearchStorageForceMergeConfig {
+    pub enabled: bool,
+    pub max_number_segments: i64,
 }
 
 impl Default for ElasticsearchStorageConfig {
@@ -86,40 +94,16 @@ impl ElasticsearchStorageConfig {
 #[cfg(test)]
 pub mod tests {
 
-    use config::Config;
     use serde::{Deserialize, Serialize};
     use serial_test::serial;
 
     use super::*;
 
-    use crate::domain::ports::secondary::remote::Remote;
+    use crate::domain::model::configuration::ContainerVisibility;
     use crate::domain::ports::secondary::storage::Storage;
+    use crate::domain::{model::configuration::ContainerConfig, ports::secondary::remote::Remote};
     use crate::utils::docker;
     use common::document::{ContainerDocument, Document};
-
-    // In this test we present an invalid configuration (its actually empty) to the
-    // create_container function, and expect the error message to be meaningful
-    #[tokio::test]
-    #[serial]
-    async fn should_return_invalid_configuration() {
-        docker::initialize()
-            .await
-            .expect("elasticsearch docker initialization");
-
-        let client = remote::connection_test_pool()
-            .conn(ElasticsearchStorageConfig::default_testing())
-            .await
-            .expect("Elasticsearch Connection Established");
-
-        let config = Config::builder().build().expect("build empty config");
-
-        let res = client.create_container(config).await;
-
-        assert!(res
-            .unwrap_err()
-            .to_string()
-            .contains("Container Creation Error: Invalid Configuration"));
-    }
 
     #[tokio::test]
     #[serial]
@@ -136,7 +120,7 @@ pub mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn should_create_index_with_valid_configuration() {
+    async fn should_create_index() {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
@@ -144,90 +128,15 @@ pub mod tests {
             .conn(ElasticsearchStorageConfig::default_testing())
             .await
             .expect("Elasticsearch Connection Established");
-        let config = config::Config::builder()
-            .add_source(config::File::from_str(
-                r#"{
-                    "container": {
-                        "name": "foo",
-                        "dataset": "bar"
-                    },
-                    "elasticsearch": {
-                        "parameters": {
-                            "timeout": "10s",
-                            "force_merge": true,
-                            "max_number_segments": 1,
-                            "wait_for_active_shards": "1"
-                        },
-                        "settings": {
-                            "index": {
-                                "number_of_shards": 1,
-                                "number_of_replicas": 1
-                            }
-                        },
-                        "mappings": {
-                            "properties": {
-                                "value": {
-                                    "type": "text"
-                                }
-                            }
-                        }
-                    }
-                }"#,
-                config::FileFormat::Json,
-            ))
-            .build()
-            .expect("valid configuration");
-        let res = client.create_container(config).await;
+
+        let config = ContainerConfig {
+            name: "foo".to_string(),
+            dataset: "bar".to_string(),
+            visibility: ContainerVisibility::Public,
+        };
+
+        let res = client.create_container(&config).await;
         assert!(res.is_ok());
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn should_correctly_report_invalid_configuration() {
-        docker::initialize()
-            .await
-            .expect("elasticsearch docker initialization");
-
-        let client = remote::connection_test_pool()
-            .conn(ElasticsearchStorageConfig::default_testing())
-            .await
-            .expect("Elasticsearch Connection Established");
-        let config = config::Config::builder()
-            .add_source(config::File::from_str(
-                r#"{
-                    "container": {
-                        "name": "foo",
-                        "dataset": "bar"
-                    },
-                    "elasticsearch": {
-                        "parameters": {
-                            "timeout": "10s",
-                            "wait_for_active_shards": "1"
-                        },
-                        "settings": {
-                            "indx": {
-                                "number_of_shards": 1,
-                                "number_of_replicas": 1
-                            }
-                        },
-                        "mappings": {
-                            "properties": {
-                                "value": {
-                                    "type": "text"
-                                }
-                            }
-                        }
-                    }
-                }"#,
-                config::FileFormat::Json,
-            ))
-            .build()
-            .expect("valid configuration");
-        let res = client.create_container(config).await;
-        assert!(res
-            .unwrap_err()
-            .to_string()
-            .starts_with("Container Creation Error"));
     }
 
     #[derive(Deserialize, Serialize)]
@@ -245,32 +154,6 @@ pub mod tests {
         fn static_doc_type() -> &'static str {
             "test-obj"
         }
-
-        fn default_es_container_config() -> config::Config {
-            config::Config::builder()
-                .set_default("container.name", Self::static_doc_type())
-                .unwrap()
-                .set_default("container.dataset", "default")
-                .unwrap()
-                .set_default("elasticsearch.parameters.timeout", "10s")
-                .unwrap()
-                .set_default("elasticsearch.parameters.force_merge", true)
-                .unwrap()
-                .set_default("elasticsearch.parameters.max_number_segments", 1)
-                .unwrap()
-                .set_default("elasticsearch.parameters.wait_for_active_shards", "1")
-                .unwrap()
-                .add_source(config::File::from_str(
-                    r#"{ "elasticsearch": { "settings": { "index": { "number_of_shards": 1, "number_of_replicas": 1 } } } }"#,
-                    config::FileFormat::Json,
-                ))
-                .add_source(config::File::from_str(
-                    r#"{ "elasticsearch": { "mappings": { "properties": { "value": { "type": "text" } } } } }"#,
-                    config::FileFormat::Json,
-                ))
-                .build()
-                .expect("invalid container configuration for TestObj")
-        }
     }
 
     #[tokio::test]
@@ -285,8 +168,14 @@ pub mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
+        let config = ContainerConfig {
+            name: TestObj::static_doc_type().to_string(),
+            dataset: "default".to_string(),
+            visibility: ContainerVisibility::Public,
+        };
+
         client
-            .create_container(TestObj::default_es_container_config())
+            .create_container(&config)
             .await
             .expect("container creation");
 

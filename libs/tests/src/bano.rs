@@ -1,4 +1,3 @@
-use config::Config;
 use futures::stream::StreamExt;
 use snafu::{ResultExt, Snafu};
 
@@ -49,6 +48,7 @@ pub async fn index_addresses(
     }
 
     let base_path = env!("CARGO_MANIFEST_DIR");
+    let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
     let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "bano", region]
         .iter()
         .collect();
@@ -76,15 +76,22 @@ pub async fn index_addresses(
     };
 
     // Load file
-    let config = Config::builder()
-        .add_source(Addr::default_es_container_config())
-        .set_override("container.dataset", dataset.to_string())
-        .expect("failed to set dataset name")
-        .build()
-        .expect("failed to build configuration");
+    let config: mimirsbrunn::settings::bano2mimir::Settings = common::config::config_from(
+        &config_dir,
+        &["bano2mimir", "elasticsearch", "logging"],
+        "testing",
+        None,
+        vec![],
+    )
+    .expect("could not load bano2mimir configuration")
+    .try_into()
+    .expect("invalid bano2mimir configuration");
 
     mimirsbrunn::addr_reader::import_addresses_from_input_path(
-        client, config, input_file, into_addr,
+        client,
+        &config.container,
+        input_file,
+        into_addr,
     )
     .await
     .map_err(|err| Error::Indexing {

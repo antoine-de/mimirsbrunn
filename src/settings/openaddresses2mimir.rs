@@ -1,5 +1,6 @@
 /// This module contains the definition for bano2mimir configuration and command line arguments.
 use config::Config;
+use mimir::domain::model::configuration::ContainerConfig;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::env;
@@ -30,11 +31,6 @@ pub struct Logging {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Container {
-    pub dataset: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coordinates {
     pub id_precision: usize,
 }
@@ -51,7 +47,7 @@ pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
-    pub container: Container,
+    pub container: ContainerConfig,
     pub coordinates: Coordinates,
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,

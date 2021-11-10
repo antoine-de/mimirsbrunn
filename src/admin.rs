@@ -28,11 +28,10 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use config::Config;
 use cosmogony::ZoneType::City;
 use cosmogony::{Zone, ZoneIndex};
-// use failure::{format_err, Error};
 use futures::stream::Stream;
+use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -44,7 +43,7 @@ use crate::osm_reader::admin;
 use crate::osm_reader::osm_utils;
 use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
-    domain::{model::index::IndexVisibility, ports::primary::generate_index::GenerateIndex},
+    domain::ports::primary::generate_index::GenerateIndex,
 };
 use places::admin::Admin;
 
@@ -86,14 +85,14 @@ trait IntoAdmin {
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
 pub async fn import_admins<S>(
     client: &ElasticsearchStorage,
-    config: Config,
+    config: &ContainerConfig,
     admins: S,
 ) -> Result<(), Error>
 where
     S: Stream<Item = Admin> + Send + Sync + Unpin + 'static,
 {
     let _ = client
-        .generate_index(config, admins, IndexVisibility::Public)
+        .generate_index(config, admins)
         .await
         .context(IndexGeneration)?;
     Ok(())
@@ -205,7 +204,7 @@ fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone>, Error> {
 pub async fn index_cosmogony(
     path: &Path,
     langs: Vec<String>,
-    config: Config,
+    config: &ContainerConfig,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     info!("building map cosmogony id => osm id");

@@ -108,9 +108,9 @@ defined as such:
 
 ```rust
 use crate::domain::model::{
-    configuration::Configuration,
+    configuration::ContainerConfig,
     error::Error as ModelError,
-    index::{Index, IndexVisibility},
+    index::Index,
 };
 
 [...]
@@ -119,9 +119,8 @@ use crate::domain::model::{
 pub trait GenerateIndex {
     async fn generate_index<D: ContainerDocument + Send + Sync + 'static>(
         &self,
-        config: Configuration,
+        config: &ContainerConfig,
         documents: impl Stream<Item = D> + Send + Sync + Unpin + 'static,
-        visibility: IndexVisibility,
     ) -> Result<Index, ModelError>;
 }
 ```

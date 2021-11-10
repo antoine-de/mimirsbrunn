@@ -1,5 +1,12 @@
-[container]
+[container-poi]
+  name = "poi"
   dataset = "fr"
+  visibility = "public"
+
+[container-street]
+  name = "stop"
+  dataset = "fr"
+  visibility = "public"
 
 # This section is ignored if mimirsbrunn is compiled without the `db-storage`
 # option.

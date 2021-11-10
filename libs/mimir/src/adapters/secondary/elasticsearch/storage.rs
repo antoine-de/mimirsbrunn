@@ -3,16 +3,13 @@ use config::Config;
 use futures::future::TryFutureExt;
 use futures::stream::Stream;
 
-use super::configuration::{
-    ComponentTemplateConfiguration, IndexConfiguration, IndexTemplateConfiguration,
-};
+use super::configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration};
 use super::internal;
 use super::ElasticsearchStorage;
-use crate::domain::model::{
-    configuration,
-    index::{Index, IndexVisibility},
-    stats::InsertStats,
+use crate::domain::model::configuration::{
+    root_doctype_dataset_ts, ContainerConfig, ContainerVisibility,
 };
+use crate::domain::model::{configuration, index::Index, stats::InsertStats};
 use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use common::document::Document;
 
@@ -20,19 +17,15 @@ use common::document::Document;
 impl Storage for ElasticsearchStorage {
     // This function delegates to elasticsearch the creation of the index. But since this
     // function returns nothing, we follow with a find index to return some details to the caller.
-    async fn create_container(&self, config: Config) -> Result<Index, StorageError> {
-        let config = IndexConfiguration::new_from_config(config).map_err(|err| {
-            StorageError::ContainerCreationError {
-                source: Box::new(err),
-            }
-        })?;
-        let name = config.name.clone();
-        self.create_index(config)
+    async fn create_container(&self, config: &ContainerConfig) -> Result<Index, StorageError> {
+        let index_name = root_doctype_dataset_ts(&config.name, &config.dataset);
+
+        self.create_index(&index_name)
             .and_then(|_| {
-                self.find_index(name.clone()).and_then(|res| {
-                    futures::future::ready(
-                        res.ok_or(internal::Error::ElasticsearchUnknownIndex { index: name }),
-                    )
+                self.find_index(index_name.clone()).and_then(|res| {
+                    futures::future::ready(res.ok_or(internal::Error::ElasticsearchUnknownIndex {
+                        index: index_name.to_string(),
+                    }))
                 })
             })
             .await
@@ -89,7 +82,7 @@ impl Storage for ElasticsearchStorage {
     async fn publish_index(
         &self,
         index: Index,
-        visibility: IndexVisibility,
+        visibility: ContainerVisibility,
     ) -> Result<(), StorageError> {
         self.refresh_index(index.name.clone())
             .await
@@ -115,7 +108,7 @@ impl Storage for ElasticsearchStorage {
             source: Box::new(err),
         })?;
 
-        if visibility == IndexVisibility::Public {
+        if visibility == ContainerVisibility::Public {
             let doctype_alias = configuration::root_doctype(&index.doc_type);
             self.update_alias(
                 doctype_alias.clone(),
@@ -139,19 +132,13 @@ impl Storage for ElasticsearchStorage {
             self.delete_container(index_name).await?;
         }
 
-        Ok(())
-    }
-
-    async fn force_merge(
-        &self,
-        indices: Vec<String>,
-        max_num_segments: i64,
-    ) -> Result<(), StorageError> {
-        self.force_merge(indices, max_num_segments)
-            .await
-            .map_err(|err| StorageError::ForceMergeError {
-                source: Box::new(err),
-            })?;
+        if self.config.force_merge.enabled {
+            self.force_merge(&[&index.name], self.config.force_merge.max_number_segments)
+                .await
+                .map_err(|err| StorageError::ForceMergeError {
+                    source: Box::new(err),
+                })?;
+        }
 
         Ok(())
     }

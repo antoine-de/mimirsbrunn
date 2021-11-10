@@ -33,14 +33,12 @@ use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 use tracing::{info, warn};
 
-use common::config::load_es_config_for;
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::primary::list_documents::ListDocuments;
 use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::addr_reader::import_addresses_from_files;
 use mimirsbrunn::openaddresses::OpenAddress;
 use mimirsbrunn::settings::openaddresses2mimir as settings;
-use places::addr::Addr;
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
@@ -115,22 +113,6 @@ async fn run(
         move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
     };
 
-    let config = load_es_config_for::<Addr>(
-        opts.settings
-            .iter()
-            .filter_map(|s| {
-                if s.starts_with("elasticsearch.addr") {
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            })
-            .collect(),
-        settings.container.dataset.clone(),
-    )
-    .context(Configuration)
-    .map_err(Box::new)?;
-
     // Import from file(s)
     if opts.input.is_dir() {
         let paths = walkdir::WalkDir::new(&opts.input);
@@ -149,14 +131,14 @@ async fn run(
                 f
             });
 
-        import_addresses_from_files(&client, config, true, path_iter, into_addr)
+        import_addresses_from_files(&client, &settings.container, true, path_iter, into_addr)
             .await
             .context(Import)
             .map_err(|err| Box::new(err) as Box<dyn snafu::Error>)
     } else {
         import_addresses_from_files(
             &client,
-            config,
+            &settings.container,
             true,
             std::iter::once(opts.input),
             into_addr,
