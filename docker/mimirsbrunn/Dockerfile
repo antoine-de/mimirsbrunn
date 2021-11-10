@@ -27,15 +27,15 @@ RUN USER=root cargo new mimirsbrunn
 
 WORKDIR /home/mimirsbrunn
 
+COPY ./docker ./docker
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
-COPY ./src ./src
-COPY ./libs ./libs
-COPY ./config ./config
-COPY ./docker ./docker
 COPY ./build.rs ./build.rs
-COPY ./tests ./tests
+COPY ./config ./config
 COPY ./benches ./benches
+COPY ./tests ./tests
+COPY ./libs ./libs
+COPY ./src ./src
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/home/mimirsbrunn/target  \
@@ -77,8 +77,8 @@ fi
 
 RUN npm install -g bunyan
 
-COPY --from=builder /home/mimirsbrunn/bin/* /usr/bin
-COPY --from=builder /home/mimirsbrunn/config /etc/mimirsbrunn
+COPY config /etc/mimirsbrunn
 COPY docker/run_with_default_config.sh .
+COPY --from=builder /home/mimirsbrunn/bin/* /usr/bin
 
 ENTRYPOINT [ "./run_with_default_config.sh" ]
