@@ -7,9 +7,6 @@ ES_HOST="localhost"
 # The port number for elasticsearch host (9200 + offset, 9300 + offset)
 ES_PORT_OFFSET=0
 
-# The name of the index
-ES_INDEX="munin"
-
 # The name of the dataset
 ES_DATASET="fr"
 

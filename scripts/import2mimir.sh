@@ -117,12 +117,6 @@ check_arguments()
     [[ -z "$ES_PORT_OFFSET" && "${ES_PORT_OFFSET+xxx}" = "xxx" ]] &&
     { log_error "The variable \$ES_PORT_OFFSET is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
 
-    # Check that the variable $ES_INDEX is set and non-empty
-    [[ -z "${ES_INDEX+xxx}" ]] &&
-    { log_error "The variable \$ES_INDEX is not set. Make sure it is set in the configuration file."; usage; return 1; }
-    [[ -z "$ES_INDEX" && "${ES_INDEX+xxx}" = "xxx" ]] &&
-    { log_error "The variable \$ES_INDEX is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
-
     # Check that the variable $ES_DATASET is set and non-empty
     [[ -z "${ES_DATASET+xxx}" ]] &&
     { log_error "The variable \$ES_DATASET is not set. Make sure it is set in the configuration file."; usage; return 1; }
