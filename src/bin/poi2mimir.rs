@@ -55,3 +55,67 @@ async fn run(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::TryStreamExt;
+    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
+    use mimir::domain::ports::primary::list_documents::ListDocuments;
+    use mimir::utils::docker;
+    use mimirsbrunn::settings::poi2mimir as settings;
+    use places::poi::Poi;
+    use serial_test::serial;
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_index_poi_file() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "poi",
+                "keolis.poi",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_pool_url(&config.url)
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let pois: Vec<Poi> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        assert_eq!(pois.len(), 35);
+
+        // let addr1 = addresses
+        //     .iter()
+        //     .find(|&addr| addr.name == "10 Place de la Mairie")
+        //     .unwrap();
+
+        // assert_eq!(addr1.id, "addr:1.378886;43.668175:10");
+    }
+}
