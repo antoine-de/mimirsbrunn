@@ -182,7 +182,7 @@ restart_docker_es() {
   ES_PORT_1=$((9200+ES_PORT_OFFSET))
   ES_PORT_2=$((9300+ES_PORT_OFFSET))
   log_info "Starting docker container ${ES_NAME} on ports ${ES_PORT_1} and ${ES_PORT_2}"
-  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 -e "discovery.type=single-node" -d ${ES_IMAGE} > /dev/null 2>&1
+  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 --env-file=${SCRIPT_DIR}/elasticsearch-docker.rc -d ${ES_IMAGE} > /dev/null 2>&1
   log_info "Waiting for Elasticsearch to be up and running"
   sleep 15
   return $?
@@ -404,6 +404,6 @@ import_bano
 
 import_osm
 [[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
- 
+
 import_ntfs
 [[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }
