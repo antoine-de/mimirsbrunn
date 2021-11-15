@@ -58,14 +58,16 @@ async fn run(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use futures::TryStreamExt;
+    use serial_test::serial;
+
+    use super::*;
+    use ::tests::{bano, cosmogony, osm};
     use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
     use mimir::domain::ports::primary::list_documents::ListDocuments;
     use mimir::utils::docker;
     use mimirsbrunn::settings::poi2mimir as settings;
     use places::poi::Poi;
-    use serial_test::serial;
 
     #[tokio::test]
     #[serial]
@@ -73,6 +75,28 @@ mod tests {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
+
+        // We need to prep the test by inserting admins, addresses, and streets.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_pool_url(&config.url)
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        cosmogony::index_admins(&client, "limousin", "limousin", true)
+            .await
+            .unwrap();
+
+        osm::index_streets(&client, "limousin", "limousin", true)
+            .await
+            .unwrap();
+
+        bano::index_addresses(&client, "limousin", "limousin", true)
+            .await
+            .unwrap();
+
+        // And here is the indexing of Pois...
         let opts = settings::Opts {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
             run_mode: Some("testing".to_string()),
@@ -82,7 +106,7 @@ mod tests {
                 "tests",
                 "fixtures",
                 "poi",
-                "keolis.poi",
+                "limousin.poi",
             ]
             .iter()
             .collect(),
@@ -90,9 +114,12 @@ mod tests {
         };
 
         let settings = settings::Settings::new(&opts).unwrap();
-        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
 
-        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        mimirsbrunn::utils::launch::launch_async(move || run(opts, settings))
+            .await
+            .unwrap();
+
+        // Now we query the index we just created. Since it's a small poi file with few entries,
         // we'll just list all the documents in the index, and check them.
         let config = ElasticsearchStorageConfig::default_testing();
 
@@ -109,13 +136,6 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(pois.len(), 35);
-
-        // let addr1 = addresses
-        //     .iter()
-        //     .find(|&addr| addr.name == "10 Place de la Mairie")
-        //     .unwrap();
-
-        // assert_eq!(addr1.id, "addr:1.378886;43.668175:10");
+        assert_eq!(pois.len(), 1);
     }
 }
