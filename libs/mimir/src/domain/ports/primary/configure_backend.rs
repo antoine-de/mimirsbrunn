@@ -11,7 +11,7 @@ pub trait ConfigureBackend {
 #[async_trait]
 impl<T> ConfigureBackend for T
 where
-    T: Storage + Send + Sync + 'static,
+    T: Storage<'static> + Send + Sync + 'static,
 {
     async fn configure(&self, directive: String, config: Config) -> Result<(), ModelError> {
         self.configure(directive, config)

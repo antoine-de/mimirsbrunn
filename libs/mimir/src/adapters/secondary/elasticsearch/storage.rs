@@ -14,7 +14,7 @@ use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use common::document::Document;
 
 #[async_trait]
-impl Storage for ElasticsearchStorage {
+impl<'s> Storage<'s> for ElasticsearchStorage {
     // This function delegates to elasticsearch the creation of the index. But since this
     // function returns nothing, we follow with a find index to return some details to the caller.
     async fn create_container(&self, config: &ContainerConfig) -> Result<Index, StorageError> {
@@ -58,7 +58,7 @@ impl Storage for ElasticsearchStorage {
     ) -> Result<InsertStats, StorageError>
     where
         D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync,
+        S: Stream<Item = D> + Send + Sync + 's,
     {
         self.add_pipeline(
             String::from(include_str!(
