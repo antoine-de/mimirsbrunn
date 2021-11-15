@@ -17,7 +17,6 @@ use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use super::configuration::{
@@ -518,36 +517,24 @@ impl ElasticsearchStorage {
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + 'static,
     {
-        let stats = Arc::new(Mutex::new(InsertStats::default()));
-
-        documents
+        let stats = documents
             .chunks(self.config.insertion_chunk_size)
-            .for_each_concurrent(self.config.insertion_concurrent_requests, |chunk| {
-                let stats = stats.clone();
+            .map(|chunk| {
                 let index = index.clone();
                 let client = self.clone();
 
                 async move {
-                    let res = tokio::spawn(client.insert_chunk_in_index(index, chunk, stats))
+                    tokio::spawn(client.insert_chunk_in_index(index, chunk))
                         .await
-                        .expect("tokio task panicked");
-
-                    if let Err(err) = res {
-                        panic!("Error inserting chunk: {}", err);
-                    }
-                } // res
+                        .expect("tokio task panicked")
+                        .unwrap_or_else(|err| panic!("Error inserting chunk: {}", err))
+                }
             })
+            .buffer_unordered(self.config.insertion_concurrent_requests)
+            .fold(InsertStats::default(), |acc, loc| async move { acc + loc })
             .await;
 
-        let lock = Arc::try_unwrap(stats).map_err(|_err| Error::Internal {
-            reason: String::from("Lock has still multiple owners"),
-        })?;
-
-        let res = lock.into_inner().map_err(|_err| Error::Internal {
-            reason: String::from("Mutex cannot be unlocked"),
-        })?;
-
-        Ok(res)
+        Ok(stats)
     }
 
     // Changed the name to avoid recursive calls int storage::insert_documents
@@ -555,11 +542,12 @@ impl ElasticsearchStorage {
         self,
         index: String,
         chunk: Vec<D>,
-        stats: Arc<Mutex<InsertStats>>,
-    ) -> Result<(), Error>
+    ) -> Result<InsertStats, Error>
     where
         D: Document + Send + Sync + 'static,
     {
+        let mut stats = InsertStats::default();
+
         // We try to insert the chunk using bulk insertion.
         // We then analyze the result, which contains an array of 'items'.
         // Each item must contain the string 'created'. So we iterate through these items,
@@ -582,21 +570,17 @@ impl ElasticsearchStorage {
             .await
             .and_then(|res| res.error_for_status_code())
             .context(ElasticsearchClient {
-                details: String::from("cannot bulk insert"),
+                details: "cannot bulk insert",
             })?;
 
         if resp.status_code().is_success() {
-            // let json = resp.json().await.unwrap();
-            // println!("{}", serde_json::to_string_pretty(&json).unwrap());
-            // let body: ElasticsearchBulkInsertResponse = serde_json::from_value(json).unwrap();
-
             let body: ElasticsearchBulkInsertResponse =
                 resp.json().await.context(ElasticsearchDeserialization)?;
 
             body.items.iter().try_for_each(|item| {
                 match item.index.result.as_str() {
-                    "created" => (*stats).lock().unwrap().created += 1,
-                    "updated" => (*stats).lock().unwrap().updated += 1,
+                    "created" => stats.created += 1,
+                    "updated" => stats.updated += 1,
                     _ => {
                         return Err(Error::NotCreated {
                             details: format!("not created: {:?}", item),
@@ -605,7 +589,9 @@ impl ElasticsearchStorage {
                 }
 
                 Ok(())
-            })
+            })?;
+
+            Ok(stats)
         } else {
             let exception = resp.exception().await.ok().unwrap();
             match exception {
@@ -1350,21 +1336,23 @@ enum State {
 pub struct InsertStats {
     pub(crate) created: usize,
     pub(crate) updated: usize,
-    pub(crate) error: usize,
+}
+
+impl std::ops::Add for InsertStats {
+    type Output = InsertStats;
+
+    fn add(self, rhs: Self) -> Self {
+        Self {
+            created: self.created + rhs.created,
+            updated: self.updated + rhs.updated,
+        }
+    }
 }
 
 impl From<InsertStats> for ModelInsertStats {
     fn from(stats: InsertStats) -> Self {
-        let InsertStats {
-            created,
-            updated,
-            error,
-        } = stats;
-        ModelInsertStats {
-            created,
-            updated,
-            error,
-        }
+        let InsertStats { created, updated } = stats;
+        ModelInsertStats { created, updated }
     }
 }
 
