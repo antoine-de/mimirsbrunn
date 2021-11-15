@@ -1,53 +1,51 @@
-use flate2::read::GzDecoder;
+use async_compression::tokio::bufread::GzipDecoder;
 use futures::future;
-use futures::stream::{self, Stream, StreamExt, TryStreamExt};
-use mimir::domain::model::configuration::ContainerConfig;
+use futures::stream::{Stream, StreamExt, TryStreamExt};
 use serde::de::DeserializeOwned;
 use snafu::futures::TryStreamExt as SnafuTryStreamExt;
 use snafu::{ResultExt, Snafu};
-use std::io::Read;
+use std::ffi::OsStr;
 use std::marker::{Send, Sync};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::File;
-use tracing::{info, warn};
+use tokio::io::BufReader;
+use tracing::{info_span, warn};
+use tracing_futures::Instrument;
 
-use mimir::{
-    adapters::secondary::elasticsearch::ElasticsearchStorage,
-    domain::ports::primary::generate_index::GenerateIndex,
-};
+use crate::utils;
 use places::addr::Addr;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    // FIXME: I cannot use this here, because the model error contains Box<dyn stdError>
-    // which makes a stream of Result<T, Error> not `Send`.
-    // #[snafu(display("Index Generation Error: {}", source))]
-    // IndexGeneration {
-    //     source: mimir::domain::model::error::Error,
-    // },
     #[snafu(display("CSV Error: {}", source))]
     Csv { source: csv_async::Error },
 
     #[snafu(display("IO Error: {}", source))]
     InvalidIO { source: tokio::io::Error },
+
+    #[snafu(display("Invalid extention"))]
+    InvalidExtention,
 }
 
-async fn import_addresses<S, F, T>(
-    client: &ElasticsearchStorage,
-    config: &ContainerConfig,
-    records: S,
+/// Import the addresses found in path, using the given (Elastiscsearch) configuration and client.
+/// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
+/// address.
+pub fn import_addresses_from_input_path<F, T>(
+    path: PathBuf,
+    has_headers: bool,
     into_addr: F,
-) -> Result<(), Error>
+) -> impl Stream<Item = Addr>
 where
-    T: Send + Sync + 'static,
     F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
-    S: Stream<Item = T> + Send + Sync + 'static,
+    T: DeserializeOwned + Send + Sync + 'static,
 {
     let into_addr = Arc::new(into_addr);
 
-    let addrs = records
-        .chunks(1000)
+    let recs = records_from_path(&path, has_headers)
+        .filter_map(|rec| future::ready(rec.map_err(|err| warn!("Invalid CSV: {}", err)).ok()));
+
+    recs.chunks(1000)
         .map(move |addresses| {
             let into_addr = into_addr.clone();
 
@@ -55,20 +53,22 @@ where
                 tokio::task::spawn_blocking(move || {
                     let addresses = addresses
                         .into_iter()
-                        .map(|addr| into_addr(addr))
-                        .filter_map(|addr_res| match addr_res {
-                            Err(err) => {
-                                warn!("Address Error ignored: {}", err);
-                                None
-                            }
-                            Ok(addr) if addr.street.name.is_empty() => {
+                        .filter_map(|rec| {
+                            into_addr(rec)
+                                .map_err(|err| warn!("Invalid address has been ignored: {}", err))
+                                .ok()
+                        })
+                        .filter(|addr| {
+                            let empty_name = addr.street.name.is_empty();
+
+                            if empty_name {
                                 warn!(
                                     "Address {} has no street name and has been ignored.",
                                     addr.id
-                                );
-                                None
+                                )
                             }
-                            Ok(addr) => Some(addr),
+
+                            !empty_name
                         })
                         .collect::<Vec<_>>();
 
@@ -79,148 +79,62 @@ where
             }
         })
         .buffered(num_cpus::get())
-        .flatten();
-
-    client.generate_index(config, addrs).await.unwrap();
-    // FIXME See above in definition of the enum Error.
-    //.context(IndexGeneration)?;
-
-    Ok(())
+        .flatten()
 }
 
-pub async fn import_addresses_from_reads<T, F>(
-    client: &ElasticsearchStorage,
-    config: &ContainerConfig,
+/// Same as records_from_file, but can take an entire directory as input
+fn records_from_path<T>(
+    path: &Path,
     has_headers: bool,
-    inputs: Vec<impl Read + Send + Sync + 'static>,
-    into_addr: F,
-) -> Result<(), Error>
+) -> impl Stream<Item = Result<T, Error>> + Send + Sync + 'static
 where
-    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    let iter = inputs
-        .into_iter()
-        .flat_map(move |stream| {
-            csv::ReaderBuilder::new()
-                .has_headers(has_headers)
-                .from_reader(stream)
-                .into_deserialize()
-        })
-        .filter_map(|line| {
-            line.map_err(|e| warn!("Impossible to read line, error: {}", e))
-                .ok()
-        });
-
-    let stream = stream::iter(iter);
-
-    import_addresses(client, config, stream, into_addr).await
-}
-
-pub async fn import_addresses_from_files<T, F>(
-    client: &ElasticsearchStorage,
-    config: &ContainerConfig,
-    has_headers: bool,
-    files: impl IntoIterator<Item = PathBuf>,
-    into_addr: F,
-) -> Result<(), Error>
-where
-    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
-    T: DeserializeOwned + Send + Sync + 'static,
-{
-    let files = files
-        .into_iter()
-        .filter_map(|path| {
-            info!("importing {:?}...", &path);
-
-            let with_gzip = path
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| ext == "gz")
-                .unwrap_or(false);
-
-            std::fs::File::open(&path)
-                .map(|file| {
-                    if with_gzip {
-                        let decoder = GzDecoder::new(file);
-                        Box::new(decoder) as Box<dyn Read + Send + Sync>
-                    } else {
-                        Box::new(file) as Box<dyn Read + Send + Sync>
-                    }
-                })
-                .ok()
-        })
-        .collect();
-
-    import_addresses_from_reads(client, config, has_headers, files, into_addr).await
-}
-
-/// Import the addresses found in path, using the given (Elastiscsearch) configuration and client.
-/// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
-/// address.
-pub async fn import_addresses_from_input_path<F, T>(
-    client: &ElasticsearchStorage,
-    config: &ContainerConfig,
-    path: PathBuf,
-    into_addr: F,
-) -> Result<(), Error>
-where
-    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
-    T: DeserializeOwned + Send + Sync + 'static,
-{
-    if path.is_dir() {
-        let files = dir_to_stream(path).await?;
-        let records = files
-            .filter_map(move |file| async move {
-                match file {
-                    Ok(file) => match stream_records_from_file(file.clone()).await {
-                        Ok(records) => Some(records.filter_map(|rec| future::ready(rec.ok()))),
-                        Err(err) => {
-                            warn!(
-                                "could not stream records from {}: {}",
-                                file.display(),
-                                err.to_string()
-                            );
-                            None
-                        }
-                    },
-                    Err(err) => {
-                        warn!("directory entry error: {}", err.to_string());
-                        None
-                    }
+    utils::fs::walk_files_recursive(path)
+        .context(InvalidIO)
+        .try_filter_map(move |file| async move {
+            Ok(match records_from_file(&file, has_headers).await {
+                Ok(recs) => {
+                    let csv_file = file.to_str();
+                    let span = info_span!("Read CSV file", has_headers, csv_file);
+                    Some(recs.instrument(span))
+                }
+                Err(err) => {
+                    warn!("skipping invalid file {}: {}", file.display(), err);
+                    None
                 }
             })
-            .flatten();
-
-        import_addresses(client, config, records, into_addr).await
-    } else {
-        let records = stream_records_from_file(path).await?;
-        let records = records.filter_map(|rec| future::ready(rec.ok()));
-        import_addresses(client, config, records, into_addr).await
-    }
+        })
+        .try_flatten()
 }
 
-// Turns a directory into a Stream of PathBuf
-async fn dir_to_stream(
-    dir: PathBuf,
-) -> Result<impl Stream<Item = Result<PathBuf, Error>> + Unpin, Error> {
-    let entries = tokio::fs::read_dir(dir).await.unwrap();
-
-    let stream = tokio_stream::wrappers::ReadDirStream::new(entries);
-
-    Ok(stream.map_ok(|entry| entry.path()).context(InvalidIO))
-}
-
-async fn stream_records_from_file<T>(
-    file: PathBuf,
-) -> Result<impl Stream<Item = Result<T, Error>> + Send + Sync + Unpin + 'static, Error>
+async fn records_from_file<T>(
+    file: &Path,
+    has_headers: bool,
+) -> Result<impl Stream<Item = Result<T, Error>> + Send + Sync + 'static, Error>
 where
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    let reader = File::open(file).await.context(InvalidIO)?;
+    let file_read = File::open(file)
+        .await
+        .context(InvalidIO)
+        .map(BufReader::new)?;
 
-    let csv_reader = csv_async::AsyncReaderBuilder::new()
-        .has_headers(false)
-        .create_deserializer(reader);
-    Ok(csv_reader.into_deserialize::<T>().context(Csv))
+    let data_read = {
+        if file.extension().and_then(OsStr::to_str) == Some("csv") {
+            Box::new(file_read) as Box<dyn tokio::io::AsyncRead + Send + Sync + Unpin>
+        } else if file.extension().and_then(OsStr::to_str) == Some("gz") {
+            Box::new(GzipDecoder::new(file_read)) as _
+        } else {
+            return Err(Error::InvalidExtention);
+        }
+    };
+
+    let records = csv_async::AsyncReaderBuilder::new()
+        .has_headers(has_headers)
+        .create_deserializer(data_read)
+        .into_deserialize::<T>()
+        .context(Csv);
+
+    Ok(records)
 }

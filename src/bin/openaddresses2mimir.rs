@@ -29,6 +29,7 @@
 // www.navitia.io
 
 use futures::stream::StreamExt;
+use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 use tracing::{info, warn};
@@ -36,7 +37,7 @@ use tracing::{info, warn};
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::primary::list_documents::ListDocuments;
 use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::addr_reader::import_addresses_from_files;
+use mimirsbrunn::addr_reader::import_addresses_from_input_path;
 use mimirsbrunn::openaddresses::OpenAddress;
 use mimirsbrunn::settings::openaddresses2mimir as settings;
 use places::admin::Admin;
@@ -57,9 +58,9 @@ pub enum Error {
     #[snafu(display("Configuration Error {}", source))]
     Configuration { source: common::config::Error },
 
-    #[snafu(display("Import Error {}", source))]
-    Import {
-        source: mimirsbrunn::addr_reader::Error,
+    #[snafu(display("Index Creation Error {}", source))]
+    IndexCreation {
+        source: mimir::domain::model::error::Error,
     },
 }
 
@@ -113,40 +114,14 @@ async fn run(
         move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
     };
 
-    // Import from file(s)
-    if opts.input.is_dir() {
-        let paths = walkdir::WalkDir::new(&opts.input);
-        let path_iter = paths
-            .into_iter()
-            .map(|p| p.unwrap().into_path())
-            .filter(|p| {
-                let f = p
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .map(|name| name.ends_with(".csv") || name.ends_with(".csv.gz"))
-                    .unwrap_or(false);
-                if !f {
-                    info!("skipping file {} as it is not a csv", p.display());
-                }
-                f
-            });
+    let addresses = import_addresses_from_input_path(opts.input, true, into_addr);
 
-        import_addresses_from_files(&client, &settings.container, true, path_iter, into_addr)
-            .await
-            .context(Import)
-            .map_err(|err| Box::new(err) as Box<dyn snafu::Error>)
-    } else {
-        import_addresses_from_files(
-            &client,
-            &settings.container,
-            true,
-            std::iter::once(opts.input),
-            into_addr,
-        )
+    client
+        .generate_index(&settings.container, addresses)
         .await
-        .context(Import)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>)
-    }
+        .context(IndexCreation)?;
+
+    Ok(())
 }
 
 #[cfg(test)]

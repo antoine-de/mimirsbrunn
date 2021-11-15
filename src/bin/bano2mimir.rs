@@ -29,6 +29,8 @@
 // www.navitia.io
 
 use futures::stream::StreamExt;
+use mimir::domain::ports::primary::generate_index::GenerateIndex;
+use mimirsbrunn::addr_reader::import_addresses_from_input_path;
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -57,9 +59,9 @@ pub enum Error {
     #[snafu(display("Configuration Error {}", source))]
     Configuration { source: common::config::Error },
 
-    #[snafu(display("Import Error {}", source))]
-    Import {
-        source: mimirsbrunn::addr_reader::Error,
+    #[snafu(display("Index Creation Error {}", source))]
+    IndexCreation {
+        source: mimir::domain::model::error::Error,
     },
 }
 
@@ -123,15 +125,14 @@ async fn run(
         move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder)
     };
 
-    mimirsbrunn::addr_reader::import_addresses_from_input_path(
-        &client,
-        &settings.container,
-        opts.input,
-        into_addr,
-    )
-    .await
-    .context(Import)
-    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    let addresses = import_addresses_from_input_path(opts.input, false, into_addr);
+
+    client
+        .generate_index(&settings.container, addresses)
+        .await
+        .context(IndexCreation)?;
+
+    Ok(())
 }
 
 #[cfg(test)]
