@@ -72,6 +72,9 @@ pub enum Error {
     // we use a String to get the error message instead.
     #[snafu(display("Transit Model Error {}", details))]
     TransitModel { details: String },
+
+    #[snafu(display("Admin Retrieval Error {}", details))]
+    AdminRetrieval { details: String },
 }
 
 pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
@@ -114,6 +117,12 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
         Ok(stream) => {
             let admins: Vec<Admin> = stream.try_collect().await.context(IndexGeneration)?;
 
+            if admins.is_empty() {
+                return Err(Error::AdminRetrieval {
+                    details: String::from("no admin retrieved to enrich stops"),
+                });
+            }
+
             let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
 
             let mut nb_unmatched = 0u32;
@@ -138,7 +147,9 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
             );
             Ok(())
         }
-        Err(_) => Ok(()), // FIXME We cannot retrieve admins, should be a warning
+        Err(_) => Err(Error::AdminRetrieval {
+            details: String::from("Could not retrieve admins to enrich stops"),
+        }),
     }
 }
 

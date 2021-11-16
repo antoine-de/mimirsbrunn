@@ -96,6 +96,7 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
+    use ::tests::cosmogony;
     use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
     use mimir::domain::ports::primary::list_documents::ListDocuments;
     use mimir::utils::docker;
@@ -104,6 +105,60 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn should_correctly_index_a_small_ntfs_file() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        // We need to prep the test by inserting admins
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_pool_url(&config.url)
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        cosmogony::index_admins(&client, "limousin", "limousin", true)
+            .await
+            .unwrap();
+
+        // Now we index an NTFS file
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "ntfs",
+                "limousin",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        mimirsbrunn::utils::launch::launch_async(move || run(opts, settings))
+            .await
+            .unwrap();
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let stops: Vec<Stop> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        assert_eq!(stops.len(), 6);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_return_error_when_no_prior_admin() {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
@@ -125,25 +180,10 @@ mod tests {
         };
 
         let settings = settings::Settings::new(&opts).unwrap();
-        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
-
-        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
-        // we'll just list all the documents in the index, and check them.
-        let config = ElasticsearchStorageConfig::default_testing();
-
-        let client = remote::connection_pool_url(&config.url)
-            .conn(config)
-            .await
-            .expect("Elasticsearch Connection Established");
-
-        let stops: Vec<Stop> = client
-            .list_documents()
-            .await
-            .unwrap()
-            .try_collect()
-            .await
-            .unwrap();
-
-        assert_eq!(stops.len(), 6);
+        let res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Could not retrieve admins to enrich stops"));
     }
 }
