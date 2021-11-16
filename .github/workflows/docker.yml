@@ -31,6 +31,11 @@ jobs:
         with:
           profile: minimal
 
+      - name: Check versions
+        run: |
+          rustc --version
+          cargo --version
+
       - name: Login to DockerHub
         if: github.event_name == 'push'
         uses: docker/login-action@v1
