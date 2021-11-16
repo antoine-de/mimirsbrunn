@@ -55,7 +55,7 @@ serde = {version = "1", features = ["rc"]}
 snafu = { version = "0.6.10", features = [ "futures" ] }
 structopt = "0.3"
 tokio = { version = "1.14.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
-tokio-stream = { version = "0.1.7", features = [ "fs" ] }
+tokio-stream = { version = "0.1.8", features = [ "fs" ] }
 toml = "0.5"
 tracing = "0.1.26"
 tracing-appender = "0.1.2"

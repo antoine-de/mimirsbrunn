@@ -18,3 +18,4 @@ snafu = { version = "0.6.10", features = [ "futures" ] }
 git = "https://github.com/mehcode/config-rs.git"
 branch = "master"
 default_features = false
+features = [ "toml", "json" ]
