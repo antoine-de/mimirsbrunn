@@ -1,8 +1,8 @@
 [package]
 name = "places"
 version = "1.0.0-rc1"
-authors = ["Canal TP <dt.ro@canaltp.fr>"]
-edition = "2018"
+authors = ["Kisio Digital", "Qwant"]
+edition = "2021"
 description = "Set of tools for importing geospatial data into Elasticsearch for geocoding"
 license = "AGPLv3"
 repository = "https://github.com/CanalTP/mimirsbrunn.git"
@@ -11,17 +11,17 @@ categories = [ "application" ]
 readme = "README.md"
 
 [dependencies]
-tracing = "0.1.26"
-serde = { version = "1", features = ["rc"]}
+chrono-tz = "0.5"
+common = { path = "../common" }
+cosmogony = "0.10"
 geo-types = "0.7"
 geojson = { version = "0.22", features = ["geo-types"] }
-cosmogony = "0.10"
 human-sort = "0.2"
-chrono-tz = "0.5"
+navitia-poi-model = "0.3"
+serde = { version = "1", features = ["rc"]}
+tracing = "0.1.26"
 transit_model = "0.42.1"
 typed_index_collection = "2.0"
-navitia-poi-model = "0.3"
-common = { path = "../common" }
 
 [dependencies.config]
 git = "https://github.com/mehcode/config-rs.git"

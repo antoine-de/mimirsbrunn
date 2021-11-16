@@ -1,10 +1,10 @@
 [package]
 name = "mimirsbrunn"
 version = "2.0.0-rc1"
-authors = ["Kisio Digital <team.core@kisio.com>", "Qwant", "Guillaume Pinot <texitoi@texitio.eu>"]
+authors = ["Kisio Digital", "Qwant"]
 build = "build.rs"
 autotests = false
-edition = "2018"
+edition = "2021"
 description = "Set of tools for geocoding with Elasticsearch"
 license = "AGPLv3"
 repository = "https://github.com/CanalTP/mimirsbrunn.git"
@@ -54,8 +54,8 @@ serde_json = "1"
 serde = {version = "1", features = ["rc"]}
 snafu = { version = "0.6.10", features = [ "futures" ] }
 structopt = "0.3"
+tokio = { version = "1.14.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
 tokio-stream = { version = "0.1.7", features = [ "fs" ] }
-tokio = { version = "1.6.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
 toml = "0.5"
 tracing = "0.1.26"
 tracing-appender = "0.1.2"
