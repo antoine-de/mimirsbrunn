@@ -25,6 +25,10 @@
           "parent_id": {
             "enabled": false
           },
+          "type": {
+            "type": "constant_keyword",
+            "value": "admin"
+          },
           "zone_type": {
             "type": "keyword"
           }

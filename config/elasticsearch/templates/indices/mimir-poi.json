@@ -38,6 +38,10 @@
           },
           "properties": {
             "type": "flattened"
+          },
+          "type": {
+            "type": "constant_keyword",
+            "value": "poi"
           }
         }
       }
