@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - Read rustup toolchain version
+      - name: Read rustup toolchain version
         id: version
         uses: juliangruber/read-file-action@v1
         with:
