@@ -56,7 +56,7 @@ jobs:
       - name: Build docker image
         run: >-
           docker build
-          --build-arg RUST_VERSION="${{ steps.version.outputs.content }}"
+          --build-arg RUST_VERSION=${{ steps.version.outputs.content }}
           --file docker/${{ matrix['image'] }}/Dockerfile
           --label "org.label-schema.vcs-ref=$GITHUB_SHA"
           --tag $DOCKER_IMAGE
