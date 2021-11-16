@@ -27,6 +27,9 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - uses: action-rs/toolchain@v1
+        with:
+          profile: minimal
 
       - name: Login to DockerHub
         if: github.event_name == 'push'
