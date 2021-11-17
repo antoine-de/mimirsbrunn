@@ -526,7 +526,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "1.0.0-rc1"
+version = "1.0.0-rc2"
 dependencies = [
  "config",
  "serde",
@@ -1910,7 +1910,7 @@ dependencies = [
 
 [[package]]
 name = "mimir"
-version = "1.0.0-rc1"
+version = "1.0.0-rc2"
 dependencies = [
  "async-graphql",
  "async-graphql-warp",
@@ -1953,7 +1953,7 @@ dependencies = [
 
 [[package]]
 name = "mimirsbrunn"
-version = "2.0.0-rc1"
+version = "2.0.0-rc2"
 dependencies = [
  "address-formatter",
  "approx 0.5.0",
@@ -2534,7 +2534,7 @@ checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
 
 [[package]]
 name = "places"
-version = "1.0.0-rc1"
+version = "1.0.0-rc2"
 dependencies = [
  "chrono-tz",
  "common",
@@ -3560,7 +3560,7 @@ checksum = "13a4ec180a2de59b57434704ccfad967f789b12737738798fa08798cd5824c16"
 
 [[package]]
 name = "tests"
-version = "1.0.0-rc1"
+version = "1.0.0-rc2"
 dependencies = [
  "approx 0.5.0",
  "async-trait",
