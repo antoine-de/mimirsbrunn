@@ -24,6 +24,10 @@
           },
           "street": {
             "enabled": false
+          },
+          "type": {
+            "type": "constant_keyword",
+            "value": "addr"
           }
         }
       }
