@@ -1,8 +1,8 @@
 [package]
 name = "common"
 version = "1.0.0-rc1"
-authors = ["Canal TP <dt.ro@canaltp.fr>"]
-edition = "2018"
+authors = ["Kisio Digital", "Qwant"]
+edition = "2021"
 description = "Set of tools shared between mimir packages"
 license = "AGPLv3"
 repository = "https://github.com/CanalTP/mimirsbrunn.git"
@@ -18,3 +18,4 @@ snafu = { version = "0.6.10", features = [ "futures" ] }
 git = "https://github.com/mehcode/config-rs.git"
 branch = "master"
 default_features = false
+features = [ "toml", "json" ]

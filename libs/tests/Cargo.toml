@@ -1,8 +1,8 @@
 [package]
 name = "tests"
 version = "1.0.0-rc1"
-authors = ["Kisio Digital <team.core@kisio.com>", "Qwant", "Guillaume Pinot <texitoi@texitio.eu>"]
-edition = "2018"
+authors = ["Kisio Digital", "Qwant"]
+edition = "2021"
 description = "Set of test utilities for Mimirsbrunn"
 license = "AGPLv3"
 repository = "https://github.com/CanalTP/mimirsbrunn.git"
@@ -26,7 +26,7 @@ serde = {version = "1", features = ["rc"]}
 serde_json = "1"
 serial_test = "0.5.1"
 snafu = { version = "0.6.10", features = [ "futures" ] }
-tokio = { version = "1.6.0", features = [ "rt-multi-thread", "macros", "process" ] }
+tokio = { version = "1.14.0", features = [ "rt-multi-thread", "macros", "process" ] }
 url = "2.2.2"
 zip = "0.5.13"
 
