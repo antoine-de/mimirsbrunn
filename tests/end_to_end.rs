@@ -1,9 +1,10 @@
+use cucumber::WorldInit;
 use mimir::utils::docker;
+use state::GlobalState;
 
 mod error;
 mod state;
 mod steps;
-mod utils;
 
 #[tokio::main]
 async fn main() {
@@ -11,14 +12,10 @@ async fn main() {
         .await
         .expect("elasticsearch docker initialization");
 
-    utils::run_cucumber(
-        &[
-            "./features/admins",
-            "./features/addresses",
-            "./features/stops",
-            "./features/pois",
-        ],
-        true, // FIXME Not sure what this parameter is for
-    )
-    .await
+    GlobalState::cucumber()
+        .max_concurrent_scenarios(1)
+        .filter_run("./features", |_, _, sc| {
+            sc.tags.iter().any(|tag| tag == "unittest")
+        })
+        .await;
 }

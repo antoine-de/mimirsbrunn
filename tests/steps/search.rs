@@ -1,240 +1,73 @@
 use async_trait::async_trait;
-use cucumber::{t, StepContext, Steps};
+use cucumber::{then, when};
 use geo::algorithm::haversine_distance::HaversineDistance;
 use itertools::{EitherOrBoth::*, Itertools};
+use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir::domain::ports::secondary::remote::Remote;
 use std::cmp::Ordering;
 
 use crate::error::Error;
-use crate::state::{State, Step, StepStatus};
+use crate::state::{GlobalState, State, Step, StepStatus};
 use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir::adapters::primary::{
     common::coord::Coord, common::dsl::build_query, common::filters::Filters,
     common::settings::QuerySettings,
 };
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
-pub fn steps() -> Steps<State> {
-    let mut steps: Steps<State> = Steps::new();
+// Search place
 
-    steps.when_regex_async(
-        r#"the user searches (.*) datatype(?: in (.*))? for "(.*)"(?: at \((.*),(.*)\))?"#,
-        t!(|mut state, ctx| {
-            let places = ctx.matches[1].clone();
-            let places = if places == "all" {
-                vec![
-                    Addr::static_doc_type().to_string(),
-                    Admin::static_doc_type().to_string(),
-                    Street::static_doc_type().to_string(),
-                    Stop::static_doc_type().to_string(),
-                    Poi::static_doc_type().to_string(),
-                ]
-            } else {
-                places.split(',').map(|s| s.trim().to_string()).collect()
-            };
-            let lat = ctx.matches[4].trim();
-            let lon = ctx.matches[5].trim();
-            let coord = if lat.is_empty() {
-                None
-            } else {
-                // round to 4 digits
-                let lat = (lat.parse::<f32>().expect("lat is f32") * 10000.0).round() / 10000.0;
-                let lon = (lon.parse::<f32>().expect("lon is f32") * 10000.0).round() / 10000.0;
-                Some(Coord::new(lat, lon))
-            };
-            let filters = Filters {
-                coord,
-                ..Default::default()
-            };
+#[when(regex = r#"the user searches (.+) datatype for "(.*)" at \((.+),(.+)\)$"#)]
+async fn search(state: &mut GlobalState, places: String, query: String, lat: f32, lon: f32) {
+    perform_search(state, places, query, Coord::new(lat, lon).into()).await;
+}
 
-            let query = ctx.matches[3].clone();
-            let search = Search {
-                filters,
-                places,
-                query,
-                results: Vec::new(),
-            };
+#[when(regex = r#"the user searches (.+) datatype for "(.*)"$"#)]
+async fn search_no_coord(state: &mut GlobalState, places: String, query: String) {
+    perform_search(state, places, query, None).await;
+}
 
-            state.execute(search, &ctx).await.expect("failed to search");
+async fn perform_search(
+    state: &mut GlobalState,
+    places: String,
+    query: String,
+    coord: Option<Coord>,
+) {
+    let places = {
+        if places == "all" {
+            vec![
+                Addr::static_doc_type().to_string(),
+                Admin::static_doc_type().to_string(),
+                Street::static_doc_type().to_string(),
+                Stop::static_doc_type().to_string(),
+                Poi::static_doc_type().to_string(),
+            ]
+        } else {
+            places
+                .split(',')
+                .map(str::trim)
+                .map(str::to_string)
+                .collect()
+        }
+    };
 
-            state
-        }),
-    );
+    let filters = Filters {
+        coord,
+        ..Default::default()
+    };
 
-    steps.then_regex_async(
-        r#"he finds "(.*)" as the first result"#,
-        t!(|mut state, ctx| {
-            let id = ctx.matches[1].clone();
-
-            state
-                .execute(HasDocument { id, max_rank: 1 }, &ctx)
-                .await
-                .expect("failed to find document");
-
-            state
-        }),
-    );
-
-    steps.then_regex_async(
-        r#"he finds admin "(.*)", a "(.*)", in the first (.*) results"#,
-        t!(|mut state, ctx| {
-            let name = Some(ctx.matches[1].clone()).and_then(|name| {
-                if name.is_empty() {
-                    None
-                } else {
-                    Some(name)
-                }
-            });
-            //let zone_type = Some(ctx.matches[2].clone()).and_then(|zone_type| {
-            //    if zone_type.is_empty() {
-            //        None
-            //    } else {
-            //        Some(zone_type)
-            //    }
-            //});
-            let limit = ctx.matches[3].clone();
-            let limit = if limit.is_empty() {
-                1
-            } else {
-                limit.parse().expect("limit as usize")
-            };
-
-            state
-                .execute(
-                    HasAdmin {
-                        name,
-                        // zone_type,
-                        zone_type: None,
-                        limit,
-                    },
-                    &ctx,
-                )
-                .await
-                .expect("failed to find document");
-
-            state
-        }),
-    );
-
-    steps.then_regex_async(
-        r#"he finds address "(.*)", "(.*)", "(.*)", and "(.*)" in the first "(.*)" results"#,
-        t!(|mut state, ctx| {
-            let house = Some(ctx.matches[1].clone()).and_then(|house| {
-                if house.is_empty() {
-                    None
-                } else {
-                    Some(house)
-                }
-            });
-            let street = Some(ctx.matches[2].clone()).and_then(|street| {
-                if street.is_empty() {
-                    None
-                } else {
-                    Some(street)
-                }
-            });
-            let city = Some(ctx.matches[3].clone()).and_then(|city| {
-                if city.is_empty() {
-                    None
-                } else {
-                    Some(city)
-                }
-            });
-            let postcode = Some(ctx.matches[4].clone()).and_then(|postcode| {
-                if postcode.is_empty() {
-                    None
-                } else {
-                    Some(postcode)
-                }
-            });
-            let limit = ctx.matches[5].clone();
-            let limit = if limit.is_empty() {
-                1
-            } else {
-                limit.parse().expect("limit as usize")
-            };
-
-            state
-                .execute(
-                    HasAddress {
-                        house,
-                        street,
-                        city,
-                        postcode,
-                        limit,
-                    },
-                    &ctx,
-                )
-                .await
-                .expect("failed to find document");
-
-            state
-        }),
-    );
-
-    steps.then_regex_async(
-        r#"he finds poi "(.*)", a "(.*)", located near ([0-9\.]*)/([0-9\.]*), in the first (.*) results"#,
-        t!(|mut state, ctx| {
-            let label = Some(ctx.matches[1].clone()).and_then(|label| {
-                if label.is_empty() {
-                    None
-                } else {
-                    Some(label)
-                }
-            });
-            let poi_type = Some(ctx.matches[2].clone()).and_then(|poi_type| {
-                if poi_type.is_empty() {
-                    None
-                } else {
-                    Some(poi_type)
-                }
-            });
-            let lat = Some(ctx.matches[3].clone()).and_then(|lat| {
-                if lat.is_empty() {
-                    None
-                } else {
-                    lat.parse::<f64>().ok()
-                }
-            });
-            let lon = Some(ctx.matches[4].clone()).and_then(|lon| {
-                if lon.is_empty() {
-                    None
-                } else {
-                    lon.parse::<f64>().ok()
-                }
-            });
-            let coord = match (lat, lon) {
-                // Note in the following the order of x: lon, y: lat
-                (Some(lat), Some(lon)) => Some(geo_types::Point::new(lon, lat)),
-                _ => None,
-            };
-            let limit = ctx.matches[5].clone();
-            let limit = if limit.is_empty() {
-                1
-            } else {
-                limit.parse().expect("limit as usize")
-            };
-
-            state
-                .execute(
-                    HasPoi {
-                        label,
-                        poi_type,
-                        coord,
-                        limit,
-                    },
-                    &ctx,
-                )
-                .await
-                .expect("failed to find document");
-
-            state
-        }),
-    );
-
-    steps
+    state
+        .execute(Search {
+            places,
+            query,
+            filters,
+            results: Vec::new(),
+        })
+        .await
+        .expect("failed to search");
 }
 
 /// Perform a search in current Elasticsearch DB.
@@ -248,8 +81,12 @@ pub struct Search {
 
 #[async_trait(?Send)]
 impl Step for Search {
-    async fn execute(&mut self, _state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
-        let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
+    async fn execute(&mut self, _state: &State) -> Result<StepStatus, Error> {
+        let client = connection_test_pool()
+            .conn(ElasticsearchStorageConfig::default_testing())
+            .await
+            .expect("Could not establish connection to Elasticsearch");
+
         // Build ES query
         let dsl = build_query(
             &self.query,
@@ -274,6 +111,16 @@ impl Step for Search {
     }
 }
 
+// Find document
+
+#[then(regex = r#"he finds "(.+)" as the first result$"#)]
+async fn find_id(state: &mut GlobalState, id: String) {
+    state
+        .execute(HasDocument { id, max_rank: 1 })
+        .await
+        .expect("failed to find document");
+}
+
 /// Check if given document is in the output.
 ///
 /// It assumes that a Search has already been performed before.
@@ -284,7 +131,7 @@ pub struct HasDocument {
 
 #[async_trait(?Send)]
 impl Step for HasDocument {
-    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
         let (search, _) = state
             .steps_for::<Search>()
             .next_back()
@@ -302,6 +149,21 @@ impl Step for HasDocument {
     }
 }
 
+// Find Admin
+
+#[then(regex = r#"he finds admin "(.*)", a "(.*)", in the first (.*) results$"#)]
+async fn find_admin(state: &mut GlobalState, name: String, _zone_type: String, limit: usize) {
+    state
+        .execute(HasAdmin {
+            name: Some(name),
+            // TODO: zone_type,
+            zone_type: None,
+            limit,
+        })
+        .await
+        .expect("failed to find document");
+}
+
 /// Check if given admin is in the output.
 ///
 /// It assumes that a Search has already been performed before.
@@ -313,7 +175,7 @@ pub struct HasAdmin {
 
 #[async_trait(?Send)]
 impl Step for HasAdmin {
-    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
         let (search, _) = state
             .steps_for::<Search>()
             .next_back()
@@ -349,6 +211,31 @@ impl Step for HasAdmin {
     }
 }
 
+// Find address
+
+#[then(
+    regex = r#"he finds address "(.*)", "(.*)", "(.*)", and "(.*)" in the first "(.*)" results$"#
+)]
+async fn find_address(
+    state: &mut GlobalState,
+    house: String,
+    street: String,
+    city: String,
+    postcode: String,
+    limit: usize,
+) {
+    state
+        .execute(HasAddress {
+            house: none_if_empty(house),
+            street: none_if_empty(street),
+            city: none_if_empty(city),
+            postcode: none_if_empty(postcode),
+            limit,
+        })
+        .await
+        .expect("failed to find document");
+}
+
 /// Check if given address is in the output.
 ///
 /// It assumes that a Search has already been performed before.
@@ -362,7 +249,7 @@ pub struct HasAddress {
 
 #[async_trait(?Send)]
 impl Step for HasAddress {
-    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
         let (search, _) = state
             .steps_for::<Search>()
             .next_back()
@@ -404,6 +291,30 @@ impl Step for HasAddress {
     }
 }
 
+// Find POI
+
+#[then(
+    regex = r#"he finds poi "(.*)", a "(.*)", located near ([0-9\.]*)/([0-9\.]*), in the first (.*) results$"#
+)]
+async fn find_poi(
+    state: &mut GlobalState,
+    label: String,
+    poi_type: String,
+    lat: f64,
+    lon: f64,
+    limit: usize,
+) {
+    state
+        .execute(HasPoi {
+            label: none_if_empty(label),
+            poi_type: none_if_empty(poi_type),
+            coord: Some(geo_types::Point::new(lon, lat)),
+            limit,
+        })
+        .await
+        .expect("failed to find document");
+}
+
 /// Check if given poi is in the output.
 ///
 /// It assumes that a Search has already been performed before.
@@ -416,7 +327,7 @@ pub struct HasPoi {
 
 #[async_trait(?Send)]
 impl Step for HasPoi {
-    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
         let (search, _) = state
             .steps_for::<Search>()
             .next_back()
@@ -452,6 +363,16 @@ impl Step for HasPoi {
 
         assert!(rank < self.limit);
         Ok(StepStatus::Done)
+    }
+}
+
+// Utils
+
+fn none_if_empty(val: String) -> Option<String> {
+    if val.is_empty() {
+        None
+    } else {
+        Some(val)
     }
 }
 

@@ -10,12 +10,13 @@ Feature: Admins
     # result because the query exactly matches the name / label of the target.
     # These queries are for varying levels of administrative regions (city,
     # department, ...).
+    @unittest
     Scenario Outline: Admins exact match
         When the user searches admin datatype for "<query>"
-        Then he finds admin "<name>", a "<zone type>", in the first <limit> results
+        Then he finds admin "<name>", a "<zone_type>", in the first <limit> results
 
         Examples:
-            | query             | name           | zone type   | limit  |
+            | query             | name           | zone_type   | limit  |
             | Creuse            | Creuse         | state       | 1      |
             | Haute-Vienne      | Haute-Vienne   | state       | 1      |
             | Limoges           | Limoges        | city        | 1      |

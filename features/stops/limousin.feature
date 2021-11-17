@@ -9,6 +9,7 @@ Feature: Stops
 
     # With 'Exact Match', we expect the query to be found at the top of the
     # result because the query exactly matches the name / label of the target.
+    @unittest
     Scenario Outline: Stops exact match
         When the user searches stop datatype for "<query>"
         Then he finds "<id>" as the first result

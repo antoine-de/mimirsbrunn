@@ -1,123 +1,33 @@
 use async_trait::async_trait;
-use cucumber::{t, StepContext, Steps};
+use cucumber::given;
+use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
 use snafu::ResultExt;
 
 use crate::error::{self, Error};
-use crate::state::{State, Step, StepStatus};
+use crate::state::{GlobalState, State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
-use crate::steps::download::DownloadBano;
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use crate::steps::download::download_bano;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::domain::ports::secondary::remote::Remote;
 use tests::bano;
 
-pub fn steps() -> Steps<State> {
-    let mut steps: Steps<State> = Steps::new();
+// Index Bano
 
-    // The first parameter is the region, it must match a directory name in the fixtures.
-    // The second parameter is optional, and it is the dataset. If no dataset is give,
-    // then the dataset is set to be the same as the region.
-    steps.given_regex_async(
-        r#"bano file has been indexed for ([^\s]*)(?: as (.*))?"#,
-        t!(|mut state, ctx| {
-            let region = ctx.matches[1].clone();
-            let dataset = ctx
-                .matches
-                .get(2)
-                .map(|d| {
-                    if d.is_empty() {
-                        region.to_string()
-                    } else {
-                        d.to_string()
-                    }
-                })
-                .unwrap_or_else(|| region.clone())
-                .clone();
-            assert!(!region.is_empty());
-            assert!(!dataset.is_empty());
-            state
-                .execute(IndexBano { region, dataset }, &ctx)
-                .await
-                .expect("failed to index Bano file");
+// The first parameter is the region, it must match a directory name in the fixtures.
+// The second parameter is optional, and it is the dataset. If no dataset is give,
+// then the dataset is set to be the same as the region.
+#[given(regex = r"bano file has been indexed for ([^\s]+) as ([^\s]+)$")]
+async fn index_bano(state: &mut GlobalState, region: String, dataset: String) {
+    state
+        .execute_once(IndexBano { region, dataset })
+        .await
+        .expect("failed to index Bano file");
+}
 
-            state
-        }),
-    );
-
-    // This step is a condensed format for download + index bano
-    steps.given_regex_async(
-        r"addresses \(bano\) have been indexed for (.*) into (.*) as (.*)",
-        t!(|mut state, ctx| {
-            let departments = ctx.matches[1]
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect();
-
-            let region = ctx.matches[2].clone();
-            let dataset = ctx.matches[3].clone();
-
-            state
-                .execute_once(
-                    DownloadBano {
-                        departments,
-                        region: region.clone(),
-                    },
-                    &ctx,
-                )
-                .await
-                .expect("failed to download OSM file");
-            state
-                .execute(IndexBano { region, dataset }, &ctx)
-                .await
-                .expect("failed to index Bano file");
-
-            state
-        }),
-    );
-
-    // This step is a condensed format for download + index bano
-    steps.given_regex_async(
-        r"addresses \(bano\) have been indexed for (.*) into ([^\s]*)(?: as (.*))?",
-        t!(|mut state, ctx| {
-            let departments = ctx.matches[1]
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect();
-
-            let region = ctx.matches[2].clone();
-            let dataset = ctx
-                .matches
-                .get(3)
-                .map(|d| {
-                    if d.is_empty() {
-                        region.to_string()
-                    } else {
-                        d.to_string()
-                    }
-                })
-                .unwrap_or_else(|| region.clone())
-                .clone();
-            assert!(!region.is_empty());
-            assert!(!dataset.is_empty());
-
-            state
-                .execute_once(
-                    DownloadBano {
-                        departments,
-                        region: region.clone(),
-                    },
-                    &ctx,
-                )
-                .await
-                .expect("failed to download OSM file");
-            state
-                .execute(IndexBano { region, dataset }, &ctx)
-                .await
-                .expect("failed to index Bano file");
-
-            state
-        }),
-    );
-
-    steps
+#[given(regex = r"bano file has been indexed for ([^\s]+)$")]
+async fn index_bano_default_dataset(state: &mut GlobalState, region: String) {
+    let dataset = region.clone();
+    index_bano(state, region, dataset).await;
 }
 
 /// Index a bano file for given region into ES.
@@ -131,9 +41,13 @@ pub struct IndexBano {
 
 #[async_trait(?Send)]
 impl Step for IndexBano {
-    async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
         let Self { region, dataset } = self;
-        let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
+
+        let client = connection_test_pool()
+            .conn(ElasticsearchStorageConfig::default_testing())
+            .await
+            .expect("Could not establish connection to Elasticsearch");
 
         state
             .status_of(&IndexCosmogony {
@@ -142,9 +56,33 @@ impl Step for IndexBano {
             })
             .expect("You must index admins before indexing addresses");
 
-        bano::index_addresses(client, region, dataset, false)
+        bano::index_addresses(&client, region, dataset, false)
             .await
             .map(|status| status.into())
             .context(error::IndexBano)
     }
+}
+
+// This step is a condensed format for download + index
+
+#[given(regex = r"addresses \(bano\) have been indexed for (.+) into ([^\s]+) as ([^\s]+)$")]
+async fn addresses_available(
+    state: &mut GlobalState,
+    departments: String,
+    region: String,
+    dataset: String,
+) {
+    download_bano(state, departments, region.clone()).await;
+    index_bano(state, region, dataset).await;
+}
+
+#[given(regex = r"addresses \(bano\) have been indexed for (.+) into ([^\s]+)$")]
+async fn addresses_available_default_dataset(
+    state: &mut GlobalState,
+    departments: String,
+    region: String,
+) {
+    let dataset = region.clone();
+    download_bano(state, departments, region.clone()).await;
+    index_bano(state, region, dataset).await;
 }
