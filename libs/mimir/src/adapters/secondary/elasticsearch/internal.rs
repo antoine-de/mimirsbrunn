@@ -515,7 +515,7 @@ impl ElasticsearchStorage {
     ) -> Result<InsertStats, Error>
     where
         D: Document + Send + Sync + 'static,
-        S: Stream<Item = D> + Send + Sync + 'static,
+        S: Stream<Item = D> + Send + Sync,
     {
         let stats = documents
             .chunks(self.config.insertion_chunk_size)
