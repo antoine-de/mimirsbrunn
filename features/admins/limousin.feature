@@ -4,9 +4,7 @@ Feature: Admins
     is less than 100Mb, which is the upper file size limit for github.
 
     Background:
-        Given osm file has been downloaded for limousin
-        And osm file has been processed by cosmogony for limousin
-        And cosmogony file has been indexed for limousin
+        Given admins have been indexed for limousin
 
     # With 'Exact Match', we expect the query to be found at the top of the
     # result because the query exactly matches the name / label of the target.

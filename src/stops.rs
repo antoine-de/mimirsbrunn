@@ -164,7 +164,7 @@ pub async fn index_ntfs(
         .stop_areas
         .iter()
         .map(|(idx, sa)| {
-            let id = places::stop::normalize_id("stop_area", &sa.id);
+            let id = places::utils::normalize_id("stop_area", &sa.id);
             let nb_stop_points = navitia
                 .get_corresponding_from_idx::<_, transit_model::objects::StopPoint>(idx)
                 .len();

@@ -56,10 +56,23 @@ pub fn steps() -> Steps<State> {
 
     // This step is a condensed format for download + generate + index
     steps.given_regex_async(
-        "admins have been indexed for (.*) as (.*)",
+        r#"admins have been indexed for ([^\s]*)(?: as (.*))?"#,
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
-            let dataset = ctx.matches[2].clone();
+            let dataset = ctx
+                .matches
+                .get(2)
+                .map(|d| {
+                    if d.is_empty() {
+                        region.to_string()
+                    } else {
+                        d.to_string()
+                    }
+                })
+                .unwrap_or_else(|| region.clone())
+                .clone();
+            assert!(!region.is_empty());
+            assert!(!dataset.is_empty());
             state
                 .execute_once(DownloadOsm(region.to_string()), &ctx)
                 .await
@@ -80,6 +93,8 @@ pub fn steps() -> Steps<State> {
     );
 
     // This step is a condensed format for download + generate + index
+    // FIXME This is the same code has the previous step, except the dataset is not optional.
+    // The previous one is more general, so this step should probably be deleted.
     steps.given_regex_async(
         "admins have been indexed for (.*) as (.*)",
         t!(|mut state, ctx| {

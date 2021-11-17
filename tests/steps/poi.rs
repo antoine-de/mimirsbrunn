@@ -13,10 +13,23 @@ pub fn steps() -> Steps<State> {
     let mut steps: Steps<State> = Steps::new();
 
     steps.given_regex_async(
-        "pois have been indexed for (.*) as (.*)",
+        r#"pois have been indexed for ([^\s]*)(?: as (.*))?"#,
         t!(|mut state, ctx| {
             let region = ctx.matches[1].clone();
-            let dataset = ctx.matches[2].clone();
+            let dataset = ctx
+                .matches
+                .get(2)
+                .map(|d| {
+                    if d.is_empty() {
+                        region.to_string()
+                    } else {
+                        d.to_string()
+                    }
+                })
+                .unwrap_or_else(|| region.clone())
+                .clone();
+            assert!(!region.is_empty());
+            assert!(!dataset.is_empty());
 
             state
                 .execute(DownloadOsm(region.clone()), &ctx)

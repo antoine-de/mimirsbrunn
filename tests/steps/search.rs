@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use cucumber::{t, StepContext, Steps};
+use geo::algorithm::haversine_distance::HaversineDistance;
 use itertools::{EitherOrBoth::*, Itertools};
 use std::cmp::Ordering;
 
@@ -173,6 +174,66 @@ pub fn steps() -> Steps<State> {
         }),
     );
 
+    steps.then_regex_async(
+        r#"he finds poi "(.*)", a "(.*)", located near ([0-9\.]*)/([0-9\.]*), in the first (.*) results"#,
+        t!(|mut state, ctx| {
+            let label = Some(ctx.matches[1].clone()).and_then(|label| {
+                if label.is_empty() {
+                    None
+                } else {
+                    Some(label)
+                }
+            });
+            let poi_type = Some(ctx.matches[2].clone()).and_then(|poi_type| {
+                if poi_type.is_empty() {
+                    None
+                } else {
+                    Some(poi_type)
+                }
+            });
+            let lat = Some(ctx.matches[3].clone()).and_then(|lat| {
+                if lat.is_empty() {
+                    None
+                } else {
+                    lat.parse::<f64>().ok()
+                }
+            });
+            let lon = Some(ctx.matches[4].clone()).and_then(|lon| {
+                if lon.is_empty() {
+                    None
+                } else {
+                    lon.parse::<f64>().ok()
+                }
+            });
+            let coord = match (lat, lon) {
+                // Note in the following the order of x: lon, y: lat
+                (Some(lat), Some(lon)) => Some(geo_types::Point::new(lon, lat)),
+                _ => None,
+            };
+            let limit = ctx.matches[5].clone();
+            let limit = if limit.is_empty() {
+                1
+            } else {
+                limit.parse().expect("limit as usize")
+            };
+
+            state
+                .execute(
+                    HasPoi {
+                        label,
+                        poi_type,
+                        coord,
+                        limit,
+                    },
+                    &ctx,
+                )
+                .await
+                .expect("failed to find document");
+
+            state
+        }),
+    );
+
     steps
 }
 
@@ -331,6 +392,57 @@ impl Step for HasAddress {
                 }
                 if let Some(city) = &self.city {
                     if !equal_ignore_case_utf8(city, addr.city().expect("city").as_str()) {
+                        return None;
+                    }
+                }
+                Some(num)
+            })
+            .expect("document was not found in search results");
+
+        assert!(rank < self.limit);
+        Ok(StepStatus::Done)
+    }
+}
+
+/// Check if given poi is in the output.
+///
+/// It assumes that a Search has already been performed before.
+pub struct HasPoi {
+    label: Option<String>,
+    poi_type: Option<String>,
+    coord: Option<geo_types::Point<f64>>,
+    limit: usize,
+}
+
+#[async_trait(?Send)]
+impl Step for HasPoi {
+    async fn execute(&mut self, state: &State, _ctx: &StepContext) -> Result<StepStatus, Error> {
+        let (search, _) = state
+            .steps_for::<Search>()
+            .next_back()
+            .expect("the user must perform a search before checking results");
+
+        let rank = search
+            .results
+            .clone()
+            .into_iter()
+            .enumerate()
+            .find_map(|(num, doc)| {
+                let poi: Poi = serde_json::from_value(doc).expect("poi");
+                if let Some(label) = &self.label {
+                    if !equal_ignore_case_utf8(label, poi.label.as_str()) {
+                        return None;
+                    }
+                }
+                if let Some(poi_type) = &self.poi_type {
+                    if !equal_ignore_case_utf8(poi_type, poi.poi_type.name.as_str()) {
+                        return None;
+                    }
+                }
+                if let Some(coord) = &self.coord {
+                    let distance = coord.haversine_distance(&poi.coord.into());
+                    // if we are at more than 100m
+                    if distance > 100.0 {
                         return None;
                     }
                 }

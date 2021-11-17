@@ -13,9 +13,10 @@ async fn main() {
 
     utils::run_cucumber(
         &[
-            "./features/admin",
+            "./features/admins",
             "./features/addresses",
             "./features/stops",
+            "./features/pois",
         ],
         true, // FIXME Not sure what this parameter is for
     )

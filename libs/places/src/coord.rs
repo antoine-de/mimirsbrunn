@@ -62,6 +62,12 @@ impl From<Coord> for Geometry {
     }
 }
 
+impl From<Coord> for geo_types::Point<f64> {
+    fn from(coord: Coord) -> geo_types::Point<f64> {
+        geo_types::Point::new(coord.lon(), coord.lat())
+    }
+}
+
 impl<'de> Deserialize<'de> for Coord {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

@@ -117,12 +117,6 @@ check_arguments()
     [[ -z "$ES_PORT_OFFSET" && "${ES_PORT_OFFSET+xxx}" = "xxx" ]] &&
     { log_error "The variable \$ES_PORT_OFFSET is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
 
-    # Check that the variable $ES_INDEX is set and non-empty
-    [[ -z "${ES_INDEX+xxx}" ]] &&
-    { log_error "The variable \$ES_INDEX is not set. Make sure it is set in the configuration file."; usage; return 1; }
-    [[ -z "$ES_INDEX" && "${ES_INDEX+xxx}" = "xxx" ]] &&
-    { log_error "The variable \$ES_INDEX is set but empty. Make sure it is set in the configuration file."; usage; return 1; }
-
     # Check that the variable $ES_DATASET is set and non-empty
     [[ -z "${ES_DATASET+xxx}" ]] &&
     { log_error "The variable \$ES_DATASET is not set. Make sure it is set in the configuration file."; usage; return 1; }
@@ -188,7 +182,7 @@ restart_docker_es() {
   ES_PORT_1=$((9200+ES_PORT_OFFSET))
   ES_PORT_2=$((9300+ES_PORT_OFFSET))
   log_info "Starting docker container ${ES_NAME} on ports ${ES_PORT_1} and ${ES_PORT_2}"
-  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 -e "discovery.type=single-node" -d ${ES_IMAGE} > /dev/null 2>&1
+  docker run --name ${ES_NAME} -p ${ES_PORT_1}:9200 -p ${ES_PORT_2}:9300 --env-file=${SCRIPT_DIR}/elasticsearch-docker.rc -d ${ES_IMAGE} > /dev/null 2>&1
   log_info "Waiting for Elasticsearch to be up and running"
   sleep 15
   return $?
@@ -261,7 +255,7 @@ import_ntfs() {
   log_info "Importing ntfs into mimir"
   local NTFS2MIMIR="${MIMIR_DIR}/target/release/ntfs2mimir"
   command -v "${NTFS2MIMIR}" > /dev/null 2>&1  || { log_error "osm2mimir not found in ${MIMIR_DIR}. Aborting"; return 1; }
-  "${NTFS2MIMIR}" -s "elasticsearch.url='http://${ES_HOST}:$((9200+ES_PORT_OFFSET))'" --input "${DATA_DIR}/ntfs" --config-dir "${SCRIPT_DIR}/../config" run
+  "${NTFS2MIMIR}" -s "elasticsearch.url='http://${ES_HOST}:$((9200+ES_PORT_OFFSET))'" --input "${DATA_DIR}/ntfs/${NTFS_REGION}_ntfs.zip" --config-dir "${SCRIPT_DIR}/../config" run
   [[ $? != 0 ]] && { log_error "Could not import NTFS data from ${DATA_DIR}/ntfs into mimir. Aborting"; return 1; }
   return 0
 }
@@ -270,15 +264,17 @@ import_ntfs() {
 download_ntfs() {
   log_info "Downloading ntfs for ${NTFS_REGION}"
   mkdir -p "${DATA_DIR}/ntfs"
+  if [[ -f "${DATA_DIR}/ntfs/${NTFS_REGION}_ntfs.zip" ]]; then
+    log_info "${DATA_DIR}/ntfs/${NTFS_REGION}_ntfs.zip already exists, skipping download"
+    return 0
+  fi
   wget --quiet -O "${DATA_DIR}/${NTFS_REGION}.csv" "https://navitia.opendatasoft.com/explore/dataset/${NTFS_REGION}/download/?format=csv" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not download NTFS CSV data for ${NTFS_REGION}. Aborting"; return 1; }
   NTFS_URL=`cat ${DATA_DIR}/${NTFS_REGION}.csv | grep NTFS | cut -d';' -f 2`
   [[ $? != 0 ]] && { log_error "Could not find NTFS URL. Aborting"; return 1; }
   wget --quiet --content-disposition --directory-prefix="${DATA_DIR}/ntfs" "${NTFS_URL}" > /dev/null 2>&1
   [[ $? != 0 ]] && { log_error "Could not download NTFS from ${NTFS_URL}. Aborting"; return 1; }
-  rm "${DATA_DIR}/${NTFS_REGION}.csv" > /dev/null 2>&1
-  unzip -o -d "${DATA_DIR}/ntfs" "${DATA_DIR}/ntfs/*.zip" > /dev/null 2>&1
-  [[ $? != 0 ]] && { log_error "Could not unzip NTFS from ${DATA_DIR}/ntfs. Aborting"; return 1; }
+  rm -fr "${DATA_DIR}/${NTFS_REGION}.csv"
   return 0
 }
 
@@ -410,6 +406,6 @@ import_bano
 
 import_osm
 [[ $? != 0 ]] && { log_error "Could not import osm into mimir. Aborting"; exit 1; }
- 
+
 import_ntfs
 [[ $? != 0 ]] && { log_error "Could not import ntfs into mimir. Aborting"; exit 1; }

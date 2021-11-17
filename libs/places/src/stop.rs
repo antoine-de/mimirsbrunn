@@ -11,6 +11,7 @@ use super::context::Context;
 use super::coord::Coord;
 use super::Members;
 use crate::admin::Admin;
+use crate::utils::normalize_id;
 use common::document::{ContainerDocument, Document};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -166,18 +167,6 @@ impl Document for Stop {
 impl ContainerDocument for Stop {
     fn static_doc_type() -> &'static str {
         "stop"
-    }
-}
-
-// This function reformat the id by removing spaces, and prepending a prefix
-pub fn normalize_id(prefix: &str, id: &str) -> String {
-    match prefix {
-        "stop_area" => format!(
-            "{}:{}",
-            prefix,
-            &id.replacen("StopArea:", "", 1).replace(" ", "")
-        ),
-        _ => format!("{}:{}", prefix, &id.replace(" ", "")),
     }
 }
 

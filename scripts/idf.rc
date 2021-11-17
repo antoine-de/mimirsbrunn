@@ -1,14 +1,14 @@
 # The directory in which data is stored
-DATA_DIR="data"
+# DATA_DIR="data"
 
 # Elasticsearch host. If you use docker, it should probably stay at localhost.
 ES_HOST="localhost"
 
 # The port number for elasticsearch host (9200 + offset, 9300 + offset)
-ES_PORT_OFFSET=0
+ES_PORT_OFFSET=3
 
 # The name of the dataset
-ES_DATASET="fr"
+ES_DATASET="idf"
 
 # The name of the image
 ES_IMAGE="docker.elastic.co/elasticsearch/elasticsearch:7.13.0"
@@ -27,4 +27,4 @@ NTFS_REGION="fr-idf"
 OSM_REGION="ile-de-france"
 
 # Base directory for cosmogony
-COSMO_DIR=""
+COSMO_DIR="/home/matt/lab/rust/kisio/cosmogony"
