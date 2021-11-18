@@ -10,8 +10,8 @@ Feature: Pois
     @unittest
     Scenario Outline: Pois exact match
         When the user searches poi datatype for "<query>"
-        Then he finds poi "<label>", a "<poi type>", located near <lat>/<lon>, in the first <limit> results
+        Then he finds poi "<label>", a "<poi_type>" located near <lat>, <lon> in the first <limit> results
 
         Examples:
-            | query              | label                              | poi type  | lat     | lon    | limit  |
+            | query              | label                              | poi_type  | lat     | lon    | limit  |
             | parking saint merd | Parking (Saint-Merd-les-Oussines)  | Parking   | 45.5973 | 2.0703 | 5      |

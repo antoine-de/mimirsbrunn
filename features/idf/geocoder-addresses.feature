@@ -7,7 +7,7 @@ Feature: Baseline
         And streets have been indexed for ile-de-france as idf
 
     Scenario Outline: Geocoder Tester Ile-de-France Addresses
-        When the user searches addr datatype for "<query>" at (<lat>,<lon>)
+        When the user searches addr datatype for "<query>" at <lat>, <lon>
         Then he finds address "<house num>", "<street>", "<city>", and "<postcode>" in the first "<limit>" results
 
         Examples:

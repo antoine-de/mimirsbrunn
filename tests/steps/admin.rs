@@ -13,7 +13,7 @@ use tests::cosmogony;
 
 // Generate Cosmogony
 
-#[given(regex = r"osm file has been processed by cosmogony for ([^\s]*)$")]
+#[given(regex = r"osm file has been processed by cosmogony for (\S+)$")]
 async fn generate_cosmogony(state: &mut GlobalState, region: String) {
     state
         .execute_once(GenerateCosmogony(region))
@@ -42,7 +42,7 @@ impl Step for GenerateCosmogony {
 
 // Index Cosmogony
 
-#[given(regex = r"cosmogony file has been indexed for ([^\s]+) as ([^\s]+)$")]
+#[given(regex = r"cosmogony file has been indexed for (\S+) as (\S+)$")]
 async fn index_cosmogony(state: &mut GlobalState, region: String, dataset: String) {
     state
         .execute_once(IndexCosmogony { region, dataset })
@@ -50,7 +50,7 @@ async fn index_cosmogony(state: &mut GlobalState, region: String, dataset: Strin
         .expect("failed to index cosmogony file");
 }
 
-#[given(regex = r"cosmogony file has been indexed for ([^\s]+)$")]
+#[given(regex = r"cosmogony file has been indexed for (\S+)$")]
 async fn index_cosmogony_default_dataset(state: &mut GlobalState, region: String) {
     let dataset = region.clone();
     index_cosmogony(state, region, dataset).await
@@ -88,14 +88,14 @@ impl Step for IndexCosmogony {
 
 // This step is a condensed format for download + generate + index
 
-#[given(regex = r"admins have been indexed for ([^\s]+) as ([^\s]+)$")]
+#[given(regex = r"admins have been indexed for (\S+) as (\S+)$")]
 async fn admins_available(state: &mut GlobalState, region: String, dataset: String) {
     download_osm(state, region.clone()).await;
     generate_cosmogony(state, region.clone()).await;
     index_cosmogony(state, region, dataset).await;
 }
 
-#[given(regex = r"admins have been indexed for ([^\s]+)$")]
+#[given(regex = r"admins have been indexed for (\S+)$")]
 async fn admins_available_default_dataset(state: &mut GlobalState, region: String) {
     let dataset = region.clone();
     admins_available(state, region, dataset).await;

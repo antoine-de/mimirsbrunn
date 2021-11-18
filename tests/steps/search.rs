@@ -20,7 +20,7 @@ use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 
 // Search place
 
-#[when(regex = r#"the user searches (.+) datatype for "(.*)" at \((.+),(.+)\)$"#)]
+#[when(regex = r#"the user searches (.+) datatype for "(.*)" at (.+), (.+)$"#)]
 async fn search(state: &mut GlobalState, places: String, query: String, lat: f32, lon: f32) {
     perform_search(state, places, query, Coord::new(lat, lon).into()).await;
 }
@@ -294,7 +294,7 @@ impl Step for HasAddress {
 // Find POI
 
 #[then(
-    regex = r#"he finds poi "(.*)", a "(.*)", located near ([0-9\.]*)/([0-9\.]*), in the first (.*) results$"#
+    regex = r#"he finds poi "(.*)", a "(.*)" located near ([0-9\.]+), ([0-9\.]+) in the first (\d+) results$"#
 )]
 async fn find_poi(
     state: &mut GlobalState,

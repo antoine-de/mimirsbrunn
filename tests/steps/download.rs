@@ -9,7 +9,7 @@ use tests::download;
 
 // Download OSM
 
-#[given(regex = r"osm file has been downloaded for ([^\s]+)$")]
+#[given(regex = r"osm file has been downloaded for (\S+)$")]
 pub async fn download_osm(state: &mut GlobalState, region: String) {
     state
         .execute_once(DownloadOsm(region))
@@ -34,7 +34,7 @@ impl Step for DownloadOsm {
 
 // Download bano
 
-#[given(regex = r"bano files have been downloaded for (.+) into ([^\s]+)$")]
+#[given(regex = r"bano files have been downloaded for (.+) into (\S+)$")]
 pub async fn download_bano(state: &mut GlobalState, departments: String, region: String) {
     let departments = departments
         .split(',')
@@ -73,7 +73,7 @@ impl Step for DownloadBano {
 
 // Download NTFS
 
-#[given(regex = r"ntfs file has been downloaded for ([^\s]+)$")]
+#[given(regex = r"ntfs file has been downloaded for (\S+)$")]
 pub async fn download_ntfs(state: &mut GlobalState, region: String) {
     state
         .execute_once(DownloadNTFS { region })

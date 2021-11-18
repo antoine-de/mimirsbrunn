@@ -16,7 +16,7 @@ use tests::bano;
 // The first parameter is the region, it must match a directory name in the fixtures.
 // The second parameter is optional, and it is the dataset. If no dataset is give,
 // then the dataset is set to be the same as the region.
-#[given(regex = r"bano file has been indexed for ([^\s]+) as ([^\s]+)$")]
+#[given(regex = r"bano file has been indexed for (\S+) as (\S+)$")]
 async fn index_bano(state: &mut GlobalState, region: String, dataset: String) {
     state
         .execute_once(IndexBano { region, dataset })
@@ -24,7 +24,7 @@ async fn index_bano(state: &mut GlobalState, region: String, dataset: String) {
         .expect("failed to index Bano file");
 }
 
-#[given(regex = r"bano file has been indexed for ([^\s]+)$")]
+#[given(regex = r"bano file has been indexed for (\S+)$")]
 async fn index_bano_default_dataset(state: &mut GlobalState, region: String) {
     let dataset = region.clone();
     index_bano(state, region, dataset).await;
@@ -65,7 +65,7 @@ impl Step for IndexBano {
 
 // This step is a condensed format for download + index
 
-#[given(regex = r"addresses \(bano\) have been indexed for (.+) into ([^\s]+) as ([^\s]+)$")]
+#[given(regex = r"addresses \(bano\) have been indexed for (.+) into (\S+) as (\S+)$")]
 async fn addresses_available(
     state: &mut GlobalState,
     departments: String,
@@ -76,7 +76,7 @@ async fn addresses_available(
     index_bano(state, region, dataset).await;
 }
 
-#[given(regex = r"addresses \(bano\) have been indexed for (.+) into ([^\s]+)$")]
+#[given(regex = r"addresses \(bano\) have been indexed for (.+) into (\S+)$")]
 async fn addresses_available_default_dataset(
     state: &mut GlobalState,
     departments: String,

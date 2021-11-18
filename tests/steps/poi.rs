@@ -6,19 +6,16 @@ use snafu::ResultExt;
 use crate::error::{self, Error};
 use crate::state::{GlobalState, State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
-use crate::steps::download::{download_osm, DownloadOsm};
+use crate::steps::download::download_osm;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::ports::secondary::remote::Remote;
 use tests::osm;
 
 // Index POIs
 
-#[given(regex = r"pois have been indexed for ([^\s]+) as ([^\s]+)$")]
-async fn index_pois(state: &mut GlobalState, region: String, dataset: String) {
-    state
-        .execute_once(DownloadOsm(region.clone()))
-        .await
-        .expect("failed to download OSM file");
+#[given(regex = r"pois have been indexed for (\S+) as (\S+)$")]
+async fn pois_available(state: &mut GlobalState, region: String, dataset: String) {
+    download_osm(state, region.clone()).await;
 
     state
         .execute_once(IndexPois { region, dataset })
@@ -26,10 +23,10 @@ async fn index_pois(state: &mut GlobalState, region: String, dataset: String) {
         .expect("failed to index OSM file for pois");
 }
 
-#[given(regex = r"pois have been indexed for ([^\s]+)$")]
-async fn index_pois_default_dataset(state: &mut GlobalState, region: String) {
-    let dataset = region.to_string();
-    index_pois(state, region, dataset).await;
+#[given(regex = r"pois have been indexed for (\S+)$")]
+async fn pois_available_default_dataset(state: &mut GlobalState, region: String) {
+    let dataset = region.clone();
+    pois_available(state, region, dataset).await;
 }
 
 /// Index an osm file for a given region into Elasticsearch, extracting pois
@@ -63,18 +60,4 @@ impl Step for IndexPois {
             .map(|status| status.into())
             .context(error::IndexOsm)
     }
-}
-
-// This step is a condensed format for download + index
-
-#[given(regex = r"pois have been indexed for ([^\s]+) as ([^\s]+)$")]
-async fn pois_available(state: &mut GlobalState, region: String, dataset: String) {
-    download_osm(state, region.clone()).await;
-    index_pois(state, region, dataset).await;
-}
-
-#[given(regex = r"pois have been indexed for ([^\s]+)$")]
-async fn pois_available_default_dataset(state: &mut GlobalState, region: String) {
-    let dataset = region.clone();
-    pois_available(state, region, dataset).await;
 }
