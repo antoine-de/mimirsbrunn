@@ -1,7 +1,11 @@
-use async_trait::async_trait;
-use cucumber::{StepContext, World};
 use std::any::Any;
 use std::convert::Infallible;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Mutex, MutexGuard, TryLockError};
+
+use async_trait::async_trait;
+use cucumber::WorldInit;
+use lazy_static::lazy_static;
 
 use crate::error::Error;
 use tests::{bano, cosmogony, download, ntfs, osm};
@@ -61,7 +65,7 @@ impl From<osm::Status> for StepStatus {
 /// A step which can be run from current state.
 #[async_trait(?Send)]
 pub trait Step: Sized + 'static {
-    async fn execute(&mut self, world: &State, ctx: &StepContext) -> Result<StepStatus, Error>;
+    async fn execute(&mut self, world: &State) -> Result<StepStatus, Error>;
 }
 
 /// Register the steps that have been executed so far.
@@ -70,30 +74,28 @@ pub trait Step: Sized + 'static {
 /// executed before, filtered by kind (using `steps_for`) or exact match (using
 /// `status_of`).
 #[derive(Debug, Default)]
-pub struct State(Vec<(Box<dyn Any>, StepStatus)>);
+pub struct State(Vec<(Box<dyn Any + Send + Sync + 'static>, StepStatus)>);
 
 impl State {
     /// Execute a step and update state accordingly.
-    pub async fn execute<S: Step>(
+    pub async fn execute<S: Step + Send + Sync>(
         &mut self,
         mut step: S,
-        ctx: &StepContext,
     ) -> Result<StepStatus, Error> {
-        let status = step.execute(self, ctx).await?;
+        let status = step.execute(self).await?;
         self.0.push((Box::new(step), status));
         Ok(status)
     }
 
     /// Execute a step and update state accordingly if and only if it has not
     /// been executed before.
-    pub async fn execute_once<S: Step + PartialEq>(
+    pub async fn execute_once<S: Step + Send + Sync + PartialEq>(
         &mut self,
         step: S,
-        ctx: &StepContext,
     ) -> Result<StepStatus, Error> {
         match self.status_of(&step) {
             Some(status) => Ok(status),
-            None => self.execute(step, ctx).await,
+            None => self.execute(step).await,
         }
     }
 
@@ -114,11 +116,42 @@ impl State {
     }
 }
 
+// Define a wrapper arround the state to use it globaly arround the cucumber
+// run.
+
+lazy_static! {
+    static ref SHARED_STATE: Mutex<State> = Mutex::default();
+}
+
+#[derive(Debug, WorldInit)]
+pub struct GlobalState(MutexGuard<'static, State>);
+
 #[async_trait(?Send)]
-impl World for State {
+impl cucumber::World for GlobalState {
     type Error = Infallible;
 
     async fn new() -> Result<Self, Self::Error> {
-        Ok(Self::default())
+        let guard = SHARED_STATE.try_lock().unwrap_or_else(|err| match err {
+            TryLockError::Poisoned(poison) => poison.into_inner(),
+            TryLockError::WouldBlock => {
+                panic!("you can only execute one test at a time")
+            }
+        });
+
+        Ok(Self(guard))
+    }
+}
+
+impl Deref for GlobalState {
+    type Target = State;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
+}
+
+impl DerefMut for GlobalState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.deref_mut()
     }
 }

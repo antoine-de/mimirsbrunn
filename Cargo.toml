@@ -87,7 +87,7 @@ async-trait = "0.1.50"
 url = { version = "2.2.2", features = [ "serde" ] }
 approx = "0.5"
 criterion = "0.3"
-cucumber = { package = "cucumber_rust", version = "0.9" }
+cucumber = "0.10"
 elasticsearch = "7.14.0-alpha.1"
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 serial_test = "0.5.1"

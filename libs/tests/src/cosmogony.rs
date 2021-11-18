@@ -4,7 +4,9 @@ use std::path::PathBuf;
 use super::utils::{create_dir_if_not_exists, file_exists};
 use common::document::ContainerDocument;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir::domain::model::configuration::root_doctype_dataset;
+use mimir::domain::model::configuration::{
+    root_doctype_dataset, ContainerConfig, ContainerVisibility,
+};
 use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use places::admin::Admin;
 
@@ -123,7 +125,6 @@ pub async fn index_admins(
     }
 
     let base_path = env!("CARGO_MANIFEST_DIR");
-    let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
     let input_dir: PathBuf = [
         base_path,
         "..",
@@ -137,21 +138,14 @@ pub async fn index_admins(
     .collect();
     let input_file = input_dir.join(format!("{}.jsonl.gz", region));
 
-    let config: mimirsbrunn::settings::cosmogony2mimir::Settings = common::config::config_from(
-        &config_dir,
-        &["cosmogony2mimir", "elasticsearch", "logging"],
-        "testing",
-        None,
-        vec![],
-    )
-    .expect("could not load cosmogony2mimir configuration")
-    .try_into()
-    .expect("invalid cosmogony2mimir configuration");
-
     mimirsbrunn::admin::index_cosmogony(
         &input_file,
         vec!["fr".to_string()],
-        &config.container,
+        &ContainerConfig {
+            name: Admin::static_doc_type().to_string(),
+            dataset: dataset.to_string(),
+            visibility: ContainerVisibility::Public,
+        },
         client,
     )
     .await

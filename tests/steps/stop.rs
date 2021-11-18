@@ -1,59 +1,28 @@
 use async_trait::async_trait;
-use cucumber::{t, StepContext, Steps};
+use cucumber::given;
+use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir::domain::ports::secondary::remote::Remote;
 use snafu::ResultExt;
 
 use crate::error::{self, Error};
-use crate::state::{State, Step, StepStatus};
+use crate::state::{GlobalState, State, Step, StepStatus};
 use crate::steps::admin::IndexCosmogony;
-use crate::steps::download::DownloadNTFS;
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
+use crate::steps::download::download_ntfs;
+use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use tests::ntfs;
 
-pub fn steps() -> Steps<State> {
-    let mut steps: Steps<State> = Steps::new();
+#[given(regex = r"ntfs file has been indexed for ([^\s]+) as ([^\s]+)$")]
+async fn index_ntfs(state: &mut GlobalState, region: String, dataset: String) {
+    state
+        .execute(IndexNTFS { region, dataset })
+        .await
+        .expect("failed to index NTFS file");
+}
 
-    steps.given_regex_async(
-        r#"ntfs file has been indexed for (.*) as (.*)"#,
-        t!(|mut state, ctx| {
-            let region = ctx.matches[1].clone();
-            let dataset = ctx.matches[2].clone();
-
-            state
-                .execute(IndexNTFS { region, dataset }, &ctx)
-                .await
-                .expect("failed to index NTFS file");
-
-            state
-        }),
-    );
-
-    // download and index ntfs
-    steps.given_regex_async(
-        "stops have been indexed for (.*) as (.*)",
-        t!(|mut state, ctx| {
-            let region = ctx.matches[1].clone();
-            let dataset = ctx.matches[2].clone();
-
-            state
-                .execute(
-                    DownloadNTFS {
-                        region: region.clone(),
-                    },
-                    &ctx,
-                )
-                .await
-                .expect("failed to download NTFS file");
-
-            state
-                .execute(IndexNTFS { region, dataset }, &ctx)
-                .await
-                .expect("failed to index NTFS file");
-
-            state
-        }),
-    );
-
-    steps
+#[given(regex = r"stops have been indexed for ([^\s]+) as ([^\s]+)$")]
+async fn stops_available(state: &mut GlobalState, region: String, dataset: String) {
+    download_ntfs(state, region.clone()).await;
+    index_ntfs(state, region, dataset).await;
 }
 
 /// Index an NTFS file for a given region into Elasticsearch.
@@ -67,9 +36,13 @@ pub struct IndexNTFS {
 
 #[async_trait(?Send)]
 impl Step for IndexNTFS {
-    async fn execute(&mut self, state: &State, ctx: &StepContext) -> Result<StepStatus, Error> {
+    async fn execute(&mut self, state: &State) -> Result<StepStatus, Error> {
         let Self { region, dataset } = self;
-        let client: &ElasticsearchStorage = ctx.get().expect("could not get ES client");
+
+        let client = connection_test_pool()
+            .conn(ElasticsearchStorageConfig::default_testing())
+            .await
+            .expect("Could not establish connection to Elasticsearch");
 
         state
             .status_of(&IndexCosmogony {
@@ -78,7 +51,7 @@ impl Step for IndexNTFS {
             })
             .expect("You must index admins before indexing stops");
 
-        ntfs::index_stops(client, region, dataset, false)
+        ntfs::index_stops(&client, region, dataset, false)
             .await
             .map(|status| status.into())
             .context(error::IndexNTFS)
