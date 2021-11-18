@@ -1,5 +1,6 @@
 use snafu::{ResultExt, Snafu};
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 
 pub mod admin;
@@ -8,7 +9,10 @@ pub mod osm_utils;
 pub mod poi;
 pub mod street;
 
-pub type OsmPbfReader = osmpbfreader::OsmPbfReader<File>;
+pub type OsmPbfReader = osmpbfreader::OsmPbfReader<BufReader<File>>;
+
+/// Size of the IO buffer over input PBF file
+const PBF_BUFFER_SIZE: usize = 1024 * 1024; // 1MB
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -17,7 +21,10 @@ pub enum Error {
 }
 
 pub fn make_osm_reader(path: &Path) -> Result<OsmPbfReader, Error> {
-    Ok(osmpbfreader::OsmPbfReader::new(
-        File::open(&path).context(IO)?,
-    ))
+    let file = File::open(&path).context(IO)?;
+
+    Ok(osmpbfreader::OsmPbfReader::new(BufReader::with_capacity(
+        PBF_BUFFER_SIZE,
+        file,
+    )))
 }
