@@ -75,6 +75,8 @@ where
             .await
             .map_err(|err| ModelError::IndexCreation { source: err.into() })?;
 
+        info!("Created new index: {:?}", index);
+
         let stats = self
             .insert_documents(index.name.clone(), documents)
             .instrument(info_span!("Insert documents"))
