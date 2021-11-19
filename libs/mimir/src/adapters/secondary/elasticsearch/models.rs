@@ -53,6 +53,7 @@ pub struct ElasticsearchBulkIndex {
 pub enum ElasticsearchBulkResult {
     Created,
     Updated,
+    Deleted,
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
