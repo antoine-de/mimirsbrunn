@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use config::Config;
 use futures::future::TryFutureExt;
-use futures::stream::Stream;
+use futures::stream::{Stream, StreamExt};
+use serde::Serialize;
+use serde_json::json;
 
 use super::configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration};
 use super::internal;
@@ -9,6 +11,7 @@ use super::ElasticsearchStorage;
 use crate::domain::model::configuration::{
     root_doctype_dataset_ts, ContainerConfig, ContainerVisibility,
 };
+use crate::domain::model::update::UpdateOperation;
 use crate::domain::model::{configuration, index::Index, stats::InsertStats};
 use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use common::document::Document;
@@ -61,19 +64,52 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         S: Stream<Item = D> + Send + Sync + 's,
     {
         self.add_pipeline(
-            String::from(include_str!(
-                "../../../../../../config/pipeline/indexed_at.json"
-            )),
-            String::from("indexed_at"),
+            include_str!("../../../../../../config/pipeline/indexed_at.json"),
+            "indexed_at",
         )
         .await
-        .map_err(|err| StorageError::DocumentInsertionError {
-            source: Box::new(err),
-        })?;
+        .map_err(|err| StorageError::DocumentInsertionError { source: err.into() })?;
+
         self.insert_documents_in_index(index, documents)
             .await
             .map(InsertStats::from)
             .map_err(|err| StorageError::DocumentInsertionError {
+                source: Box::new(err),
+            })
+    }
+
+    async fn update_documents<S>(
+        &self,
+        index: String,
+        operations: S,
+    ) -> Result<InsertStats, StorageError>
+    where
+        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's,
+    {
+        #[derive(Clone, Serialize)]
+        #[serde(into = "serde_json::Value")]
+        struct EsOperation(UpdateOperation);
+
+        #[allow(clippy::from_over_into)]
+        impl Into<serde_json::Value> for EsOperation {
+            fn into(self) -> serde_json::Value {
+                match self.0 {
+                    UpdateOperation::Set { ident, value } => json!({
+                        "script": {
+                            "source": format!("ctx._source.{} = params.value", ident),
+                            "params": { "value": value }
+                        }
+                    }),
+                }
+            }
+        }
+
+        let operations = operations.map(|(doc_id, op)| (doc_id, EsOperation(op)));
+
+        self.update_documents_in_index(index, operations)
+            .await
+            .map(InsertStats::from)
+            .map_err(|err| StorageError::DocumentUpdateError {
                 source: Box::new(err),
             })
     }

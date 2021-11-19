@@ -506,7 +506,6 @@ impl ElasticsearchStorage {
         }
     }
 
-    // Changed the name to avoid recursive calls int storage::insert_documents
     pub(super) async fn insert_documents_in_index<D, S>(
         &self,
         index: String,
@@ -516,6 +515,37 @@ impl ElasticsearchStorage {
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync,
     {
+        self.bulk(
+            index,
+            documents.map(|doc| {
+                let doc_id = doc.id();
+                BulkOperation::index(doc).id(doc_id).into()
+            }),
+        )
+        .await
+    }
+
+    pub(super) async fn update_documents_in_index<D, S>(
+        &self,
+        index: String,
+        updates: S,
+    ) -> Result<InsertStats, Error>
+    where
+        D: Serialize + Send + Sync + 'static,
+        S: Stream<Item = (String, D)> + Send + Sync,
+    {
+        self.bulk(
+            index,
+            updates.map(|(doc_id, operation)| BulkOperation::update(doc_id, operation).into()),
+        )
+        .await
+    }
+
+    async fn bulk<D, S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
+    where
+        D: Serialize + Send + Sync + 'static,
+        S: Stream<Item = BulkOperation<D>> + Send + Sync,
+    {
         let stats = documents
             .chunks(self.config.insertion_chunk_size)
             .map(|chunk| {
@@ -523,16 +553,10 @@ impl ElasticsearchStorage {
                 let client = self.clone();
 
                 async move {
-                    tokio::spawn(client.bulk(
-                        index,
-                        chunk.into_iter().map(|doc| {
-                            let doc_id = doc.id();
-                            BulkOperation::index(doc).id(doc_id).into()
-                        }),
-                    ))
-                    .await
-                    .expect("tokio task panicked")
-                    .unwrap_or_else(|err| panic!("Error inserting chunk: {}", err))
+                    tokio::spawn(client.bulk_block(index, chunk))
+                        .await
+                        .expect("tokio task panicked")
+                        .unwrap_or_else(|err| panic!("Error inserting chunk: {}", err))
                 }
             })
             .buffer_unordered(self.config.insertion_concurrent_requests)
@@ -542,13 +566,13 @@ impl ElasticsearchStorage {
         Ok(stats)
     }
 
-    pub(super) async fn bulk<D>(
+    async fn bulk_block<D>(
         self,
         index: String,
-        chunk: impl Iterator<Item = BulkOperation<D>>,
+        chunk: Vec<BulkOperation<D>>,
     ) -> Result<InsertStats, Error>
     where
-        D: Document + Send + Sync + 'static,
+        D: Serialize + Send + Sync + 'static,
     {
         let mut stats = InsertStats::default();
 
@@ -556,7 +580,7 @@ impl ElasticsearchStorage {
             .client
             .bulk(BulkParts::Index(index.as_str()))
             .request_timeout(self.config.timeout)
-            .body(chunk.collect())
+            .body(chunk)
             .send()
             .await
             .and_then(|res| res.error_for_status_code())
@@ -713,15 +737,16 @@ impl ElasticsearchStorage {
         }
     }
 
-    pub(super) async fn add_pipeline(&self, pipeline: String, name: String) -> Result<(), Error> {
+    pub(super) async fn add_pipeline(&self, pipeline: &str, name: &str) -> Result<(), Error> {
         let pipeline: serde_json::Value =
-            serde_json::from_str(&pipeline).context(JsonDeserialization {
+            serde_json::from_str(pipeline).context(JsonDeserialization {
                 details: format!("Could not deserialize pipeline {}", name),
             })?;
+
         let response = self
             .client
             .ingest()
-            .put_pipeline(IngestPutPipelineParts::Id(&name))
+            .put_pipeline(IngestPutPipelineParts::Id(name))
             .request_timeout(self.config.timeout)
             .body(pipeline)
             .send()
