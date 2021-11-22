@@ -17,15 +17,12 @@ use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
-use std::sync::Arc;
 use tracing::info;
 
 use super::configuration::{
     ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
 };
-use super::models::{
-    ElasticsearchBulkError, ElasticsearchBulkResponse, ElasticsearchSearchResponse,
-};
+use super::models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
 use crate::adapters::secondary::elasticsearch::models::ElasticsearchBulkResult;
 use crate::domain::model::{
@@ -524,7 +521,6 @@ impl ElasticsearchStorage {
                 let doc_id = doc.id();
                 BulkOperation::index(doc).id(doc_id).into()
             }),
-            |_| false,
         )
         .await
     }
@@ -541,33 +537,23 @@ impl ElasticsearchStorage {
         self.bulk(
             index,
             updates.map(|(doc_id, operation)| BulkOperation::update(doc_id, operation).into()),
-            |err| err.err_type == "document_missing_exception",
         )
         .await
     }
 
-    async fn bulk<D, S, F>(
-        &self,
-        index: String,
-        documents: S,
-        allow_errors: F,
-    ) -> Result<InsertStats, Error>
+    async fn bulk<D, S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
     where
         D: Serialize + Send + Sync + 'static,
         S: Stream<Item = BulkOperation<D>> + Send + Sync,
-        F: Fn(&ElasticsearchBulkError) -> bool + Sync + Send + 'static,
     {
-        let allow_errors = Arc::new(allow_errors);
-
         let stats = documents
             .chunks(self.config.insertion_chunk_size)
             .map(|chunk| {
                 let index = index.clone();
                 let client = self.clone();
-                let filter_errors = allow_errors.clone();
 
                 async move {
-                    tokio::spawn(client.bulk_block(index, chunk, move |err| filter_errors(err)))
+                    tokio::spawn(client.bulk_block(index, chunk))
                         .await
                         .expect("tokio task panicked")
                         .unwrap_or_else(|err| panic!("Error inserting chunk: {}", err))
@@ -584,7 +570,6 @@ impl ElasticsearchStorage {
         self,
         index: String,
         chunk: Vec<BulkOperation<D>>,
-        allow_errors: impl Fn(&ElasticsearchBulkError) -> bool,
     ) -> Result<InsertStats, Error>
     where
         D: Serialize + Send + Sync + 'static,
@@ -614,21 +599,17 @@ impl ElasticsearchStorage {
                 resp.json().await.context(ElasticsearchDeserialization)?;
 
             es_response.items.into_iter().try_for_each(|item| {
-                match item.inner().result {
-                    Ok(result) => match result {
-                        ElasticsearchBulkResult::Created => stats.created += 1,
-                        ElasticsearchBulkResult::Updated => stats.updated += 1,
-                        _ => unreachable!("no port implements document deletion"),
-                    },
-                    Err(err) if allow_errors(&err) => {}
-                    Err(err) => {
-                        return Err(Error::NotCreated {
-                            details: err.reason,
-                        })
-                    }
+                let result = item.inner().result.map_err(|err| Error::NotCreated {
+                    details: err.reason,
+                })?;
+
+                match result {
+                    ElasticsearchBulkResult::Created => stats.created += 1,
+                    ElasticsearchBulkResult::Updated => stats.updated += 1,
+                    _ => unreachable!("no port implements document deletion"),
                 }
 
-                Ok(())
+                Ok::<_, Error>(())
             })?;
 
             Ok(stats)
