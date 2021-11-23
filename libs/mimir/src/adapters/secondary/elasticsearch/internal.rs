@@ -22,8 +22,9 @@ use tracing::info;
 use super::configuration::{
     ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
 };
-use super::models::{ElasticsearchBulkInsertResponse, ElasticsearchSearchResponse};
+use super::models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
+use crate::adapters::secondary::elasticsearch::models::ElasticsearchBulkResult;
 use crate::domain::model::{
     configuration,
     index::{Index, IndexStatus},
@@ -574,21 +575,19 @@ impl ElasticsearchStorage {
             })?;
 
         if resp.status_code().is_success() {
-            let body: ElasticsearchBulkInsertResponse =
+            let body: ElasticsearchBulkResponse =
                 resp.json().await.context(ElasticsearchDeserialization)?;
 
             body.items.iter().try_for_each(|item| {
-                match item.index.result.as_str() {
-                    "created" => stats.created += 1,
-                    "updated" => stats.updated += 1,
-                    _ => {
-                        return Err(Error::NotCreated {
-                            details: format!("not created: {:?}", item),
-                        })
-                    }
-                }
-
-                Ok(())
+                (item.index.result)
+                    .as_ref()
+                    .map_err(|err| Error::NotCreated {
+                        details: err.reason.to_string(),
+                    })
+                    .map(|result| match result {
+                        ElasticsearchBulkResult::Created => stats.created += 1,
+                        ElasticsearchBulkResult::Updated => stats.updated += 1,
+                    })
             })?;
 
             Ok(stats)

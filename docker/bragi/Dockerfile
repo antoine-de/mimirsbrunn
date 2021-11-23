@@ -81,4 +81,4 @@ ENV BRAGI_ELASTICSEARCH_URL     http://localhost:9200/munin
 ENV BRAGI_SERVICE_HOST          0.0.0.0
 ENV BRAGI_SERVICE_PORT          4000
 
-CMD ["/usr/bin/bragi", "--config-dir", "/etc/bragi", "run"]
+ENTRYPOINT ["/usr/bin/bragi", "--config-dir", "/etc/bragi", "run"]
