@@ -28,6 +28,9 @@ pub enum Error {
     InvalidExtention,
 }
 
+/// Size of the IO buffer over input CSV file
+const CSV_BUFFER_SIZE: usize = 1024 * 1024; // 1MB
+
 /// Import the addresses found in path, using the given (Elastiscsearch) configuration and client.
 /// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
 /// address.
@@ -115,10 +118,8 @@ async fn records_from_file<T>(
 where
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    let file_read = File::open(file)
-        .await
-        .context(InvalidIO)
-        .map(BufReader::new)?;
+    let file_read =
+        BufReader::with_capacity(CSV_BUFFER_SIZE, File::open(file).await.context(InvalidIO)?);
 
     let data_read = {
         if file.extension().and_then(OsStr::to_str) == Some("csv") {

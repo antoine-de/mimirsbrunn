@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::path::Path;
-use tokio::io::AsyncReadExt;
+use tokio::fs::File;
+use tokio::io::{AsyncReadExt, BufReader};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -113,11 +114,17 @@ impl QuerySettings {
         P: AsRef<Path>,
     {
         let mut settings_content = String::new();
-        let mut settings_file = tokio::fs::File::open(path).await.context(InvalidFileOpen)?;
+
+        let mut settings_file = File::open(path)
+            .await
+            .map(BufReader::new)
+            .context(InvalidFileOpen)?;
+
         settings_file
             .read_to_string(&mut settings_content)
             .await
             .context(InvalidFileOpen)?;
+
         QuerySettings::new(&settings_content)
     }
 }
