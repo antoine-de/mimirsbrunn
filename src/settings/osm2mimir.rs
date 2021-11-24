@@ -1,4 +1,3 @@
-use config::Config;
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::model::configuration::ContainerConfig;
 /// This module contains the definition for osm2mimir configuration and command line arguments.
@@ -16,11 +15,8 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub enum Error {
     #[snafu(display("Config Compilation Error: {}", source))]
     ConfigCompilation { source: common::config::Error },
-    #[snafu(display("Config Merge Error: {} [{}]", msg, source))]
-    ConfigMerge {
-        msg: String,
-        source: config::ConfigError,
-    },
+    #[snafu(display("Config Error: {}", source))]
+    ConfigBuild { source: config::ConfigError },
     #[snafu(display("Invalid Configuration: {}", msg))]
     Invalid { msg: String },
 }
@@ -108,28 +104,16 @@ pub enum Command {
 impl Settings {
     // Read the configuration from <config-dir>/osm2mimir and <config-dir>/elasticsearch
     pub fn new(opts: &Opts) -> Result<Self, Error> {
-        let mut builder = Config::builder();
-
-        builder = builder.add_source(
-            common::config::config_from(
-                opts.config_dir.as_ref(),
-                &["osm2mimir", "elasticsearch", "logging"],
-                opts.run_mode.as_deref(),
-                "MIMIR",
-                opts.settings.clone(),
-            )
-            .context(ConfigCompilation)?,
-        );
-
-        // FIXME depending on service.pois.import and service.streets.import, read the corresponding
-        // elasticsearch sub dirs.
-        let config = builder.build().context(ConfigMerge {
-            msg: String::from("Cannot build the configuration from sources"),
-        })?;
-
-        config.try_into().context(ConfigMerge {
-            msg: String::from("Cannot convert configuration into osm2mimir settings"),
-        })
+        common::config::config_from(
+            opts.config_dir.as_ref(),
+            &["osm2mimir", "elasticsearch", "logging"],
+            opts.run_mode.as_deref(),
+            "MIMIR",
+            opts.settings.clone(),
+        )
+        .context(ConfigCompilation)?
+        .try_into()
+        .context(ConfigBuild)
     }
 }
 

@@ -47,20 +47,20 @@ pub async fn import<C: Clone + ConfigureBackend>(
                 .to_string();
             let client = client.clone();
             async move {
-                let config = config::Config::builder()
+                let config = config::Config::default()
                     .set_default("elasticsearch.name", template_name)
                     .unwrap()
-                    .add_source(config::File::new(
+                    .merge(config::File::new(
                         template.to_str().unwrap(),
                         config::FileFormat::Json,
                     ))
-                    .build()
                     .context(ConfigMerge {
                         details: format!(
                             "could not read template configuration from {}",
                             template.display()
                         ),
-                    })?;
+                    })?
+                    .clone();
 
                 match template_type {
                     Template::Component => {
