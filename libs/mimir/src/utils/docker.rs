@@ -162,7 +162,7 @@ impl Default for DockerConfig {
             &["elasticsearch"],
             None,
             None,
-            None,
+            vec![],
         );
 
         config
@@ -186,7 +186,7 @@ impl DockerConfig {
             &["docker"],
             "testing",
             "MIMIR_TEST",
-            None,
+            vec![],
         );
 
         config

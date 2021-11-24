@@ -29,7 +29,6 @@ pub enum Error {
 pub fn config_from<
     'a,
     R: Into<Option<&'a str>> + Clone,
-    O: IntoIterator<Item = String>,
     P: Into<Option<&'a str>>,
     D: AsRef<str>,
 >(
@@ -37,7 +36,7 @@ pub fn config_from<
     sub_dirs: &[D],
     run_mode: R,
     prefix: P,
-    overrides: O,
+    overrides: Vec<String>,
 ) -> Result<Config, Error> {
     let mut config = sub_dirs
         .iter()
@@ -75,9 +74,11 @@ pub fn config_from<
     };
 
     // Add command line overrides
-    config
-        .merge(config_from_args(overrides)?)
-        .context(ConfigCompilation)?;
+    if !overrides.is_empty() {
+        config
+            .merge(config_from_args(overrides)?)
+            .context(ConfigCompilation)?;
+    }
 
     Ok(config)
 }
