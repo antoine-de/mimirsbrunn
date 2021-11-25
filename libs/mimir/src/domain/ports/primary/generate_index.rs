@@ -84,7 +84,7 @@ where
 /// Handle over an index which is beeing generated, it can be used to insert
 /// or update documents.  When all documents are ready, `.publish()` must be
 /// called to make the index available.
-#[must_use]
+#[must_use = "An index must be used after its documents are built."]
 pub struct ContainerGenerator<'a, D, T: ?Sized>
 where
     D: ContainerDocument + Send + Sync + 'static,

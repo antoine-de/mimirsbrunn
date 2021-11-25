@@ -64,7 +64,10 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         S: Stream<Item = D> + Send + Sync + 's,
     {
         self.add_pipeline(
-            include_str!("../../../../../../config/pipeline/indexed_at.json"),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../config/pipeline/indexed_at.json",
+            )),
             "indexed_at",
         )
         .await
