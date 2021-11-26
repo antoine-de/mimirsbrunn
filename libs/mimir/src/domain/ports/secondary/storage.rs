@@ -7,6 +7,7 @@ use crate::domain::model::{
     configuration::{ContainerConfig, ContainerVisibility},
     index::Index,
     stats::InsertStats,
+    update::UpdateOperation,
 };
 use common::document::Document;
 
@@ -23,6 +24,9 @@ pub enum Error {
 
     #[snafu(display("Document Insertion Error: {}", source))]
     DocumentInsertionError { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Document Update Error: {}", source))]
+    DocumentUpdateError { source: Box<dyn std::error::Error> },
 
     #[snafu(display("Index Refresh Error: {}", source))]
     IndexPublicationError { source: Box<dyn std::error::Error> },
@@ -57,6 +61,10 @@ pub trait Storage<'s> {
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync + 's;
 
+    async fn update_documents<S>(&self, index: String, operations: S) -> Result<InsertStats, Error>
+    where
+        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's;
+
     async fn publish_index(
         &self,
         index: Index,
@@ -83,6 +91,10 @@ mockall::mock! {
         where
             D: Document + Send + Sync + 'static,
             S: Stream<Item = D> + Send + Sync + 'static;
+
+        fn update_documents_<S>(&self, index: String, operations: S) -> Result<InsertStats, Error>
+        where
+            S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 'static;
 
         fn publish_index_(
             &self,
@@ -119,6 +131,13 @@ impl Storage<'static> for MockStorage {
         S: Stream<Item = D> + Send + Sync + 'static,
     {
         self.insert_documents_(index, documents)
+    }
+
+    async fn update_documents<S>(&self, index: String, operations: S) -> Result<InsertStats, Error>
+    where
+        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 'static,
+    {
+        self.update_documents_(index, operations)
     }
 
     async fn publish_index(
@@ -161,6 +180,13 @@ where
         S: Stream<Item = D> + Send + Sync + 's,
     {
         (**self).insert_documents(index, documents).await
+    }
+
+    async fn update_documents<S>(&self, index: String, operations: S) -> Result<InsertStats, Error>
+    where
+        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's,
+    {
+        (**self).update_documents(index, operations).await
     }
 
     async fn publish_index(

@@ -37,12 +37,23 @@ pub struct ElasticsearchBulkResponse {
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
-pub struct ElasticsearchBulkItem {
-    pub index: ElasticsearchBulkIndex,
+#[serde(rename_all = "lowercase")]
+pub enum ElasticsearchBulkItem {
+    Index(ElasticsearchBulkStatus),
+    Update(ElasticsearchBulkStatus),
+}
+
+impl ElasticsearchBulkItem {
+    pub fn inner(self) -> ElasticsearchBulkStatus {
+        match self {
+            ElasticsearchBulkItem::Index(inner) => inner,
+            ElasticsearchBulkItem::Update(inner) => inner,
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
-pub struct ElasticsearchBulkIndex {
+pub struct ElasticsearchBulkStatus {
     pub status: u16,
     #[serde(flatten, deserialize_with = "deserialize_bulk_result")]
     pub result: Result<ElasticsearchBulkResult, ElasticsearchBulkError>,
@@ -53,6 +64,7 @@ pub struct ElasticsearchBulkIndex {
 pub enum ElasticsearchBulkResult {
     Created,
     Updated,
+    Deleted,
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
@@ -117,7 +129,7 @@ mod tests {
                     }
                 },
                 {
-                    "index": {
+                    "update": {
                         "_index": "index1",
                         "_type" : "_doc",
                         "_id": "7",
@@ -145,24 +157,20 @@ mod tests {
             response,
             ElasticsearchBulkResponse {
                 items: vec![
-                    ElasticsearchBulkItem {
-                        index: ElasticsearchBulkIndex {
-                            status: 404,
-                            result: Err(ElasticsearchBulkError {
-                                err_type: "document_missing_exception".to_string(),
-                                reason: "[_doc][5]: document missing".to_string(),
-                                index: "index1".to_string().into(),
-                                index_uuid: "aAsFqTI0Tc2W0LCWgPNrOA".to_string().into(),
-                                shard: "0".to_string().into(),
-                            })
-                        }
-                    },
-                    ElasticsearchBulkItem {
-                        index: ElasticsearchBulkIndex {
-                            status: 201,
-                            result: Ok(ElasticsearchBulkResult::Created)
-                        }
-                    }
+                    ElasticsearchBulkItem::Index(ElasticsearchBulkStatus {
+                        status: 404,
+                        result: Err(ElasticsearchBulkError {
+                            err_type: "document_missing_exception".to_string(),
+                            reason: "[_doc][5]: document missing".to_string(),
+                            index: "index1".to_string().into(),
+                            index_uuid: "aAsFqTI0Tc2W0LCWgPNrOA".to_string().into(),
+                            shard: "0".to_string().into(),
+                        })
+                    }),
+                    ElasticsearchBulkItem::Update(ElasticsearchBulkStatus {
+                        status: 201,
+                        result: Ok(ElasticsearchBulkResult::Created)
+                    })
                 ]
             }
         )

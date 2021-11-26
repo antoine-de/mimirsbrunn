@@ -67,8 +67,8 @@ pub enum Error {
     Failed { details: String },
 
     /// Elasticsearch Document Insertion Exception
-    #[snafu(display("Elasticsearch Failure without Exception: {}", details))]
-    ElasticsearchFailureWithoutException { details: String },
+    #[snafu(display("Elasticsearch Failure without Exception"))]
+    ElasticsearchFailureWithoutException,
 
     /// Elasticsearch Unhandled Exception
     #[snafu(display("Elasticsearch Unhandled Exception: {}", details))]
@@ -207,6 +207,14 @@ impl From<Exception> for Error {
     }
 }
 
+impl From<Option<Exception>> for Error {
+    fn from(opt_exc: Option<Exception>) -> Self {
+        opt_exc
+            .map(Into::into)
+            .unwrap_or(Error::ElasticsearchFailureWithoutException)
+    }
+}
+
 impl ElasticsearchStorage {
     pub(super) async fn create_index(&self, index_name: &str) -> Result<(), Error> {
         let response = self
@@ -260,9 +268,7 @@ impl ElasticsearchStorage {
                     let err = Error::from(exception);
                     Err(err)
                 }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
+                None => Err(Error::ElasticsearchFailureWithoutException),
             }
         }
     }
@@ -326,9 +332,7 @@ impl ElasticsearchStorage {
                     let err = Error::from(exception);
                     Err(err)
                 }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
+                None => Err(Error::ElasticsearchFailureWithoutException),
             }
         }
     }
@@ -392,9 +396,7 @@ impl ElasticsearchStorage {
                     let err = Error::from(exception);
                     Err(err)
                 }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
+                None => Err(Error::ElasticsearchFailureWithoutException),
             }
         }
     }
@@ -453,9 +455,7 @@ impl ElasticsearchStorage {
                     let err = Error::from(exception);
                     Err(err)
                 }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
+                None => Err(Error::ElasticsearchFailureWithoutException),
             }
         }
     }
@@ -501,14 +501,11 @@ impl ElasticsearchStorage {
                         Err(err)
                     }
                 }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
+                None => Err(Error::ElasticsearchFailureWithoutException),
             }
         }
     }
 
-    // Changed the name to avoid recursive calls int storage::insert_documents
     pub(super) async fn insert_documents_in_index<D, S>(
         &self,
         index: String,
@@ -518,6 +515,37 @@ impl ElasticsearchStorage {
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync,
     {
+        self.bulk(
+            index,
+            documents.map(|doc| {
+                let doc_id = doc.id();
+                BulkOperation::index(doc).id(doc_id).into()
+            }),
+        )
+        .await
+    }
+
+    pub(super) async fn update_documents_in_index<D, S>(
+        &self,
+        index: String,
+        updates: S,
+    ) -> Result<InsertStats, Error>
+    where
+        D: Serialize + Send + Sync + 'static,
+        S: Stream<Item = (String, D)> + Send + Sync,
+    {
+        self.bulk(
+            index,
+            updates.map(|(doc_id, operation)| BulkOperation::update(doc_id, operation).into()),
+        )
+        .await
+    }
+
+    async fn bulk<D, S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
+    where
+        D: Serialize + Send + Sync + 'static,
+        S: Stream<Item = BulkOperation<D>> + Send + Sync,
+    {
         let stats = documents
             .chunks(self.config.insertion_chunk_size)
             .map(|chunk| {
@@ -525,7 +553,7 @@ impl ElasticsearchStorage {
                 let client = self.clone();
 
                 async move {
-                    tokio::spawn(client.insert_chunk_in_index(index, chunk))
+                    tokio::spawn(client.bulk_block(index, chunk))
                         .await
                         .expect("tokio task panicked")
                         .unwrap_or_else(|err| panic!("Error inserting chunk: {}", err))
@@ -538,35 +566,21 @@ impl ElasticsearchStorage {
         Ok(stats)
     }
 
-    // Changed the name to avoid recursive calls int storage::insert_documents
-    pub(super) async fn insert_chunk_in_index<D>(
+    async fn bulk_block<D>(
         self,
         index: String,
-        chunk: Vec<D>,
+        chunk: Vec<BulkOperation<D>>,
     ) -> Result<InsertStats, Error>
     where
-        D: Document + Send + Sync + 'static,
+        D: Serialize + Send + Sync + 'static,
     {
         let mut stats = InsertStats::default();
-
-        // We try to insert the chunk using bulk insertion.
-        // We then analyze the result, which contains an array of 'items'.
-        // Each item must contain the string 'created'. So we iterate through these items,
-        // and build a Result<(), Error>, and skip while it `is_ok()`. If we have an
-        // error, we report it.
-        let ops: Vec<BulkOperation<D>> = chunk
-            .into_iter()
-            .map(|doc| {
-                let doc_id = doc.id();
-                BulkOperation::index(doc).id(doc_id).into()
-            })
-            .collect();
 
         let resp = self
             .client
             .bulk(BulkParts::Index(index.as_str()))
             .request_timeout(self.config.timeout)
-            .body(ops)
+            .body(chunk)
             .send()
             .await
             .and_then(|res| res.error_for_status_code())
@@ -574,34 +588,31 @@ impl ElasticsearchStorage {
                 details: "cannot bulk insert",
             })?;
 
-        if resp.status_code().is_success() {
-            let body: ElasticsearchBulkResponse =
+        if !resp.status_code().is_success() {
+            Err(resp
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
+        } else {
+            let es_response: ElasticsearchBulkResponse =
                 resp.json().await.context(ElasticsearchDeserialization)?;
 
-            body.items.iter().try_for_each(|item| {
-                (item.index.result)
-                    .as_ref()
-                    .map_err(|err| Error::NotCreated {
-                        details: err.reason.to_string(),
-                    })
-                    .map(|result| match result {
-                        ElasticsearchBulkResult::Created => stats.created += 1,
-                        ElasticsearchBulkResult::Updated => stats.updated += 1,
-                    })
+            es_response.items.into_iter().try_for_each(|item| {
+                let result = item.inner().result.map_err(|err| Error::NotCreated {
+                    details: err.reason,
+                })?;
+
+                match result {
+                    ElasticsearchBulkResult::Created => stats.created += 1,
+                    ElasticsearchBulkResult::Updated => stats.updated += 1,
+                    _ => unreachable!("no port implements document deletion"),
+                }
+
+                Ok::<_, Error>(())
             })?;
 
             Ok(stats)
-        } else {
-            let exception = resp.exception().await.ok().unwrap();
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
         }
     }
 
@@ -719,29 +730,24 @@ impl ElasticsearchStorage {
                 });
             Ok(aliases)
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
         }
     }
 
-    pub(super) async fn add_pipeline(&self, pipeline: String, name: String) -> Result<(), Error> {
+    pub(super) async fn add_pipeline(&self, pipeline: &str, name: &str) -> Result<(), Error> {
         let pipeline: serde_json::Value =
-            serde_json::from_str(&pipeline).context(JsonDeserialization {
+            serde_json::from_str(pipeline).context(JsonDeserialization {
                 details: format!("Could not deserialize pipeline {}", name),
             })?;
+
         let response = self
             .client
             .ingest()
-            .put_pipeline(IngestPutPipelineParts::Id(&name))
+            .put_pipeline(IngestPutPipelineParts::Id(name))
             .request_timeout(self.config.timeout)
             .body(pipeline)
             .send()
@@ -784,17 +790,11 @@ impl ElasticsearchStorage {
                 })
             }
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
         }
     }
 
@@ -871,17 +871,11 @@ impl ElasticsearchStorage {
 
         // Note We won't analyze the details of the response.
         if !response.status_code().is_success() {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
         } else {
             Ok(())
         }
@@ -1062,17 +1056,11 @@ impl ElasticsearchStorage {
 
             Ok(body.into_hits().collect())
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
         }
     }
 
@@ -1131,17 +1119,11 @@ impl ElasticsearchStorage {
                 })?;
             Ok(explanation)
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
         }
     }
 
@@ -1184,17 +1166,11 @@ impl ElasticsearchStorage {
 
             StorageHealth::try_from(health)
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
         }
     }
 
@@ -1244,17 +1220,11 @@ impl ElasticsearchStorage {
                 })?;
             Ok(version.to_string())
         } else {
-            let exception = response.exception().await.ok().unwrap();
-
-            match exception {
-                Some(exception) => {
-                    let err = Error::from(exception);
-                    Err(err)
-                }
-                None => Err(Error::ElasticsearchFailureWithoutException {
-                    details: String::from("Fail status without exception"),
-                }),
-            }
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
         }
     }
 }

@@ -6,3 +6,6 @@ pub mod utils;
 // context, it makes sense to re-export it here instead of publishing it as
 // its own package.
 pub use common;
+
+#[cfg(test)]
+mod tests;

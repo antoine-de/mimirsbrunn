@@ -26,6 +26,9 @@ pub enum Error {
     #[snafu(display("Document Stream Insertion Error: {}", source))]
     DocumentStreamInsertion { source: Box<dyn std::error::Error> },
 
+    #[snafu(display("Document Stream Update Error: {}", source))]
+    DocumentStreamUpdate { source: Box<dyn std::error::Error> },
+
     #[snafu(display("Expected Index: {}", index))]
     ExpectedIndex { index: String },
 
