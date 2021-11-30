@@ -30,6 +30,7 @@ bincode = "1.3.3"
 chrono = "0.4"
 chrono-tz = "0.5"
 clap = "2.33.1"
+config = { version = "0.11", default_features = false, features = ["json", "toml"] }
 cosmogony = "0.10.3"
 csv = "1.1"
 csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
@@ -71,12 +72,6 @@ warp = { version = "0.3.1" }
 common = { path = "libs/common" }
 mimir  = { path = "libs/mimir" }
 places = { path = "libs/places" }
-
-[dependencies.config]
-git = "https://github.com/mehcode/config-rs.git"
-branch = "master"
-default_features = false
-features = ["json", "toml"]
 
 [lib]
 name = "mimirsbrunn"

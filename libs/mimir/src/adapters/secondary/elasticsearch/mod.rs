@@ -52,7 +52,7 @@ impl Default for ElasticsearchStorageConfig {
             &["elasticsearch"],
             None,
             None,
-            None,
+            vec![],
         );
 
         config
@@ -71,7 +71,7 @@ impl ElasticsearchStorageConfig {
             &["elasticsearch"],
             "testing",
             "MIMIR_TEST",
-            None,
+            vec![],
         );
 
         config

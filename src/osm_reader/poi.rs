@@ -113,9 +113,8 @@ impl Default for PoiConfig {
         let input_dir: PathBuf = [base_path, "config", "osm2mimir"].iter().collect();
         let input_file = input_dir.join("default.toml");
 
-        Config::builder()
-            .add_source(config::File::from(input_file))
-            .build()
+        Config::default()
+            .with_merged(config::File::from(input_file))
             .expect("cannot build the default poi configuration")
             .get("pois.config")
             .expect("poi configuration")

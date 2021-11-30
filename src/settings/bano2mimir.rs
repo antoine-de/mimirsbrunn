@@ -1,5 +1,4 @@
 /// This module contains the definition for bano2mimir configuration and command line arguments.
-use config::Config;
 use mimir::domain::model::configuration::ContainerConfig;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
@@ -16,11 +15,8 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub enum Error {
     #[snafu(display("Config Compilation Error: {}", source))]
     ConfigCompilation { source: common::config::Error },
-    #[snafu(display("Config Merge Error: {} [{}]", msg, source))]
-    ConfigMerge {
-        msg: String,
-        source: config::ConfigError,
-    },
+    #[snafu(display("Config Error: {}", source))]
+    ConfigBuild { source: config::ConfigError },
     #[snafu(display("Invalid Configuration: {}", msg))]
     Invalid { msg: String },
 }
@@ -91,26 +87,16 @@ pub enum Command {
 impl Settings {
     // Read the configuration from <config-dir>/bano2mimir and <config-dir>/elasticsearch
     pub fn new(opts: &Opts) -> Result<Self, Error> {
-        let mut builder = Config::builder();
-
-        builder = builder.add_source(
-            common::config::config_from(
-                opts.config_dir.as_ref(),
-                &["bano2mimir", "elasticsearch", "logging"],
-                opts.run_mode.as_deref(),
-                "MIMIR",
-                opts.settings.clone(),
-            )
-            .context(ConfigCompilation)?,
-        );
-
-        let config = builder.build().context(ConfigMerge {
-            msg: String::from("Cannot build the configuration from sources"),
-        })?;
-
-        config.try_into().context(ConfigMerge {
-            msg: String::from("Cannot convert configuration into bano2mimir settings"),
-        })
+        common::config::config_from(
+            opts.config_dir.as_ref(),
+            &["bano2mimir", "elasticsearch", "logging"],
+            opts.run_mode.as_deref(),
+            "MIMIR",
+            opts.settings.clone(),
+        )
+        .context(ConfigCompilation)?
+        .try_into()
+        .context(ConfigBuild)
     }
 }
 
