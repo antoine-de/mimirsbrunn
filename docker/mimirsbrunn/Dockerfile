@@ -48,6 +48,7 @@ RUN --mount=type=cache,target=/home/mimirsbrunn/target \
        target/release/cosmogony2mimir                  \
        target/release/bano2mimir                       \
        target/release/openaddresses2mimir              \
+       target/release/ctlmimir                         \
        bin/
 
 

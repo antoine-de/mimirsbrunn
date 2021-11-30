@@ -1,5 +1,5 @@
+use clap::Parser;
 use snafu::{ResultExt, Snafu};
-use structopt::StructOpt;
 
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::secondary::remote::Remote;
@@ -24,7 +24,7 @@ pub enum Error {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let opts = settings::Opts::from_args();
+    let opts = settings::Opts::parse();
 
     let settings = settings::Settings::new(&opts).context(Settings)?;
 

@@ -63,7 +63,7 @@ This is a list of (some of) the main crates the projects depends on:
 </tr>
 <tr class="even">
 <td>commandline</td>
-<td>structopt</td>
+<td>clap</td>
 <td></td>
 <td></td>
 </tr>
