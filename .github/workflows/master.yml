@@ -11,6 +11,10 @@ jobs:
     strategy:
       matrix:
         include:
+          - version: jessie
+            packages: pkg-config libssl-dev
+            rust: 1.54.0
+
           - version: buster
             packages: pkg-config libssl-dev
             rust: 1.54.0
