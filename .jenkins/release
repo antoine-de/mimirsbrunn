@@ -25,11 +25,8 @@ pipeline {
                 withCredentials([string(credentialsId: 'jenkins-core-github-access-token', variable: 'GITHUB_TOKEN')]) {
                     sh '''
                         MIMIR_VERSION=`githubflow_get_new_version --release-type $release_type  --remote-name origin`
-                        for file_toml in Cargo.toml libs/bragi/Cargo.toml libs/mimir/Cargo.toml libs/tools/Cargo.toml libs/docker_wrapper/Cargo.toml
-                        do
-                            sed -i -e "s/^version\\s*=\\s*\\".*\\"/version = \\"$MIMIR_VERSION\\"/" $file_toml;
-                        done
-                        git add Cargo.toml libs/bragi/Cargo.toml libs/mimir/Cargo.toml libs/tools/Cargo.toml libs/docker_wrapper/Cargo.toml
+                        sed -i -e "s/^version\\s*=\\s*\\".*\\"/version = \\"$MIMIR_VERSION\\"/" Cargo.toml;
+                        git add Cargo.toml
                         git commit -m "[Versioned] New $release_type version $MIMIR_VERSION"
                         git push https://jenkins-kisio-core:$GITHUB_TOKEN@github.com/CanalTP/mimirsbrunn.git master
                     '''
