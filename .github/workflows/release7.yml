@@ -37,12 +37,10 @@ jobs:
       # Be careful, binaries will not have the same name !
       - name: Temporary rename binaries with 7
         run: |
-          mv src/bin/bano2mimir.rs src/bin/bano2mimir7.rs
-          mv src/bin/cosmogony2mimir.rs src/bin/cosmogony2mimir7.rs
-          mv src/bin/ctlmimir.rs src/bin/ctlmimir7.rs
-          mv src/bin/openaddresses2mimir.rs src/bin/openaddresses2mimir7.rs
-          mv src/bin/osm2mimir.rs src/bin/osm2mimir7.rs
-          mv src/bin/poi2mimir.rs src/bin/poi2mimir7.rs
+          for exec in bragi bano2mimir cosmogony2mimir ctlmimir openaddresses2mimir osm2mimir poi2mimir ntfs2mimir query; do
+            sed -i -e "s/^name\s*=\s*\"$exec\"/name = \"${exec}7\"/" Cargo.toml;
+          done
+
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
