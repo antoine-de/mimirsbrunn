@@ -22,13 +22,13 @@ pipeline {
         }
         stage('Change version form cargo.toml files') {
             steps {
-                withCredentials([string(credentialsId: 'jenkins-core-github-access-token', variable: 'GITHUB_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId: 'jenkins-app-core', usernameVariable: 'GITHUB_APP', passwordVariable: 'GITHUB_TOKEN')]) {
                     sh '''
                         MIMIR_VERSION=`githubflow_get_new_version --release-type $release_type  --remote-name origin`
                         sed -i -e "s/^version\\s*=\\s*\\".*\\"/version = \\"$MIMIR_VERSION\\"/" Cargo.toml;
                         git add Cargo.toml
                         git commit -m "[Versioned] New $release_type version $MIMIR_VERSION"
-                        git push https://jenkins-kisio-core:$GITHUB_TOKEN@github.com/CanalTP/mimirsbrunn.git master
+                        git push https://${GITHUB_APP}:${GITHUB_TOKEN}@github.com/CanalTP/mimirsbrunn.git master
                     '''
                 }
             }
