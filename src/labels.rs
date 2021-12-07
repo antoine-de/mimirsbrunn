@@ -2,11 +2,12 @@
 /// the current format is '{nice name} ({city})'
 /// the {nice name} being for addresses the housenumber and the street (correctly ordered)
 /// and for the rest of the objects, only their names
-use slog_scope::warn;
+use places::{admin::Admin, i18n_properties::I18nProperties, Property};
+use tracing::warn;
 
 fn format_label<'a>(
     nice_name: String,
-    mut admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    mut admins: impl Iterator<Item = &'a Admin> + Clone,
     _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
 ) -> String {
     let city = admins.find(|adm| adm.is_city());
@@ -27,7 +28,7 @@ fn format_label<'a>(
 //      Used to use the names in the user's language
 fn format_i18n_label<'a>(
     nice_name: &str,
-    mut admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    mut admins: impl Iterator<Item = &'a Admin> + Clone,
     _country_codes: &[String], // Note: for the moment the country code is not used, but this could change
     lang: &str,
 ) -> String {
@@ -46,7 +47,7 @@ fn format_i18n_label<'a>(
 /// format a label for a Street
 pub fn format_street_label<'a>(
     name: &str,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    admins: impl Iterator<Item = &'a Admin> + Clone,
     country_codes: &[String],
 ) -> String {
     format_label(name.to_owned(), admins, country_codes)
@@ -55,7 +56,7 @@ pub fn format_street_label<'a>(
 /// format a label for a Poi
 pub fn format_poi_label<'a>(
     name: &str,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    admins: impl Iterator<Item = &'a Admin> + Clone,
     country_codes: &[String],
 ) -> String {
     format_label(name.to_owned(), admins, country_codes)
@@ -64,7 +65,7 @@ pub fn format_poi_label<'a>(
 /// format a label for a Stop
 pub fn format_stop_label<'a>(
     name: &str,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    admins: impl Iterator<Item = &'a Admin> + Clone,
     country_codes: &[String],
 ) -> String {
     format_label(name.to_owned(), admins, country_codes)
@@ -74,7 +75,7 @@ pub fn format_stop_label<'a>(
 pub fn format_addr_name_and_label<'a>(
     house_number: &str,
     street_name: &str,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    admins: impl Iterator<Item = &'a Admin> + Clone,
     country_codes: &[String],
 ) -> (String, String) {
     let place = FormatPlaceHolder::from_addr(house_number.to_owned(), street_name.to_owned());
@@ -90,16 +91,16 @@ pub fn format_addr_name_and_label<'a>(
 /// create some international label for a poi
 /// One label is created for each lang in the `langs` parameter
 pub fn format_international_poi_label<'a>(
-    poi_names: &mimir::I18nProperties,
+    poi_names: &I18nProperties,
     default_poi_name: &str,
     default_poi_label: &str,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    admins: impl Iterator<Item = &'a Admin> + Clone,
     country_codes: &[String],
     langs: &[String],
-) -> mimir::I18nProperties {
+) -> I18nProperties {
     let labels = langs
         .iter()
-        .filter_map(|ref lang| {
+        .filter_map(|lang| {
             let local_poi_name = poi_names.get(lang).unwrap_or(default_poi_name);
             let i18n_poi_label =
                 format_i18n_label(local_poi_name, admins.clone(), country_codes, lang);
@@ -107,14 +108,14 @@ pub fn format_international_poi_label<'a>(
             if i18n_poi_label == default_poi_label {
                 None
             } else {
-                Some(mimir::Property {
+                Some(Property {
                     key: (*lang).to_string(),
                     value: i18n_poi_label,
                 })
             }
         })
         .collect();
-    mimir::I18nProperties(labels)
+    I18nProperties(labels)
 }
 
 fn default_name(house_number: &str, street: &str) -> String {
@@ -124,7 +125,7 @@ fn default_name(house_number: &str, street: &str) -> String {
 
 fn get_short_addr_label<'a>(
     place: FormatPlaceHolder,
-    admins: impl Iterator<Item = &'a mimir::Admin> + Clone,
+    admins: impl Iterator<Item = &'a Admin> + Clone,
     country_codes: &[String],
 ) -> Option<String> {
     let country_code = country_codes.iter().next().map(|c| c.to_string()); // we arbitrarily take the first country code
@@ -155,7 +156,7 @@ impl FormatPlaceHolder {
 
     pub fn into_place<'b>(
         self,
-        admins: impl Iterator<Item = &'b mimir::Admin>,
+        admins: impl Iterator<Item = &'b Admin>,
     ) -> address_formatter::Place {
         use address_formatter::Component;
         let mut place = address_formatter::Place::default();
@@ -191,15 +192,15 @@ mod test {
     use super::*;
     use cosmogony::ZoneType;
 
-    fn make_i18_prop(val: &[(&str, &str)]) -> mimir::I18nProperties {
+    fn make_i18_prop(val: &[(&str, &str)]) -> I18nProperties {
         val.iter()
             .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
             .collect()
     }
 
-    fn get_nl_admins() -> Vec<mimir::Admin> {
+    fn get_nl_admins() -> Vec<Admin> {
         vec![
-            mimir::Admin {
+            Admin {
                 id: "admin:amsterdam".to_string(),
                 level: 10,
                 name: "Amsterdam".to_string(),
@@ -214,7 +215,7 @@ mod test {
                 zone_type: Some(ZoneType::City),
                 ..Default::default()
             },
-            mimir::Admin {
+            Admin {
                 id: "admin:noord-holland".to_string(),
                 level: 4,
                 name: "Noordh-Holland".to_string(),
@@ -222,7 +223,7 @@ mod test {
                 zone_type: Some(ZoneType::State),
                 ..Default::default()
             },
-            mimir::Admin {
+            Admin {
                 id: "admin:Nederland".to_string(),
                 level: 2,
                 name: "Nederland".to_string(),
@@ -233,9 +234,9 @@ mod test {
         ]
     }
 
-    fn get_fr_admins() -> Vec<mimir::Admin> {
+    fn get_fr_admins() -> Vec<Admin> {
         vec![
-            mimir::Admin {
+            Admin {
                 id: "admin:paris".to_string(),
                 level: 8,
                 name: "Paris".to_string(),
@@ -243,7 +244,7 @@ mod test {
                 zone_type: Some(ZoneType::City),
                 ..Default::default()
             },
-            mimir::Admin {
+            Admin {
                 id: "admin:idf".to_string(),
                 level: 4,
                 name: "Île-de-France".to_string(),
@@ -251,7 +252,7 @@ mod test {
                 zone_type: Some(ZoneType::State),
                 ..Default::default()
             },
-            mimir::Admin {
+            Admin {
                 id: "admin:france".to_string(),
                 level: 2,
                 name: "France".to_string(),

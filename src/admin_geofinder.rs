@@ -33,12 +33,13 @@ use geo::algorithm::{
     intersects::Intersects,
 };
 use geo_types::{MultiPolygon, Point};
-use mimir::Admin;
+use places::admin::Admin;
 use rstar::{Envelope, PointDistance, RTree, RTreeObject, SelectionFunction, AABB};
-use slog_scope::{info, warn};
 use std::collections::{HashMap, HashSet};
+use std::iter::Extend;
 use std::iter::FromIterator;
 use std::sync::Arc;
+use tracing::{info, warn};
 
 // This is a structure which is used in the RTree to customize the list of objects returned
 // when searching at a given location. This version just focuses on the envelope of the object,
@@ -273,14 +274,19 @@ impl Default for AdminGeoFinder {
     }
 }
 
+impl Extend<Admin> for AdminGeoFinder {
+    fn extend<T: IntoIterator<Item = Admin>>(&mut self, admins: T) {
+        for mut admin in admins {
+            admin.administrative_regions = Vec::new();
+            self.insert(admin);
+        }
+    }
+}
+
 impl FromIterator<Admin> for AdminGeoFinder {
     fn from_iter<I: IntoIterator<Item = Admin>>(admins: I) -> Self {
         let mut geofinder = AdminGeoFinder::default();
-
-        for admin in admins {
-            geofinder.insert(admin);
-        }
-
+        geofinder.extend(admins);
         geofinder
     }
 }
@@ -290,12 +296,13 @@ mod tests {
     use super::*;
     use cosmogony::ZoneType;
     use geo::prelude::BoundingRect;
+    use places::coord::Coord;
 
     fn p(x: f64, y: f64) -> geo_types::Point<f64> {
         geo_types::Point(geo_types::Coordinate { x, y })
     }
 
-    fn make_admin(offset: f64, zt: Option<ZoneType>) -> ::mimir::Admin {
+    fn make_admin(offset: f64, zt: Option<ZoneType>) -> Admin {
         make_complex_admin(&format!("admin:offset:{}", offset,), offset, zt, 1., None)
     }
 
@@ -305,7 +312,7 @@ mod tests {
         zone_type: Option<ZoneType>,
         zone_size: f64,
         parent_offset: Option<&str>,
-    ) -> ::mimir::Admin {
+    ) -> Admin {
         // the boundary is a big octogon
         // the zone_size param is used to control the area of the zone
         let shape = geo_types::Polygon::new(
@@ -324,8 +331,8 @@ mod tests {
         );
         let boundary = geo_types::MultiPolygon(vec![shape]);
 
-        let coord = ::mimir::Coord::new(4.0 + offset, 4.0 + offset);
-        ::mimir::Admin {
+        let coord = Coord::new(4.0 + offset, 4.0 + offset);
+        Admin {
             id: id.into(),
             level: 8,
             name: "city".to_string(),

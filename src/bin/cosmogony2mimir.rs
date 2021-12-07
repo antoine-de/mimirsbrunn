@@ -1,4 +1,4 @@
-// Copyright © 2018, Canal TP and/or its affiliates. All rights reserved.
+// Copyright © 2016, Canal TP and/or its affiliates. All rights reserved.
 //
 // This file is part of Navitia,
 //     the software to build cool stuff with public transport.
@@ -28,230 +28,379 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use cosmogony::{Zone, ZoneIndex};
-use failure::Error;
-use mimir::objects::Admin;
-use mimir::rubber::{IndexSettings, Rubber};
-use mimirsbrunn::osm_reader::admin;
-use mimirsbrunn::osm_reader::osm_utils;
-use mimirsbrunn::utils;
-use slog_scope::{info, warn};
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::sync::Arc;
+use snafu::{ResultExt, Snafu};
 use structopt::StructOpt;
 
-trait IntoAdmin {
-    fn into_admin(
-        self,
-        _: &BTreeMap<ZoneIndex, (String, Option<String>)>,
-        langs: &[String],
-        retrocompat_on_french_id: bool,
-        max_weight: f64,
-        all_admins: Option<&HashMap<String, Arc<Admin>>>,
-    ) -> Admin;
+use mimir::adapters::secondary::elasticsearch;
+use mimir::domain::ports::secondary::remote::Remote;
+use mimirsbrunn::settings::cosmogony2mimir as settings;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
+    Settings { source: settings::Error },
+
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchConnection {
+        source: mimir::domain::ports::secondary::remote::Error,
+    },
+
+    #[snafu(display("Execution Error {}", source))]
+    Execution { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Configuration Error {}", source))]
+    Configuration { source: common::config::Error },
+
+    #[snafu(display("Import Error {}", source))]
+    Import { source: mimirsbrunn::admin::Error },
 }
 
-fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f64 {
-    // to have an admin weight we use the osm 'population' tag to priorize
-    // the big zones over the small one.
-    // Note: this tags is not often filled , so only some zones
-    // will have a weight (but the main cities have it).
-    tags.get("population")
-        .and_then(|p| p.parse().ok())
-        .or_else(|| center_tags.get("population")?.parse().ok())
-        .unwrap_or(0.)
-}
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let opts = settings::Opts::from_args();
+    let settings = settings::Settings::new(&opts).context(Settings)?;
 
-impl IntoAdmin for Zone {
-    fn into_admin(
-        self,
-        zones_osm_id: &BTreeMap<ZoneIndex, (String, Option<String>)>,
-        langs: &[String],
-        french_id_retrocompatibility: bool,
-        max_weight: f64,
-        all_admins: Option<&HashMap<String, Arc<Admin>>>,
-    ) -> Admin {
-        let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
-        let zip_codes = admin::read_zip_codes(&self.tags);
-        let label = self.label;
-        let weight = get_weight(&self.tags, &self.center_tags);
-        let center = self.center.map_or(mimir::Coord::default(), |c| {
-            mimir::Coord::new(c.lng(), c.lat())
-        });
-        let format_id = |id, insee| {
-            // for retrocompatibity reasons, Navitia needs the
-            // french admins to have an id with the insee for cities
-            match insee {
-                Some(insee) if french_id_retrocompatibility => format!("admin:fr:{}", insee),
-                _ => format!("admin:osm:{}", id),
-            }
-        };
-        let parent_osm_id = self
-            .parent
-            .and_then(|id| zones_osm_id.get(&id))
-            .map(|(id, insee)| format_id(id, insee.as_ref()));
-        let codes = osm_utils::get_osm_codes_from_tags(&self.tags);
-        let mut admin = Admin {
-            id: zones_osm_id
-                .get(&self.id)
-                .map(|(id, insee)| format_id(id, insee.as_ref()))
-                .expect("unable to find zone id in zones_osm_id"),
-            insee: insee.unwrap_or_else(|| "".to_owned()),
-            level: self.admin_level.unwrap_or(0),
-            label,
-            name: self.name,
-            zip_codes,
-            weight: utils::normalize_weight(weight, max_weight),
-            bbox: self.bbox,
-            boundary: self.boundary,
-            coord: center,
-            approx_coord: Some(center.into()),
-            zone_type: self.zone_type,
-            parent_id: parent_osm_id,
-            // Note: Since we do not really attach an admin to its hierarchy, for the moment an admin only have it's own coutry code,
-            // not the country code of it's country from the hierarchy
-            // (so it has a country code mainly if it is a country)
-            country_codes: utils::get_country_code(&codes).into_iter().collect(),
-            codes,
-            names: osm_utils::get_names_from_tags(&self.tags, &langs),
-            labels: self
-                .international_labels
-                .into_iter()
-                .filter(|(k, _)| langs.contains(&k))
-                .collect(),
-            distance: None,
-            context: None,
-            administrative_regions: Vec::new(),
-        };
-        if let Some(ref admins) = all_admins {
-            // Get a list of encompassing parent ids, which will be used as the get
-            // administrative_regions.
-            let mut parent_ids = Vec::new();
-            let mut current = &admin;
-            while current.parent_id.is_some() {
-                parent_ids.push(current.parent_id.clone().unwrap());
-                if let Some(par) = admins.get(parent_ids.last().unwrap()) {
-                    current = par;
-                } else {
-                    break;
-                }
-            }
-            admin.administrative_regions = parent_ids
-                .into_iter()
-                .filter_map(|a| admins.get(&a))
-                .map(|x| Arc::clone(x))
-                .collect::<Vec<_>>();
-        }
-        admin
-    }
-}
-
-fn send_to_es(
-    admins: impl Iterator<Item = Admin>,
-    cnx_string: &str,
-    dataset: &str,
-    index_settings: IndexSettings,
-) -> Result<(), Error> {
-    let mut rubber = Rubber::new(cnx_string);
-    rubber.initialize_templates()?;
-    let nb_admins = rubber.public_index(dataset, &index_settings, admins)?;
-    info!("{} admins added.", nb_admins);
-    Ok(())
-}
-
-fn read_zones(input: &str) -> Result<impl Iterator<Item = Zone>, Error> {
-    Ok(cosmogony::read_zones_from_file(input)?
-        .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok()))
-}
-
-fn index_cosmogony(args: Args) -> Result<(), Error> {
-    info!("building maps");
-    use cosmogony::ZoneType::City;
-
-    let mut cosmogony_id_to_osm_id = BTreeMap::new();
-    let max_weight = utils::ADMIN_MAX_WEIGHT;
-    for z in read_zones(&args.input)? {
-        let insee = match z.zone_type {
-            Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
-            _ => None,
-        };
-        cosmogony_id_to_osm_id.insert(z.id, (z.osm_id.clone(), insee));
-    }
-    let cosmogony_id_to_osm_id = cosmogony_id_to_osm_id;
-
-    info!("building admins hierarchy");
-    let admins_without_boundaries = read_zones(&args.input)?
-        .map(|mut z| {
-            z.boundary = None;
-            let admin = z.into_admin(
-                &cosmogony_id_to_osm_id,
-                &args.langs,
-                args.french_id_retrocompatibility,
-                max_weight,
-                None,
-            );
-            (admin.id.clone(), Arc::new(admin))
-        })
-        .collect::<HashMap<_, _>>();
-
-    info!("importing cosmogony into Mimir");
-
-    let admins = read_zones(&args.input)?.map(|z| {
-        z.into_admin(
-            &cosmogony_id_to_osm_id,
-            &args.langs,
-            args.french_id_retrocompatibility,
-            max_weight,
-            Some(&admins_without_boundaries),
+    match opts.cmd {
+        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
+            &settings.logging.path.clone(),
+            move || run(opts, settings),
         )
-    });
-
-    let index_settings = IndexSettings {
-        nb_shards: args.nb_shards,
-        nb_replicas: args.nb_replicas,
-    };
-    send_to_es(
-        admins,
-        &args.connection_string,
-        &args.dataset,
-        index_settings,
-    )?;
-
-    Ok(())
+        .await
+        .context(Execution),
+        settings::Command::Config => {
+            println!("{}", serde_json::to_string_pretty(&settings).unwrap());
+            Ok(())
+        }
+    }
 }
 
-#[derive(StructOpt, Debug)]
-struct Args {
-    /// cosmogony file
-    #[structopt(short = "i", long = "input")]
-    input: String,
-    /// Elasticsearch parameters.
-    #[structopt(
-        short = "c",
-        long = "connection-string",
-        default_value = "http://localhost:9200/munin"
-    )]
-    connection_string: String,
-    /// Name of the dataset.
-    #[structopt(short = "d", long = "dataset", default_value = "fr")]
-    dataset: String,
-    /// Number of shards for the es index
-    #[structopt(short = "s", long = "nb-shards", default_value = "1")]
-    nb_shards: usize,
-    /// Number of replicas for the es index
-    #[structopt(short = "r", long = "nb-replicas", default_value = "1")]
-    nb_replicas: usize,
-    /// Languages codes, used to build i18n names and labels
-    #[structopt(name = "lang", short, long)]
-    langs: Vec<String>,
-    /// Retrocompatibiilty on french admin id
-    /// if activated, the french administrative regions will have an id like 'admin:fr:{insee}'
-    /// instead of 'admin:osm:{osm_id}'
-    #[structopt(long = "french-id-retrocompatibility")]
-    french_id_retrocompatibility: bool,
+async fn run(
+    opts: settings::Opts,
+    settings: settings::Settings,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
+        .conn(settings.elasticsearch)
+        .await
+        .context(ElasticsearchConnection)
+        .map_err(Box::new)?;
+
+    mimirsbrunn::admin::index_cosmogony(
+        &opts.input,
+        settings.langs.clone(),
+        &settings.container,
+        &client,
+    )
+    .await
+    .context(Import)
+    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
-fn main() {
-    mimirsbrunn::utils::launch_run(index_cosmogony);
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+    use futures::TryStreamExt;
+    use serial_test::serial;
+
+    use super::*;
+    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
+    use mimir::domain::ports::primary::list_documents::ListDocuments;
+    use mimir::utils::docker;
+    use places::admin::Admin;
+
+    #[tokio::test]
+    #[serial]
+    async fn should_return_an_error_when_given_an_invalid_es_url() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("elasticsearch.url='http://example.com:demo'")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony.json",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts);
+        assert!(settings
+            .unwrap_err()
+            .to_string()
+            .contains("invalid port number"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_return_an_error_when_given_an_url_not_es() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("elasticsearch.url='http://no-es.test'")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony.json",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Elasticsearch Connection Error"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_return_an_error_when_given_an_invalid_path_for_config() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR")].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony.json",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts);
+        assert!(settings
+            .unwrap_err()
+            .to_string()
+            .contains("Config Source Error"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_return_an_error_when_given_an_invalid_path_for_input() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [env!("CARGO_MANIFEST_DIR"), "invalid.jsonl.gz"]
+                .iter()
+                .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains("Cosmogony Error: could not read zones from file"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_override_some_settings() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("elasticsearch.wait_for_active_shards=1")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony.json",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).expect("settings");
+        assert_eq!(settings.elasticsearch.wait_for_active_shards, 1);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_index_a_small_cosmogony_file() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony",
+                "bretagne.small.jsonl.gz",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_test_pool()
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let admins: Vec<Admin> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        assert_eq!(admins.len(), 8);
+        assert!(admins.iter().all(|admin| admin.boundary.is_some()));
+        assert!(admins.iter().all(|admin| admin.coord.is_valid()));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_index_cosmogony_with_langs() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("langs=['fr', 'en']")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony",
+                "bretagne.small.jsonl.gz",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_test_pool()
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let admins: Vec<Admin> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
+        assert_eq!(brittany.names.get("fr"), Some("Bretagne"));
+        assert_eq!(brittany.names.get("en"), Some("Brittany"));
+        assert_eq!(brittany.labels.get("en"), Some("Brittany"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_index_cosmogony_with_correct_values() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("langs=['fr', 'en']")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony",
+                "bretagne.small.jsonl.gz",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_test_pool()
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let admins: Vec<Admin> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+
+        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
+        assert_eq!(brittany.id, "admin:osm:relation:102740");
+        assert_eq!(brittany.zone_type, Some(cosmogony::ZoneType::State));
+        assert_relative_eq!(brittany.weight, 0.002_298, epsilon = 1e-6);
+        assert_eq!(
+            brittany.codes,
+            vec![
+                ("ISO3166-2", "FR-BRE"),
+                ("ref:INSEE", "53"),
+                ("ref:nuts", "FRH;FRH0"),
+                ("ref:nuts:1", "FRH"),
+                ("ref:nuts:2", "FRH0"),
+                ("wikidata", "Q12130")
+            ]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
+        )
+    }
 }

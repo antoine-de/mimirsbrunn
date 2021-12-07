@@ -1,10 +1,10 @@
 [package]
 name = "mimirsbrunn"
-version = "1.24.0"
-authors = ["Canal TP <dt.ro@canaltp.fr>"]
+version = "2.1.0"
+authors = ["Kisio Digital", "Qwant"]
 build = "build.rs"
 autotests = false
-edition = "2018"
+edition = "2021"
 description = "Set of tools for geocoding with Elasticsearch"
 license = "AGPLv3"
 repository = "https://github.com/CanalTP/mimirsbrunn.git"
@@ -13,63 +13,143 @@ categories = [ "application" ]
 readme = "README.md"
 
 [workspace]
+members = [
+  "libs/mimir",
+  "libs/places",
+  "libs/common",
+	"libs/tests",
+]
 
 [features]
 db-storage = [ "rusqlite" ]
 
 [dependencies]
-config = "0.10"
-log = { version = "0.4", features = ["release_max_level_debug"] }
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_debug"]}
-slog-scope = "4.3"
-slog-envlogger = "2.2"
-slog-async = "2.5"
-slog-term = "2.8"
-slog-stdlog = "4.1"
-structopt = "0.3"
-csv = "1.1"
-rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
-regex = "1"
-osmpbfreader = "0.14"
-osm_boundaries_utils = "0.8.2"
+address-formatter = "0.2.1"
+async-compression = { version = "0.3.8", features = [ "gzip", "tokio" ] }
+bincode = "1.3.3"
 chrono = "0.4"
 chrono-tz = "0.5"
-serde = {version = "1", features = ["rc"]}
-serde_json = "1"
-bincode = "1.2"
-geo = "0.16"
-geo-types = { version = "0.6.1", features = [ "rstar" ] }
-rstar = "0.8"
-itertools = "0.9"
-transit_model = "0.39.0"
-typed_index_collection = "2.0.0"
+clap = "2.33.1"
+config = { version = "0.11", default_features = false, features = ["json", "toml"] }
+cosmogony = "0.10.3"
+csv = "1.1"
+csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
 failure = "0.1"
-cosmogony = "0.9"
-par-map = "0.1.4"
-lazy_static = "1.4"
-num_cpus = "1.13"
-assert_float_eq = "1.1"
+futures = "0.3"
+geo = "0.18"
+geo-types = { version = "0.7", features = [ "rstar" ] }
+http = "0.2"
 human-sort = "0.2"
-address-formatter = "0.2.1"
+itertools = "0.10"
+lazy_static = "1.4"
+log = { version = "0.4", features = ["release_max_level_debug"] }
 navitia-poi-model = "0.3"
-walkdir = "2.3"
+num_cpus = "1.13"
+osm_boundaries_utils = "0.9"
+osmpbfreader = "0.14"
+par-map = "0.1.4"
+regex = "1"
+rstar = "0.8"
 rusqlite = { version = "0.23", optional = true }
-flate2 = "1.0"
+serde_json = "1"
+serde = {version = "1", features = ["rc"]}
+snafu = { version = "0.6.10", features = [ "futures" ] }
+structopt = "0.3"
+tokio = { version = "1.14.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
+tokio-stream = { version = "0.1.8", features = [ "fs" ] }
 toml = "0.5"
+tracing = "0.1.26"
+tracing-appender = "0.1.2"
+tracing-bunyan-formatter = { version = "0.2", default-features = false }
+tracing-futures = "0.2.5"
+tracing-log = "0.1.2"
+tracing-subscriber = "0.2.17"
+transit_model = "0.42.1"
+typed_index_collection = "2.0"
+walkdir = "2.3"
+warp = { version = "0.3.1" }
 
-mimir = { path = "libs/mimir" }
-bragi = { path = "libs/bragi" }
+common = { path = "libs/common" }
+mimir  = { path = "libs/mimir" }
+places = { path = "libs/places" }
+
+[lib]
+name = "mimirsbrunn"
+path = "src/lib.rs"
 
 [dev-dependencies]
-reqwest = { version = "0.10", features = [ "blocking", "json" ] }
-approx = "0.3"
-actix-web = "1"
-tools = { path = "libs/tools" }
-docker_wrapper = { path = "libs/docker_wrapper" }
+async-trait = "0.1.50"
+url = { version = "2.2.2", features = [ "serde" ] }
+approx = "0.5"
+criterion = "0.3"
+cucumber = "0.10"
+elasticsearch = "7.14.0-alpha.1"
+reqwest = { version = "0.11", features = [ "blocking", "json" ] }
+serial_test = "0.5.1"
+tests = { path = "libs/tests" }
+zip = "0.5.13"
 
 [build-dependencies]
 json = "0.12"
 
-# we just call one test method: cf. tests::all_tests()
+[[bin]]
+name = "bragi"
+path = "src/bragi/main.rs"
+
+[[bin]]
+name = "bano2mimir"
+path = "src/bin/bano2mimir.rs"
+
+[[bin]]
+name = "cosmogony2mimir"
+path = "src/bin/cosmogony2mimir.rs"
+
+[[bin]]
+name = "ctlmimir"
+path = "src/bin/ctlmimir.rs"
+
+[[bin]]
+name = "ntfs2mimir"
+path = "src/bin/ntfs2mimir.rs"
+
+[[bin]]
+name = "openaddresses2mimir"
+path = "src/bin/openaddresses2mimir.rs"
+
+[[bin]]
+name = "osm2mimir"
+path = "src/bin/osm2mimir.rs"
+
+[[bin]]
+name = "poi2mimir"
+path = "src/bin/poi2mimir.rs"
+
+[[bin]]
+name = "query"
+path = "src/bin/query.rs"
+
 [[test]]
-name = "tests"
+name = "end_to_end"
+harness = false # Allows Cucumber to print output instead of libtest
+
+[[test]]
+name = "idf"
+harness = false # Allows Cucumber to print output instead of libtest
+test = false
+
+[profile.bench]
+lto = true
+
+[[bench]]
+name = "listing"
+harness = false
+
+[[bench]]
+name = "indexing"
+harness = false
+
+[[bench]]
+name = "searching"
+harness = false
+
+

@@ -25,7 +25,7 @@ echo "Building debian package in $SCRIPT_DIR/$tmpdir"
 version=$(cat ../Cargo.toml | grep '^version' | cut -d '=' -f 2 | tr -d \")
 version="${version#"${version%%[![:space:]]*}"}" # trim version
 
-pkgdir="$tmpdir/mimirsbrunn_$1-$version"
+pkgdir="$tmpdir/mimirsbrunn${2:-}_$1-$version"
 rootdir="$pkgdir/usr"
 mkdir -p "$rootdir"
 
@@ -33,12 +33,19 @@ mkdir -p "$rootdir"
 # It is assumed this script is in a folder under the root of the project.
 # We use the locked option to make sure the crates in Cargo.lock are used,
 # not updated ones.
-cargo install --locked --path=${MIMIRSBRUNN_DIR} --root=$rootdir
+
+if [ -z ${2:-} ]
+then
+  option=""
+else
+  option="--no-track"
+fi
+cargo install --locked $option --path=${MIMIRSBRUNN_DIR} --root=$rootdir
 
 mkdir -p "$pkgdir/DEBIAN"
 
 cat << EOF > "$pkgdir/DEBIAN/control"
-Package: mimirsbrunn
+Package: mimirsbrunn${2:-}
 Version: $version
 Section: base
 Priority: optional

@@ -33,19 +33,32 @@
     clippy::never_loop,
     clippy::option_map_unit_fn
 )]
-use super::osm_utils::get_way_coord;
-use super::OsmPbfReader;
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, settings, utils, Error};
 use cosmogony::ZoneType;
-use failure::ResultExt;
 use osmpbfreader::{OsmId, StoreObjs};
-use slog_scope::info;
+use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ops::Deref;
 use std::sync::Arc;
+use tracing::{info, instrument};
 
-use super::osm_store::{Getter, ObjWrapper};
+use super::osm_store::{Error as OsmStoreError, Getter, ObjWrapper};
+use super::osm_utils::get_way_coord;
+use super::OsmPbfReader;
+use crate::admin_geofinder::AdminGeoFinder;
+use crate::labels;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("Obj Wrapper Error [{}]", source))]
+    ObjWrapperCreation { source: OsmStoreError },
+
+    #[snafu(display("OsmPbfReader Extraction Error: {} [{}]", msg, source))]
+    OsmPbfReaderExtraction {
+        msg: String,
+        source: osmpbfreader::Error,
+    },
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(dead_code)]
@@ -55,24 +68,46 @@ pub enum Kind {
     Relation = 2,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreetExclusion {
+    pub highway: Option<Vec<String>>,
+    pub public_transport: Option<Vec<String>>,
+}
+
+// The following conditional compilation is to allow to optionaly pass an extra argument if
+// the db-storage feature is enabled
+#[cfg(feature = "db-storage")]
 pub fn streets(
-    pbf: &mut OsmPbfReader,
+    osm_reader: &mut OsmPbfReader,
     admins_geofinder: &AdminGeoFinder,
-    settings: &settings::osm2mimir::Settings,
-) -> Result<Vec<mimir::Street>, Error> {
-    let invalid_highways = settings
-        .street
-        .as_ref()
-        .and_then(|street| street.exclusion.highway.as_deref())
-        .unwrap_or(&[]);
+    exclusions: &StreetExclusion,
+    database: Option<&crate::settings::osm2mimir::Database>,
+) -> Result<Vec<places::street::Street>, Error> {
+    let objs_map = ObjWrapper::new(database).context(ObjWrapperCreation)?;
+    inner_streets(osm_reader, admins_geofinder, exclusions, objs_map)
+}
+#[cfg(not(feature = "db-storage"))]
+pub fn streets(
+    osm_reader: &mut OsmPbfReader,
+    admins_geofinder: &AdminGeoFinder,
+    exclusions: &StreetExclusion,
+) -> Result<Vec<places::street::Street>, Error> {
+    let objs_map = ObjWrapper::new().context(ObjWrapperCreation)?;
+    inner_streets(osm_reader, admins_geofinder, exclusions, objs_map)
+}
+
+#[instrument(skip(osm_reader, admins_geofinder, objs_map))]
+pub fn inner_streets(
+    osm_reader: &mut OsmPbfReader,
+    admins_geofinder: &AdminGeoFinder,
+    exclusions: &StreetExclusion,
+    mut objs_map: ObjWrapper,
+) -> Result<Vec<places::street::Street>, Error> {
+    let invalid_highways = exclusions.highway.as_deref().unwrap_or(&[]);
 
     let is_valid_highway = |tag: &str| -> bool { !invalid_highways.iter().any(|k| k == tag) };
 
-    let invalid_public_transports = settings
-        .street
-        .as_ref()
-        .and_then(|street| street.exclusion.public_transport.as_deref())
-        .unwrap_or(&[]);
+    let invalid_public_transports = exclusions.public_transport.as_deref().unwrap_or(&[]);
 
     let is_valid_public_transport =
         |tag: &str| -> bool { !invalid_public_transports.iter().any(|k| k == tag) };
@@ -102,34 +137,35 @@ pub fn streets(
     };
 
     info!("reading pbf...");
-    #[cfg(feature = "db-storage")]
-    let mut objs_map = ObjWrapper::new(&settings.database)?;
-    #[cfg(not(feature = "db-storage"))]
-    let mut objs_map = ObjWrapper::new()?;
+    osm_reader
+        .get_objs_and_deps_store(is_valid_obj, &mut objs_map)
+        .context(OsmPbfReaderExtraction {
+            msg: String::from("Could not read objects and dependencies from pbf"),
+        })?;
 
-    pbf.get_objs_and_deps_store(is_valid_obj, &mut objs_map)
-        .context("Error occurred when reading pbf")?;
     info!("reading pbf done.");
 
     // Builder for street object
-    let build_street =
-        |id: String, name: String, coord: mimir::Coord, admins: Vec<Arc<mimir::Admin>>| {
-            let admins_iter = admins.iter().map(Deref::deref);
-            let country_codes = utils::find_country_codes(admins_iter.clone());
-            mimir::Street {
-                id,
-                label: labels::format_street_label(&name, admins_iter, &country_codes),
-                name,
-                weight: 0.,
-                zip_codes: utils::get_zip_codes_from_admins(&admins),
-                administrative_regions: admins,
-                coord,
-                approx_coord: Some(coord.into()),
-                distance: None,
-                country_codes,
-                context: None,
-            }
-        };
+    let build_street = |id: String,
+                        name: String,
+                        coord: places::coord::Coord,
+                        admins: Vec<Arc<places::admin::Admin>>| {
+        let admins_iter = admins.iter().map(Deref::deref);
+        let country_codes = places::admin::find_country_codes(admins_iter.clone());
+        places::street::Street {
+            id,
+            label: labels::format_street_label(&name, admins_iter, &country_codes),
+            name,
+            weight: 0.,
+            zip_codes: places::admin::get_zip_codes_from_admins(&admins),
+            administrative_regions: admins,
+            coord,
+            approx_coord: Some(coord.into()),
+            distance: None,
+            country_codes,
+            context: None,
+        }
+    };
 
     // Return an iterator giving documents that will be inserted for a given
     // street: one for each hierarchy of admins.
@@ -181,14 +217,14 @@ pub fn streets(
             .filter_map(|ref_obj| {
                 let obj = objs_map.get(&ref_obj.member)?;
                 let way = obj.way()?;
-                let coord = get_way_coord(&objs_map, &way);
+                let coord = get_way_coord(&objs_map, way);
                 let name = rel_name.or_else(|| way.tags.get("name"))?;
 
                 Some(build_streets_for_admins(
                     name.to_string(),
                     rel.id.0,
                     "relation",
-                    get_street_admin(admins_geofinder, &objs_map, &way),
+                    get_street_admin(admins_geofinder, &objs_map, way),
                     coord,
                 ))
             })
@@ -271,7 +307,7 @@ fn get_street_admin<T: StoreObjs + Getter>(
     admins_geofinder: &AdminGeoFinder,
     obj_map: &T,
     way: &osmpbfreader::objects::Way,
-) -> Vec<Vec<Arc<mimir::Admin>>> {
+) -> Vec<Vec<Arc<places::admin::Admin>>> {
     let nb_nodes = way.nodes.len();
 
     // To avoid corner cases where the ends of the way are near
@@ -304,15 +340,4 @@ fn get_street_admin<T: StoreObjs + Getter>(
                     .unwrap_or(false)
             })
         })
-}
-
-pub fn compute_street_weight(streets: &mut Vec<mimir::Street>) {
-    for st in streets {
-        for admin in &mut st.administrative_regions {
-            if admin.is_city() {
-                st.weight = admin.weight;
-                break;
-            }
-        }
-    }
 }

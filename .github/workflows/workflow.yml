@@ -1,64 +1,29 @@
-on: [push, pull_request]
+name: Build and Test
 
-name: Continuous integration
+on:
+  push:
+  pull_request:
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.48.0
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-
   test:
-    name: Test Suite
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.48.0
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
 
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.48.0
-          override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
 
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Setup rust
+        uses: actions-rs/toolchain@v1
         with:
+          components: rustc, cargo, clippy, rustfmt
           profile: minimal
-          toolchain: 1.48.0
-          override: true
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --all-targets -- --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
+
+      - uses: Swatinem/rust-cache@v1
+
+      - name: Formatting checks
+        run: make format
+
+      - name: Linting checks
+        run: make lint
+
+      - name: Unit Tests and E2E Tests checks
+        run: make test

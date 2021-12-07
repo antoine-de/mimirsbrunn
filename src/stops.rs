@@ -28,24 +28,60 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::{labels, utils};
-use failure::format_err;
-use failure::{Error, ResultExt};
-use mimir::rubber::{IndexSettings, Rubber, TypedIndex};
-use slog_scope::{info, warn};
-use std::collections::HashMap;
-use std::mem::replace;
+/// In this module we put the code related to stops, that need to draw on 'places', 'mimir',
+/// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
+use futures::stream::{Stream, TryStreamExt};
+use mimir::domain::model::configuration::ContainerConfig;
+use snafu::{ResultExt, Snafu};
+use std::collections::{hash_map::DefaultHasher, HashMap};
+use std::hash::BuildHasherDefault;
 use std::ops::Deref;
+use std::path::PathBuf;
 use std::sync::Arc;
+use tracing::info;
 
-const GLOBAL_STOP_INDEX_NAME: &str = "munin_global_stops";
+use crate::admin_geofinder::AdminGeoFinder;
+use crate::labels;
+use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
+use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
+use places::admin::Admin;
+use places::stop::Stop;
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    // #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
+    // Settings { source: settings::Error },
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchPool {
+        source: elasticsearch::remote::Error,
+    },
+
+    #[snafu(display("Elasticsearch Connection Pool {}", source))]
+    ElasticsearchConnection {
+        source: mimir::domain::ports::secondary::remote::Error,
+    },
+
+    // #[snafu(display("Cosmogony Error: {}", details))]
+    // Cosmogony { details: String },
+    #[snafu(display("Index Generation Error {}", source))]
+    IndexGeneration {
+        source: mimir::domain::model::error::Error,
+    },
+
+    // transit_model uses failure::Error, which does not implement std::Error, so
+    // we use a String to get the error message instead.
+    #[snafu(display("Transit Model Error {}", details))]
+    TransitModel { details: String },
+
+    #[snafu(display("Admin Retrieval Error {}", details))]
+    AdminRetrieval { details: String },
+}
 
 pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     stops: It,
     nb_stop_points: &HashMap<String, u32, S>,
 ) where
-    It: Iterator<Item = &'a mut mimir::Stop>,
+    It: Iterator<Item = &'a mut Stop>,
 {
     let max = *nb_stop_points.values().max().unwrap_or(&1) as f64;
     for stop in stops {
@@ -57,20 +93,109 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     }
 }
 
-pub fn import_stops(
-    mut stops: Vec<mimir::Stop>,
-    connection_string: &str,
-    dataset: &str,
-    index_settings: IndexSettings,
+fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
+    let admins_iter = admins.iter().map(|a| a.deref());
+    let country_codes = places::admin::find_country_codes(admins_iter.clone());
+
+    stop.label = labels::format_stop_label(&stop.name, admins_iter, &country_codes);
+    stop.zip_codes = places::admin::get_zip_codes_from_admins(&admins);
+
+    stop.country_codes = country_codes;
+    stop.administrative_regions = admins;
+}
+
+/// Attach the stops to administrative regions
+///
+/// The admins are loaded from Elasticsearch and stored in a quadtree
+/// We attach a stop with all the admins that have a boundary containing
+/// the coordinate of the stop
+async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
+    stops: It,
+    client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
-    info!("creation of indexes");
-    let mut rubber = Rubber::new(connection_string);
-    rubber.initialize_templates()?;
+    match client.list_documents().await {
+        Ok(stream) => {
+            let admins: Vec<Admin> = stream.try_collect().await.context(IndexGeneration)?;
 
-    attach_stops_to_admins(stops.iter_mut(), &mut rubber);
+            if admins.is_empty() {
+                return Err(Error::AdminRetrieval {
+                    details: String::from("no admin retrieved to enrich stops"),
+                });
+            }
 
+            let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
+
+            let mut nb_unmatched = 0u32;
+            let mut nb_matched = 0u32;
+            // FIXME Opportunity for concurrent work
+            for mut stop in stops {
+                let admins = admins_geofinder.get(&stop.coord);
+
+                if admins.is_empty() {
+                    nb_unmatched += 1;
+                } else {
+                    nb_matched += 1;
+                }
+
+                attach_stop(&mut stop, admins);
+            }
+
+            info!(
+                "there are {}/{} stops without any admin",
+                nb_unmatched,
+                nb_matched + nb_unmatched
+            );
+            Ok(())
+        }
+        Err(_) => Err(Error::AdminRetrieval {
+            details: String::from("Could not retrieve admins to enrich stops"),
+        }),
+    }
+}
+
+/// Stores the stops found in the 'input' directory, in Elasticsearch, with the given
+/// configuration.
+///
+/// The main part of this function is to actually create a list of stops
+/// from the information found in the NTFS directory.
+pub async fn index_ntfs(
+    input: PathBuf,
+    config: &ContainerConfig,
+    client: &ElasticsearchStorage,
+) -> Result<(), Error> {
+    let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
+        details: format!(
+            "Could not read transit model from {}: {}",
+            input.display(),
+            err.to_string()
+        ),
+    })?;
+
+    let nb_stop_points: HashMap<String, u32, BuildHasherDefault<DefaultHasher>> = navitia
+        .stop_areas
+        .iter()
+        .map(|(idx, sa)| {
+            let id = places::utils::normalize_id("stop_area", &sa.id);
+            let nb_stop_points = navitia
+                .get_corresponding_from_idx::<_, transit_model::objects::StopPoint>(idx)
+                .len();
+            (id, nb_stop_points as u32)
+        })
+        .collect();
+
+    let mut stops: Vec<Stop> = navitia
+        .stop_areas
+        .iter()
+        .map(|(idx, sa)| places::stop::to_mimir(idx, sa, &navitia))
+        .collect();
+
+    initialize_weights(stops.iter_mut(), &nb_stop_points);
+
+    attach_stops_to_admins(stops.iter_mut(), client).await?;
+
+    // FIXME Should be done concurrently (for_each_concurrent....)
     for stop in &mut stops {
-        stop.coverages.push(dataset.to_string());
+        stop.coverages.push(config.dataset.clone());
         let mut admin_weight = stop
             .administrative_regions
             .iter()
@@ -87,161 +212,22 @@ pub fn import_stops(
         stop.weight = (stop.weight + admin_weight) / 2.0;
     }
 
-    let global_index =
-        update_global_stop_index(&mut rubber, stops.iter(), dataset, &index_settings)?;
-
-    info!("Importing {} stops into Mimir", stops.len());
-    let nb_stops = rubber.public_index(dataset, &index_settings, stops.into_iter())?;
-    info!("Nb of indexed stops: {}", nb_stops);
-
-    publish_global_index(&mut rubber, &global_index)
-        .context("Error while publishing global index")?;
-    Ok(())
+    import_stops(client, config, futures::stream::iter(stops)).await
 }
 
-fn attach_stop(stop: &mut mimir::Stop, admins: Vec<Arc<mimir::Admin>>) {
-    let admins_iter = admins.iter().map(|a| a.deref());
-    let country_codes = utils::find_country_codes(admins_iter.clone());
+// FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
+pub async fn import_stops<S>(
+    client: &ElasticsearchStorage,
+    config: &ContainerConfig,
+    stops: S,
+) -> Result<(), Error>
+where
+    S: Stream<Item = Stop> + Send + Sync + Unpin + 'static,
+{
+    client
+        .generate_index(config, stops)
+        .await
+        .context(IndexGeneration)?;
 
-    stop.label = labels::format_stop_label(&stop.name, admins_iter, &country_codes);
-    stop.zip_codes = utils::get_zip_codes_from_admins(&admins);
-
-    stop.country_codes = country_codes;
-    stop.administrative_regions = admins;
-}
-
-/// Attach the stops to administrative regions
-///
-/// The admins are loaded from Elasticsearch and stored in a quadtree
-/// We attach a stop with all the admins that have a boundary containing
-/// the coordinate of the stop
-fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut mimir::Stop>>(
-    stops: It,
-    rubber: &mut Rubber,
-) {
-    let admins = rubber.get_all_admins().unwrap_or_else(|_| {
-        warn!("Administratives regions not found in elasticsearch db");
-        vec![]
-    });
-
-    info!("{} administrative regions loaded from mimir", admins.len());
-
-    let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
-
-    let mut nb_unmatched = 0u32;
-    let mut nb_matched = 0u32;
-    for mut stop in stops {
-        let admins = admins_geofinder.get(&stop.coord);
-
-        if admins.is_empty() {
-            nb_unmatched += 1;
-        } else {
-            nb_matched += 1;
-        }
-
-        attach_stop(&mut stop, admins);
-    }
-
-    info!(
-        "there are {}/{} stops without any admin",
-        nb_unmatched,
-        nb_matched + nb_unmatched
-    );
-}
-fn merge_collection<T: Ord>(target: &mut Vec<T>, source: Vec<T>) {
-    use std::collections::BTreeSet;
-    let tmp = replace(target, vec![]);
-    *target = tmp
-        .into_iter()
-        .chain(source)
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect();
-}
-
-/// merge the stops from all the different indexes
-/// for the moment the merge is very simple and uses only the ID
-/// (and we take the data from the first stop inserted)
-fn merge_stops<It: IntoIterator<Item = mimir::Stop>>(
-    stops: It,
-) -> impl Iterator<Item = mimir::Stop> {
-    let mut stops_by_id = HashMap::<String, mimir::Stop>::new();
-    for mut stop in stops.into_iter() {
-        let cov = replace(&mut stop.coverages, vec![]);
-        let codes = replace(&mut stop.codes, vec![]);
-        let physical_modes = replace(&mut stop.physical_modes, vec![]);
-        let commercial_modes = replace(&mut stop.commercial_modes, vec![]);
-        let properties = replace(&mut stop.properties, vec![]);
-        let feed_publishers = replace(&mut stop.feed_publishers, vec![]);
-
-        let stop_in_map = stops_by_id.entry(stop.id.clone()).or_insert(stop);
-
-        merge_collection(&mut stop_in_map.codes, codes);
-        merge_collection(&mut stop_in_map.physical_modes, physical_modes);
-        merge_collection(&mut stop_in_map.commercial_modes, commercial_modes);
-        merge_collection(&mut stop_in_map.coverages, cov);
-        merge_collection(&mut stop_in_map.properties, properties);
-        merge_collection(&mut stop_in_map.feed_publishers, feed_publishers);
-    }
-    stops_by_id.into_iter().map(|(_, v)| v)
-}
-
-fn get_all_stops(rubber: &mut Rubber, index: String) -> Result<Vec<mimir::Stop>, Error> {
-    rubber
-        .get_all_objects_from_index(&index)
-        .map_err(|e| format_err!("Getting all stops {}", e.to_string()))
-}
-
-fn update_global_stop_index<'a, It: Iterator<Item = &'a mimir::Stop>>(
-    rubber: &mut Rubber,
-    stops: It,
-    dataset: &str,
-    index_settings: &IndexSettings,
-) -> Result<String, Error> {
-    let dataset_index = mimir::rubber::get_main_type_and_dataset_index::<mimir::Stop>(dataset);
-    let stops_indexes = rubber
-        .get_all_aliased_index(&mimir::rubber::get_main_type_index::<mimir::Stop>())?
-        .into_iter()
-        .filter(|&(_, ref aliases)| !aliases.contains(&dataset_index))
-        .map(|(index, _)| index);
-
-    let all_es_stops = stops_indexes
-        .map(|index| get_all_stops(rubber, index))
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .flat_map(|stops| stops.into_iter())
-        .chain(stops.cloned());
-
-    let all_merged_stops = merge_stops(all_es_stops);
-    let es_index_name = mimir::rubber::get_date_index_name(GLOBAL_STOP_INDEX_NAME);
-
-    rubber.create_index(&es_index_name, &index_settings)?;
-    let typed_index = TypedIndex::new(es_index_name.clone());
-
-    let nb_stops_added = rubber.bulk_index(&typed_index, all_merged_stops)?;
-    info!("{} stops added in the global index", nb_stops_added);
-    // create global index
-    // fill structure for each stop indexes
-    Ok(es_index_name)
-}
-
-// publish the global stop index
-// alias the new index to the global stop alias, and remove the old index
-fn publish_global_index(rubber: &mut Rubber, new_global_index: &str) -> Result<(), Error> {
-    let last_global_indexes: Vec<_> = rubber
-        .get_all_aliased_index(GLOBAL_STOP_INDEX_NAME)?
-        .into_iter()
-        .map(|(k, _)| k)
-        .filter(|k| k != new_global_index)
-        .collect();
-    rubber.alias(
-        GLOBAL_STOP_INDEX_NAME,
-        &[new_global_index.to_string()],
-        &last_global_indexes,
-    )?;
-
-    for index in last_global_indexes {
-        rubber.delete_index(&index)?;
-    }
     Ok(())
 }

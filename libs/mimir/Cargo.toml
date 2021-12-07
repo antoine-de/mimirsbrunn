@@ -1,39 +1,60 @@
 [package]
 name = "mimir"
-version = "1.24.0"
-authors = ["Canal TP <dt.ro@canaltp.fr>"]
-edition = "2018"
-description = "Set of tools for importing geospatial data into Elasticsearch for geocoding"
+version = "1.0.0-rc2"
+authors = ["Kisio Digital", "Qwant"]
+edition = "2021"
+description = "library for manipulating document index, based on elasticsearch"
 license = "AGPLv3"
 repository = "https://github.com/CanalTP/mimirsbrunn.git"
-keywords = [ "mimirsbrunn", "elasticsearch", "geocoding" ]
+keywords = [ "mimirsbrunn", "elasticsearch"]
 categories = [ "application" ]
 readme = "README.md"
 
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_info"]}
-slog-term = "2.6"
-slog-json = "2.3"
-slog-scope = "4.3"
-slog-envlogger = "2.2"
-slog-stdlog = "4.0"
-slog-async = "2.5"
-rs-es = { git = "https://github.com/canaltp/rs-es", features = ["geo"], version = "0.12.3"}
-serde = { version = "1", features = ["rc"]}
-serde_json = "1"
-chrono = "0.4"
-reqwest = { version = "0.10", features = [ "blocking", "json" ] }
-geo = "0.16"
-geo-types = "0.6.1"
-rstar = "0.8"
-geojson = { version = "0.19", features = ["geo-types"] }
-failure = "0.1"
-cosmogony = "0.9"
-par-map = "0.1.4"
-lazy_static = "1"
-prometheus = {version= "0.7"}
-transit_model = "0.39.0"
-typed_index_collection = "2.0.0"
-human-sort = "0.2"
-address-formatter = "^0.2.1"
-navitia-poi-model = "0.3"
+# Should be in dev, but cannot get cucumber to work otherwise
+async-graphql = { version = "2.11", features = [ "chrono", "tracing" ] }
+async-graphql-warp = "2.11"
+async-trait = "0.1.50"
+bollard = "0.11.0"
+chrono = { version = "0.4", features = [ "serde" ] }
+common = { path = "../common" }
+config = { version = "0.11", default_features = false, features = ["json", "toml"] }
+convert_case = "0.4.0"
+cosmogony = "0.10.3"
+elasticsearch = "7.14.0-alpha.1"
+futures = "0.3"
+geo-types = "0.7"
+geojson = { version = "0.22", features = ["geo-types"] }
+http = "0.2"
+lazy_static = "1.4"
+places = { path = "../places" }
+regex = "1.5.4"
+semver = "1.0.0"
+serde = { version = "1.0", features = [ "derive", "rc" ] }
+serde_json = "1.0"
+serde_qs = "0.8"
+snafu = { version = "0.6.10", features = [ "futures" ] }
+tokio = { version = "1.14.0", features = [ "sync", "rt-multi-thread", "macros", "process" ] }
+tokio-stream = { version = "0.1.8", features = [ "fs" ] }
+toml = "0.5"
+tracing = "0.1.26"
+tracing-appender = "0.1.2"
+tracing-futures = "0.2.5"
+tracing-log = "0.1.2"
+tracing-subscriber = "0.2.17"
+url = { version = "2.2", features = [ "serde" ] }
+warp = "0.3.2"
+
+[dev-dependencies]
+mockall = "0.9.1"
+criterion = { version = "0.3", features = [ "async_tokio" ] }
+uuid = { version = "0.8", features = [ "serde", "v4" ] }
+rand = "0.8"
+serial_test = "0.5.1"
+
+[lib]
+name = "mimir"
+path = "src/lib.rs"

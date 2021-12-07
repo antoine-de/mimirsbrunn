@@ -27,17 +27,10 @@
 // IRC #navitia on freenode
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
-use super::OsmPbfReader;
-use crate::osm_reader::osm_utils::{get_osm_codes_from_tags, make_centroid};
-use crate::utils;
-use cosmogony::ZoneType;
-use geo::bounding_rect::BoundingRect;
 use itertools::Itertools;
-use osm_boundaries_utils::build_boundary;
-use slog_scope::{info, warn};
 use std::collections::BTreeSet;
 
-pub type StreetsVec = Vec<mimir::Street>;
+pub type StreetsVec = Vec<places::street::Street>;
 
 #[derive(Debug)]
 pub struct AdminMatcher {
@@ -63,136 +56,6 @@ impl AdminMatcher {
             }
             _ => false,
         }
-    }
-}
-
-pub fn read_administrative_regions(
-    pbf: &mut OsmPbfReader,
-    levels: BTreeSet<u32>,
-    city_level: u32,
-) -> Vec<mimir::Admin> {
-    let mut administrative_regions = Vec::<mimir::Admin>::new();
-    let mut insee_inserted = BTreeSet::default();
-    let matcher = AdminMatcher::new(levels);
-    info!("reading pbf...");
-    let objects = pbf.get_objs_and_deps(|o| matcher.is_admin(o)).unwrap();
-    info!("reading pbf done.");
-    // load administratives regions
-    for obj in objects.values() {
-        if !matcher.is_admin(obj) {
-            continue;
-        }
-        if let osmpbfreader::OsmObj::Relation(ref relation) = *obj {
-            let level = relation
-                .tags
-                .get("admin_level")
-                .and_then(|s| s.parse().ok());
-            let level = match level {
-                None => {
-                    warn!(
-                        "relation/{} ({}): invalid admin_level: {:?}, skipped",
-                        relation.id.0,
-                        relation.tags.get("name").map_or("", |v| v.as_ref()),
-                        relation.tags.get("admin_level")
-                    );
-                    continue;
-                }
-                Some(l) => l,
-            };
-            // administrative region with name ?
-            let name = match relation.tags.get("name") {
-                Some(val) => val,
-                None => {
-                    warn!(
-                        "relation/{}: adminstrative region without name, skipped",
-                        relation.id.0
-                    );
-                    continue;
-                }
-            };
-
-            // admininstrative region without coordinates
-            let coord_center = relation
-                .refs
-                .iter()
-                .find(|r| &r.role == "admin_centre")
-                .and_then(|r| objects.get(&r.member))
-                .and_then(|o| o.node())
-                .map(|node| mimir::Coord::new(node.lon(), node.lat()));
-            let (admin_id, insee_id) = match read_insee(&relation.tags) {
-                Some(val) if !insee_inserted.contains(val) => {
-                    insee_inserted.insert(val.to_string());
-                    (format!("admin:fr:{}", val), val)
-                }
-                Some(val) => {
-                    let id = format!("admin:osm:relation:{}", relation.id.0);
-                    warn!(
-                        "relation/{}: have the INSEE {} that is already used, using {} as id",
-                        relation.id.0, val, id
-                    );
-                    (id, val)
-                }
-                None => (format!("admin:osm:relation:{}", relation.id.0), ""),
-            };
-
-            let zip_codes = read_zip_codes(&relation.tags);
-            let boundary = build_boundary(relation, &objects);
-            let zone_type = get_zone_type(level, city_level);
-
-            let weight = relation
-                .tags
-                .get("population")
-                .and_then(|p| p.parse().ok())
-                .or_else(|| {
-                    let rel = relation.refs.iter().find(|r| &r.role == "admin_centre")?;
-                    objects
-                        .get(&rel.member)?
-                        .node()?
-                        .tags
-                        .get("population")?
-                        .parse()
-                        .ok()
-                })
-                .unwrap_or(0.);
-
-            let coord = coord_center.unwrap_or_else(|| make_centroid(&boundary));
-            let codes = get_osm_codes_from_tags(&relation.tags);
-            let admin = mimir::Admin {
-                id: admin_id,
-                insee: insee_id.to_string(),
-                level,
-                name: name.to_string(),
-                label: format!("{}{}", name.to_string(), format_zip_codes(&zip_codes)),
-                zip_codes,
-                weight,
-                coord,
-                approx_coord: Some(coord.into()),
-                bbox: boundary.as_ref().and_then(|b| b.bounding_rect()),
-                boundary,
-                zone_type,
-                parent_id: None,
-                country_codes: utils::get_country_code(&codes).into_iter().collect(),
-                codes,
-                names: mimir::I18nProperties::default(),
-                labels: mimir::I18nProperties::default(),
-                distance: None,
-                context: None,
-                administrative_regions: Vec::new(),
-            };
-            administrative_regions.push(admin);
-        }
-    }
-
-    utils::normalize_admin_weight(&mut administrative_regions);
-
-    administrative_regions
-}
-
-fn get_zone_type(level: u32, city_lvl: u32) -> Option<ZoneType> {
-    if level == city_lvl {
-        Some(ZoneType::City)
-    } else {
-        None
     }
 }
 
@@ -223,18 +86,4 @@ pub fn read_zip_codes(tags: &osmpbfreader::Tags) -> Vec<String> {
 
 pub fn read_insee(tags: &osmpbfreader::Tags) -> Option<&str> {
     tags.get("ref:INSEE").map(|v| v.as_str())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn should_return_correct_admin_type() {
-        assert_eq!(
-            get_zone_type(1 /*level*/, 1 /*city level*/),
-            Some(ZoneType::City)
-        );
-        assert_eq!(get_zone_type(2, 1), None);
-    }
 }

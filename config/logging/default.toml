@@ -1,0 +1,10 @@
+[logging]
+  # Specify the path were to output logs.
+  #
+  # If you specify a path to an existing directory, this will create daily log
+  # files at `{path}/mimir.log.yyyy-mm-dd`.
+  #
+  # Otherwise, the file will be created if it doesn't exist and logs will be
+  # appened to it. Specifically, if you want your logs to be displayed in the
+  # standart output, you can specify the file `/dev/stdout`.
+  path = "./logs"

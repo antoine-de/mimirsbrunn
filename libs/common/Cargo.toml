@@ -1,0 +1,16 @@
+[package]
+name = "common"
+version = "1.0.0-rc2"
+authors = ["Kisio Digital", "Qwant"]
+edition = "2021"
+description = "Set of tools shared between mimir packages"
+license = "AGPLv3"
+repository = "https://github.com/CanalTP/mimirsbrunn.git"
+keywords = [ "mimirsbrunn", "elasticsearch", "geocoding" ]
+categories = [ "application" ]
+readme = "README.md"
+
+[dependencies]
+config = { version = "0.11", default_features = false, features = ["json", "toml"] }
+serde = { version = "1.0", default_features = false }
+snafu = { version = "0.6.10", features = [ "futures" ] }
