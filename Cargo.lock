@@ -2075,7 +2075,7 @@ dependencies = [
 
 [[package]]
 name = "mimirsbrunn"
-version = "2.0.0-rc2"
+version = "2.1.0"
 dependencies = [
  "address-formatter",
  "approx 0.5.0",
