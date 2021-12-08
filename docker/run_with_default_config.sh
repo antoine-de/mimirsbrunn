@@ -22,7 +22,7 @@ CONFIG_DIR=${CONFIG_DIR:-"/etc/mimirsbrunn"}
 # with code 0.
 set -o pipefail
 
-if [ $BUNYAN ] ; then
+if [ $BUNYAN -eq "1" ] ; then
     $CMD --config-dir $CONFIG_DIR --run-mode $RUN_MODE $ARG | bunyan
 else
     $CMD --config-dir $CONFIG_DIR --run-mode $RUN_MODE $ARG

@@ -77,6 +77,7 @@ COPY --from=builder /home/mimirsbrunn/bin/bragi /usr/bin/bragi
 
 EXPOSE 5000
 
+ENV CONFIG_DIR  /etc/bragi
 ENV RUST_LOG    info,hyper=info
 ENV BUNYAN      0
 
