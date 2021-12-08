@@ -71,8 +71,9 @@ else \
   echo "Unsupported debian version '$DEBIAN_VERSION'"; \
 fi
 
+COPY config /etc/bragi
+COPY docker/run_with_default_config.sh .
 COPY --from=builder /home/mimirsbrunn/bin/bragi /usr/bin/bragi
-COPY --from=builder /home/mimirsbrunn/config /etc/bragi
 
 EXPOSE 5000
 
