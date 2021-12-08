@@ -13,6 +13,7 @@ CMD=$1
 shift
 ARG=$@
 
+BUNYAN=${BUNYAN:-"1"}
 RUN_MODE=${RUN_MODE:-"docker"}
 CONFIG_DIR=${CONFIG_DIR:-"/etc/mimirsbrunn"}
 
@@ -21,4 +22,8 @@ CONFIG_DIR=${CONFIG_DIR:-"/etc/mimirsbrunn"}
 # with code 0.
 set -o pipefail
 
-$CMD --config-dir $CONFIG_DIR --run-mode $RUN_MODE $ARG | bunyan
+if [ $BUNYAN ] ; then
+    $CMD --config-dir $CONFIG_DIR --run-mode $RUN_MODE $ARG | bunyan
+else
+    $CMD --config-dir $CONFIG_DIR --run-mode $RUN_MODE $ARG
+fi

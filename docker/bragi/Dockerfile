@@ -77,8 +77,9 @@ COPY --from=builder /home/mimirsbrunn/config /etc/bragi
 EXPOSE 4000
 
 ENV RUST_LOG                    info,hyper=info
+ENV BUNYAN                      0
 ENV BRAGI_ELASTICSEARCH_URL     http://localhost:9200/munin
 ENV BRAGI_SERVICE_HOST          0.0.0.0
 ENV BRAGI_SERVICE_PORT          4000
 
-ENTRYPOINT ["/usr/bin/bragi", "--config-dir", "/etc/bragi", "run"]
+ENTRYPOINT [ "./run_with_default_config.sh", "bragi" ]
