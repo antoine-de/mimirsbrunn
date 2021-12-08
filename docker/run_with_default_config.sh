@@ -14,4 +14,5 @@ ARG=$@
 # with code 0.
 set -o pipefail
 
-$CMD --config-dir /etc/mimirsbrunn --run-mode docker $@ | bunyan
+echo "$CMD --run-mode docker --config-dir /etc/mimirsbrunn $ARG | bunyan"
+$CMD --config-dir=/etc/mimirsbrunn --run-mode=docker $ARG | bunyan

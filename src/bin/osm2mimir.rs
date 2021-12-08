@@ -1,7 +1,7 @@
+use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
-use structopt::StructOpt;
 use tracing::{instrument, warn};
 
 use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
@@ -55,7 +55,7 @@ pub enum Error {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let opts = settings::Opts::from_args();
+    let opts = settings::Opts::parse();
 
     let settings = settings::Settings::new(&opts)
         .and_then(settings::validate)

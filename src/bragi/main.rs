@@ -1,5 +1,5 @@
+use clap::Parser;
 use snafu::{ResultExt, Snafu};
-use structopt::StructOpt;
 
 mod server;
 mod settings;
@@ -17,7 +17,7 @@ pub enum Error {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let opts = settings::Opts::from_args();
+    let opts = settings::Opts::parse();
     match opts.cmd {
         settings::Command::Run => server::run(&opts).await.context(ServerError),
         settings::Command::Config => server::config(&opts).await.context(ServerError),

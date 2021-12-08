@@ -4,7 +4,6 @@ use snafu::ResultExt;
 use snafu::Snafu;
 use std::env;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 use mimir::adapters::primary::common::settings::QuerySettings;
 
@@ -63,8 +62,8 @@ pub struct Settings {
     pub service: Service,
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, clap::Parser)]
+#[clap(
     name = "bragi",
     about = "REST API for querying Elasticsearch",
     version = VERSION,
@@ -74,24 +73,29 @@ pub struct Opts {
     /// Defines the config directory
     ///
     /// This directory must contain 'elasticsearch' and 'osm2mimir' subdirectories.
-    #[structopt(parse(from_os_str), short = "c", long = "config-dir")]
+    #[clap(parse(from_os_str), short = 'c', long = "config-dir")]
     pub config_dir: PathBuf,
 
     /// Defines the run mode in {testing, dev, prod, ...}
     ///
     /// If no run mode is provided, a default behavior will be used.
-    #[structopt(short = "m", long = "run-mode")]
+    #[clap(short = 'm', long = "run-mode")]
     pub run_mode: Option<String>,
 
     /// Override settings values using key=value
-    #[structopt(short = "s", long = "setting")]
+    #[clap(
+        short = 's',
+        long = "setting",
+        multiple_values = false,
+        multiple_occurrences = true
+    )]
     pub settings: Vec<String>,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     pub cmd: Command,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, clap::Parser)]
 pub enum Command {
     /// Execute osm2mimir with the given configuration
     Run,

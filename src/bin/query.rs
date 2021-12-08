@@ -1,3 +1,4 @@
+use clap::Parser;
 use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir::{
@@ -11,22 +12,21 @@ use mimir::{
 };
 use places::addr::Addr;
 use places::admin::Admin;
-use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "query", about = "Querying Bragi from the commandline")]
+#[derive(Debug, Parser)]
+#[clap(name = "query", about = "Querying Bragi from the commandline")]
 struct Opt {
     /// Activate debug mode
     // short and long flags (-d, --debug) will be deduced from the field's name
-    #[structopt(short, long)]
+    #[clap(short, long)]
     debug: bool,
 
     /// latitude
-    #[structopt(long = "lat")]
+    #[clap(long = "lat")]
     latitude: Option<f32>,
 
     /// longitude
-    #[structopt(long = "lon")]
+    #[clap(long = "lon")]
     longitude: Option<f32>,
 
     /// Search String
@@ -35,7 +35,7 @@ struct Opt {
 
 #[tokio::main]
 async fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let client = connection_test_pool()
         .conn(Default::default())
