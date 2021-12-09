@@ -71,14 +71,14 @@ else \
   echo "Unsupported debian version '$DEBIAN_VERSION'"; \
 fi
 
+COPY config /etc/bragi
+COPY docker/run_with_default_config.sh .
 COPY --from=builder /home/mimirsbrunn/bin/bragi /usr/bin/bragi
-COPY --from=builder /home/mimirsbrunn/config /etc/bragi
 
-EXPOSE 4000
+EXPOSE 5000
 
-ENV RUST_LOG                    info,hyper=info
-ENV BRAGI_ELASTICSEARCH_URL     http://localhost:9200/munin
-ENV BRAGI_SERVICE_HOST          0.0.0.0
-ENV BRAGI_SERVICE_PORT          4000
+ENV CONFIG_DIR  /etc/bragi
+ENV RUST_LOG    info,hyper=info
+ENV BUNYAN      0
 
-ENTRYPOINT ["/usr/bin/bragi", "--config-dir", "/etc/bragi", "run"]
+ENTRYPOINT [ "./run_with_default_config.sh", "bragi" ]

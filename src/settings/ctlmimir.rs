@@ -92,7 +92,7 @@ impl Settings {
                     opts.config_dir.as_ref(),
                     &["elasticsearch", "logging"],
                     opts.run_mode.as_deref(),
-                    "CTLMIMIR",
+                    "MIMIR",
                     opts.settings.clone(),
                 )
                 .context(ConfigCompilation)?,
