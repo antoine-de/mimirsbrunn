@@ -75,7 +75,7 @@ COPY config /etc/bragi
 COPY docker/run_with_default_config.sh .
 COPY --from=builder /home/mimirsbrunn/bin/bragi /usr/bin/bragi
 
-EXPOSE 5000
+EXPOSE 4000
 
 ENV CONFIG_DIR  /etc/bragi
 ENV RUST_LOG    info,hyper=info
