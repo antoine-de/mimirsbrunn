@@ -1,11 +1,10 @@
-use snafu::{ResultExt, Snafu};
-use std::path::PathBuf;
-use structopt::StructOpt;
-
+use clap::Parser;
 use mimir::adapters::primary::templates;
 use mimir::adapters::secondary::elasticsearch;
 use mimir::domain::ports::secondary::remote::Remote;
 use mimirsbrunn::settings::ctlmimir as settings;
+use snafu::{ResultExt, Snafu};
+use std::path::PathBuf;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -23,7 +22,7 @@ pub enum Error {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let opts = settings::Opts::from_args();
+    let opts = settings::Opts::parse();
     let settings = settings::Settings::new(&opts).context(Settings)?;
 
     match opts.cmd {

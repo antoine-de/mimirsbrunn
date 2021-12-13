@@ -28,12 +28,12 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
+use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimirsbrunn::addr_reader::import_addresses_from_input_path;
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
-use structopt::StructOpt;
 use tracing::warn;
 
 use mimir::adapters::secondary::elasticsearch;
@@ -67,7 +67,7 @@ pub enum Error {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let opts = settings::Opts::from_args();
+    let opts = settings::Opts::parse();
     let settings = settings::Settings::new(&opts).context(Settings)?;
 
     match opts.cmd {

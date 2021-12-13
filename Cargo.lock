@@ -525,6 +525,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap"
+version = "3.0.0-beta.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "feff3878564edb93745d58cf63e17b63f24142506e7a20c87a5521ed7bfb1d63"
+dependencies = [
+ "atty",
+ "bitflags",
+ "clap_derive",
+ "indexmap",
+ "lazy_static",
+ "os_str_bytes",
+ "strsim 0.10.0",
+ "termcolor",
+ "textwrap 0.14.2",
+ "unicase",
+]
+
+[[package]]
+name = "clap_derive"
+version = "3.0.0-beta.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b15c6b4f786ffb6192ffe65a36855bc1fc2444bcd0945ae16748dcd6ed7d0d3"
+dependencies = [
+ "heck",
+ "proc-macro-error",
+ "proc-macro2 1.0.32",
+ "quote 1.0.10",
+ "syn 1.0.81",
+]
+
+[[package]]
 name = "common"
 version = "1.0.0-rc2"
 dependencies = [
@@ -626,7 +657,7 @@ checksum = "1604dafd25fba2fe2d5895a9da139f8dc9b319a5fe5354ca137cbbce4e178d10"
 dependencies = [
  "atty",
  "cast",
- "clap",
+ "clap 2.33.3",
  "criterion-plot",
  "csv",
  "futures 0.3.17",
@@ -795,7 +826,7 @@ checksum = "5d1cc772687e83e581621d37bb11543237dc55618dbc04c8e600928e532dc879"
 dependencies = [
  "async-stream",
  "async-trait",
- "clap",
+ "clap 2.33.3",
  "cute_custom_default",
  "futures 0.3.17",
  "futures-timer",
@@ -2075,7 +2106,7 @@ dependencies = [
 
 [[package]]
 name = "mimirsbrunn"
-version = "2.0.0-rc2"
+version = "2.1.0"
 dependencies = [
  "address-formatter",
  "approx 0.5.0",
@@ -2084,7 +2115,7 @@ dependencies = [
  "bincode",
  "chrono",
  "chrono-tz",
- "clap",
+ "clap 3.0.0-beta.5",
  "common",
  "config",
  "cosmogony",
@@ -2118,7 +2149,6 @@ dependencies = [
  "serde_json",
  "serial_test",
  "snafu",
- "structopt",
  "tests",
  "tokio",
  "tokio-stream",
@@ -2417,6 +2447,15 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "os_str_bytes"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "addaa943333a514159c80c97ff4a93306530d965d27e139188283cd13e06a799"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -3549,7 +3588,7 @@ version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40b9788f4202aa75c240ecc9c15c65185e6a39ccdeb0fd5d008b98825464c87c"
 dependencies = [
- "clap",
+ "clap 2.33.3",
  "lazy_static",
  "structopt-derive",
 ]
@@ -3730,6 +3769,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "203008d98caf094106cfaba70acfed15e18ed3ddb7d94e49baec153a2b462789"
 dependencies = [
  "terminal_size",
+ "unicode-width",
+]
+
+[[package]]
+name = "textwrap"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
+dependencies = [
  "unicode-width",
 ]
 
