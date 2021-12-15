@@ -18,7 +18,7 @@ pub struct Poi {
     pub label: String,
     pub name: String,
     pub coord: Coord,
-    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// coord used for some geograhic queries in ES, less precise but faster than `coord`
     /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
     #[serde(skip_deserializing)]
     pub approx_coord: Option<Geometry>,

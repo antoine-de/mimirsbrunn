@@ -26,10 +26,10 @@
               "char_filter": []
             }
           },
-          "filter":{
-            "synonym":{
-              "type":"synonym",
-              "synonyms":[
+          "filter": {
+            "synonym": {
+              "type": "synonym",
+              "synonyms": [
                 "cc,centre commercial",
                 "hotel de ville,mairie",
                 "gare sncf,gare",
@@ -91,7 +91,7 @@
             "analyzer": "word"
           },
           "weight": {
-            "enabled": false
+            "type": "float"
           },
           "zip_codes": {
             "type": "text",
