@@ -41,7 +41,7 @@ pub struct ForwardGeocoderQuery {
     pub poi_types: Option<Vec<String>>,
     #[serde(default = "default_result_limit")]
     pub limit: i64,
-    #[serde(deserialize_with = "deserialize_opt_duration")]
+    #[serde(deserialize_with = "deserialize_opt_duration", default)]
     pub timeout: Option<Duration>,
 }
 
