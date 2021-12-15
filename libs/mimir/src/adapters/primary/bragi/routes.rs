@@ -2,6 +2,7 @@ use geojson::{GeoJson, Geometry};
 use std::convert::Infallible;
 use tracing::instrument;
 use url::Url;
+
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::{
@@ -9,6 +10,7 @@ use crate::adapters::primary::bragi::api::{
 };
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
+use serde_qs::Config;
 
 /// This function defines the base path for Bragi's REST API
 fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
@@ -138,7 +140,8 @@ pub fn forward_geocoder_query(
     // warp::query cannot parse array parameters correctly, so we use serde_qs for that:
     warp::filters::query::raw()
         .and_then(|param: String| async move {
-            serde_qs::from_str::<ForwardGeocoderQuery>(&param).map_err(|_| {
+            let config = Config::new(3, false);
+            config.deserialize_str(&param).map_err(|_| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
                 })
@@ -155,7 +158,8 @@ pub fn forward_geocoder_query(
 pub fn forward_geocoder_explain_query(
 ) -> impl Filter<Extract = (ForwardGeocoderExplainQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
-        serde_qs::from_str::<ForwardGeocoderExplainQuery>(&param).map_err(|_| {
+        let config = Config::new(3, false);
+        config.deserialize_str(&param).map_err(|_| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
             })
@@ -406,5 +410,16 @@ mod tests {
                 .contains("Expected a GeoJSON property for `geometry`"),
             "Invalid GeoJSON shape (missing geometry). cannot deserialize body"
         );
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_query_no_strict_mode() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path("/api/v1/autocomplete?q=rue+hictor+malot&type%5B%5D=street&type%5B%5D=house")
+            .filter(&filter)
+            .await;
+
+        assert_eq!(resp.as_ref().unwrap().0.types.as_ref().unwrap().len(), 2);
     }
 }
