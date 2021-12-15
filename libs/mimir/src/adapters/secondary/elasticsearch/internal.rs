@@ -1029,7 +1029,7 @@ impl ElasticsearchStorage {
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
-        let timeout = timeout.unwrap_or_else(|| self.config.timeout);
+        let timeout = timeout.unwrap_or(self.config.timeout);
         let search = self
             .client
             .search(SearchParts::Index(&indices))

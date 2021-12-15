@@ -36,7 +36,7 @@ where
     S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
-    let timeout = params.timeout.clone();
+    let timeout = params.timeout;
     let search_types = types_to_indices(&params.types);
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
