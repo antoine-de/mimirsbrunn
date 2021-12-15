@@ -1,9 +1,9 @@
-use std::time::Duration;
 use crate::utils::deserialize::deserialize_opt_duration;
 use cosmogony::ZoneType;
 use geojson::{GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use std::time::Duration;
 
 use crate::adapters::primary::common::coord::Coord;
 use crate::adapters::primary::common::filters::Filters;

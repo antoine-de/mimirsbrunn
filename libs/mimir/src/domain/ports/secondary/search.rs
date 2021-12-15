@@ -12,7 +12,7 @@ pub struct Parameters {
     pub doc_types: Vec<String>,
     pub query: Query,
     pub result_limit: i64,
-    pub timeout : Option<Duration>,
+    pub timeout: Option<Duration>,
 }
 
 #[derive(Debug, Snafu)]

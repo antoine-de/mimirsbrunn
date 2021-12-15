@@ -14,5 +14,5 @@ pub struct Filters {
     pub zone_types: Option<Vec<String>>,
     pub poi_types: Option<Vec<String>>,
     pub limit: i64,
-    pub timeout : Option<Duration>,
+    pub timeout: Option<Duration>,
 }

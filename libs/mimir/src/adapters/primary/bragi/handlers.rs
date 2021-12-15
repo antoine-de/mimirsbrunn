@@ -43,7 +43,6 @@ where
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
-
     match client
         .search_documents(search_types, Query::QueryDSL(dsl), filters.limit, timeout)
         .await
