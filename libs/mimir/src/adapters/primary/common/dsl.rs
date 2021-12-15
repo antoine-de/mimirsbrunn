@@ -17,6 +17,7 @@ pub fn build_query(
         datasets: _,
         zone_types,
         poi_types,
+        timeout: _,
     } = filters;
 
     let string_query = build_string_query(q, &settings.string_query);

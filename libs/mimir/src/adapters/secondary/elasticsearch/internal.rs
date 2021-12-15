@@ -17,6 +17,7 @@ use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
+use std::time::Duration;
 use tracing::info;
 
 use super::configuration::{
@@ -1022,16 +1023,18 @@ impl ElasticsearchStorage {
         indices: Vec<String>,
         query: Query,
         limit_result: i64,
+        timeout : Option<Duration>, //in milliseconds
     ) -> Result<Vec<D>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
+        let timeout = timeout.unwrap_or_else(|| self.config.timeout);
         let search = self
             .client
             .search(SearchParts::Index(&indices))
             .size(limit_result)
-            .request_timeout(self.config.timeout);
+            .request_timeout(timeout);
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {

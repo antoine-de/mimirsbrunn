@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::coord::Coord;
 use geojson::Geometry;
 
@@ -12,4 +14,5 @@ pub struct Filters {
     pub zone_types: Option<Vec<String>>,
     pub poi_types: Option<Vec<String>>,
     pub limit: i64,
+    pub timeout : Option<Duration>,
 }

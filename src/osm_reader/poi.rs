@@ -298,6 +298,7 @@ where
             ],
             Query::QueryDSL(reverse),
             DEFAULT_LIMIT_RESULT_ES,
+            None,
         )
         .await
         .map(|results| {

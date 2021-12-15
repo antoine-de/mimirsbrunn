@@ -15,7 +15,7 @@ impl Search for ElasticsearchStorage {
             .map(|idx| root_doctype(idx))
             .collect();
 
-        self.search_documents(indices, parameters.query, parameters.result_limit)
+        self.search_documents(indices, parameters.query, parameters.result_limit, parameters.timeout)
             .await
             .map_err(|err| Error::DocumentRetrievalError { source: err.into() })
     }

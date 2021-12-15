@@ -67,6 +67,7 @@ async fn main() {
             ],
             Query::QueryDSL(dsl),
             DEFAULT_LIMIT_RESULT_ES,
+            None,
         )
         .await
         .unwrap()

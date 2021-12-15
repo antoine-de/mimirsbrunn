@@ -1,3 +1,5 @@
+use std::time::Duration;
+use crate::utils::deserialize::deserialize_opt_duration;
 use cosmogony::ZoneType;
 use geojson::{GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
@@ -39,6 +41,8 @@ pub struct ForwardGeocoderQuery {
     pub poi_types: Option<Vec<String>>,
     #[serde(default = "default_result_limit")]
     pub limit: i64,
+    #[serde(deserialize_with = "deserialize_opt_duration")]
+    pub timeout: Option<Duration>,
 }
 
 fn default_result_limit() -> i64 {
@@ -58,6 +62,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                 zone_types,
                 poi_types,
                 limit,
+                timeout,
             },
             geometry,
         ) = source;
@@ -97,6 +102,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
             zone_types,
             poi_types,
             limit,
+            timeout,
         }
     }
 }
@@ -109,6 +115,8 @@ pub struct ReverseGeocoderQuery {
     pub lon: f64,
     #[serde(default = "default_result_limit")]
     pub limit: i64,
+    #[serde(deserialize_with = "deserialize_opt_duration")]
+    pub timeout: Option<Duration>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

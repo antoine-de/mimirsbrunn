@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 
 use serde::de::DeserializeOwned;
@@ -10,6 +12,7 @@ pub struct Parameters {
     pub doc_types: Vec<String>,
     pub query: Query,
     pub result_limit: i64,
+    pub timeout : Option<Duration>,
 }
 
 #[derive(Debug, Snafu)]
