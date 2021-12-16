@@ -1030,7 +1030,17 @@ impl ElasticsearchStorage {
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
         let timeout = timeout
-            .map(|t| std::cmp::min(t, self.config.timeout)) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
+            .map(|t| {
+                if t > self.config.timeout {
+                    info!(
+                        "Requested timeout {:?} is too big. I'll use {:?} instead.",
+                        t, self.config.timeout
+                    );
+                    self.config.timeout
+                } else {
+                    t
+                }
+            }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
             .unwrap_or(self.config.timeout);
 
         let search = self
