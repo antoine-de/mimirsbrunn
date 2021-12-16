@@ -1023,7 +1023,7 @@ impl ElasticsearchStorage {
         indices: Vec<String>,
         query: Query,
         limit_result: i64,
-        timeout: Option<Duration>, 
+        timeout: Option<Duration>,
     ) -> Result<Vec<D>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
