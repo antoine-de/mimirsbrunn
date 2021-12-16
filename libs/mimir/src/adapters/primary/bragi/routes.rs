@@ -9,6 +9,7 @@ use crate::adapters::primary::bragi::api::{
 };
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
+use serde_qs::Config;
 
 /// This function defines the base path for Bragi's REST API
 fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
@@ -135,10 +136,12 @@ impl Reject for InvalidPostBody {}
 #[instrument]
 pub fn forward_geocoder_query(
 ) -> impl Filter<Extract = (ForwardGeocoderQuery,), Error = Rejection> + Copy {
-    // warp::query cannot parse array parameters correctly, so we use serde_qs for that:
     warp::filters::query::raw()
         .and_then(|param: String| async move {
-            serde_qs::from_str::<ForwardGeocoderQuery>(&param).map_err(|_| {
+            // max_depth=1:
+            // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
+            let config = Config::new(1, false);
+            config.deserialize_str(&param).map_err(|_| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
                 })
@@ -155,7 +158,10 @@ pub fn forward_geocoder_query(
 pub fn forward_geocoder_explain_query(
 ) -> impl Filter<Extract = (ForwardGeocoderExplainQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
-        serde_qs::from_str::<ForwardGeocoderExplainQuery>(&param).map_err(|_| {
+        // max_depth=1:
+        // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
+        let config = Config::new(1, false);
+        config.deserialize_str(&param).map_err(|_| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
             })
@@ -406,5 +412,17 @@ mod tests {
                 .contains("Expected a GeoJSON property for `geometry`"),
             "Invalid GeoJSON shape (missing geometry). cannot deserialize body"
         );
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_query_no_strict_mode() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path("/api/v1/autocomplete?q=Bob&type%5B%5D=street&type%5B%5D=house")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.0.types.unwrap(), [Type::Street, Type::House]);
+        assert_eq!(resp.0.q, "Bob");
     }
 }
