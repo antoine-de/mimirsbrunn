@@ -141,6 +141,7 @@ pub fn forward_geocoder_query(
             // max_depth=1:
             // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
             let config = Config::new(1, false);
+            config.deserialize_str(&param).map_err(|_| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
                 })
