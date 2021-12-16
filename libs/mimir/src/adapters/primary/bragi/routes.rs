@@ -417,18 +417,9 @@ mod tests {
         let resp = warp::test::request()
             .path("/api/v1/autocomplete?q=rue+hictor+malot&type%5B%5D=street&type%5B%5D=house")
             .filter(&filter)
-            .await;
-        assert_eq!(resp.as_ref().unwrap().0.types.as_ref().unwrap().len(), 2);
-        assert!(resp
-            .as_ref()
-            .unwrap()
-            .0
-            .types
-            .as_ref()
-            .unwrap()
-            .iter()
-            .zip([Type::Street, Type::House].iter())
-            .all(|(a, b)| *a == *b));
-        assert_eq!(resp.unwrap().0.q, String::from("rue hictor malot"));
+            .await
+            .unwrap();
+        assert_eq!(resp.0.types.unwrap(), [Type::Street, Type::House]);
+        assert_eq!(resp.0.q, "rue hictor malot");
     }
 }
