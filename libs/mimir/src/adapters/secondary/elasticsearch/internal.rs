@@ -1023,13 +1023,16 @@ impl ElasticsearchStorage {
         indices: Vec<String>,
         query: Query,
         limit_result: i64,
-        timeout: Option<Duration>, //in milliseconds
+        timeout: Option<Duration>, 
     ) -> Result<Vec<D>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
-        let timeout = timeout.unwrap_or(self.config.timeout);
+        let timeout = timeout
+            .map(|t| std::cmp::min(t, self.config.timeout)) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
+            .unwrap_or(self.config.timeout);
+
         let search = self
             .client
             .search(SearchParts::Index(&indices))
