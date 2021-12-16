@@ -36,6 +36,7 @@ where
     S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
+    let timeout = params.timeout;
     let search_types = types_to_indices(&params.types);
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
@@ -43,7 +44,7 @@ where
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
-        .search_documents(search_types, Query::QueryDSL(dsl), filters.limit)
+        .search_documents(search_types, Query::QueryDSL(dsl), filters.limit, timeout)
         .await
     {
         Ok(res) => {
@@ -135,6 +136,7 @@ where
             ],
             Query::QueryDSL(dsl),
             params.limit,
+            params.timeout,
         )
         .await
     {

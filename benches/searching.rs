@@ -112,6 +112,7 @@ fn bench(c: &mut Criterion) {
                                     ],
                                     Query::QueryDSL(dsl),
                                     DEFAULT_LIMIT_RESULT_ES,
+                                    None,
                                 )
                                 .await
                                 .unwrap();

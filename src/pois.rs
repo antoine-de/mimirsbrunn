@@ -198,6 +198,7 @@ async fn into_poi(
             ],
             Query::QueryDSL(dsl),
             1,
+            None,
         )
         .await
         .context(ReverseAddressSearch)

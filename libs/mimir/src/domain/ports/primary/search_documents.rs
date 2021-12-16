@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
@@ -20,6 +22,7 @@ pub trait SearchDocuments {
         doc_types: Vec<String>,
         query: Query,
         result_limit: i64,
+        timeout: Option<Duration>,
     ) -> Result<Vec<Self::Document>, ModelError>;
 }
 
@@ -36,11 +39,13 @@ where
         doc_types: Vec<String>,
         query: Query,
         result_limit: i64,
+        timeout: Option<Duration>,
     ) -> Result<Vec<Self::Document>, ModelError> {
         self.search_documents(Parameters {
             doc_types,
             query,
             result_limit,
+            timeout,
         })
         .await
         .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })

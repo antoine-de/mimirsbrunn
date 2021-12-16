@@ -183,6 +183,7 @@ mod tests {
                         vec![String::from(Addr::static_doc_type())],
                         Query::QueryString(format!("label:({})", query)),
                         DEFAULT_LIMIT_RESULT_ES,
+                        None,
                     )
                     .await
                     .unwrap()
