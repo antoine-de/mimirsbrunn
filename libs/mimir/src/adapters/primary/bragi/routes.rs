@@ -2,7 +2,6 @@ use geojson::{GeoJson, Geometry};
 use std::convert::Infallible;
 use tracing::instrument;
 use url::Url;
-
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::{
@@ -419,7 +418,17 @@ mod tests {
             .path("/api/v1/autocomplete?q=rue+hictor+malot&type%5B%5D=street&type%5B%5D=house")
             .filter(&filter)
             .await;
-
         assert_eq!(resp.as_ref().unwrap().0.types.as_ref().unwrap().len(), 2);
+        assert!(resp
+            .as_ref()
+            .unwrap()
+            .0
+            .types
+            .as_ref()
+            .unwrap()
+            .iter()
+            .zip([Type::Street, Type::House].iter())
+            .all(|(a, b)| *a == *b));
+        assert_eq!(resp.unwrap().0.q, String::from("rue hictor malot"));
     }
 }
