@@ -75,7 +75,7 @@ fn main() -> Result<(), Error> {
             settings.nbthreads,
             run(opts, settings),
         )
-            .context(Execution),
+        .context(Execution),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
