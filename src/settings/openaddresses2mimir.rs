@@ -46,7 +46,7 @@ pub struct Settings {
     pub coordinates: Coordinates,
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,
-    pub nb_threads: usize,
+    pub nbthreads: usize,
 }
 
 #[derive(Debug, clap::Parser)]

@@ -60,7 +60,7 @@ pub struct Settings {
     pub elasticsearch: ElasticsearchStorageConfig,
     pub query: QuerySettings,
     pub service: Service,
-    pub nb_threads: usize,
+    pub nbthreads: usize,
 }
 
 #[derive(Debug, clap::Parser)]
