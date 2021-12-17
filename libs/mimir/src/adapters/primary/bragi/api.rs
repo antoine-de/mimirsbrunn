@@ -66,11 +66,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
             },
             geometry,
         ) = source;
-        let zone_types = zone_types.map(|zts| {
-            zts.iter()
-                .map(|t| t.as_str().to_string())
-                .collect()
-        });
+        let zone_types = zone_types.map(|zts| zts.iter().map(|t| t.as_str().to_string()).collect());
         Filters {
             // When option_zip_option becomes available: coord: input.lat.zip_with(input.lon, Coord::new),
             coord: match (lat, lon) {
