@@ -134,12 +134,14 @@ where
     let distance = format!("{}m", settings.reverse_query.radius);
     let dsl = dsl::build_reverse_query(&distance, params.lat, params.lon);
 
+    let es_indices_to_search_in = vec![
+        root_doctype(Street::static_doc_type()),
+        root_doctype(Addr::static_doc_type()),
+    ];
+
     match client
         .search_documents(
-            vec![
-                String::from(Street::static_doc_type()),
-                String::from(Addr::static_doc_type()),
-            ],
+            es_indices_to_search_in,
             Query::QueryDSL(dsl),
             params.limit,
             params.timeout,
