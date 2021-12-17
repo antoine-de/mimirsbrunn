@@ -68,7 +68,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
         ) = source;
         let zone_types = zone_types.map(|zts| {
             zts.iter()
-                .map(|zt| serde_json::to_string(zt).unwrap())
+                .map(|t| t.as_str().to_string())
                 .collect()
         });
         Filters {

@@ -312,12 +312,12 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
                     "bool": {
                         "must": {
                             "term": {
-                                "_source.type": "admin"
+                                "type": "admin"
                             }
                         },
                         "filter": {
                             "terms": {
-                                "_source.zone_type.id": zone_types
+                                "zone_type":zone_types
                             }
                         }
                     }
@@ -326,7 +326,7 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
                     "bool": {
                         "must_not": {
                             "term": {
-                                "_source.type": "admin"
+                                "type": "admin"
                             }
                         }
                     }
