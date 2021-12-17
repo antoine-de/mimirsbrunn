@@ -15,6 +15,7 @@ use crate::adapters::primary::{
         settings,
     },
 };
+use crate::domain::model::configuration::{root_doctype, root_doctype_dataset};
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::explain_query::ExplainDocument;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
@@ -37,14 +38,19 @@ where
 {
     let q = params.q.clone();
     let timeout = params.timeout;
-    let search_types = types_to_indices(&params.types);
+    let es_indices_to_search_in = build_es_indices_to_search(&params);
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
-        .search_documents(search_types, Query::QueryDSL(dsl), filters.limit, timeout)
+        .search_documents(
+            es_indices_to_search_in,
+            Query::QueryDSL(dsl),
+            filters.limit,
+            timeout,
+        )
         .await
     {
         Ok(res) => {
@@ -187,18 +193,56 @@ where
     }
 }
 
-// This translate the search types requested in the query into index types to search for.
-// If no type were specified, we search all indices.
-fn types_to_indices(types: &Option<Vec<Type>>) -> Vec<String> {
-    if let Some(ts) = types {
-        ts.iter().map(|t| t.as_index_type().to_string()).collect()
-    } else {
+fn build_es_indices_to_search(query: &ForwardGeocoderQuery) -> Vec<String> {
+    // some specific types are requested,
+    // let's search only for these types of objects
+    if let Some(types) = &query.types {
+        let mut indices = Vec::new();
+        for doc_type in types.iter() {
+            match doc_type {
+                Type::House => indices.push(root_doctype(Addr::static_doc_type())),
+                Type::Street => indices.push(root_doctype(Street::static_doc_type())),
+                Type::Zone => indices.push(root_doctype(Admin::static_doc_type())),
+                Type::Poi => {
+                    let doc_type_str = Poi::static_doc_type();
+                    // if some poi_dataset are specified
+                    // we search for poi only in the corresponding es indices
+                    if let Some(poi_datasets) = &query.poi_dataset {
+                        for poi_dataset in poi_datasets.iter() {
+                            indices.push(root_doctype_dataset(doc_type_str, poi_dataset));
+                        }
+                    } else {
+                        // no poi_dataset specified
+                        // we search in the global alias for all poi
+                        indices.push(root_doctype(doc_type_str));
+                    }
+                }
+                Type::StopArea => {
+                    // if some pt_dataset are specified
+                    // we search for stops only in the corresponding es indices
+                    let doc_type_str = Stop::static_doc_type();
+                    if let Some(pt_datasets) = &query.pt_dataset {
+                        for pt_dataset in pt_datasets.iter() {
+                            indices.push(root_doctype_dataset(doc_type_str, pt_dataset));
+                        }
+                    } else {
+                        // no pt_dataset specified
+                        // we search in the global alias for all stops
+                        indices.push(root_doctype(doc_type_str));
+                    }
+                }
+            }
+        }
+        indices
+    }
+    // no types specified, we search for all objects in all indices
+    else {
         vec![
-            String::from(Admin::static_doc_type()),
-            String::from(Street::static_doc_type()),
-            String::from(Addr::static_doc_type()),
-            String::from(Stop::static_doc_type()),
-            String::from(Poi::static_doc_type()),
+            root_doctype(Admin::static_doc_type()),
+            root_doctype(Street::static_doc_type()),
+            root_doctype(Addr::static_doc_type()),
+            root_doctype(Stop::static_doc_type()),
+            root_doctype(Poi::static_doc_type()),
         ]
     }
 }

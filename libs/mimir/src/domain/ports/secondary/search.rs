@@ -9,10 +9,11 @@ use crate::domain::model::query::Query;
 
 #[derive(Debug, Clone)]
 pub struct Parameters {
-    pub doc_types: Vec<String>,
+    // pub doc_types: Vec<String>,
     pub query: Query,
     pub result_limit: i64,
     pub timeout: Option<Duration>,
+    pub es_indices_to_search_in: Vec<String>,
 }
 
 #[derive(Debug, Snafu)]

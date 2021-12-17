@@ -10,7 +10,6 @@ use geojson::Geometry;
 pub struct Filters {
     pub coord: Option<Coord>,
     pub shape: Option<(Geometry, Vec<String>)>, // We use String rather than Type to avoid dependencies toward bragi api.
-    pub datasets: Option<Vec<String>>,
     pub zone_types: Option<Vec<String>>,
     pub poi_types: Option<Vec<String>>,
     pub limit: i64,

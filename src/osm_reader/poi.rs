@@ -34,7 +34,10 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use config::Config;
+use mimir::domain::model::configuration::root_doctype;
 use osm_boundaries_utils::build_boundary;
+use places::addr::Addr;
+use places::street::Street;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use tracing::{info, instrument, warn};
@@ -290,12 +293,15 @@ where
         poi.coord.lat(),
         poi.coord.lon(),
     );
+
+    let es_indices_to_search = vec![
+        root_doctype(Street::static_doc_type()),
+        root_doctype(Addr::static_doc_type()),
+    ];
+
     let documents = backend
         .search_documents(
-            vec![
-                places::addr::Addr::static_doc_type().to_string(),
-                places::street::Street::static_doc_type().to_string(),
-            ],
+            es_indices_to_search,
             Query::QueryDSL(reverse),
             DEFAULT_LIMIT_RESULT_ES,
             None,

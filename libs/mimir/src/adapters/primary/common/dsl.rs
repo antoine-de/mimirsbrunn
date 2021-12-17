@@ -14,7 +14,6 @@ pub fn build_query(
         coord,
         shape,
         limit: _,
-        datasets: _,
         zone_types,
         poi_types,
         timeout: _,

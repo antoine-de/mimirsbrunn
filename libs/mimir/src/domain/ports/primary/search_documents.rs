@@ -19,7 +19,7 @@ pub trait SearchDocuments {
 
     async fn search_documents(
         &self,
-        doc_types: Vec<String>,
+        es_indices_to_search_in: Vec<String>,
         query: Query,
         result_limit: i64,
         timeout: Option<Duration>,
@@ -36,13 +36,13 @@ where
 
     async fn search_documents(
         &self,
-        doc_types: Vec<String>,
+        es_indices_to_search_in: Vec<String>,
         query: Query,
         result_limit: i64,
         timeout: Option<Duration>,
     ) -> Result<Vec<Self::Document>, ModelError> {
         self.search_documents(Parameters {
-            doc_types,
+            es_indices_to_search_in,
             query,
             result_limit,
             timeout,

@@ -190,13 +190,7 @@ impl Mutation {
 
         let res = client
             .search_documents(
-                vec![
-                    Admin::static_doc_type().to_string(),
-                    Street::static_doc_type().to_string(),
-                    Addr::static_doc_type().to_string(),
-                    Stop::static_doc_type().to_string(),
-                    Poi::static_doc_type().to_string(),
-                ],
+                vec![configuration::root()],
                 SearchQuery::QueryDSL(dsl),
             )
             .await?;

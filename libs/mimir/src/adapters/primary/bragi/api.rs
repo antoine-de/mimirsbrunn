@@ -33,7 +33,6 @@ pub struct ForwardGeocoderQuery {
     pub lat: Option<f32>,
     pub lon: Option<f32>,
     pub shape_scope: Option<Vec<Type>>,
-    pub datasets: Option<Vec<String>>,
     #[serde(default, rename = "type")]
     pub types: Option<Vec<Type>>,
     #[serde(default, rename = "zone_type")]
@@ -43,6 +42,8 @@ pub struct ForwardGeocoderQuery {
     pub limit: i64,
     #[serde(deserialize_with = "deserialize_opt_duration", default)]
     pub timeout: Option<Duration>,
+    pub pt_dataset: Option<Vec<String>>,
+    pub poi_dataset: Option<Vec<String>>,
 }
 
 fn default_result_limit() -> i64 {
@@ -57,12 +58,13 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                 lat,
                 lon,
                 shape_scope,
-                datasets,
                 types: _,
                 zone_types,
                 poi_types,
                 limit,
                 timeout,
+                pt_dataset: _,
+                poi_dataset: _,
             },
             geometry,
         ) = source;
@@ -98,7 +100,6 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                         }),
                 )
             }),
-            datasets,
             zone_types,
             poi_types,
             limit,

@@ -1,6 +1,7 @@
 use clap::Parser;
 use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::domain::model::configuration::root_doctype;
 use mimir::{
     adapters::primary::common::{
         coord::Coord, dsl::build_query, filters::Filters, settings::QuerySettings,
@@ -59,12 +60,14 @@ async fn main() {
 
     println!("{}", dsl);
 
+    let es_indices_to_search = vec![
+        root_doctype(Admin::static_doc_type()),
+        root_doctype(Addr::static_doc_type()),
+    ];
+
     client
         .search_documents(
-            vec![
-                Admin::static_doc_type().to_string(),
-                Addr::static_doc_type().to_string(),
-            ],
+            es_indices_to_search,
             Query::QueryDSL(dsl),
             DEFAULT_LIMIT_RESULT_ES,
             None,
