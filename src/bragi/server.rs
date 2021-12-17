@@ -79,7 +79,8 @@ pub fn run(opts: &Opts) -> Result<(), Error> {
 
     let runtime = runtime::Builder::new_multi_thread()
         .worker_threads(settings.nb_threads)
-        .enable_all().build()
+        .enable_all()
+        .build()
         .expect("Failed to build tokio runtime.");
 
     runtime.block_on(run_server(settings))

@@ -31,6 +31,7 @@
 use futures::future::Future;
 use lazy_static::lazy_static;
 use std::path::Path;
+use tokio::runtime;
 use tracing::error;
 
 use super::logger::logger_init;
@@ -63,6 +64,32 @@ where
     } else {
         Ok(())
     };
+
+    // Ensure the logger persists until the future is resolved
+    // and is flushed before the process exits.
+    drop(guard);
+    res
+}
+
+// Ensures the logger is initialized prior to launching a function, and also making sure the logger
+// is flushed at the end. Whatever is returned by the main function is forwarded out.
+pub fn launch_with_runtime<F>(
+    logging_path: &Path,
+    nb_threads: usize,
+    run: F,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    F: Future<Output = Result<(), Box<dyn std::error::Error>>>,
+{
+    let guard = logger_init(logging_path).map_err(Box::new)?;
+
+    let runtime = runtime::Builder::new_multi_thread()
+        .worker_threads(nb_threads)
+        .enable_all()
+        .build()
+        .expect("Failed to build tokio runtime.");
+
+    let res = runtime.block_on(run);
 
     // Ensure the logger persists until the future is resolved
     // and is flushed before the process exits.
