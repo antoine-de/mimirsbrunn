@@ -89,7 +89,14 @@ where
         .build()
         .expect("Failed to build tokio runtime.");
 
-    let res = runtime.block_on(run);
+    let res = if let Err(err) = runtime.block_on(run) {
+        if let Some(source) = err.source() {
+            error!("{}", source);
+        }
+        Err(err)
+    } else {
+        Ok(())
+    };
 
     // Ensure the logger persists until the future is resolved
     // and is flushed before the process exits.
