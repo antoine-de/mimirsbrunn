@@ -1,3 +1,5 @@
+nb_threads = 2
+
 [container]
   name = "stop"
   dataset = "fr"
