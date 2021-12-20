@@ -75,7 +75,7 @@ where
 // is flushed at the end. Whatever is returned by the main function is forwarded out.
 pub fn launch_with_runtime<F>(
     logging_path: &Path,
-    nb_threads: usize,
+    nb_threads: Option<usize>,
     run: F,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
@@ -84,7 +84,7 @@ where
     let guard = logger_init(logging_path).map_err(Box::new)?;
 
     let runtime = runtime::Builder::new_multi_thread()
-        .worker_threads(nb_threads)
+        .worker_threads(nb_threads.unwrap_or_else(num_cpus::get))
         .enable_all()
         .build()
         .expect("Failed to build tokio runtime.");

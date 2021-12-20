@@ -33,7 +33,7 @@ pub struct Settings {
     pub mode: Option<String>,
     pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
-    pub nbthreads: usize,
+    pub nbthreads: Option<usize>,
 }
 
 #[derive(Debug, clap::Parser)]
