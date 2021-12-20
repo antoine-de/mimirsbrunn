@@ -1,5 +1,6 @@
 use snafu::{ResultExt, Snafu};
 use std::net::ToSocketAddrs;
+use tokio::runtime;
 use tracing::{info, instrument};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
@@ -40,7 +41,7 @@ pub enum Error {
 }
 
 #[allow(clippy::needless_lifetimes)]
-pub async fn run(opts: &Opts) -> Result<(), Error> {
+pub fn run(opts: &Opts) -> Result<(), Error> {
     let settings = Settings::new(opts).context(SettingsProcessing)?;
     LogTracer::init().expect("Unable to setup log tracer!");
 
@@ -76,11 +77,17 @@ pub async fn run(opts: &Opts) -> Result<(), Error> {
         .with(bunyan_formatting_layer);
     tracing::subscriber::set_global_default(subscriber).expect("tracing subscriber global default");
 
-    run_server(settings).await
+    let runtime = runtime::Builder::new_multi_thread()
+        .worker_threads(settings.nbthreads.unwrap_or_else(num_cpus::get))
+        .enable_all()
+        .build()
+        .expect("Failed to build tokio runtime.");
+
+    runtime.block_on(run_server(settings))
 }
 
 #[allow(clippy::needless_lifetimes)]
-pub async fn config(opts: &Opts) -> Result<(), Error> {
+pub fn config(opts: &Opts) -> Result<(), Error> {
     let settings = Settings::new(opts).context(SettingsProcessing)?;
     println!("{}", serde_json::to_string_pretty(&settings).unwrap());
     Ok(())

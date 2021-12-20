@@ -55,17 +55,16 @@ pub enum Error {
     Import { source: mimirsbrunn::admin::Error },
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
     let settings = settings::Settings::new(&opts).context(Settings)?;
 
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
+        settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             &settings.logging.path.clone(),
-            move || run(opts, settings),
+            settings.nbthreads,
+            run(opts, settings),
         )
-        .await
         .context(Execution),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());

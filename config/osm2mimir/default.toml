@@ -1,3 +1,5 @@
+nbthreads = 2
+
 [container-poi]
   name = "poi"
   dataset = "fr"

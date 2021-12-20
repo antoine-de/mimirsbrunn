@@ -1,4 +1,5 @@
 mode = "default"
+nbthreads = 2
 
 [service]
 host = "0.0.0.0"

@@ -1,4 +1,5 @@
 langs = [ "fr" ]
+nbthreads = 2
 
 [container]
   name = "admin"
