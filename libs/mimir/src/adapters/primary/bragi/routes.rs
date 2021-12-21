@@ -148,7 +148,6 @@ pub fn forward_geocoder_query(
             })
         })
         .and_then(ensure_query_string_not_empty)
-        .and_then(ensure_poi_type_consistent)
         .and_then(ensure_zone_type_consistent)
         .and_then(ensure_lat_lon_consistent)
 }
@@ -175,30 +174,6 @@ pub async fn ensure_query_string_not_empty(
     if params.q.is_empty() {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::EmptyQueryString,
-        }))
-    } else {
-        Ok(params)
-    }
-}
-
-/// This filter ensures that if the user requests 'poi', then he must specify the list
-/// of poi_types.
-pub async fn ensure_poi_type_consistent(
-    params: ForwardGeocoderQuery,
-) -> Result<ForwardGeocoderQuery, Rejection> {
-    if params
-        .types
-        .as_ref()
-        .map(|types| types.iter().any(|s| *s == Type::Poi))
-        .unwrap_or(false)
-        && params
-            .poi_types
-            .as_ref()
-            .map(|poi_types| poi_types.is_empty())
-            .unwrap_or(true)
-    {
-        Err(warp::reject::custom(InvalidRequest {
-            reason: InvalidRequestReason::InconsistentPoiRequest,
         }))
     } else {
         Ok(params)
