@@ -66,7 +66,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                 timeout,
                 pt_dataset: _,
                 poi_dataset: _,
-                request_id: _
+                request_id: _,
             },
             geometry,
         ) = source;
