@@ -429,11 +429,16 @@ mod tests {
     async fn should_correctly_extract_poi_dataset() {
         let filter = forward_geocoder_get();
         let resp = warp::test::request()
-            .path("/api/v1/autocomplete?q=Bob&poi_dataset[]=poi-dataset1&poi_dataset[]=poi-dataset2")
+            .path(
+                "/api/v1/autocomplete?q=Bob&poi_dataset[]=poi-dataset1&poi_dataset[]=poi-dataset2",
+            )
             .filter(&filter)
             .await
             .unwrap();
-        assert_eq!(resp.0.poi_dataset.unwrap(), ["poi-dataset1", "poi-dataset2"]);
+        assert_eq!(
+            resp.0.poi_dataset.unwrap(),
+            ["poi-dataset1", "poi-dataset2"]
+        );
         assert_eq!(resp.0.q, "Bob");
     }
 }
