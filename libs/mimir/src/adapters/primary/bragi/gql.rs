@@ -66,7 +66,7 @@ impl InputType for InputCoord {
 */
 
 #[derive(Debug, Serialize, Deserialize, InputObject)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 struct InputFilters {
     lat: Option<f32>,
     lon: Option<f32>,
@@ -99,7 +99,7 @@ impl From<InputFilters> for Filters {
 // I need to identify the output type, and put it there instead of Index
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 struct SearchResponseBody {
     pub docs: Vec<JsonValue>,
     pub docs_count: usize,
@@ -126,7 +126,7 @@ impl From<Vec<JsonValue>> for SearchResponseBody {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 struct ExplainResponseBody {
     pub explanation: JsonValue,
 }

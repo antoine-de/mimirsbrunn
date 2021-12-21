@@ -13,7 +13,7 @@ use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ForwardGeocoderExplainQuery {
     pub doc_id: String,
     pub doc_type: String,
@@ -27,7 +27,7 @@ pub struct ForwardGeocoderExplainQuery {
 ///
 /// Only the `q` parameter is mandatory.
 #[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ForwardGeocoderQuery {
     pub q: String,
     pub lat: Option<f32>,
@@ -44,6 +44,7 @@ pub struct ForwardGeocoderQuery {
     pub timeout: Option<Duration>,
     pub pt_dataset: Option<Vec<String>>,
     pub poi_dataset: Option<Vec<String>>,
+    pub request_id: Option<String>,
 }
 
 fn default_result_limit() -> i64 {
@@ -65,6 +66,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                 timeout,
                 pt_dataset: _,
                 poi_dataset: _,
+                request_id: _
             },
             geometry,
         ) = source;
@@ -110,7 +112,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
 
 /// This structure contains all the query parameters that
 #[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ReverseGeocoderQuery {
     pub lat: f64,
     pub lon: f64,
@@ -126,7 +128,7 @@ pub struct JsonParam {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ExplainResponseBody {
     pub explanation: JsonValue,
 }
@@ -138,19 +140,19 @@ impl From<JsonValue> for ExplainResponseBody {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct BragiStatus {
     pub version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct MimirStatus {
     pub version: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ElasticsearchStatus {
     pub version: String,
     pub health: String,
@@ -158,7 +160,7 @@ pub struct ElasticsearchStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct StatusResponseBody {
     pub bragi: BragiStatus,
     pub mimir: MimirStatus,
