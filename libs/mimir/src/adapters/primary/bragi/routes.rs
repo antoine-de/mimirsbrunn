@@ -425,4 +425,40 @@ mod tests {
         assert_eq!(resp.0.types.unwrap(), [Type::Street, Type::House]);
         assert_eq!(resp.0.q, "Bob");
     }
+
+    #[tokio::test]
+    async fn should_correctly_extract_pt_dataset() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path("/api/v1/autocomplete?q=Bob&pt_dataset[]=dataset1&pt_dataset[]=dataset2")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.0.pt_dataset.unwrap(), ["dataset1", "dataset2"]);
+        assert_eq!(resp.0.q, "Bob");
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_request_id() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path("/api/v1/autocomplete?q=Bob&request_id=xxxx-yyyyy-zzzz")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.0.request_id.unwrap(), "xxxx-yyyyy-zzzz");
+        assert_eq!(resp.0.q, "Bob");
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_poi_dataset() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path("/api/v1/autocomplete?q=Bob&poi_dataset[]=poi-dataset1&poi_dataset[]=poi-dataset2")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.0.poi_dataset.unwrap(), ["poi-dataset1", "poi-dataset2"]);
+        assert_eq!(resp.0.q, "Bob");
+    }
 }
