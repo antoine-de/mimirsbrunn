@@ -248,3 +248,132 @@ fn build_es_indices_to_search(query: &ForwardGeocoderQuery) -> Vec<String> {
         ]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::primary::bragi::routes::forward_geocoder_get;
+
+    async fn indices_builder(query: &str) -> Vec<String> {
+        let filter = forward_geocoder_get();
+        let params = warp::test::request()
+            .path(query)
+            .filter(&filter)
+            .await
+            .unwrap();
+        println!("{:?}", params.0);
+        build_es_indices_to_search(&params.0)
+    }
+
+    // no dataset and no types
+    #[tokio::test]
+    async fn no_dataset_no_type() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob").await;
+        assert_eq!(
+            es_indices,
+            [
+                "munin_admin",
+                "munin_street",
+                "munin_addr",
+                "munin_stop",
+                "munin_poi"
+            ]
+        );
+    }
+
+    // no dataset + type public_transport:stop_area only
+    #[tokio::test]
+    async fn no_dataset_with_type_sa() {
+        let es_indices =
+            indices_builder("/api/v1/autocomplete?q=Bob&type[]=public_transport:stop_area").await;
+        assert_eq!(es_indices, ["munin_stop",]);
+    }
+
+    // no dataset + types poi, city, street, house
+    #[tokio::test]
+    async fn no_dataset_all_types_but_sa() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house",
+        )
+        .await;
+        assert_eq!(
+            es_indices,
+            [
+                "munin_admin",
+                "munin_street",
+                "munin_addr",
+                "munin_stop",
+                "munin_poi"
+            ]
+        );
+    }
+
+    // no dataset + types poi, city, street, house and public_transport:stop_area
+    #[tokio::test]
+    async fn no_dataset_all_types() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house&type[]=public_transport:stop_area",
+        )
+        .await;
+        assert_eq!(
+            es_indices,
+            [
+                "munin_admin",
+                "munin_street",
+                "munin_addr",
+                "munin_stop",
+                "munin_poi"
+            ]
+        );
+    }
+
+    // dataset fr + no type
+    #[tokio::test]
+    async fn fr_dataset_no_type() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob&pt_dataset[]=fr").await;
+        assert_eq!(es_indices, ["munin_admin",]);
+    }
+
+    // dataset fr + type public_transport:stop_area only
+    #[tokio::test]
+    async fn fr_pt_dataset_with_type_sa() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=public_transport:stop_area",
+        )
+        .await;
+        assert_eq!(es_indices, ["munin_stop_dataset1"]);
+    }
+
+    // no dataset + types poi, city, street, house
+    #[tokio::test]
+    async fn fr_dataset_all_types_but_sa() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=poi&type[]=city&type[]=street&type[]=house",
+        )
+            .await;
+        assert_eq!(
+            es_indices,
+            [
+                "munin_admin",
+                "munin_street",
+                "munin_addr",
+                "munin_stop",
+                "munin_poi"
+            ]
+        );
+    }
+
+    // dataset fr + types poi, city, street, house and public_transport:stop_area
+    #[tokio::test]
+    async fn fr_dataset_all_types() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=poi&type[]=city&type[]=street&type[]=house&type[]=public_transport:stop_area").await;
+        assert_eq!(es_indices, ["munin_admin",]);
+    }
+
+    // dataset fr + poi_dataset mti + types poi, city, street, house
+    #[tokio::test]
+    async fn fr_dataset_mti_poi_dataset_all_types_but_sa() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&poi_dataset[]=mti&type[]=poi&type[]=city&type[]=street&type[]=house").await;
+        assert_eq!(es_indices, ["munin_admin",]);
+    }
+}
