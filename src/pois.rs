@@ -31,6 +31,7 @@
 /// In this module we put the code related to stops, that need to draw on 'places', 'mimir',
 /// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
 use futures::stream::{Stream, StreamExt};
+use mimir::domain::model::configuration::root_doctype;
 use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as NavitiaPoiType};
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
@@ -190,16 +191,13 @@ async fn into_poi(
     let distance = format!("{}m", 50); // FIXME Automagick: put in configuration
     let dsl = dsl::build_reverse_query(&distance, coord.lat(), coord.lon());
 
+    let es_indices_to_search = vec![
+        root_doctype(Street::static_doc_type()),
+        root_doctype(Addr::static_doc_type()),
+    ];
+
     let place = client
-        .search_documents(
-            vec![
-                String::from(Street::static_doc_type()),
-                String::from(Addr::static_doc_type()),
-            ],
-            Query::QueryDSL(dsl),
-            1,
-            None,
-        )
+        .search_documents(es_indices_to_search, Query::QueryDSL(dsl), 1, None)
         .await
         .context(ReverseAddressSearch)
         .and_then(|values| match values.into_iter().next() {

@@ -1,11 +1,11 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use futures::stream::StreamExt;
+use mimir::domain::model::configuration;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
 
-use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir::adapters::secondary::elasticsearch::{
     remote::connection_test_pool, ElasticsearchStorageConfig,
@@ -18,7 +18,6 @@ use mimir::{
     domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Remote,
 };
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 use tests::{bano, cosmogony, download, ntfs, osm};
 
 fn bench(c: &mut Criterion) {
@@ -103,13 +102,7 @@ fn bench(c: &mut Criterion) {
                         async move {
                             let _values = client
                                 .search_documents(
-                                    vec![
-                                        Admin::static_doc_type().to_string(),
-                                        Addr::static_doc_type().to_string(),
-                                        Street::static_doc_type().to_string(),
-                                        Stop::static_doc_type().to_string(),
-                                        Poi::static_doc_type().to_string(),
-                                    ],
+                                    vec![configuration::root()],
                                     Query::QueryDSL(dsl),
                                     DEFAULT_LIMIT_RESULT_ES,
                                     None,

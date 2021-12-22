@@ -126,6 +126,7 @@ async fn run(
 #[cfg(test)]
 mod tests {
     use futures::TryStreamExt;
+    use mimir::domain::model::configuration::root_doctype;
     use serial_test::serial;
 
     use common::document::ContainerDocument;
@@ -179,7 +180,7 @@ mod tests {
             async move {
                 client
                     .search_documents(
-                        vec![String::from(Addr::static_doc_type())],
+                        vec![root_doctype(Addr::static_doc_type())],
                         Query::QueryString(format!("label:({})", query)),
                         DEFAULT_LIMIT_RESULT_ES,
                         None,

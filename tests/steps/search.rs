@@ -3,12 +3,12 @@ use cucumber::{then, when};
 use geo::algorithm::haversine_distance::HaversineDistance;
 use itertools::{EitherOrBoth::*, Itertools};
 use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir::domain::model::configuration;
 use mimir::domain::ports::secondary::remote::Remote;
 use std::cmp::Ordering;
 
 use crate::error::Error;
 use crate::state::{GlobalState, State, Step, StepStatus};
-use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir::adapters::primary::{
     common::coord::Coord, common::dsl::build_query, common::filters::Filters,
@@ -16,7 +16,7 @@ use mimir::adapters::primary::{
 };
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
+use places::{addr::Addr, admin::Admin, poi::Poi};
 
 // Search place
 
@@ -38,18 +38,13 @@ async fn perform_search(
 ) {
     let places = {
         if places == "all" {
-            vec![
-                Addr::static_doc_type().to_string(),
-                Admin::static_doc_type().to_string(),
-                Street::static_doc_type().to_string(),
-                Stop::static_doc_type().to_string(),
-                Poi::static_doc_type().to_string(),
-            ]
+            vec![configuration::root()]
         } else {
             places
                 .split(',')
                 .map(str::trim)
                 .map(str::to_string)
+                .map(|s| configuration::root_doctype(&s))
                 .collect()
         }
     };

@@ -140,7 +140,7 @@ pub fn forward_geocoder_query(
         .and_then(|param: String| async move {
             // max_depth=1:
             // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
-            let config = Config::new(1, false);
+            let config = Config::new(2, false);
             config.deserialize_str(&param).map_err(|_| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
@@ -148,7 +148,6 @@ pub fn forward_geocoder_query(
             })
         })
         .and_then(ensure_query_string_not_empty)
-        .and_then(ensure_poi_type_consistent)
         .and_then(ensure_zone_type_consistent)
         .and_then(ensure_lat_lon_consistent)
 }
@@ -160,7 +159,7 @@ pub fn forward_geocoder_explain_query(
     warp::filters::query::raw().and_then(|param: String| async move {
         // max_depth=1:
         // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
-        let config = Config::new(1, false);
+        let config = Config::new(2, false);
         config.deserialize_str(&param).map_err(|_| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
@@ -175,30 +174,6 @@ pub async fn ensure_query_string_not_empty(
     if params.q.is_empty() {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::EmptyQueryString,
-        }))
-    } else {
-        Ok(params)
-    }
-}
-
-/// This filter ensures that if the user requests 'poi', then he must specify the list
-/// of poi_types.
-pub async fn ensure_poi_type_consistent(
-    params: ForwardGeocoderQuery,
-) -> Result<ForwardGeocoderQuery, Rejection> {
-    if params
-        .types
-        .as_ref()
-        .map(|types| types.iter().any(|s| *s == Type::Poi))
-        .unwrap_or(false)
-        && params
-            .poi_types
-            .as_ref()
-            .map(|poi_types| poi_types.is_empty())
-            .unwrap_or(true)
-    {
-        Err(warp::reject::custom(InvalidRequest {
-            reason: InvalidRequestReason::InconsistentPoiRequest,
         }))
     } else {
         Ok(params)
@@ -423,6 +398,47 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(resp.0.types.unwrap(), [Type::Street, Type::House]);
+        assert_eq!(resp.0.q, "Bob");
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_pt_dataset() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path("/api/v1/autocomplete?q=Bob&pt_dataset[]=dataset1&pt_dataset[]=dataset2")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.0.pt_dataset.unwrap(), ["dataset1", "dataset2"]);
+        assert_eq!(resp.0.q, "Bob");
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_request_id() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path("/api/v1/autocomplete?q=Bob&request_id=xxxx-yyyyy-zzzz")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.0.request_id.unwrap(), "xxxx-yyyyy-zzzz");
+        assert_eq!(resp.0.q, "Bob");
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_poi_dataset() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path(
+                "/api/v1/autocomplete?q=Bob&poi_dataset[]=poi-dataset1&poi_dataset[]=poi-dataset2",
+            )
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(
+            resp.0.poi_dataset.unwrap(),
+            ["poi-dataset1", "poi-dataset2"]
+        );
         assert_eq!(resp.0.q, "Bob");
     }
 }
