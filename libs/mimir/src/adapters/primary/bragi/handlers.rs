@@ -59,6 +59,7 @@ where
     let es_indices_to_search_in =
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
+    let lang = params.lang.clone().unwrap_or_else(|| "fr".to_string());
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings);
 
