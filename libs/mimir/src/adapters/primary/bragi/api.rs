@@ -57,11 +57,7 @@ fn default_result_limit() -> i64 {
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
     fn from(source: (ForwardGeocoderQuery, Option<Geometry>)) -> Self {
         let (query, geometry) = source;
-        let zone_types = query.zone_types.map(|zts| {
-            zts.iter()
-                .map(|zt| serde_json::to_string(zt).unwrap())
-                .collect()
-        });
+        let zone_types = zone_types.map(|zts| zts.iter().map(|t| t.as_str().to_string()).collect());
         Filters {
             // When option_zip_option becomes available: coord: input.lat.zip_with(input.lon, Coord::new),
             coord: match (query.lat, query.lon) {
