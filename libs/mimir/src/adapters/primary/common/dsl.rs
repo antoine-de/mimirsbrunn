@@ -1,6 +1,6 @@
+use crate::adapters::primary::common::settings::StringQuery;
 use geojson::Geometry;
 use serde_json::json;
-use std::collections::BTreeMap;
 
 use super::coord::Coord;
 use super::{filters, settings};
@@ -8,39 +8,31 @@ use super::{filters, settings};
 pub fn build_query(
     q: &str,
     filters: filters::Filters,
-    _langs: &[&str],
+    _lang: String,
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
-    let string_query = build_string_query(q, &settings.string_query);
+    let type_query = build_place_type_boost(&settings.type_query.boosts);
+    let string_query = build_string_query(q, _lang.as_str(), &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
-    let filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
-    if filters.is_empty() {
-        json!({
-            "query": {
-                "bool": {
-                    "must": [ string_query ],
-                    "should": boosts
-                }
-            }
-        })
-    } else {
-        json!({
-            "query": {
-                "bool": {
-                    "must": [ string_query ],
-                    "should": boosts,
-                    "filter": {
-                        "bool": {
-                            "must": filters
-                        }
+    let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
+    let filters = vec![build_house_number_condition(q), build_matching_condition(q)]
+        .append(filters_poi.as_mut());
+    json!({
+        "query": {
+            "bool": {
+                "must": [ type_query, string_query ],
+                "should": boosts,
+                "filter": {
+                    "bool": {
+                        "must": filters
                     }
                 }
             }
-        })
-    }
+        }
+    })
 }
 
-fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::Value {
+fn build_string_query(q: &str, _lang: &str, settings: &StringQuery) -> serde_json::Value {
     json!({
         "bool": {
             "boost": settings.global,
@@ -48,10 +40,39 @@ fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::
                 {
                     "multi_match": {
                         "query": q,
-                        "type": "bool_prefix",
-                        "fields": [
-                            "label", "label._2gram", "label._3gram", "name"
-                        ]
+                        "fields": ["name", format!("names.{}", _lang)],
+                        "boost": settings.boosts.name
+                    }
+                },
+                {
+                    "multi_match": {
+                        "query": q,
+                        "fields": ["label", format!("label.{}", _lang)],
+                        "boost": settings.boosts.label
+                    }
+                },
+                {
+                    "multi_match": {
+                        "query": q,
+                        "fields": ["label.prefix", format!("label.prefix.{}", _lang)],
+                        "boost": settings.boosts.label_prefix
+                    }
+                },
+                {
+                    "match": {
+                        "zip_codes": {
+                        "query": q,
+                        "boost": settings.boosts.zip_codes
+                        }
+                    }
+
+                },
+                {
+                    "match": {
+                        "house_number": {
+                         "query": q,
+                         "boost": settings.boosts.house_number
+                        }
                     }
                 }
             ]
@@ -94,9 +115,64 @@ fn build_boosts(
         .clone()
         .map(|coord| build_proximity_boost(coord, &decay));
     boosts.push(proximity_boost);
-    let place_type_boost = Some(build_place_type_boost(&settings.type_query.boosts));
-    boosts.push(place_type_boost);
     boosts.into_iter().flatten().collect()
+}
+
+fn build_house_number_condition(q: &str) -> serde_json::Value {
+    if q.split_whitespace().count() > 1 {
+        // Filter to handle house number.
+        // We either want:
+        // * to exactly match the document house_number
+        // * or that the document has no house_number
+        json!({
+            "bool": {
+                "should": [
+                {
+                    "bool": {
+                        "must_not": {
+                            "exists": {
+                              "field": "house_number"
+                            }
+                        },
+                    }
+                },
+                {
+                    "match": {
+                        "house_number": {
+                            "query": q
+                        }
+                    }
+                }
+                ]
+            }
+        })
+    } else {
+        // If the query contains a single word, we don't exact any house number in the result.
+        json!({
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "house_number"
+                    }
+                },
+            }
+        })
+    }
+}
+
+fn build_matching_condition(q: &str) -> serde_json::Value {
+    // Filter to handle house number.
+    // We either want:
+    // * to exactly match the document house_number
+    // * or that the document has no house_number
+    json!({
+        "match": {
+            "full_label.prefix": {
+                "query": q,
+                "operator": "and"
+            }
+        }
+    })
 }
 
 fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde_json::Value {
@@ -346,3 +422,50 @@ pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Val
         .collect();
     json!({ "docs": vec })
 }
+
+//
+// fn build_coverage_condition() -> serde_json::Value {
+//     // filter to handle PT coverages
+//     // we either want:
+//     // * to get objects with no coverage at all (non-PT objects)
+//     // * or the objects with coverage matching the ones we're allowed to get
+//     json!({
+//             "bool": {
+//                 "should": [
+//                 {
+//                     "bool": {
+//                         "must_not": {
+//                             "exists": {
+//                               "field": "coverages"
+//                             }
+//                         },
+//                     }
+//                 },
+//                 {
+//                     "term": {
+//                         "coverages": []
+//                     }
+//                 }
+//             ]
+//         }
+//     })
+// }
+
+// fn build_search_as_you_type_query(q: &str, settings: &settings::StringQuery) -> serde_json::Value {
+//     json!({
+//         "bool": {
+//             "boost": settings.global,
+//             "should": [
+//                 {
+//                     "multi_match": {
+//                         "query": q,
+//                         "type": "bool_prefix", // match_phrase_prefix query match terms order
+//                         "fields": [
+//                             "label", "label._2gram", "label._3gram", "name"
+//                         ]
+//                     }
+//                 }
+//             ]
+//         }
+//     })
+// }

@@ -58,8 +58,9 @@ where
     let timeout = params.timeout;
     let es_indices_to_search_in =
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
+    let lang = params.lang.clone().unwrap_or_else(|| "fr".to_string());
     let filters = filters::Filters::from((params, geometry));
-    let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
+    let dsl = dsl::build_query(&q, filters.clone(), lang, &settings);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
@@ -116,8 +117,13 @@ where
     S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.query.q.clone();
+    let lang = params
+        .query
+        .lang
+        .clone()
+        .unwrap_or_else(|| "fr".to_string());
     let filters = filters::Filters::from((params.query, geometry));
-    let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
+    let dsl = dsl::build_query(&q, filters, lang, &settings);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
