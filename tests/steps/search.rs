@@ -60,15 +60,12 @@ async fn perform_search(
         }
     };
 
-    let zone_types = match zone_types {
-        Some(f) => Some(
-            f.split(',')
-                .map(str::trim)
-                .map(str::to_string)
-                .collect::<Vec<String>>(),
-        ),
-        _ => None,
-    };
+    let zone_types = zone_types.map(|f| {
+        f.split(',')
+            .map(str::trim)
+            .map(str::to_string)
+            .collect::<Vec<String>>()
+    });
 
     let filters = Filters {
         coord,
@@ -108,7 +105,7 @@ impl Step for Search {
         let dsl = build_query(
             &self.query,
             self.filters.clone(),
-            &["fr"],
+            "fr".to_string(),
             &QuerySettings::default(),
         );
 
