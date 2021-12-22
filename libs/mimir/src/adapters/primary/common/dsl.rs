@@ -89,8 +89,8 @@ fn build_boosts(
             coord,
             &Decay {
                 scale: filters.proximity_scale.unwrap_or(setting_decay.scale),
-                offset: filters.proximity_scale.unwrap_or(setting_decay.offset),
-                decay: filters.proximity_scale.unwrap_or(setting_decay.decay),
+                offset: filters.proximity_offset.unwrap_or(setting_decay.offset),
+                decay: filters.proximity_decay.unwrap_or(setting_decay.decay),
                 func: setting_decay.func.clone(),
             },
         )
