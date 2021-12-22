@@ -4,7 +4,7 @@ use tracing::{debug, instrument};
 use warp::http::StatusCode;
 use warp::reply::{json, with_status};
 
-use crate::adapters::primary::bragi::api::ForwardGeocoderExplainQuery;
+use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
@@ -18,6 +18,7 @@ use crate::adapters::primary::{
 use crate::domain::model::configuration::{root_doctype, root_doctype_dataset};
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::explain_query::ExplainDocument;
+use crate::domain::ports::primary::get_documents::GetDocuments;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
@@ -38,7 +39,8 @@ where
 {
     let q = params.q.clone();
     let timeout = params.timeout;
-    let es_indices_to_search_in = build_es_indices_to_search(&params);
+    let es_indices_to_search_in =
+        build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
 
@@ -167,6 +169,59 @@ where
     }
 }
 
+pub async fn features<S>(
+    doc_id: String,
+    params: FeaturesQuery,
+    client: S,
+    _settings: settings::QuerySettings,
+) -> Result<impl warp::Reply, warp::Rejection>
+where
+    S: GetDocuments,
+    S::Document: Serialize + Into<serde_json::Value>,
+{
+    let timeout = params.timeout;
+    let es_indices_to_search_in =
+        build_es_indices_to_search(&None, &params.pt_dataset, &params.poi_dataset);
+    let dsl = dsl::build_features_query(&es_indices_to_search_in, &doc_id);
+
+    match client
+        .get_documents_by_id(Query::QueryDSL(dsl), timeout)
+        .await
+    {
+        Ok(res) => {
+            let places: Result<Vec<Place>, serde_json::Error> = res
+                .into_iter()
+                .map(|json| serde_json::from_value::<Place>(json.into()))
+                .collect();
+
+            match places {
+                Ok(places) => {
+                    let features: Vec<Feature> = places
+                        .into_iter()
+                        .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
+                        .collect();
+                    let resp = GeocodeJsonResponse::new("".to_string(), features);
+                    Ok(with_status(json(&resp), StatusCode::OK))
+                }
+                Err(err) => Ok(with_status(
+                    json(&format!(
+                        "Error while features searching: {}",
+                        err.to_string()
+                    )),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                )),
+            }
+        }
+        Err(err) => Ok(with_status(
+            json(&format!(
+                "Error while features searching: {}",
+                err.to_string()
+            )),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
+    }
+}
+
 pub async fn status<S>(client: S, url: String) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: Status,
@@ -195,10 +250,14 @@ where
     }
 }
 
-fn build_es_indices_to_search(query: &ForwardGeocoderQuery) -> Vec<String> {
+fn build_es_indices_to_search(
+    types: &Option<Vec<Type>>,
+    pt_dataset: &Option<Vec<String>>,
+    poi_dataset: &Option<Vec<String>>,
+) -> Vec<String> {
     // some specific types are requested,
     // let's search only for these types of objects
-    if let Some(types) = &query.types {
+    if let Some(types) = types {
         let mut indices = Vec::new();
         for doc_type in types.iter() {
             match doc_type {
@@ -209,7 +268,7 @@ fn build_es_indices_to_search(query: &ForwardGeocoderQuery) -> Vec<String> {
                     let doc_type_str = Poi::static_doc_type();
                     // if some poi_dataset are specified
                     // we search for poi only in the corresponding es indices
-                    if let Some(poi_datasets) = &query.poi_dataset {
+                    if let Some(poi_datasets) = poi_dataset {
                         for poi_dataset in poi_datasets.iter() {
                             indices.push(root_doctype_dataset(doc_type_str, poi_dataset));
                         }
@@ -223,7 +282,7 @@ fn build_es_indices_to_search(query: &ForwardGeocoderQuery) -> Vec<String> {
                     // if some pt_dataset are specified
                     // we search for stops only in the corresponding es indices
                     let doc_type_str = Stop::static_doc_type();
-                    if let Some(pt_datasets) = &query.pt_dataset {
+                    if let Some(pt_datasets) = pt_dataset {
                         for pt_dataset in pt_datasets.iter() {
                             indices.push(root_doctype_dataset(doc_type_str, pt_dataset));
                         }
@@ -239,13 +298,10 @@ fn build_es_indices_to_search(query: &ForwardGeocoderQuery) -> Vec<String> {
     }
     // no types specified, we search for all objects in all indices
     else {
-        vec![
-            root_doctype(Admin::static_doc_type()),
-            root_doctype(Street::static_doc_type()),
-            root_doctype(Addr::static_doc_type()),
-            root_doctype(Stop::static_doc_type()),
-            root_doctype(Poi::static_doc_type()),
-        ]
+        vec![root_doctype_dataset(
+            Stop::static_doc_type(),
+            pt_dataset.clone().unwrap()[0].as_str(),
+        )]
     }
 }
 
@@ -261,8 +317,7 @@ mod tests {
             .filter(&filter)
             .await
             .unwrap();
-        println!("{:?}", params.0);
-        build_es_indices_to_search(&params.0)
+        build_es_indices_to_search(&params.0.types, &params.0.pt_dataset, &params.0.poi_dataset)
     }
 
     // no dataset and no types

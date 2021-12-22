@@ -334,3 +334,15 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
         }
     })
 }
+
+pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Value {
+    let vec: Vec<BTreeMap<&str, &str>> = indices
+        .iter()
+        .map(|index| {
+            vec![("_index", index.as_str()), ("_id", doc_id)]
+                .into_iter()
+                .collect()
+        })
+        .collect();
+    json!({ "docs": vec })
+}

@@ -30,6 +30,26 @@ impl<D> ElasticsearchSearchResponse<D> {
     }
 }
 
+/// ES response for a get query.
+#[derive(Deserialize)]
+pub struct ElasticsearchGetResponse<D> {
+    pub docs: Vec<ElasticsearchDocs<D>>,
+}
+
+#[derive(Deserialize)]
+pub struct ElasticsearchDocs<D> {
+    #[serde(rename = "_source")]
+    pub source: D,
+    pub found: bool,
+}
+
+impl<D> ElasticsearchGetResponse<D> {
+    /// Consume the response into an iterator over the responded documents.
+    pub fn into_docs(self) -> impl Iterator<Item = D> {
+        self.docs.into_iter().map(|doc| doc.source)
+    }
+}
+
 /// ES response for bulk insert queries.
 #[derive(Debug, Eq, PartialEq, Deserialize)]
 pub struct ElasticsearchBulkResponse {
