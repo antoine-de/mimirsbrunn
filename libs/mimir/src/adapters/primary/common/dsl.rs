@@ -1,6 +1,6 @@
-use crate::adapters::primary::common::settings::Decay;
 use geojson::Geometry;
 use serde_json::json;
+use std::collections::BTreeMap;
 
 use super::coord::Coord;
 use super::{filters, settings};
@@ -83,18 +83,16 @@ fn build_boosts(
     // TODO: in production, admins are boosted by their weight only in prefix mode.
     let admin_weight_boost = Some(build_admin_weight_query(&settings.importance_query));
     boosts.push(admin_weight_boost);
-    let setting_decay = &settings.importance_query.proximity.decay;
-    let proximity_boost = filters.coord.clone().map(|coord| {
-        build_proximity_boost(
-            coord,
-            &Decay {
-                scale: filters.proximity_scale.unwrap_or(setting_decay.scale),
-                offset: filters.proximity_offset.unwrap_or(setting_decay.offset),
-                decay: filters.proximity_decay.unwrap_or(setting_decay.decay),
-                func: setting_decay.func.clone(),
-            },
-        )
-    });
+    let mut decay = settings.importance_query.proximity.decay.clone();
+    if let Some(proximity) = &filters.proximity {
+        decay.scale = proximity.scale;
+        decay.offset = proximity.offset;
+        decay.decay = proximity.decay;
+    }
+    let proximity_boost = filters
+        .coord
+        .clone()
+        .map(|coord| build_proximity_boost(coord, &decay));
     boosts.push(proximity_boost);
     let place_type_boost = Some(build_place_type_boost(&settings.type_query.boosts));
     boosts.push(place_type_boost);

@@ -45,9 +45,8 @@ pub struct ForwardGeocoderQuery {
     pub pt_dataset: Option<Vec<String>>,
     pub poi_dataset: Option<Vec<String>>,
     pub request_id: Option<String>,
-    pub proximity_scale: Option<f64>,
-    pub proximity_offset: Option<f64>,
-    pub proximity_decay: Option<f64>,
+    #[serde(flatten)]
+    pub proximity: Option<Proximity>,
 }
 
 fn default_result_limit() -> i64 {
@@ -92,9 +91,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
             poi_types: query.poi_types,
             limit: query.limit,
             timeout: query.timeout,
-            proximity_scale: query.proximity_scale,
-            proximity_offset: query.proximity_offset,
-            proximity_decay: query.proximity_decay,
+            proximity: query.proximity,
         }
     }
 }
@@ -245,4 +242,17 @@ impl Type {
             Type::Zone => Admin::static_doc_type(),
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Proximity {
+    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde(rename = "proximity_scale")]
+    pub scale: f64,
+    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde(rename = "proximity_offset")]
+    pub offset: f64,
+    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde(rename = "proximity_decay")]
+    pub decay: f64,
 }
