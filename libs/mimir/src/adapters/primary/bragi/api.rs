@@ -102,18 +102,6 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
 }
 
 /// This structure contains all the query parameters that
-/// can be submitted for the features endpoint.
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub struct FeaturesQuery {
-    pub pt_dataset: Option<Vec<String>>,
-    pub poi_dataset: Option<Vec<String>>,
-    pub all_data: bool,
-    #[serde(deserialize_with = "deserialize_opt_duration")]
-    pub timeout: Option<Duration>,
-}
-
-/// This structure contains all the query parameters that
 /// can be submitted for the reverse endpoint.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
