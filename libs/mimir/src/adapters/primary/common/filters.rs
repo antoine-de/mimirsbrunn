@@ -14,4 +14,7 @@ pub struct Filters {
     pub poi_types: Option<Vec<String>>,
     pub limit: i64,
     pub timeout: Option<Duration>,
+    pub proximity_scale: Option<f64>,
+    pub proximity_offset: Option<f64>,
+    pub proximity_decay: Option<f64>,
 }
