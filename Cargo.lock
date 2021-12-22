@@ -2089,6 +2089,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
+ "serde_with",
  "serial_test",
  "snafu",
  "tokio",

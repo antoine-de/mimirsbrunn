@@ -1,5 +1,6 @@
 use geojson::Geometry;
 use serde_json::json;
+use std::collections::BTreeMap;
 
 use super::coord::Coord;
 use super::{filters, settings};
@@ -10,18 +11,9 @@ pub fn build_query(
     _langs: &[&str],
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
-    let filters::Filters {
-        coord,
-        shape,
-        limit: _,
-        zone_types,
-        poi_types,
-        timeout: _,
-    } = filters;
-
     let string_query = build_string_query(q, &settings.string_query);
-    let boosts = build_boosts(q, settings, coord);
-    let filters = build_filters(shape, poi_types, zone_types);
+    let boosts = build_boosts(q, settings, &filters);
+    let filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
     if filters.is_empty() {
         json!({
             "query": {
@@ -85,14 +77,22 @@ fn build_filters(
 fn build_boosts(
     _q: &str,
     settings: &settings::QuerySettings,
-    coord: Option<Coord>,
+    filters: &filters::Filters,
 ) -> Vec<serde_json::Value> {
     let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
     // TODO: in production, admins are boosted by their weight only in prefix mode.
     let admin_weight_boost = Some(build_admin_weight_query(&settings.importance_query));
     boosts.push(admin_weight_boost);
-    let proximity_boost =
-        coord.map(|coord| build_proximity_boost(coord, &settings.importance_query.proximity.decay));
+    let mut decay = settings.importance_query.proximity.decay.clone();
+    if let Some(proximity) = &filters.proximity {
+        decay.scale = proximity.scale;
+        decay.offset = proximity.offset;
+        decay.decay = proximity.decay;
+    }
+    let proximity_boost = filters
+        .coord
+        .clone()
+        .map(|coord| build_proximity_boost(coord, &decay));
     boosts.push(proximity_boost);
     let place_type_boost = Some(build_place_type_boost(&settings.type_query.boosts));
     boosts.push(place_type_boost);
@@ -136,13 +136,13 @@ fn build_place_type_boost(settings: &settings::Types) -> serde_json::Value {
     })
 }
 
-fn build_proximity_boost(coord: Coord, decay: &settings::Decay) -> serde_json::Value {
+fn build_proximity_boost(coord: Coord, settings_decay: &settings::Decay) -> serde_json::Value {
     let settings::Decay {
         func,
         scale,
         offset,
         decay,
-    } = decay;
+    } = settings_decay;
 
     json!({
         "function_score": {

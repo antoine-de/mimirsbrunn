@@ -45,6 +45,8 @@ pub struct ForwardGeocoderQuery {
     pub pt_dataset: Option<Vec<String>>,
     pub poi_dataset: Option<Vec<String>>,
     pub request_id: Option<String>,
+    #[serde(flatten)]
+    pub proximity: Option<Proximity>,
 }
 
 fn default_result_limit() -> i64 {
@@ -53,34 +55,21 @@ fn default_result_limit() -> i64 {
 
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
     fn from(source: (ForwardGeocoderQuery, Option<Geometry>)) -> Self {
-        let (
-            ForwardGeocoderQuery {
-                q: _,
-                lat,
-                lon,
-                shape_scope,
-                types: _,
-                zone_types,
-                poi_types,
-                limit,
-                timeout,
-                pt_dataset: _,
-                poi_dataset: _,
-                request_id: _,
-            },
-            geometry,
-        ) = source;
-        let zone_types = zone_types.map(|zts| zts.iter().map(|t| t.as_str().to_string()).collect());
+        let (query, geometry) = source;
+        let zone_types = query
+            .zone_types
+            .map(|zts| zts.iter().map(|t| t.as_str().to_string()).collect());
         Filters {
             // When option_zip_option becomes available: coord: input.lat.zip_with(input.lon, Coord::new),
-            coord: match (lat, lon) {
+            coord: match (query.lat, query.lon) {
                 (Some(lat), Some(lon)) => Some(Coord::new(lat, lon)),
                 _ => None,
             },
             shape: geometry.map(|geometry| {
                 (
                     geometry,
-                    shape_scope
+                    query
+                        .shape_scope
                         .map(|shape_scope| {
                             shape_scope.iter().map(|t| t.as_str().to_string()).collect()
                         })
@@ -99,14 +88,16 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                 )
             }),
             zone_types,
-            poi_types,
-            limit,
-            timeout,
+            poi_types: query.poi_types,
+            limit: query.limit,
+            timeout: query.timeout,
+            proximity: query.proximity,
         }
     }
 }
 
 /// This structure contains all the query parameters that
+/// can be submitted for the reverse endpoint.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ReverseGeocoderQuery {
@@ -251,4 +242,17 @@ impl Type {
             Type::Zone => Admin::static_doc_type(),
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Proximity {
+    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde(rename = "proximity_scale")]
+    pub scale: f64,
+    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde(rename = "proximity_offset")]
+    pub offset: f64,
+    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde(rename = "proximity_decay")]
+    pub decay: f64,
 }
