@@ -167,15 +167,10 @@ impl Place {
 #[derive(PartialEq, Copy, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PlaceDocType {
-    #[serde(rename = "admin")]
     Admin,
-    #[serde(rename = "street")]
     Street,
-    #[serde(rename = "addr")]
     Addr,
-    #[serde(rename = "poi")]
     Poi,
-    #[serde(rename = "stop")]
     Stop,
 }
 
