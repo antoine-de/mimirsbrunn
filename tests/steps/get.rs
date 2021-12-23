@@ -108,14 +108,14 @@ impl Step for HasDocument {
             .next_back()
             .expect("the user must perform a search before checking results");
 
-        let (rank, stop) = (search.results.iter().enumerate())
+        let (rank, object) = (search.results.iter().enumerate())
             .find(|(_, doc)| {
                 println!("{} vs {}", self.id, doc["id"].as_str().unwrap());
                 self.id == doc["id"].as_str().unwrap()
             })
             .expect("document was not found in search results");
 
-        assert_eq!(stop["name"], self.name);
+        assert_eq!(object["name"], self.name);
         assert!(rank < self.max_rank);
         Ok(StepStatus::Done)
     }
