@@ -5,6 +5,7 @@ use warp::reply::{json, with_status};
 use warp::{http::StatusCode, reject::Reject};
 
 use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
+use crate::adapters::primary::common::dsl::QueryType;
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
@@ -61,7 +62,7 @@ where
     let lang = params.lang.clone();
     let lang = params.lang.clone().unwrap_or_else(|| "fr".to_string());
     let filters = filters::Filters::from((params, geometry));
-    let dsl = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings);
+    let dsl = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings, QueryType::PREFIX);
 
     tracing::trace!(
         "Searching in indexes {:?} with query {}",
@@ -124,7 +125,7 @@ where
     let q = params.query.q.clone();
     let lang = params.query.lang.clone();
     let filters = filters::Filters::from((params.query, geometry));
-    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings);
+    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings, QueryType::PREFIX);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 

@@ -1,6 +1,7 @@
 use clap::Parser;
 use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::primary::common::dsl::QueryType;
 use mimir::domain::model::configuration::root_doctype;
 use mimir::{
     adapters::primary::common::{
@@ -56,7 +57,13 @@ async fn main() {
 
     let settings = QuerySettings::default();
 
-    let dsl = build_query(&opt.q, filters, "fr", &settings);
+    let dsl = build_query(
+        &opt.q,
+        filters,
+        "fr",
+        &settings,
+        QueryType::PREFIX,
+    );
 
     println!("{}", dsl);
 
