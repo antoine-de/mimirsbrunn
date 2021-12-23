@@ -220,6 +220,9 @@ pub enum Type {
     Street,
     #[serde(rename = "zone")]
     Zone,
+    // TODO To be deleted when switching to full ES7 (in production)
+    #[serde(rename = "city")]
+    City,
 }
 
 impl Type {
@@ -230,6 +233,7 @@ impl Type {
             Type::StopArea => "public_transport:stop_area",
             Type::Street => "street",
             Type::Zone => "zone",
+            Type::City => "city",
         }
     }
 
@@ -239,7 +243,7 @@ impl Type {
             Type::Poi => Poi::static_doc_type(),
             Type::StopArea => Stop::static_doc_type(),
             Type::Street => Street::static_doc_type(),
-            Type::Zone => Admin::static_doc_type(),
+            Type::Zone | Type::City => Admin::static_doc_type(),
         }
     }
 }
