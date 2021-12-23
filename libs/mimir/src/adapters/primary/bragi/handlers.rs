@@ -72,7 +72,7 @@ where
 
     match client
         .search_documents(
-            es_indices_to_search_in,
+            es_indices_to_search_in.clone(),
             Query::QueryDSL(dsl),
             filters.limit,
             timeout,
@@ -80,10 +80,26 @@ where
         .await
     {
         Ok(res) => {
-            let places: Result<Vec<Place>, serde_json::Error> = res
-                .into_iter()
-                .map(|json| serde_json::from_value::<Place>(json.into()))
-                .collect();
+            let places = if res.is_empty() {
+                let dsl = dsl::build_query(&q, filters.clone(), lang, &settings, QueryType::FUZZY);
+                debug!("{}", serde_json::to_string(&dsl).unwrap());
+                let res = client
+                    .search_documents(
+                        es_indices_to_search_in,
+                        Query::QueryDSL(dsl),
+                        filters.limit,
+                        timeout,
+                    )
+                    .await;
+                res.unwrap()
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json.into()))
+                    .collect()
+            } else {
+                res.into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json.into()))
+                    .collect()
+            };
 
             match places {
                 Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
