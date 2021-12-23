@@ -77,7 +77,7 @@ pub async fn index_addresses(
     };
 
     // Load file
-    let config: mimirsbrunn::settings::bano2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::bano2mimir::Settings = common::config::config_from(
         &config_dir,
         &["bano2mimir", "elasticsearch", "logging"],
         "testing",
@@ -87,6 +87,7 @@ pub async fn index_addresses(
     .expect("could not load bano2mimir configuration")
     .try_into()
     .expect("invalid bano2mimir configuration");
+    config.container.dataset = dataset.to_string();
 
     let addresses =
         mimirsbrunn::addr_reader::import_addresses_from_input_path(input_file, false, into_addr);

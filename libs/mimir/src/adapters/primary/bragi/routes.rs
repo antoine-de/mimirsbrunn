@@ -5,7 +5,8 @@ use url::Url;
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 use crate::adapters::primary::bragi::api::{
-    ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam, ReverseGeocoderQuery, Type,
+    FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
+    ReverseGeocoderQuery, Type,
 };
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
@@ -90,6 +91,16 @@ pub fn reverse_geocoder(
         .and(path_prefix())
         .and(warp::path("reverse"))
         .and(reverse_geocoder_query())
+}
+
+/// This function reads the input parameters on a get request, makes a summary validation
+/// of the parameters, and returns them.
+#[instrument]
+pub fn features() -> impl Filter<Extract = (String, FeaturesQuery), Error = Rejection> + Clone {
+    warp::get()
+        .and(path_prefix())
+        .and(warp::path!("features" / String))
+        .and(features_query())
 }
 
 pub fn with_client<S>(s: S) -> impl Filter<Extract = (S,), Error = std::convert::Infallible> + Clone
@@ -239,7 +250,25 @@ pub async fn validate_geojson_shape(json: JsonParam) -> Result<Option<Geometry>,
 
 pub fn reverse_geocoder_query(
 ) -> impl Filter<Extract = (ReverseGeocoderQuery,), Error = Rejection> + Copy {
-    warp::filters::query::query()
+    warp::filters::query::raw().and_then(|param: String| async move {
+        let config = Config::new(2, false);
+        config.deserialize_str(&param).map_err(|_| {
+            warp::reject::custom(InvalidRequest {
+                reason: InvalidRequestReason::CannotDeserialize,
+            })
+        })
+    })
+}
+
+pub fn features_query() -> impl Filter<Extract = (FeaturesQuery,), Error = Rejection> + Copy {
+    warp::filters::query::raw().and_then(|param: String| async move {
+        let config = Config::new(2, false);
+        config.deserialize_str(&param).map_err(|_| {
+            warp::reject::custom(InvalidRequest {
+                reason: InvalidRequestReason::CannotDeserialize,
+            })
+        })
+    })
 }
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {

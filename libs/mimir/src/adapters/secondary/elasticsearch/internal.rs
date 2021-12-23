@@ -6,7 +6,9 @@ use elasticsearch::indices::{
     IndicesPutIndexTemplateParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
-use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
+use elasticsearch::{
+    BulkOperation, BulkParts, ExplainParts, MgetParts, OpenPointInTimeParts, SearchParts,
+};
 use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -25,7 +27,9 @@ use super::configuration::{
 };
 use super::models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
-use crate::adapters::secondary::elasticsearch::models::ElasticsearchBulkResult;
+use crate::adapters::secondary::elasticsearch::models::{
+    ElasticsearchBulkResult, ElasticsearchGetResponse,
+};
 use crate::domain::model::{
     configuration,
     index::{Index, IndexStatus},
@@ -1080,6 +1084,57 @@ impl ElasticsearchStorage {
         }
     }
 
+    pub(super) async fn get_documents_by_id<D>(
+        &self,
+        query: Query,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<D>, Error>
+    where
+        D: DeserializeOwned + Send + Sync + 'static,
+    {
+        let timeout = timeout
+            .map(|t| {
+                if t > self.config.timeout {
+                    info!(
+                        "Requested timeout {:?} is too big. I'll use {:?} instead.",
+                        t, self.config.timeout
+                    );
+                    self.config.timeout
+                } else {
+                    t
+                }
+            }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
+            .unwrap_or(self.config.timeout);
+
+        let get = self.client.mget(MgetParts::None).request_timeout(timeout);
+
+        let response = match query {
+            Query::QueryString(_) => {
+                return Err(Error::Internal {
+                    reason: format!("QueryString not handled for get document by id"),
+                })
+            }
+            Query::QueryDSL(json) => get.body(json).send().await.context(ElasticsearchClient {
+                details: format!("could not get document by id"),
+            })?,
+        };
+
+        if response.status_code().is_success() {
+            let body = response
+                .json::<ElasticsearchGetResponse<D>>()
+                .await
+                .context(ElasticsearchDeserialization)?;
+
+            Ok(body.into_docs().collect())
+        } else {
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
+        }
+    }
+
     pub(super) async fn explain_search<D>(
         &self,
         index: String,
@@ -1114,8 +1169,6 @@ impl ElasticsearchStorage {
                 .json::<Value>()
                 .await
                 .context(ElasticsearchDeserialization)?;
-
-            println!("json: {:?}", json);
 
             let explanation = json
                 .as_object()

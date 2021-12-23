@@ -48,7 +48,7 @@ pub async fn index_stops(
         .iter()
         .collect();
 
-    let config: mimirsbrunn::settings::ntfs2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::ntfs2mimir::Settings = common::config::config_from(
         &config_dir,
         &["ntfs2mimir", "elasticsearch", "logging"],
         "testing",
@@ -58,6 +58,9 @@ pub async fn index_stops(
     .expect("could not load ntfs2mimir configuration")
     .try_into()
     .expect("invalid ntfs2mimir configuration");
+
+    // Use dataset set by test instead of default config
+    config.container.dataset = dataset.to_string();
 
     mimirsbrunn::stops::index_ntfs(input_dir, &config.container, client)
         .await

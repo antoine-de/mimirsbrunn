@@ -11,7 +11,7 @@ use warp::Filter;
 use super::settings::{Error as SettingsError, Opts, Settings};
 use mimir::{
     adapters::primary::bragi::api::{
-        forward_geocoder, forward_geocoder_explain, reverse_geocoder, status,
+        features, forward_geocoder, forward_geocoder_explain, reverse_geocoder, status,
     },
     adapters::primary::bragi::{handlers, routes},
     adapters::secondary::elasticsearch::remote::connection_pool_url,
@@ -108,6 +108,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
     // Here I place reverse_geocoder first because its most likely to get hit.
     let api = reverse_geocoder!(client.clone(), settings.query.clone())
         .or(forward_geocoder!(client.clone(), settings.query.clone()))
+        .or(features!(client.clone(), settings.query.clone()))
         .or(forward_geocoder_explain!(client.clone(), settings.query))
         .or(status!(client, &settings.elasticsearch.url))
         .recover(routes::report_invalid)
