@@ -204,8 +204,7 @@ fn build_es_indices_to_search(query: &ForwardGeocoderQuery) -> Vec<String> {
             match doc_type {
                 Type::House => indices.push(root_doctype(Addr::static_doc_type())),
                 Type::Street => indices.push(root_doctype(Street::static_doc_type())),
-                Type::Zone => indices.push(root_doctype(Admin::static_doc_type())),
-                Type::City => indices.push(root_doctype(Admin::static_doc_type())),
+                Type::Zone | Type::City => indices.push(root_doctype(Admin::static_doc_type())),
                 Type::Poi => {
                     let doc_type_str = Poi::static_doc_type();
                     // if some poi_dataset are specified

@@ -252,8 +252,7 @@ impl Type {
             Type::Poi => Poi::static_doc_type(),
             Type::StopArea => Stop::static_doc_type(),
             Type::Street => Street::static_doc_type(),
-            Type::Zone => Admin::static_doc_type(),
-            Type::City => Admin::static_doc_type(),
+            Type::Zone | Type::City => Admin::static_doc_type(),
         }
     }
 }
