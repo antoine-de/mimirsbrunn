@@ -1109,9 +1109,11 @@ impl ElasticsearchStorage {
         let get = self.client.mget(MgetParts::None).request_timeout(timeout);
 
         let response = match query {
-            Query::QueryString(_) => get.send().await.context(ElasticsearchClient {
-                details: format!("could not get document by id"),
-            })?,
+            Query::QueryString(_) => {
+                return Err(Error::Internal {
+                    reason: format!("QueryString not handled for get document by id"),
+                })
+            }
             Query::QueryDSL(json) => get.body(json).send().await.context(ElasticsearchClient {
                 details: format!("could not get document by id"),
             })?,

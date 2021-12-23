@@ -295,9 +295,7 @@ fn build_es_indices_to_search(
             }
         }
         indices
-    }
-    // no types specified, we search for all objects in all indices
-    else {
+    } else {
         vec![root_doctype_dataset(
             Stop::static_doc_type(),
             pt_dataset.clone().unwrap()[0].as_str(),
