@@ -97,7 +97,7 @@ pub async fn index_pois(
     // Read the poi configuration from the osm2mimir configuration / testing mode.
     let base_path = env!("CARGO_MANIFEST_DIR");
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
-    let config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
         &config_dir,
         &["osm2mimir", "elasticsearch", "logging"],
         "testing",
@@ -107,6 +107,8 @@ pub async fn index_pois(
     .context(Config)?
     .try_into()
     .context(ConfigInvalid)?;
+    config.container_poi.dataset = dataset.to_string();
+    config.container_street.dataset = dataset.to_string();
 
     let pois = mimirsbrunn::osm_reader::poi::pois(
         &mut osm_reader,
@@ -168,7 +170,7 @@ pub async fn index_streets(
     // Read the street configuration from the osm2mimir configuration / testing mode.
     let base_path = env!("CARGO_MANIFEST_DIR");
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
-    let config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
         &config_dir,
         &["osm2mimir", "elasticsearch", "logging"],
         "testing",
@@ -178,6 +180,8 @@ pub async fn index_streets(
     .context(Config)?
     .try_into()
     .context(ConfigInvalid)?;
+    config.container_poi.dataset = dataset.to_string();
+    config.container_street.dataset = dataset.to_string();
 
     let streets: Vec<Street> = mimirsbrunn::osm_reader::street::streets(
         &mut osm_reader,
