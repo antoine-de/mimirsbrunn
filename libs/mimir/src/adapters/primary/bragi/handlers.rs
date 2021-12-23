@@ -296,10 +296,24 @@ pub fn build_es_indices_to_search(
         }
         indices
     } else {
-        vec![root_doctype_dataset(
-            Stop::static_doc_type(),
-            pt_dataset.clone().unwrap()[0].as_str(),
-        )]
+        let mut indices = vec![
+            root_doctype(Addr::static_doc_type()),
+            root_doctype(Street::static_doc_type()),
+            root_doctype(Admin::static_doc_type()),
+        ];
+        if let Some(pt_datasets) = pt_dataset {
+            let doc_type_str = Stop::static_doc_type();
+            for pt_dataset in pt_datasets.iter() {
+                indices.push(root_doctype_dataset(doc_type_str, pt_dataset));
+            }
+        }
+        if let Some(poi_datasets) = poi_dataset {
+            let doc_type_str = Poi::static_doc_type();
+            for poi_dataset in poi_datasets.iter() {
+                indices.push(root_doctype_dataset(doc_type_str, poi_dataset));
+            }
+        }
+        indices
     }
 }
 

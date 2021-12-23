@@ -23,11 +23,11 @@ Feature: Stops
     # /features endpoint
     # we expect to found the requested id
     @unittest
-    Scenario Outline: Stops exact match
+    Scenario Outline: Stops find by id
         When the user ask for id "<id>" with pt_dataset "<pt_dataset>"
         Then he gets "<id>" as the first result, with name "<stop_name>"
 
         Examples:
             | id                 | pt_dataset   | stop_name           |
-            | stop_area:GDL      | fr           | Gare de Lyon        |
-            | stop_area:CDG      | fr,es        | Charles de Gaulle   |
+            | stop_area:GDL      | limousin     | Gare de Lyon        |
+            | stop_area:CDG      | limousin,idf | Charles de Gaulle   |

@@ -12,14 +12,13 @@ use mimir::domain::model::query::Query;
 use mimir::domain::ports::primary::get_documents::GetDocuments;
 
 // get place
-
-#[when(regex = r#"the user ask for id "(.+)" with pt_dataset "(.*)" and poi_dataset "(.+)"$"#)]
-async fn search(state: &mut GlobalState, id: String, pt_dataset: String, poi_dataset: String) {
+#[when(regex = r#"the user ask for id "(.+)" with poi_dataset "(.+)" and pt_dataset "(.+)"$"#)]
+async fn get(state: &mut GlobalState, id: String, pt_dataset: String, poi_dataset: String) {
     perform_get(state, id, pt_dataset, poi_dataset).await;
 }
 
 #[when(regex = r#"the user ask for id "(.+)" with pt_dataset "(.+)"$"#)]
-async fn search_no_pt_no_poi(state: &mut GlobalState, id: String, pt_dataset: String) {
+async fn get_no_poi(state: &mut GlobalState, id: String, pt_dataset: String) {
     perform_get(state, id, pt_dataset, "".to_string()).await;
 }
 
