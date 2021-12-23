@@ -8,7 +8,7 @@ use std::time::Duration;
 use crate::adapters::primary::common::coord::Coord;
 use crate::adapters::primary::common::filters::Filters;
 use common::document::ContainerDocument;
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
+use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, PlaceDocType};
 
 pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
 
@@ -32,7 +32,7 @@ pub struct ForwardGeocoderQuery {
     pub q: String,
     pub lat: Option<f32>,
     pub lon: Option<f32>,
-    pub shape_scope: Option<Vec<Type>>,
+    pub shape_scope: Option<Vec<PlaceDocType>>,
     #[serde(default, rename = "type")]
     pub types: Option<Vec<Type>>,
     #[serde(default, rename = "zone_type")]

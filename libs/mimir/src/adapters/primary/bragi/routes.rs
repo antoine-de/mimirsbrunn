@@ -265,6 +265,7 @@ pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use places::PlaceDocType;
 
     #[tokio::test]
     async fn should_report_invalid_query_with_no_query() {
@@ -439,6 +440,32 @@ mod tests {
             resp.0.poi_dataset.unwrap(),
             ["poi-dataset1", "poi-dataset2"]
         );
+        assert_eq!(resp.0.q, "Bob");
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_shape_scope() {
+        let filter = forward_geocoder_get();
+        let resp = warp::test::request()
+            .path(
+                "/api/v1/autocomplete?q=Bob&shape_scope[]=admin&shape_scope[]=street\
+                &shape_scope[]=addr&shape_scope[]=poi&type%5B%5D=house&shape_scope[]=stop",
+            )
+            .filter(&filter)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            resp.0.shape_scope.unwrap(),
+            [
+                PlaceDocType::Admin,
+                PlaceDocType::Street,
+                PlaceDocType::Addr,
+                PlaceDocType::Poi,
+                PlaceDocType::Stop
+            ]
+        );
+        assert_eq!(resp.0.types.unwrap(), [Type::House]);
         assert_eq!(resp.0.q, "Bob");
     }
 }

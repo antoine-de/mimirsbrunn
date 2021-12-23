@@ -65,7 +65,8 @@
             "enabled": false
           },
           "approx_coord": {
-            "enabled": false
+            "type": "geo_shape",
+            "precision": "5m"
           },
           "context": {
             "enabled": false
