@@ -164,13 +164,18 @@ impl Place {
 }
 
 // This is a bit of a kludge to a get a string version for the doc_type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Copy, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PlaceDocType {
+    #[serde(rename = "admin")]
     Admin,
+    #[serde(rename = "street")]
     Street,
+    #[serde(rename = "addr")]
     Addr,
+    #[serde(rename = "poi")]
     Poi,
+    #[serde(rename = "stop")]
     Stop,
 }
 

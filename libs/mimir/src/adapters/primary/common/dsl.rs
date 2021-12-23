@@ -1,6 +1,5 @@
 use geojson::Geometry;
 use serde_json::json;
-use std::collections::BTreeMap;
 
 use super::coord::Coord;
 use super::{filters, settings};
@@ -216,14 +215,14 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
                 "bool": {
                     "must": {
                         "terms": {
-                            "_source.type": scope
+                            "type": scope
                         }
                     },
                     "filter": {
                         "geo_shape": {
-                            "location": {
+                            "approx_coord": {
                                 "shape": shape,
-                                "relation": "intersects"
+                            "relation": "intersects"
                             }
                         }
                     }
@@ -233,7 +232,7 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
                 "bool": {
                     "must_not": {
                         "terms": {
-                            "_source.type": scope
+                            "type": scope
                         }
                     }
                 }
