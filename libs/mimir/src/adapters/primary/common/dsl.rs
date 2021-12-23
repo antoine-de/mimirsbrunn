@@ -1,4 +1,4 @@
-use crate::adapters::primary::common::settings::StringQuery;
+use crate::adapters::primary::common::settings::{BuildWeight, ImportanceQueryBoosts, StringQuery};
 use geojson::Geometry;
 use serde_json::json;
 
@@ -80,6 +80,32 @@ fn build_string_query(q: &str, _lang: &str, settings: &StringQuery) -> serde_jso
     })
 }
 
+fn build_boosts(
+    _q: &str,
+    settings: &settings::QuerySettings,
+    filters: &filters::Filters,
+) -> Vec<serde_json::Value> {
+    let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
+    // TODO: in production, admins are boosted by their weight only in prefix mode.
+    let admin_weight_boost = Some(build_admin_weight_query(
+        &settings.importance_query,
+        &filters.coord,
+    ));
+    boosts.push(admin_weight_boost);
+    let mut decay = settings.importance_query.proximity.decay.clone();
+    if let Some(proximity) = &filters.proximity {
+        decay.scale = proximity.scale;
+        decay.offset = proximity.offset;
+        decay.decay = proximity.decay;
+    }
+    let proximity_boost = filters
+        .coord
+        .clone()
+        .map(|coord| build_proximity_boost(coord, &decay));
+    boosts.push(proximity_boost);
+    boosts.into_iter().flatten().collect()
+}
+
 fn build_filters(
     shape: Option<(Geometry, Vec<String>)>,
     poi_types: Option<Vec<String>>,
@@ -95,27 +121,35 @@ fn build_filters(
     filters.into_iter().flatten().collect()
 }
 
-fn build_boosts(
-    _q: &str,
-    settings: &settings::QuerySettings,
-    filters: &filters::Filters,
-) -> Vec<serde_json::Value> {
-    let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
-    // TODO: in production, admins are boosted by their weight only in prefix mode.
-    let admin_weight_boost = Some(build_admin_weight_query(&settings.importance_query));
-    boosts.push(admin_weight_boost);
-    let mut decay = settings.importance_query.proximity.decay.clone();
-    if let Some(proximity) = &filters.proximity {
-        decay.scale = proximity.scale;
-        decay.offset = proximity.offset;
-        decay.decay = proximity.decay;
+fn build_weight_depending_on_radius(
+    importance_query_settings: &ImportanceQueryBoosts,
+    coord: &Option<Coord>,
+) -> BuildWeight {
+    let settings_weight = importance_query_settings.clone().weights;
+
+    // Weights for minimal radius
+    let min_weights = settings_weight.clone().min_radius_prefix;
+
+    // Weights for maximal radius
+    let max_weights = settings_weight.clone().max_radius;
+
+    // Compute a linear combination of `min_weights` and `max_weights` depending of
+    // the level of zoom.
+    let zoom_ratio = match coord {
+        None => 1.,
+        Some(_) => {
+            let (min_radius, max_radius) = settings_weight.radius_range;
+            let curve = importance_query_settings.clone().proximity.decay;
+            let radius = (curve.offset + curve.scale).min(max_radius).max(min_radius);
+            (radius.ln_1p() - min_radius.ln_1p()) / (max_radius.ln_1p() - min_radius.ln_1p())
+        }
+    };
+
+    BuildWeight {
+        admin: (1. - zoom_ratio) * min_weights.admin + zoom_ratio * max_weights.admin,
+        factor: (1. - zoom_ratio) * min_weights.factor + zoom_ratio * max_weights.factor,
+        missing: (1. - zoom_ratio) * min_weights.missing + zoom_ratio * max_weights.missing,
     }
-    let proximity_boost = filters
-        .coord
-        .clone()
-        .map(|coord| build_proximity_boost(coord, &decay));
-    boosts.push(proximity_boost);
-    boosts.into_iter().flatten().collect()
 }
 
 fn build_house_number_condition(q: &str) -> serde_json::Value {
@@ -175,7 +209,11 @@ fn build_matching_condition(q: &str) -> serde_json::Value {
     })
 }
 
-fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde_json::Value {
+fn build_admin_weight_query(
+    settings: &settings::ImportanceQueryBoosts,
+    coord: &Option<Coord>,
+) -> serde_json::Value {
+    let weights = build_weight_depending_on_radius(settings, coord);
     json!({
         "function_score": {
             "query": { "term": { "type": "admin" } },
@@ -190,8 +228,7 @@ fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde
                     }
                 },
                 {
-                    // TODO: in production, this weight depends of the focus radius
-                    "weight": settings.weights.max_radius.admin
+                    "weight": weights.admin
                 }
             ]
         }
@@ -422,6 +459,56 @@ pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Val
         .collect();
     json!({ "docs": vec })
 }
+
+// fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {
+//     json!({
+//         "function_score": {
+//             "boost_mode": "replace",
+//             "functions": [
+//                 {
+//                         "query": { "term": { "_type": "admin" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                     }
+//                 },
+//                 {
+//                         "query": { "term": { "_type": "address" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                         }
+//                 },
+//                                 {
+//                         "query": { "term": { "_type": "admin" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                         }
+//                 },
+//                                 {
+//                         "query": { "term": { "_type": "poi" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                     }
+//                 },
+//                 {
+//                         "query": { "term": { "_type": "street" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                     }
+//                 }
+//             ]
+//         }
+//     })
+// }
 
 //
 // fn build_coverage_condition() -> serde_json::Value {
