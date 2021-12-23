@@ -250,7 +250,7 @@ where
     }
 }
 
-fn build_es_indices_to_search(
+pub fn build_es_indices_to_search(
     types: &Option<Vec<Type>>,
     pt_dataset: &Option<Vec<String>>,
     poi_dataset: &Option<Vec<String>>,
