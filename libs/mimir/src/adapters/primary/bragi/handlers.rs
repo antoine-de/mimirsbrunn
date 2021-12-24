@@ -1,5 +1,7 @@
 use crate::adapters::primary::bragi::prometheus_handler;
 use geojson::Geometry;
+use serde::Serialize;
+use serde_json::{Error, json};
 use tracing::{debug, instrument};
 use warp::reply::{json, with_status};
 use warp::{http::StatusCode, reject::Reject};
@@ -25,6 +27,7 @@ use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
 use serde::{Deserialize, Serialize};
+use crate::domain;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -80,21 +83,25 @@ where
         .await
     {
         Ok(res) => {
-            let places = if res.is_empty() {
+            let places : Result<Vec<Place>, serde_json::Error> = if res.is_empty() {
                 let dsl = dsl::build_query(&q, filters.clone(), lang, &settings, QueryType::FUZZY);
                 debug!("{}", serde_json::to_string(&dsl).unwrap());
-                let res = client
+
+                match client
                     .search_documents(
                         es_indices_to_search_in,
                         Query::QueryDSL(dsl),
                         filters.limit,
                         timeout,
-                    )
-                    .await;
-                res.unwrap()
-                    .into_iter()
-                    .map(|json| serde_json::from_value::<Place>(json.into()))
-                    .collect()
+                    ).await
+                {
+                    Ok(res) => {
+                        res.into_iter()
+                            .map(|json| serde_json::from_value::<Place>(json.into()))
+                            .collect()
+                    }
+                    Err(err) => { serde_json::from_value(json!("")) } //TODO I try to do my best but I need help
+                }
             } else {
                 res.into_iter()
                     .map(|json| serde_json::from_value::<Place>(json.into()))
