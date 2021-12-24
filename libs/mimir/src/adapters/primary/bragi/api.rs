@@ -103,7 +103,7 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
 pub struct FeaturesQuery {
     pub pt_dataset: Option<Vec<String>>,
     pub poi_dataset: Option<Vec<String>>,
-    #[serde(deserialize_with = "deserialize_opt_duration")]
+    #[serde(deserialize_with = "deserialize_opt_duration", default)]
     pub timeout: Option<Duration>,
 }
 
@@ -116,7 +116,7 @@ pub struct ReverseGeocoderQuery {
     pub lon: f64,
     #[serde(default = "default_result_limit")]
     pub limit: i64,
-    #[serde(deserialize_with = "deserialize_opt_duration")]
+    #[serde(deserialize_with = "deserialize_opt_duration", default)]
     pub timeout: Option<Duration>,
 }
 
