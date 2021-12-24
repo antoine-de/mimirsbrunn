@@ -112,6 +112,9 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .or(forward_geocoder_explain!(client.clone(), settings.query))
         .or(status!(client, &settings.elasticsearch.url))
         .recover(routes::report_invalid)
+        .with(warp::wrap_fn(|filter| {
+            routes::cache_filter(filter, settings.http_cache_duration)
+        }))
         .with(warp::trace::request());
 
     info!("api ready");
