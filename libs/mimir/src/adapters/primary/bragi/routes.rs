@@ -271,6 +271,10 @@ pub fn features_query() -> impl Filter<Extract = (FeaturesQuery,), Error = Rejec
     })
 }
 
+pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    warp::get().and(path_prefix()).and(warp::path("status"))
+}
+
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
     let reply = warp::reply::reply();
 
@@ -287,8 +291,22 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
     }
 }
 
-pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    warp::get().and(path_prefix()).and(warp::path("status"))
+pub fn cache_filter<F, T>(
+    filter: F,
+    http_cache_duration: usize,
+) -> impl Filter<Extract = impl Reply, Error = std::convert::Infallible> + Clone + Send + Sync
+where
+    F: Filter<Extract = (T,), Error = std::convert::Infallible> + Clone + Send + Sync,
+    F::Extract: warp::Reply,
+    T: warp::Reply,
+{
+    warp::any().and(filter).map(move |reply| {
+        warp::reply::with_header(
+            reply,
+            "cache-control",
+            format!("max-age={}", http_cache_duration),
+        )
+    })
 }
 
 #[cfg(test)]

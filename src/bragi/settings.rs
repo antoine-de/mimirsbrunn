@@ -61,6 +61,7 @@ pub struct Settings {
     pub query: QuerySettings,
     pub service: Service,
     pub nbthreads: Option<usize>,
+    pub http_cache_duration: usize,
 }
 
 #[derive(Debug, clap::Parser)]
