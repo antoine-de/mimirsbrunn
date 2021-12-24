@@ -1,16 +1,16 @@
-use geojson::{GeoJson, Geometry};
-use std::convert::Infallible;
-use tracing::instrument;
-use url::Url;
-use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
-
 use crate::adapters::primary::bragi::api::{
     FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
     ReverseGeocoderQuery, Type,
 };
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
+use geojson::{GeoJson, Geometry};
+use serde::{Deserialize, Serialize};
 use serde_qs::Config;
+use std::convert::Infallible;
+use tracing::instrument;
+use url::Url;
+use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 /// This function defines the base path for Bragi's REST API
 fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
@@ -123,7 +123,13 @@ pub fn with_elasticsearch(
     warp::any().map(move || url.clone())
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ApiError {
+    pub short: String,
+    pub long: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub enum InvalidRequestReason {
     CannotDeserialize,
     EmptyQueryString,
@@ -132,9 +138,10 @@ pub enum InvalidRequestReason {
     InconsistentLatLonRequest,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct InvalidRequest {
     pub reason: InvalidRequestReason,
+    pub info: String,
 }
 
 impl Reject for InvalidRequest {}
@@ -152,9 +159,10 @@ pub fn forward_geocoder_query(
             // max_depth=1:
             // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
             let config = Config::new(2, false);
-            config.deserialize_str(&param).map_err(|_| {
+            config.deserialize_str(&param).map_err(|err| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
+                    info: err.to_string(),
                 })
             })
         })
@@ -171,9 +179,10 @@ pub fn forward_geocoder_explain_query(
         // max_depth=1:
         // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
         let config = Config::new(2, false);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
+                info: err.to_string(),
             })
         })
     })
@@ -185,6 +194,7 @@ pub async fn ensure_query_string_not_empty(
     if params.q.is_empty() {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::EmptyQueryString,
+            info: "Empty query string".to_string(),
         }))
     } else {
         Ok(params)
@@ -199,6 +209,7 @@ pub async fn ensure_lat_lon_consistent(
     if params.lat.is_some() ^ params.lon.is_some() {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::InconsistentLatLonRequest,
+            info: "".to_string(),
         }))
     } else {
         Ok(params)
@@ -223,6 +234,7 @@ pub async fn ensure_zone_type_consistent(
     {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::InconsistentZoneRequest,
+            info: "".to_string(),
         }))
     } else {
         Ok(params)
@@ -252,9 +264,10 @@ pub fn reverse_geocoder_query(
 ) -> impl Filter<Extract = (ReverseGeocoderQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
+                info: err.to_string(),
             })
         })
     })
@@ -263,9 +276,10 @@ pub fn reverse_geocoder_query(
 pub fn features_query() -> impl Filter<Extract = (FeaturesQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
+                info: err.to_string(),
             })
         })
     })
@@ -276,19 +290,33 @@ pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 }
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
-    let reply = warp::reply::reply();
-
-    if rejection.find::<warp::reject::InvalidQuery>().is_some()
-        || rejection.find::<InvalidRequest>().is_some()
-    {
-        Ok(warp::reply::with_status(reply, StatusCode::BAD_REQUEST))
+    let reply = if let Some(err) = rejection.find::<warp::reject::InvalidQuery>() {
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "invalid query".to_string(),
+                long: err.to_string(),
+            }),
+            StatusCode::BAD_REQUEST,
+        )
+    } else if let Some(err) = rejection.find::<InvalidRequest>() {
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "validation error".to_string(),
+                long: err.info.clone(),
+            }),
+            StatusCode::BAD_REQUEST,
+        )
     } else {
-        // Do better error handling here
-        Ok(warp::reply::with_status(
-            reply,
-            StatusCode::INTERNAL_SERVER_ERROR,
-        ))
-    }
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "validation error".to_string(),
+                long: "fsdfsdf".to_string(),
+            }),
+            StatusCode::NOT_FOUND,
+        )
+    };
+    let reply = warp::reply::with_header(reply, "content-type", "application/json");
+    Ok(reply)
 }
 
 pub fn cache_filter<F, T>(
