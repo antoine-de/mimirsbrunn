@@ -1,3 +1,4 @@
+use super::prometheus_handler::PrometheusMetrics;
 use geojson::Geometry;
 use serde::Serialize;
 use tracing::{debug, instrument};
@@ -239,6 +240,37 @@ where
                     version: res.storage.version,
                     health: res.storage.health.to_string(),
                     url,
+                },
+            };
+            Ok(with_status(json(&resp), StatusCode::OK))
+        }
+        Err(err) => Ok(with_status(
+            json(&format!("Error while querying status: {}", err.to_string())),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
+    }
+}
+
+pub async fn metrics<S>(
+    client: S,
+    prometheus: PrometheusMetrics,
+) -> Result<impl warp::Reply, warp::Rejection>
+where
+    S: Status,
+{
+    match client.status().await {
+        Ok(res) => {
+            let resp = StatusResponseBody {
+                bragi: BragiStatus {
+                    version: VERSION.to_string(),
+                },
+                mimir: MimirStatus {
+                    version: res.version,
+                },
+                elasticsearch: ElasticsearchStatus {
+                    version: res.storage.version,
+                    health: res.storage.health.to_string(),
+                    url: "".to_string(),
                 },
             };
             Ok(with_status(json(&resp), StatusCode::OK))
