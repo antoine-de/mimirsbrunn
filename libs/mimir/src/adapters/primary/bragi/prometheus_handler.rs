@@ -1,18 +1,17 @@
-use prometheus::{self};
+use prometheus::{self, Encoder, TextEncoder};
 use tracing::trace;
 
 lazy_static::lazy_static! {
     static ref PATH_TO_NAME: std::collections::HashMap<&'static str, &'static str> = {
         let mut map = std::collections::HashMap::new();
-        map.insert("/", "/");
-        map.insert("/metrics", "metrics");
-        map.insert("/status", "status");
-        map.insert("/reverse", "reverse");
-        map.insert("/autocomplete", "autocomplete");
+        map.insert("/api/v1/metrics", "metrics");
+        map.insert("/api/v1/status", "status");
+        map.insert("/api/v1/reverse", "reverse");
+        map.insert("/api/v1/autocomplete", "autocomplete");
         map
     };
 
-    static ref FEATURES_ROUTE: &'static str = "features";
+    static ref FEATURES_ROUTE: &'static str = "/api/v1/features";
 }
 
 fn get_ressource_name(path: &str) -> String {
@@ -79,5 +78,13 @@ impl PrometheusMetrics {
             .inc();
 
         HTTP_IN_FLIGHT.dec();
+    }
+
+    pub fn metrics(&self) -> String {
+        let mut buffer = vec![];
+        TextEncoder::new()
+            .encode(&prometheus::gather(), &mut buffer)
+            .unwrap();
+        String::from_utf8(buffer).unwrap()
     }
 }

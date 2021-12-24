@@ -258,28 +258,12 @@ pub async fn metrics<S>(
 where
     S: Status,
 {
-    match client.status().await {
-        Ok(res) => {
-            let resp = StatusResponseBody {
-                bragi: BragiStatus {
-                    version: VERSION.to_string(),
-                },
-                mimir: MimirStatus {
-                    version: res.version,
-                },
-                elasticsearch: ElasticsearchStatus {
-                    version: res.storage.version,
-                    health: res.storage.health.to_string(),
-                    url: "".to_string(),
-                },
-            };
-            Ok(with_status(json(&resp), StatusCode::OK))
-        }
-        Err(err) => Ok(with_status(
-            json(&format!("Error while querying status: {}", err.to_string())),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
-    }
+    let reply = warp::reply::with_header(
+        prometheus.metrics(),
+        "content-type",
+        "text/plain; charset=utf-8",
+    );
+    Ok(reply)
 }
 
 pub fn build_es_indices_to_search(
