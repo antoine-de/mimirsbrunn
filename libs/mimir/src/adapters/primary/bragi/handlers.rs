@@ -252,7 +252,7 @@ where
 }
 
 pub async fn metrics<S>(
-    client: S,
+    _client: S,
     prometheus: PrometheusMetrics,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where

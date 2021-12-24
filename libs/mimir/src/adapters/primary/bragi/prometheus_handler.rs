@@ -4,10 +4,12 @@ use tracing::trace;
 lazy_static::lazy_static! {
     static ref PATH_TO_NAME: std::collections::HashMap<&'static str, &'static str> = {
         let mut map = std::collections::HashMap::new();
+        map.insert("/api/v1/", "/");
         map.insert("/api/v1/metrics", "metrics");
         map.insert("/api/v1/status", "status");
         map.insert("/api/v1/reverse", "reverse");
         map.insert("/api/v1/autocomplete", "autocomplete");
+        map.insert("/api/v1/autocomplete-explain", "autocomplete-explain");
         map
     };
 
