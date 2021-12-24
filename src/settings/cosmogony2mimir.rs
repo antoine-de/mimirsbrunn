@@ -32,7 +32,7 @@ pub struct Settings {
     pub langs: Vec<String>,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
-    pub nbthreads: Option<usize>,
+    pub nb_threads: Option<usize>,
 }
 
 #[derive(Debug, clap::Parser)]
