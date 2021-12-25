@@ -69,7 +69,7 @@ pub fn config_from<
     // Add in settings from the environment
     // Eg.. `<prefix>_DEBUG=1 ./target/app` would set the `debug` key
     if let Some(prefix) = prefix.into() {
-        let prefix = Environment::with_prefix(prefix).separator("-");
+        let prefix = Environment::with_prefix(prefix).separator("__");
         config.merge(prefix).context(ConfigCompilation)?;
     };
 
