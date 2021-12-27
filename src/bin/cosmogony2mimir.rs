@@ -77,15 +77,19 @@ async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!("Trying to connect to elasticsearch at {}", &settings.elasticsearch.url);
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
 
+    tracing::info!("Connected to elasticsearch.");
+    tracing::info!("Indexing cosmogony from {:?}", &opts.input);
+
     mimirsbrunn::admin::index_cosmogony(
         &opts.input,
-        settings.langs.clone(),
+        settings.langs,
         &settings.container,
         &client,
     )

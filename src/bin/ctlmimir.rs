@@ -50,7 +50,7 @@ async fn run(
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
 
-        tracing::info!("Connected to elasticsearch.");
+    tracing::info!("Connected to elasticsearch.");
 
     let path: PathBuf = opts.config_dir
         .join("elasticsearch")
