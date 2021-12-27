@@ -74,6 +74,8 @@ impl ElasticsearchBulkItem {
 #[derive(Debug, Eq, PartialEq, Deserialize)]
 pub struct ElasticsearchBulkStatus {
     pub status: u16,
+    #[serde(rename = "_id")]
+    pub id: String,
     #[serde(flatten, deserialize_with = "deserialize_bulk_result")]
     pub result: Result<ElasticsearchBulkResult, ElasticsearchBulkError>,
 }
@@ -87,7 +89,7 @@ pub enum ElasticsearchBulkResult {
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
-pub struct ElasticSearchBulkErrorCausedBy {
+pub struct ElasticsearchBulkErrorCausedBy {
     #[serde(rename = "type")]
     pub caused_by_type: String,
     pub reason: String,
@@ -101,7 +103,7 @@ pub struct ElasticsearchBulkError {
     pub index: Option<String>,
     pub index_uuid: Option<String>,
     pub shard: Option<String>,
-    pub caused_by: Option<ElasticSearchBulkErrorCausedBy>,
+    pub caused_by: Option<ElasticsearchBulkErrorCausedBy>,
 }
 
 // Custom deserializers
@@ -185,7 +187,7 @@ mod tests {
                     "index": {
                     "_index": "test_coord",
                     "_type": "_doc",
-                    "_id": "1",
+                    "_id": "StopArea:TCL:01",
                     "status": 400,
                     "error": {
                         "type": "mapper_parsing_exception",
@@ -211,6 +213,7 @@ mod tests {
                 items: vec![
                     ElasticsearchBulkItem::Index(ElasticsearchBulkStatus {
                         status: 404,
+                        id: "5".to_string(),
                         result: Err(ElasticsearchBulkError {
                             err_type: "document_missing_exception".to_string(),
                             reason: "[_doc][5]: document missing".to_string(),
@@ -222,6 +225,7 @@ mod tests {
                     }),
                     ElasticsearchBulkItem::Update(ElasticsearchBulkStatus {
                         status: 201,
+                        id: "7".to_string(),
                         result: Ok(ElasticsearchBulkResult::Created)
                     })
                 ]
@@ -239,13 +243,14 @@ mod tests {
                 items: vec![
                     ElasticsearchBulkItem::Index(ElasticsearchBulkStatus {
                         status: 400,
+                        id: "StopArea:TCL:01".to_string(),
                         result: Err(ElasticsearchBulkError {
                             err_type: "mapper_parsing_exception".to_string(),
                             reason: "failed to parse".to_string(),
                             index: None,
                             index_uuid: None,
                             shard: None,
-                            caused_by: Some(ElasticSearchBulkErrorCausedBy {
+                            caused_by: Some(ElasticsearchBulkErrorCausedBy {
                                 caused_by_type: "invalid_shape_exception".to_string(),
                                 reason: "Bad X value -7703653.0 is not in boundary Rect(minX=-180.0,maxX=180.0,minY=-90.0,maxY=90.0)".to_string()
                             })
