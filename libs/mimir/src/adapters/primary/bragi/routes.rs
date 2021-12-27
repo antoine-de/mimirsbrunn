@@ -197,7 +197,7 @@ pub async fn ensure_query_string_not_empty(
     if params.q.is_empty() {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::EmptyQueryString,
-            info: "Empty query string".to_string(),
+            info: "You must provide and non-empty query string".to_string(),
         }))
     } else {
         Ok(params)
@@ -214,12 +214,12 @@ pub async fn ensure_lat_lon_consistent(
             if !(-90f32..=90f32).contains(&lat) {
                 Err(warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                    info: "latitude parameter is outside of range [-90;90]".to_string(),
+                    info: format!("requested latitude {} is outside of range [-90;90]", lat),
                 }))
             } else if !(-180f32..=180f32).contains(&lon) {
                 Err(warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                    info: "longitude parameter is outside of range [-180;180]".to_string(),
+                    info: format!("requested longitude {} is outside of range [-180;180]", lon),
                 }))
             } else {
                 Ok(params)
@@ -252,7 +252,8 @@ pub async fn ensure_zone_type_consistent(
     {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::InconsistentZoneRequest,
-            info: "".to_string(),
+            info: "'zone_type' must be specified when you query with 'type' parameter 'zone'"
+                .to_string(),
         }))
     } else {
         Ok(params)
