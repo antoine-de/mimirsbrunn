@@ -9,6 +9,7 @@ use tracing_subscriber::{EnvFilter, Registry};
 use warp::Filter;
 
 use super::settings::{Error as SettingsError, Opts, Settings};
+use mimir::adapters::primary::bragi::prometheus_handler::update_metrics;
 use mimir::{
     adapters::primary::bragi::api::{
         features, forward_geocoder, forward_geocoder_explain, reverse_geocoder, status,
@@ -16,6 +17,7 @@ use mimir::{
     adapters::primary::bragi::{handlers, routes},
     adapters::secondary::elasticsearch::remote::connection_pool_url,
     domain::ports::secondary::remote::{Error as PortRemoteError, Remote},
+    metrics,
 };
 
 #[derive(Debug, Snafu)]
@@ -78,7 +80,7 @@ pub fn run(opts: &Opts) -> Result<(), Error> {
     tracing::subscriber::set_global_default(subscriber).expect("tracing subscriber global default");
 
     let runtime = runtime::Builder::new_multi_thread()
-        .worker_threads(settings.nbthreads.unwrap_or_else(num_cpus::get))
+        .worker_threads(settings.nb_threads.unwrap_or_else(num_cpus::get))
         .enable_all()
         .build()
         .expect("Failed to build tokio runtime.");
@@ -110,12 +112,14 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .or(forward_geocoder!(client.clone(), settings.query.clone()))
         .or(features!(client.clone(), settings.query.clone()))
         .or(forward_geocoder_explain!(client.clone(), settings.query))
-        .or(status!(client, &settings.elasticsearch.url))
+        .or(status!(client.clone(), &settings.elasticsearch.url))
+        .or(metrics!())
         .recover(routes::report_invalid)
         .with(warp::wrap_fn(|filter| {
             routes::cache_filter(filter, settings.http_cache_duration)
         }))
-        .with(warp::trace::request());
+        .with(warp::trace::request())
+        .with(warp::log::custom(move |log| update_metrics(log)));
 
     info!("api ready");
 

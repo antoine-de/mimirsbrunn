@@ -71,7 +71,7 @@ fn main() -> Result<(), Error> {
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             &settings.logging.path.clone(),
-            settings.nbthreads,
+            settings.nb_threads,
             run(opts, settings),
         )
         .context(Execution),

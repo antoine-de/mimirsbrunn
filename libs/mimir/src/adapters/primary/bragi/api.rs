@@ -230,6 +230,14 @@ macro_rules! status {
 }
 pub use status;
 
+#[macro_export]
+macro_rules! metrics {
+    () => {
+        routes::metrics().and_then(handlers::metrics)
+    };
+}
+pub use metrics;
+
 #[derive(PartialEq, Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum Type {
     #[serde(rename = "house")]

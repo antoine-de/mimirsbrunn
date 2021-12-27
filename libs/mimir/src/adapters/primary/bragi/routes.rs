@@ -308,6 +308,13 @@ pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
     warp::get().and(path_prefix()).and(warp::path("status"))
 }
 
+pub fn metrics() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    warp::get()
+        .and(path_prefix())
+        .and(warp::path("metrics"))
+        .and(warp::path::end())
+}
+
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
     let reply = if let Some(err) = rejection.find::<warp::reject::InvalidQuery>() {
         warp::reply::with_status(

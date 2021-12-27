@@ -32,7 +32,7 @@ pub struct Settings {
     pub langs: Vec<String>,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
-    pub nbthreads: Option<usize>,
+    pub nb_threads: Option<usize>,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn should_override_elasticsearch_url_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        std::env::set_var("MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
+        std::env::set_var("MIMIR_ELASTICSEARCH__URL", "http://localhost:9999");
         let opts = Opts {
             config_dir,
             run_mode: None,
