@@ -77,7 +77,10 @@ async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    tracing::info!("Trying to connect to elasticsearch at {}", &settings.elasticsearch.url);
+    tracing::info!(
+        "Trying to connect to elasticsearch at {}",
+        &settings.elasticsearch.url
+    );
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
@@ -87,15 +90,10 @@ async fn run(
     tracing::info!("Connected to elasticsearch.");
     tracing::info!("Indexing cosmogony from {:?}", &opts.input);
 
-    mimirsbrunn::admin::index_cosmogony(
-        &opts.input,
-        settings.langs,
-        &settings.container,
-        &client,
-    )
-    .await
-    .context(Import)
-    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    mimirsbrunn::admin::index_cosmogony(&opts.input, settings.langs, &settings.container, &client)
+        .await
+        .context(Import)
+        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]

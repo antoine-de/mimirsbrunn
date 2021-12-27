@@ -42,8 +42,10 @@ async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
-
-    tracing::info!("Trying to connect to elasticsearch at {}", &settings.elasticsearch.url);
+    tracing::info!(
+        "Trying to connect to elasticsearch at {}",
+        &settings.elasticsearch.url
+    );
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
@@ -52,7 +54,8 @@ async fn run(
 
     tracing::info!("Connected to elasticsearch.");
 
-    let path: PathBuf = opts.config_dir
+    let path: PathBuf = opts
+        .config_dir
         .join("elasticsearch")
         .join("templates")
         .join("components");
@@ -62,7 +65,8 @@ async fn run(
         .await
         .map_err(Box::new)?;
 
-    let path: PathBuf = opts.config_dir
+    let path: PathBuf = opts
+        .config_dir
         .join("elasticsearch")
         .join("templates")
         .join("indices");

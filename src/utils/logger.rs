@@ -28,14 +28,14 @@ pub fn logger_init() -> Result<tracing_appender::non_blocking::WorkerGuard, Erro
     let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
 
     let event_format = tracing_subscriber::fmt::format()
-        .with_target(false)     // Don't include event targets.
-        .compact(); 
+        .with_target(false) // Don't include event targets.
+        .compact();
 
     let subscriber = tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
                 .with_writer(non_blocking)
-                .event_format(event_format)
+                .event_format(event_format),
         )
         .with(env_filter);
 
