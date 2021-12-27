@@ -1,5 +1,5 @@
 mode = "default"
-nbthreads = 2
+nb_threads = 2
 http_cache_duration = 3600
 
 [service]

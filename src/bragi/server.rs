@@ -78,7 +78,7 @@ pub fn run(opts: &Opts) -> Result<(), Error> {
     tracing::subscriber::set_global_default(subscriber).expect("tracing subscriber global default");
 
     let runtime = runtime::Builder::new_multi_thread()
-        .worker_threads(settings.nbthreads.unwrap_or_else(num_cpus::get))
+        .worker_threads(settings.nb_threads.unwrap_or_else(num_cpus::get))
         .enable_all()
         .build()
         .expect("Failed to build tokio runtime.");
