@@ -609,7 +609,10 @@ impl ElasticsearchStorage {
                         .caused_by
                         .map_or("".to_string(), |caused_by| caused_by.reason);
                     Error::NotCreated {
-                        details: format!("Object id {}, Error: {}, {}", inner.id, err.reason, reason),
+                        details: format!(
+                            "Object id {}, Error: {}, {}",
+                            inner.id, err.reason, reason
+                        ),
                     }
                 })?;
 
