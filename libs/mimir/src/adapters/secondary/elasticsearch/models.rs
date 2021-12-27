@@ -87,6 +87,13 @@ pub enum ElasticsearchBulkResult {
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
+pub struct ElasticSearchBulkErrorCausedBy {
+    #[serde(rename = "type")]
+    pub caused_by_type: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Eq, PartialEq, Deserialize)]
 pub struct ElasticsearchBulkError {
     #[serde(rename = "type")]
     pub err_type: String,
@@ -94,6 +101,7 @@ pub struct ElasticsearchBulkError {
     pub index: Option<String>,
     pub index_uuid: Option<String>,
     pub shard: Option<String>,
+    pub caused_by: Option<ElasticSearchBulkErrorCausedBy>,
 }
 
 // Custom deserializers
