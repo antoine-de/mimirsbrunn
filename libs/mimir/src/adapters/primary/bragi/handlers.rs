@@ -1,13 +1,14 @@
 use crate::adapters::primary::bragi::prometheus_handler;
 use geojson::Geometry;
 use serde::Serialize;
-use serde_json::{json};
+use std::time::Duration;
 use tracing::{debug, instrument};
 use warp::reply::{json, with_status};
 use warp::{http::StatusCode, reject::Reject};
 
 use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
 use crate::adapters::primary::common::dsl::QueryType;
+use crate::adapters::primary::common::filters::Filters;
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
@@ -18,6 +19,7 @@ use crate::adapters::primary::{
         settings,
     },
 };
+use crate::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use crate::domain::model::configuration::{root_doctype, root_doctype_dataset};
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::explain_query::ExplainDocument;
@@ -48,16 +50,12 @@ pub struct InternalError {
 impl Reject for InternalError {}
 
 #[instrument(skip(client, settings))]
-pub async fn forward_geocoder<S>(
+pub async fn forward_geocoder(
     params: ForwardGeocoderQuery,
     geometry: Option<Geometry>,
-    client: S,
+    client: ElasticsearchStorage,
     settings: settings::QuerySettings,
-) -> Result<impl warp::Reply, warp::Rejection>
-where
-    S: SearchDocuments,
-    S::Document: Serialize + Into<serde_json::Value>,
-{
+) -> Result<impl warp::Reply, warp::Rejection> {
     let q = params.q.clone();
     let timeout = params.timeout;
     let es_indices_to_search_in =
@@ -65,13 +63,73 @@ where
     let lang = params.lang.clone();
     let lang = params.lang.clone().unwrap_or_else(|| "fr".to_string());
     let filters = filters::Filters::from((params, geometry));
-    let dsl = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings, QueryType::PREFIX);
+    let dsl_query_prefix = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings, QueryType::PREFIX);
+    let result_prefix_query = send_query(
+        client.clone(),
+        dsl_query_prefix,
+        timeout,
+        es_indices_to_search_in.clone(),
+        filters.clone(),
+        &q,
+    )
+    .await;
 
     tracing::trace!(
         "Searching in indexes {:?} with query {}",
         es_indices_to_search_in,
         serde_json::to_string_pretty(&dsl).unwrap()
     );
+    match result_prefix_query {
+        Ok(resp) => {
+            if resp.features.is_empty() {
+                let dsl_query_fuzzy = dsl::build_query(
+                    &q,
+                    filters.clone(),
+                    lang.clone(),
+                    &settings,
+                    QueryType::FUZZY,
+                );
+                let result_fuzzy_query = send_query(
+                    client,
+                    dsl_query_fuzzy,
+                    timeout,
+                    es_indices_to_search_in,
+                    filters,
+                    &q,
+                )
+                .await;
+                match result_fuzzy_query {
+                    Ok(resp) => Ok(with_status(json(&resp), StatusCode::OK)),
+                    Err(err) => Ok(with_status(
+                        json(&format!(
+                            "Error while searching {}: {}",
+                            &q,
+                            err.to_string()
+                        )),
+                        err,
+                    )),
+                }
+            } else {
+                println!("Prefix query");
+                Ok(with_status(json(&resp), StatusCode::OK))
+            }
+        }
+        Err(_err) => Ok(with_status(
+            json(&format!("Error while searching {}", &q)),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
+    }
+}
+
+async fn send_query(
+    client: ElasticsearchStorage,
+    dsl: serde_json::Value,
+    timeout: Option<Duration>,
+    es_indices_to_search_in: Vec<String>,
+    filters: Filters,
+    q: &str,
+) -> Result<GeocodeJsonResponse, StatusCode> {
+    debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
         .search_documents(
@@ -83,30 +141,10 @@ where
         .await
     {
         Ok(res) => {
-            let places: Result<Vec<Place>, serde_json::Error> = if res.is_empty() {
-                let dsl = dsl::build_query(&q, filters.clone(), lang, &settings, QueryType::FUZZY);
-                debug!("{}", serde_json::to_string(&dsl).unwrap());
-
-                match client
-                    .search_documents(
-                        es_indices_to_search_in,
-                        Query::QueryDSL(dsl),
-                        filters.limit,
-                        timeout,
-                    )
-                    .await
-                {
-                    Ok(res) => res
-                        .into_iter()
-                        .map(|json| serde_json::from_value::<Place>(json.into()))
-                        .collect(),
-                    Err(_err) => serde_json::from_value(json!("")), //TODO I try to do my best but I need help
-                }
-            } else {
-                res.into_iter()
-                    .map(|json| serde_json::from_value::<Place>(json.into()))
-                    .collect()
-            };
+            let places: Result<Vec<Place>, serde_json::Error> = res
+                .into_iter()
+                .map(serde_json::from_value::<Place>)
+                .collect();
 
             match places {
                 Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
@@ -118,8 +156,7 @@ where
                         .into_iter()
                         .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
                         .collect();
-                    let resp = GeocodeJsonResponse::new(q, features);
-                    Ok(with_status(json(&resp), StatusCode::OK))
+                    Ok(GeocodeJsonResponse::new(q.to_string(), features))
                 }
                 Err(err) => Err(warp::reject::custom(InternalError {
                     reason: InternalErrorReason::SerializationError,
@@ -423,7 +460,7 @@ mod tests {
         let es_indices = indices_builder(
             "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house&type[]=public_transport:stop_area",
         )
-        .await;
+            .await;
         assert_eq!(es_indices, ["",]);
     }
 
