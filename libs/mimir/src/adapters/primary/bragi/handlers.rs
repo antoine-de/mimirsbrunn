@@ -61,7 +61,6 @@ pub async fn forward_geocoder(
     let es_indices_to_search_in =
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
-    let lang = params.lang.clone().unwrap_or_else(|| "fr".to_string());
     let filters = filters::Filters::from((params, geometry));
     let dsl_query_prefix = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings, QueryType::PREFIX);
     let result_prefix_query = send_query(

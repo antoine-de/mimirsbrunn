@@ -62,17 +62,17 @@ fn build_string_query(
     let mut string_should = Vec::new();
     string_should.push(build_multi_match_query(
         q,
-        vec!["name", format!("names.{}", _lang).as_str()],
+        vec!["name", format!("names.{}", lang).as_str()],
         settings.boosts.name,
     ));
     string_should.push(build_multi_match_query(
         q,
-        vec!["label", format!("label.{}", _lang).as_str()],
+        vec!["label", format!("label.{}", lang).as_str()],
         settings.boosts.label,
     ));
     string_should.push(build_multi_match_query(
         q,
-        vec!["label.prefix", format!("label.{}.prefix", _lang).as_str()],
+        vec!["label.prefix", format!("label.{}.prefix", lang).as_str()],
         settings.boosts.label_prefix,
     ));
     string_should.push(build_match_query(q, "zip_codes", settings.boosts.zip_codes));
@@ -86,13 +86,13 @@ fn build_string_query(
         if coord.is_some() {
             string_should.push(build_multi_match_query(
                 q,
-                vec!["label.ngram", format!("label.{}.ngram", _lang).as_str()],
+                vec!["label.ngram", format!("label.{}.ngram", lang).as_str()],
                 settings.boosts.label_ngram_with_coord,
             ));
         } else {
             string_should.push(build_multi_match_query(
                 q,
-                vec!["label.ngram", format!("label.{}.ngram", _lang).as_str()],
+                vec!["label.ngram", format!("label.{}.ngram", lang).as_str()],
                 settings.boosts.label_ngram,
             ));
         }
