@@ -25,8 +25,6 @@ pub struct Filters {
 
 pub fn build_query(
     q: &str,
-    _filters: Filters,
-    _langs: &[&str],
     settings: &QuerySettings,
 ) -> serde_json::Value {
     json!({
@@ -39,7 +37,7 @@ pub fn build_query(
     })
 }
 
-fn build_autocomplete_should_query(q: &str, _lang: &str, settings: &StringQuery) -> serde_json::Value {
+fn build_autocomplete_should_query(q: &str, lang: &str, settings: &StringQuery) -> serde_json::Value {
     json!({
         "bool": {
             "boost": settings.global,

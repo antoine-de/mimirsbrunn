@@ -9,11 +9,11 @@ use super::{filters, settings};
 pub fn build_query(
     q: &str,
     filters: filters::Filters,
-    _lang: String,
+    lang: String,
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query.boosts);
-    let string_query = build_string_query(q, _lang.as_str(), &settings.string_query);
+    let string_query = build_string_query(q, lang.as_str(), &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
     let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
     let filters = vec![build_house_number_condition(q), build_matching_condition(q)]
@@ -33,7 +33,7 @@ pub fn build_query(
     })
 }
 
-fn build_string_query(q: &str, _lang: &str, settings: &StringQuery) -> serde_json::Value {
+fn build_string_query(q: &str, lang: &str, settings: &StringQuery) -> serde_json::Value {
     json!({
         "bool": {
             "boost": settings.global,
@@ -41,21 +41,21 @@ fn build_string_query(q: &str, _lang: &str, settings: &StringQuery) -> serde_jso
                 {
                     "multi_match": {
                         "query": q,
-                        "fields": ["name", format!("names.{}", _lang)],
+                        "fields": ["name", format!("names.{}", lang)],
                         "boost": settings.boosts.name
                     }
                 },
                 {
                     "multi_match": {
                         "query": q,
-                        "fields": ["label", format!("label.{}", _lang)],
+                        "fields": ["label", format!("label.{}", lang)],
                         "boost": settings.boosts.label
                     }
                 },
                 {
                     "multi_match": {
                         "query": q,
-                        "fields": ["label.prefix", format!("label.prefix.{}", _lang)],
+                        "fields": ["label.prefix", format!("label.prefix.{}", lang)],
                         "boost": settings.boosts.label_prefix
                     }
                 },
