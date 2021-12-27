@@ -36,13 +36,15 @@ pub enum Error {
     AddrResolution { msg: String },
 
     #[snafu(display("Could not init logger: {}", source))]
-    InitLog { source: mimirsbrunn::utils::logger::Error },
+    InitLog {
+        source: mimirsbrunn::utils::logger::Error,
+    },
 }
 
 pub fn run(opts: &Opts) -> Result<(), Error> {
     let settings = Settings::new(opts).context(SettingsProcessing)?;
-   
-    let _log_guard = logger_init().map_err(|err| Error::InitLog{source : err})?;
+
+    let _log_guard = logger_init().map_err(|err| Error::InitLog { source: err })?;
 
     let runtime = runtime::Builder::new_multi_thread()
         .worker_threads(settings.nb_threads.unwrap_or_else(num_cpus::get))
@@ -90,8 +92,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
                 method = %info.method(),
                 path = %info.path(),
             )
-        }))
-        ;
+        }));
 
 
     info!("api ready");

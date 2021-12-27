@@ -1,7 +1,7 @@
-use snafu::{Snafu};
+use snafu::Snafu;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{EnvFilter};
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -11,11 +11,10 @@ pub enum Error {
 
 // FIXME Remove all expects
 pub fn logger_init() -> Result<tracing_appender::non_blocking::WorkerGuard, Error> {
-
     let default_level = LevelFilter::INFO;
     let rust_log =
         std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| default_level.to_string());
-        
+
     let env_filter = EnvFilter::try_new(rust_log).unwrap_or_else(|err| {
         eprintln!(
             "invalid {}, falling back to level '{}' - {}",
