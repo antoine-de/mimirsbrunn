@@ -1,4 +1,4 @@
-use super::prometheus_handler::PrometheusMetrics;
+use crate::adapters::primary::bragi::prometheus_handler;
 use geojson::Geometry;
 use serde::Serialize;
 use tracing::{debug, instrument};
@@ -251,15 +251,9 @@ where
     }
 }
 
-pub async fn metrics<S>(
-    _client: S,
-    prometheus: PrometheusMetrics,
-) -> Result<impl warp::Reply, warp::Rejection>
-where
-    S: Status,
-{
+pub async fn metrics() -> Result<impl warp::Reply, warp::Rejection> {
     let reply = warp::reply::with_header(
-        prometheus.metrics(),
+        prometheus_handler::metrics(),
         "content-type",
         "text/plain; charset=utf-8",
     );

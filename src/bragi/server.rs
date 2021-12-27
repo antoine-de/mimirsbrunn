@@ -9,7 +9,7 @@ use tracing_subscriber::{EnvFilter, Registry};
 use warp::Filter;
 
 use super::settings::{Error as SettingsError, Opts, Settings};
-use mimir::adapters::primary::bragi::prometheus_handler::PrometheusMetrics;
+use mimir::adapters::primary::bragi::prometheus_handler::update_metrics;
 use mimir::{
     adapters::primary::bragi::api::{
         features, forward_geocoder, forward_geocoder_explain, reverse_geocoder, status,
@@ -107,21 +107,19 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .await
         .context(ElasticsearchConnection)?;
 
-    let prometheus = PrometheusMetrics::default();
-
     // Here I place reverse_geocoder first because its most likely to get hit.
     let api = reverse_geocoder!(client.clone(), settings.query.clone())
         .or(forward_geocoder!(client.clone(), settings.query.clone()))
         .or(features!(client.clone(), settings.query.clone()))
         .or(forward_geocoder_explain!(client.clone(), settings.query))
         .or(status!(client.clone(), &settings.elasticsearch.url))
-        .or(metrics!(client, prometheus.clone()))
+        .or(metrics!())
         .recover(routes::report_invalid)
         .with(warp::wrap_fn(|filter| {
             routes::cache_filter(filter, settings.http_cache_duration)
         }))
         .with(warp::trace::request())
-        .with(warp::log::custom(move |log| prometheus.update_metrics(log)));
+        .with(warp::log::custom(move |log| update_metrics(log)));
 
     info!("api ready");
 

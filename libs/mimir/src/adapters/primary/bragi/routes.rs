@@ -8,7 +8,7 @@ use crate::adapters::primary::bragi::api::{
     FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
     ReverseGeocoderQuery, Type,
 };
-use crate::adapters::primary::bragi::prometheus_handler::PrometheusMetrics;
+
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use serde_qs::Config;
@@ -122,12 +122,6 @@ pub fn with_elasticsearch(
 ) -> impl Filter<Extract = (String,), Error = std::convert::Infallible> + Clone {
     let url = url.to_string();
     warp::any().map(move || url.clone())
-}
-
-pub fn with_prometheus(
-    prometheus: PrometheusMetrics, // elasticsearch url
-) -> impl Filter<Extract = (PrometheusMetrics,), Error = std::convert::Infallible> + Clone {
-    warp::any().map(move || prometheus.clone())
 }
 
 #[derive(Debug, PartialEq)]
@@ -283,7 +277,10 @@ pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 }
 
 pub fn metrics() -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    warp::get().and(path_prefix()).and(warp::path("metrics"))
+    warp::get()
+        .and(path_prefix())
+        .and(warp::path("metrics"))
+        .and(warp::path::end())
 }
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {

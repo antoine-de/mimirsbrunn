@@ -232,11 +232,8 @@ pub use status;
 
 #[macro_export]
 macro_rules! metrics {
-    ($cl:expr, $pt:expr) => {
-        routes::metrics()
-            .and(routes::with_client($cl))
-            .and(routes::with_prometheus($pt))
-            .and_then(handlers::metrics)
+    () => {
+        routes::metrics().and_then(handlers::metrics)
     };
 }
 pub use metrics;
