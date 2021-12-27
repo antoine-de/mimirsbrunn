@@ -176,6 +176,31 @@ mod tests {
         })
     }
 
+    fn sample_400_error() -> serde_json::Value {
+        json!({
+            "took": 0,
+            "errors": true,
+            "items": [
+                {
+                    "index": {
+                    "_index": "test_coord",
+                    "_type": "_doc",
+                    "_id": "1",
+                    "status": 400,
+                    "error": {
+                        "type": "mapper_parsing_exception",
+                        "reason": "failed to parse",
+                        "caused_by": {
+                            "type": "invalid_shape_exception",
+                            "reason": "Bad X value -7703653.0 is not in boundary Rect(minX=-180.0,maxX=180.0,minY=-90.0,maxY=90.0)"
+                        }
+                    }
+                }
+                }
+            ]
+        })
+    }
+
     #[test]
     fn test_elasticsearch_bulk_response_model() {
         let response: ElasticsearchBulkResponse = serde_json::from_value(sample()).unwrap();
@@ -192,6 +217,38 @@ mod tests {
                             index: "index1".to_string().into(),
                             index_uuid: "aAsFqTI0Tc2W0LCWgPNrOA".to_string().into(),
                             shard: "0".to_string().into(),
+                            caused_by: None
+                        })
+                    }),
+                    ElasticsearchBulkItem::Update(ElasticsearchBulkStatus {
+                        status: 201,
+                        result: Ok(ElasticsearchBulkResult::Created)
+                    })
+                ]
+            }
+        )
+    }
+
+    #[test]
+    fn test_elasticsearch_bulk_400_error() {
+        let response: ElasticsearchBulkResponse =
+            serde_json::from_value(sample_400_error()).unwrap();
+        assert_eq!(
+            response,
+            ElasticsearchBulkResponse {
+                items: vec![
+                    ElasticsearchBulkItem::Index(ElasticsearchBulkStatus {
+                        status: 400,
+                        result: Err(ElasticsearchBulkError {
+                            err_type: "mapper_parsing_exception".to_string(),
+                            reason: "failed to parse".to_string(),
+                            index: None,
+                            index_uuid: None,
+                            shard: None,
+                            caused_by: Some(ElasticSearchBulkErrorCausedBy {
+                                caused_by_type: "invalid_shape_exception".to_string(),
+                                reason: "Bad X value -7703653.0 is not in boundary Rect(minX=-180.0,maxX=180.0,minY=-90.0,maxY=90.0)".to_string()
+                            })
                         })
                     }),
                     ElasticsearchBulkItem::Update(ElasticsearchBulkStatus {
