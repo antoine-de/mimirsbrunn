@@ -23,7 +23,7 @@ fn get_ressource_name(path: &str) -> String {
         .get(path)
         .copied()
         .unwrap_or_else(|| {
-            if path.starts_with("/features") {
+            if path.starts_with("/api/v1/features") {
                 &FEATURES_ROUTE
             } else {
                 ""
