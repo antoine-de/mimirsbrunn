@@ -8,6 +8,7 @@ use crate::adapters::primary::bragi::api::{
     FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
     ReverseGeocoderQuery, Type,
 };
+
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use serde_qs::Config;
@@ -273,6 +274,13 @@ pub fn features_query() -> impl Filter<Extract = (FeaturesQuery,), Error = Rejec
 
 pub fn status() -> impl Filter<Extract = (), Error = Rejection> + Clone {
     warp::get().and(path_prefix()).and(warp::path("status"))
+}
+
+pub fn metrics() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    warp::get()
+        .and(path_prefix())
+        .and(warp::path("metrics"))
+        .and(warp::path::end())
 }
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {

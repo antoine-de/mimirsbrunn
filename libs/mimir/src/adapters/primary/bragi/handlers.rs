@@ -1,3 +1,4 @@
+use crate::adapters::primary::bragi::prometheus_handler;
 use geojson::Geometry;
 use serde::Serialize;
 use tracing::{debug, instrument};
@@ -248,6 +249,15 @@ where
             StatusCode::INTERNAL_SERVER_ERROR,
         )),
     }
+}
+
+pub async fn metrics() -> Result<impl warp::Reply, warp::Rejection> {
+    let reply = warp::reply::with_header(
+        prometheus_handler::metrics(),
+        "content-type",
+        "text/plain; charset=utf-8",
+    );
+    Ok(reply)
 }
 
 pub fn build_es_indices_to_search(
