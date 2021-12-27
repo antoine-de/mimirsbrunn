@@ -43,14 +43,14 @@ lazy_static! {
 // Ensures the logger is initialized prior to launching a function, and also making sure the logger
 // is flushed at the end. Whatever is returned by the main function is forwarded out.
 pub async fn wrapped_launch_async<F, Fut>(
-    logging_path: &Path,
+    _logging_path: &Path,
     run: F,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
 {
-    let guard = logger_init(logging_path).map_err(Box::new)?;
+    let guard = logger_init().map_err(Box::new)?;
 
     let res = if let Err(err) = run().await {
         // To revisit when rust #58520 is resolved
@@ -74,14 +74,14 @@ where
 // Ensures the logger is initialized prior to launching a function, and also making sure the logger
 // is flushed at the end. Whatever is returned by the main function is forwarded out.
 pub fn launch_with_runtime<F>(
-    logging_path: &Path,
+    _logging_path: &Path,
     nb_threads: Option<usize>,
     run: F,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
     F: Future<Output = Result<(), Box<dyn std::error::Error>>>,
 {
-    let guard = logger_init(logging_path).map_err(Box::new)?;
+    let guard = logger_init().map_err(Box::new)?;
 
     let runtime = runtime::Builder::new_multi_thread()
         .worker_threads(nb_threads.unwrap_or_else(num_cpus::get))

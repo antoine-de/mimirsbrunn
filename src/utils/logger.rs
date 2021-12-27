@@ -1,10 +1,7 @@
-use snafu::{ResultExt, Snafu};
-use std::env;
-use std::path::Path;
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_log::LogTracer;
+use snafu::{Snafu};
+use tracing::metadata::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{EnvFilter, Registry};
+use tracing_subscriber::{EnvFilter};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -13,40 +10,30 @@ pub enum Error {
 }
 
 // FIXME Remove all expects
-pub fn logger_init<P: AsRef<Path>>(
-    path: P,
-) -> Result<tracing_appender::non_blocking::WorkerGuard, Error> {
-    LogTracer::init().expect("Unable to setup log tracer!");
-    let path = path.as_ref();
-    // Filter traces based on the RUST_LOG env var, or, if it's not set,
-    // default to show the output of the example.
-    let filter = std::env::var("RUST_LOG").unwrap_or_else(|_| "tracing=info,mimir=info".to_owned());
+pub fn logger_init() -> Result<tracing_appender::non_blocking::WorkerGuard, Error> {
 
-    // following code mostly from https://betterprogramming.pub/production-grade-logging-in-rust-applications-2c7fffd108a6
-    let app_name = concat!(env!("CARGO_PKG_NAME"), "-", env!("CARGO_PKG_VERSION")).to_string();
+    let default_level = LevelFilter::INFO;
+    let rust_log =
+        std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| default_level.to_string());
+        
+    let env_filter = EnvFilter::try_new(rust_log).unwrap_or_else(|err| {
+        eprintln!(
+            "invalid {}, falling back to level '{}' - {}",
+            EnvFilter::DEFAULT_ENV,
+            default_level,
+            err,
+        );
+        EnvFilter::new(default_level.to_string())
+    });
 
-    // tracing_appender::non_blocking()
-    let (non_blocking, guard) = {
-        if path.is_dir() {
-            let file_appender = tracing_appender::rolling::daily(&path, "mimir.log");
+    let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
 
-            tracing_appender::non_blocking(file_appender)
-        } else {
-            tracing_appender::non_blocking(
-                std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&path)
-                    .context(InitLog)?,
-            )
-        }
-    };
+    let subscriber = tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer().with_writer(non_blocking))
+        .with(env_filter);
 
-    let bunyan_formatting_layer = BunyanFormattingLayer::new(app_name, non_blocking);
-    let subscriber = Registry::default()
-        .with(EnvFilter::new(&filter))
-        .with(JsonStorageLayer)
-        .with(bunyan_formatting_layer);
-    tracing::subscriber::set_global_default(subscriber).expect("tracing subscriber global default");
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Failed to set global tracing subscriber.");
+
     Ok(guard)
 }
