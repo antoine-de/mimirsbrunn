@@ -42,34 +42,32 @@ async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
+
+    tracing::info!("Trying to connect to elasticsearch at {}", &settings.elasticsearch.url);
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
 
-    let path: PathBuf = [
-        opts.config_dir.to_str().unwrap(),
-        "elasticsearch",
-        "templates",
-        "components",
-    ]
-    .iter()
-    .collect();
+        tracing::info!("Connected to elasticsearch.");
 
+    let path: PathBuf = opts.config_dir
+        .join("elasticsearch")
+        .join("templates")
+        .join("components");
+
+    tracing::info!("Beginning components imports from {:?}", &path);
     templates::import(client.clone(), path, templates::Template::Component)
         .await
         .map_err(Box::new)?;
 
-    let path: PathBuf = [
-        opts.config_dir.to_str().unwrap(),
-        "elasticsearch",
-        "templates",
-        "indices",
-    ]
-    .iter()
-    .collect();
+    let path: PathBuf = opts.config_dir
+        .join("elasticsearch")
+        .join("templates")
+        .join("indices");
 
+    tracing::info!("Beginning indices imports from {:?}", &path);
     templates::import(client, path, templates::Template::Index)
         .await
         .map_err(Box::new)?;
