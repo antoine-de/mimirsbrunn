@@ -77,11 +77,17 @@ async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!(
+        "Trying to connect to elasticsearch at {}",
+        &settings.elasticsearch.url
+    );
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
         .context(ElasticsearchConnection)
         .map_err(Box::new)?;
+
+    tracing::info!("Connected to elasticsearch.");
 
     mimirsbrunn::stops::index_ntfs(opts.input, &settings.container, &client)
         .await
