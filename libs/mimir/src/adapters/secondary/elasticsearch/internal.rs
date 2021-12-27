@@ -604,7 +604,9 @@ impl ElasticsearchStorage {
                 resp.json().await.context(ElasticsearchDeserialization)?;
             es_response.items.into_iter().try_for_each(|item| {
                 let result = item.inner().result.map_err(|err| {
-                    let reason = err.caused_by.map_or("".to_string(), |caused_by| caused_by.reason);
+                    let reason = err
+                        .caused_by
+                        .map_or("".to_string(), |caused_by| caused_by.reason);
                     Error::NotCreated {
                         details: format!("{}, {}", err.reason, reason),
                     }
