@@ -250,10 +250,6 @@ mod tests {
                                 reason: "Bad X value -7703653.0 is not in boundary Rect(minX=-180.0,maxX=180.0,minY=-90.0,maxY=90.0)".to_string()
                             })
                         })
-                    }),
-                    ElasticsearchBulkItem::Update(ElasticsearchBulkStatus {
-                        status: 201,
-                        result: Ok(ElasticsearchBulkResult::Created)
                     })
                 ]
             }
