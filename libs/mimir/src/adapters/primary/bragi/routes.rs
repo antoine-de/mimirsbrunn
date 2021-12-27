@@ -2,6 +2,7 @@ use crate::adapters::primary::bragi::api::{
     FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
     ReverseGeocoderQuery, Type,
 };
+use crate::adapters::primary::bragi::handlers::{InternalError, InternalErrorReason};
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use geojson::{GeoJson, Geometry};
@@ -10,6 +11,7 @@ use serde_qs::Config;
 use std::convert::Infallible;
 use tracing::instrument;
 use url::Url;
+use warp::reject::MethodNotAllowed;
 use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 /// This function defines the base path for Bragi's REST API
@@ -136,6 +138,7 @@ pub enum InvalidRequestReason {
     InconsistentPoiRequest,
     InconsistentZoneRequest,
     InconsistentLatLonRequest,
+    OutOfRangeLatLonRequest,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -206,13 +209,28 @@ pub async fn ensure_query_string_not_empty(
 pub async fn ensure_lat_lon_consistent(
     params: ForwardGeocoderQuery,
 ) -> Result<ForwardGeocoderQuery, Rejection> {
-    if params.lat.is_some() ^ params.lon.is_some() {
-        Err(warp::reject::custom(InvalidRequest {
+    match (params.lat, params.lon) {
+        (Some(lat), Some(lon)) => {
+            if !(-90f32..=90f32).contains(&lat) {
+                Err(warp::reject::custom(InvalidRequest {
+                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                    info: "latitude parameter is outside of range [-90;90]".to_string(),
+                }))
+            } else if !(-180f32..=180f32).contains(&lon) {
+                Err(warp::reject::custom(InvalidRequest {
+                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                    info: "longitude parameter is outside of range [-180;180]".to_string(),
+                }))
+            } else {
+                Ok(params)
+            }
+        }
+        (None, None) => Ok(params),
+        (_, _) => Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::InconsistentLatLonRequest,
-            info: "".to_string(),
-        }))
-    } else {
-        Ok(params)
+            info: "you should provide a 'lon' AND a 'lat' parameter if you provide one of them"
+                .to_string(),
+        })),
     }
 }
 
@@ -306,13 +324,33 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             }),
             StatusCode::BAD_REQUEST,
         )
+    } else if let Some(err) = rejection.find::<InternalError>() {
+        let short = match err.reason {
+            InternalErrorReason::ObjectNotFoundError => "Unable to find object".to_string(),
+            _ => "query error".to_string(),
+        };
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short,
+                long: err.info.clone(),
+            }),
+            StatusCode::BAD_REQUEST,
+        )
+    } else if let Some(err) = rejection.find::<MethodNotAllowed>() {
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "no route".to_string(),
+                long: err.to_string(),
+            }),
+            StatusCode::NOT_FOUND,
+        )
     } else {
         warp::reply::with_status(
             warp::reply::json(&ApiError {
-                short: "validation error".to_string(),
-                long: "fsdfsdf".to_string(),
+                short: "INTERNAL_SERVER_ERROR".to_string(),
+                long: "INTERNAL_SERVER_ERROR".to_string(),
             }),
-            StatusCode::NOT_FOUND,
+            StatusCode::INTERNAL_SERVER_ERROR,
         )
     };
     let reply = warp::reply::with_header(reply, "content-type", "application/json");
