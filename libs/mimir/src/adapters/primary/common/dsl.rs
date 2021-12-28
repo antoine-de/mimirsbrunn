@@ -20,13 +20,8 @@ pub fn build_query(
     query_type: QueryType,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query.boosts);
-    let string_query = build_string_query(
-        q,
-        lang,
-        &settings.string_query,
-        query_type,
-        &filters.coord,
-    );
+    let string_query =
+        build_string_query(q, lang, &settings.string_query, query_type, &filters.coord);
     let boosts = build_boosts(q, settings, &filters, query_type);
     let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
     let filters = vec![

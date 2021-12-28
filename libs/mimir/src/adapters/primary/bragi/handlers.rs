@@ -1,6 +1,5 @@
 use crate::adapters::primary::bragi::prometheus_handler;
 use geojson::Geometry;
-use serde::Serialize;
 use std::time::Duration;
 use tracing::{debug, instrument};
 use warp::reply::{json, with_status};
@@ -29,7 +28,6 @@ use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
 use serde::{Deserialize, Serialize};
-use crate::domain;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -62,7 +60,13 @@ pub async fn forward_geocoder(
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
     let filters = filters::Filters::from((params, geometry));
-    let dsl_query_prefix = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings, QueryType::PREFIX);
+    let dsl_query_prefix = dsl::build_query(
+        &q,
+        filters.clone(),
+        lang.as_str(),
+        &settings,
+        QueryType::PREFIX,
+    );
     let result_prefix_query = send_query(
         client.clone(),
         dsl_query_prefix,
@@ -84,7 +88,7 @@ pub async fn forward_geocoder(
                 let dsl_query_fuzzy = dsl::build_query(
                     &q,
                     filters.clone(),
-                    lang.clone(),
+                    lang.as_str(),
                     &settings,
                     QueryType::FUZZY,
                 );
@@ -99,24 +103,20 @@ pub async fn forward_geocoder(
                 .await;
                 match result_fuzzy_query {
                     Ok(resp) => Ok(with_status(json(&resp), StatusCode::OK)),
-                    Err(err) => Ok(with_status(
-                        json(&format!(
-                            "Error while searching {}: {}",
-                            &q,
-                            err.to_string()
-                        )),
-                        err,
-                    )),
+                    Err(_err) => Err(warp::reject::custom(InternalError {
+                        reason: InternalErrorReason::ObjectNotFoundError,
+                        info: "Unable to find object".to_string(),
+                    }))
                 }
             } else {
                 println!("Prefix query");
                 Ok(with_status(json(&resp), StatusCode::OK))
             }
         }
-        Err(_err) => Ok(with_status(
-            json(&format!("Error while searching {}", &q)),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(_err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ObjectNotFoundError,
+            info: "Unable to find object".to_string(),
+        })),
     }
 }
 
@@ -127,7 +127,7 @@ async fn send_query(
     es_indices_to_search_in: Vec<String>,
     filters: Filters,
     q: &str,
-) -> Result<GeocodeJsonResponse, StatusCode> {
+) -> Result<GeocodeJsonResponse, StatusCode> { // TODO Status code is not usefull anymore
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
@@ -146,10 +146,6 @@ async fn send_query(
                 .collect();
 
             match places {
-                Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
-                    reason: InternalErrorReason::ObjectNotFoundError,
-                    info: "Unable to find object".to_string(),
-                })),
                 Ok(places) => {
                     let features = places
                         .into_iter()
@@ -157,16 +153,10 @@ async fn send_query(
                         .collect();
                     Ok(GeocodeJsonResponse::new(q.to_string(), features))
                 }
-                Err(err) => Err(warp::reject::custom(InternalError {
-                    reason: InternalErrorReason::SerializationError,
-                    info: err.to_string(),
-                })),
+                Err(_err) => Err(StatusCode::ACCEPTED)
             }
         }
-        Err(err) => Err(warp::reject::custom(InternalError {
-            reason: InternalErrorReason::ElasticSearchError,
-            info: err.to_string(),
-        })),
+        Err(_err) => Err(StatusCode::ACCEPTED)
     }
 }
 

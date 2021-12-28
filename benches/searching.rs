@@ -98,13 +98,8 @@ fn bench(c: &mut Criterion) {
                         let rec = rec.unwrap();
                         let client = client.clone();
                         let filters = filters.clone();
-                        let dsl = build_query(
-                            &rec.query,
-                            filters,
-                            "fr",
-                            &settings,
-                            QueryType::PREFIX,
-                        );
+                        let dsl =
+                            build_query(&rec.query, filters, "fr", &settings, QueryType::PREFIX);
 
                         async move {
                             let _values = client
