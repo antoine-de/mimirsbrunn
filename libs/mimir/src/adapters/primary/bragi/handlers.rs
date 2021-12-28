@@ -62,7 +62,11 @@ where
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings);
 
-    debug!("{}", serde_json::to_string(&dsl).unwrap());
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
 
     match client
         .search_documents(
@@ -152,6 +156,12 @@ where
         root_doctype(Addr::static_doc_type()),
     ];
 
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
+
     match client
         .search_documents(
             es_indices_to_search_in,
@@ -191,6 +201,12 @@ where
     let es_indices_to_search_in =
         build_es_indices_to_search(&None, &params.pt_dataset, &params.poi_dataset);
     let dsl = dsl::build_features_query(&es_indices_to_search_in, &doc_id);
+
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
 
     match client
         .get_documents_by_id(Query::QueryDSL(dsl), timeout)

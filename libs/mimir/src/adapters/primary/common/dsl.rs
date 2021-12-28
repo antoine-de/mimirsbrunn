@@ -1,7 +1,6 @@
 use crate::adapters::primary::common::settings::{BuildWeight, ImportanceQueryBoosts, StringQuery};
 use geojson::Geometry;
 use serde_json::json;
-use std::collections::BTreeMap;
 
 use super::coord::Coord;
 use super::{filters, settings};
@@ -15,6 +14,7 @@ pub fn build_query(
     let type_query = build_place_type_boost(&settings.type_query.boosts);
     let string_query = build_string_query(q, lang, &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
+
     let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
     let filters = vec![build_house_number_condition(q), build_matching_condition(q)]
         .append(filters_poi.as_mut());
@@ -29,7 +29,10 @@ pub fn build_query(
                     }
                 }
             }
-        }
+        },
+        "_source": {
+          "excludes": [ "boundary" ]
+        },
     })
 }
 
@@ -297,6 +300,9 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Va
             }
         }
     },
+    "_source": {
+        "excludes": [ "boundary" ]
+    },
     "sort": [{
          "_geo_distance": {
              "coord": {
@@ -454,12 +460,16 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
 }
 
 pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Value {
-    let vec: Vec<BTreeMap<&str, &str>> = indices
+    let vec: Vec<serde_json::Value> = indices
         .iter()
         .map(|index| {
-            vec![("_index", index.as_str()), ("_id", doc_id)]
-                .into_iter()
-                .collect()
+            json!({
+                "_index": index,
+                "_id" : doc_id,
+                "_source" : {
+                    "exclude" : "boundary"
+                }
+            })
         })
         .collect();
     json!({ "docs": vec })
