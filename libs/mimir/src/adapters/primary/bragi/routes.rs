@@ -1,17 +1,18 @@
-use geojson::{GeoJson, Geometry};
-use std::convert::Infallible;
-use tracing::instrument;
-use url::Url;
-use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
-
 use crate::adapters::primary::bragi::api::{
     FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
     ReverseGeocoderQuery, Type,
 };
-
+use crate::adapters::primary::bragi::handlers::{InternalError, InternalErrorReason};
 use crate::adapters::primary::common::settings::QuerySettings;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
+use geojson::{GeoJson, Geometry};
+use serde::{Deserialize, Serialize};
 use serde_qs::Config;
+use std::convert::Infallible;
+use tracing::instrument;
+use url::Url;
+use warp::reject::MethodNotAllowed;
+use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
 
 /// This function defines the base path for Bragi's REST API
 fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
@@ -124,18 +125,26 @@ pub fn with_elasticsearch(
     warp::any().map(move || url.clone())
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ApiError {
+    pub short: String,
+    pub long: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub enum InvalidRequestReason {
     CannotDeserialize,
     EmptyQueryString,
     InconsistentPoiRequest,
     InconsistentZoneRequest,
     InconsistentLatLonRequest,
+    OutOfRangeLatLonRequest,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct InvalidRequest {
     pub reason: InvalidRequestReason,
+    pub info: String,
 }
 
 impl Reject for InvalidRequest {}
@@ -153,9 +162,10 @@ pub fn forward_geocoder_query(
             // max_depth=1:
             // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
             let config = Config::new(2, false);
-            config.deserialize_str(&param).map_err(|_| {
+            config.deserialize_str(&param).map_err(|err| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
+                    info: err.to_string(),
                 })
             })
         })
@@ -172,9 +182,10 @@ pub fn forward_geocoder_explain_query(
         // max_depth=1:
         // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
         let config = Config::new(2, false);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
+                info: err.to_string(),
             })
         })
     })
@@ -186,6 +197,7 @@ pub async fn ensure_query_string_not_empty(
     if params.q.is_empty() {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::EmptyQueryString,
+            info: "You must provide and non-empty query string".to_string(),
         }))
     } else {
         Ok(params)
@@ -197,12 +209,28 @@ pub async fn ensure_query_string_not_empty(
 pub async fn ensure_lat_lon_consistent(
     params: ForwardGeocoderQuery,
 ) -> Result<ForwardGeocoderQuery, Rejection> {
-    if params.lat.is_some() ^ params.lon.is_some() {
-        Err(warp::reject::custom(InvalidRequest {
+    match (params.lat, params.lon) {
+        (Some(lat), Some(lon)) => {
+            if !(-90f32..=90f32).contains(&lat) {
+                Err(warp::reject::custom(InvalidRequest {
+                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                    info: format!("requested latitude {} is outside of range [-90;90]", lat),
+                }))
+            } else if !(-180f32..=180f32).contains(&lon) {
+                Err(warp::reject::custom(InvalidRequest {
+                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                    info: format!("requested longitude {} is outside of range [-180;180]", lon),
+                }))
+            } else {
+                Ok(params)
+            }
+        }
+        (None, None) => Ok(params),
+        (_, _) => Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::InconsistentLatLonRequest,
-        }))
-    } else {
-        Ok(params)
+            info: "you should provide a 'lon' AND a 'lat' parameter if you provide one of them"
+                .to_string(),
+        })),
     }
 }
 
@@ -224,6 +252,8 @@ pub async fn ensure_zone_type_consistent(
     {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::InconsistentZoneRequest,
+            info: "'zone_type' must be specified when you query with 'type' parameter 'zone'"
+                .to_string(),
         }))
     } else {
         Ok(params)
@@ -253,9 +283,10 @@ pub fn reverse_geocoder_query(
 ) -> impl Filter<Extract = (ReverseGeocoderQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
+                info: err.to_string(),
             })
         })
     })
@@ -264,9 +295,10 @@ pub fn reverse_geocoder_query(
 pub fn features_query() -> impl Filter<Extract = (FeaturesQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
+                info: err.to_string(),
             })
         })
     })
@@ -284,19 +316,53 @@ pub fn metrics() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 }
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
-    let reply = warp::reply::reply();
-
-    if rejection.find::<warp::reject::InvalidQuery>().is_some()
-        || rejection.find::<InvalidRequest>().is_some()
-    {
-        Ok(warp::reply::with_status(reply, StatusCode::BAD_REQUEST))
+    let reply = if let Some(err) = rejection.find::<warp::reject::InvalidQuery>() {
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "invalid query".to_string(),
+                long: err.to_string(),
+            }),
+            StatusCode::BAD_REQUEST,
+        )
+    } else if let Some(err) = rejection.find::<InvalidRequest>() {
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "validation error".to_string(),
+                long: err.info.clone(),
+            }),
+            StatusCode::BAD_REQUEST,
+        )
+    } else if let Some(err) = rejection.find::<InternalError>() {
+        let short = match err.reason {
+            InternalErrorReason::ObjectNotFoundError => "Unable to find object".to_string(),
+            _ => "query error".to_string(),
+        };
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short,
+                long: err.info.clone(),
+            }),
+            StatusCode::BAD_REQUEST,
+        )
+    } else if let Some(err) = rejection.find::<MethodNotAllowed>() {
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "no route".to_string(),
+                long: err.to_string(),
+            }),
+            StatusCode::NOT_FOUND,
+        )
     } else {
-        // Do better error handling here
-        Ok(warp::reply::with_status(
-            reply,
+        warp::reply::with_status(
+            warp::reply::json(&ApiError {
+                short: "INTERNAL_SERVER_ERROR".to_string(),
+                long: "INTERNAL_SERVER_ERROR".to_string(),
+            }),
             StatusCode::INTERNAL_SERVER_ERROR,
-        ))
-    }
+        )
+    };
+    let reply = warp::reply::with_header(reply, "content-type", "application/json");
+    Ok(reply)
 }
 
 pub fn cache_filter<F, T>(

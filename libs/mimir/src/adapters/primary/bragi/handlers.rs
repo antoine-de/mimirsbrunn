@@ -1,9 +1,8 @@
 use crate::adapters::primary::bragi::prometheus_handler;
 use geojson::Geometry;
-use serde::Serialize;
 use tracing::{debug, instrument};
-use warp::http::StatusCode;
 use warp::reply::{json, with_status};
+use warp::{http::StatusCode, reject::Reject};
 
 use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
 use crate::adapters::primary::{
@@ -24,8 +23,25 @@ use crate::domain::ports::primary::search_documents::SearchDocuments;
 use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
+use serde::{Deserialize, Serialize};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub enum InternalErrorReason {
+    ElasticSearchError,
+    SerializationError,
+    ObjectNotFoundError,
+    StatusError,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct InternalError {
+    pub reason: InternalErrorReason,
+    pub info: String,
+}
+
+impl Reject for InternalError {}
 
 #[instrument(skip(client, settings))]
 pub async fn forward_geocoder<S>(
@@ -63,6 +79,10 @@ where
                 .collect();
 
             match places {
+                Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::ObjectNotFoundError,
+                    info: "Unable to find object".to_string(),
+                })),
                 Ok(places) => {
                     let features = places
                         .into_iter()
@@ -71,24 +91,16 @@ where
                     let resp = GeocodeJsonResponse::new(q, features);
                     Ok(with_status(json(&resp), StatusCode::OK))
                 }
-                Err(err) => Ok(with_status(
-                    json(&format!(
-                        "Error while searching {}: {}",
-                        &q,
-                        err.to_string()
-                    )),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                )),
+                Err(err) => Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::SerializationError,
+                    info: err.to_string(),
+                })),
             }
         }
-        Err(err) => Ok(with_status(
-            json(&format!(
-                "Error while searching {}: {}",
-                &q,
-                err.to_string()
-            )),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ElasticSearchError,
+            info: err.to_string(),
+        })),
     }
 }
 
@@ -114,14 +126,10 @@ where
         .await
     {
         Ok(res) => Ok(with_status(json(&res), StatusCode::OK)),
-        Err(err) => Ok(with_status(
-            json(&format!(
-                "Error while searching {}: {}",
-                &q,
-                err.to_string()
-            )),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ElasticSearchError,
+            info: err.to_string(),
+        })),
     }
 }
 
@@ -160,13 +168,10 @@ where
             let resp = GeocodeJsonResponse::from_with_lang(places, None);
             Ok(with_status(json(&resp), StatusCode::OK))
         }
-        Err(err) => Ok(with_status(
-            json(&format!(
-                "Error while reverse searching: {}",
-                err.to_string()
-            )),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ElasticSearchError,
+            info: err.to_string(),
+        })),
     }
 }
 
@@ -196,6 +201,10 @@ where
                 .collect();
 
             match places {
+                Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::ObjectNotFoundError,
+                    info: "Unable to find object".to_string(),
+                })),
                 Ok(places) => {
                     let features: Vec<Feature> = places
                         .into_iter()
@@ -204,22 +213,16 @@ where
                     let resp = GeocodeJsonResponse::new("".to_string(), features);
                     Ok(with_status(json(&resp), StatusCode::OK))
                 }
-                Err(err) => Ok(with_status(
-                    json(&format!(
-                        "Error while features searching: {}",
-                        err.to_string()
-                    )),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                )),
+                Err(err) => Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::SerializationError,
+                    info: err.to_string(),
+                })),
             }
         }
-        Err(err) => Ok(with_status(
-            json(&format!(
-                "Error while features searching: {}",
-                err.to_string()
-            )),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ElasticSearchError,
+            info: err.to_string(),
+        })),
     }
 }
 
@@ -244,10 +247,10 @@ where
             };
             Ok(with_status(json(&resp), StatusCode::OK))
         }
-        Err(err) => Ok(with_status(
-            json(&format!("Error while querying status: {}", err.to_string())),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::StatusError,
+            info: err.to_string(),
+        })),
     }
 }
 
