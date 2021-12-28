@@ -21,7 +21,10 @@ pub fn build_query(
                     "must": [ string_query ],
                     "should": boosts
                 }
-            }
+            },
+            "_source": {
+                "excludes": [ "boundary" ]
+            },
         })
     } else {
         json!({
@@ -35,7 +38,10 @@ pub fn build_query(
                         }
                     }
                 }
-            }
+            },
+            "_source": {
+                "excludes": [ "boundary" ]
+            },
         })
     }
 }
@@ -178,6 +184,9 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Va
                 }
             }
         }
+    },
+    "_source": {
+        "excludes": [ "boundary" ]
     },
     "sort": [{
          "_geo_distance": {
