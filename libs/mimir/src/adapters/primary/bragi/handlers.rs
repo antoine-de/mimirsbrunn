@@ -60,7 +60,7 @@ where
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
     let filters = filters::Filters::from((params, geometry));
-    let dsl = dsl::build_query(&q, filters.clone(), lang, &settings);
+    let dsl = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
@@ -119,7 +119,7 @@ where
     let q = params.query.q.clone();
     let lang = params.query.lang.clone();
     let filters = filters::Filters::from((params.query, geometry));
-    let dsl = dsl::build_query(&q, filters, lang, &settings);
+    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 

@@ -9,11 +9,11 @@ use super::{filters, settings};
 pub fn build_query(
     q: &str,
     filters: filters::Filters,
-    lang: String,
+    lang: &str,
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query.boosts);
-    let string_query = build_string_query(q, lang.as_str(), &settings.string_query);
+    let string_query = build_string_query(q, lang, &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
     let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
     let filters = vec![build_house_number_condition(q), build_matching_condition(q)]
@@ -112,14 +112,18 @@ fn build_filters(
     poi_types: Option<Vec<String>>,
     zone_types: Option<Vec<String>>,
 ) -> Vec<serde_json::Value> {
-    let mut filters: Vec<Option<serde_json::Value>> = Vec::new();
-    let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
-    filters.push(geoshape_filter);
-    let poi_types_filter = poi_types.map(build_poi_types_filter);
-    filters.push(poi_types_filter);
-    let zone_types_filter = zone_types.map(build_zone_types_filter);
-    filters.push(zone_types_filter);
-    filters.into_iter().flatten().collect()
+    let mut filters: Vec<serde_json::Value> = Vec::new();
+    if let Some(geoshape_filter) = shape.map(|(geometry, scope)| build_shape_query(geometry, scope))
+    {
+        filters.push(geoshape_filter);
+    };
+    if let Some(poi_types_filter) = poi_types.map(build_poi_types_filter) {
+        filters.push(poi_types_filter);
+    }
+    if let Some(zone_types_filter) = zone_types.map(build_zone_types_filter) {
+        filters.push(zone_types_filter);
+    }
+    filters
 }
 
 fn build_weight_depending_on_radius(

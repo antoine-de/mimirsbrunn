@@ -105,7 +105,7 @@ impl Step for Search {
         let dsl = build_query(
             &self.query,
             self.filters.clone(),
-            "fr".to_string(),
+            "fr",
             &QuerySettings::default(),
         );
 
