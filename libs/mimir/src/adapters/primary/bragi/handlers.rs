@@ -61,7 +61,11 @@ where
     let filters = filters::Filters::from((params, geometry));
     let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
 
-    tracing::trace!("Searching in indexes {:?} with query {}", es_indices_to_search_in, serde_json::to_string_pretty(&dsl).unwrap());
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
 
     match client
         .search_documents(
@@ -150,8 +154,11 @@ where
         root_doctype(Addr::static_doc_type()),
     ];
 
-    tracing::trace!("Searching in indexes {:?} with query {}", es_indices_to_search_in, serde_json::to_string_pretty(&dsl).unwrap());
-
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
 
     match client
         .search_documents(
