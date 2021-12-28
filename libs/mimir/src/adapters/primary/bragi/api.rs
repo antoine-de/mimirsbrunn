@@ -11,6 +11,7 @@ use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, PlaceDocType};
 
 pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
+pub const DEFAULT_LIMIT_RESULT_REVERSE_API: i64 = 1;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -53,6 +54,9 @@ fn default_result_limit() -> i64 {
     DEFAULT_LIMIT_RESULT_ES
 }
 
+fn default_result_limit_reverse() -> i64 {
+    DEFAULT_LIMIT_RESULT_REVERSE_API
+}
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
     fn from(source: (ForwardGeocoderQuery, Option<Geometry>)) -> Self {
         let (query, geometry) = source;
@@ -114,7 +118,7 @@ pub struct FeaturesQuery {
 pub struct ReverseGeocoderQuery {
     pub lat: f64,
     pub lon: f64,
-    #[serde(default = "default_result_limit")]
+    #[serde(default = "default_result_limit_reverse")]
     pub limit: i64,
     #[serde(deserialize_with = "deserialize_opt_duration", default)]
     pub timeout: Option<Duration>,
