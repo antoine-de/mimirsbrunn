@@ -162,9 +162,8 @@ pub fn forward_geocoder_query(
             // max_depth=1:
             // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
             let config = Config::new(2, false);
-            config.deserialize_str(&param).map_err(|err| {
             tracing::info!("Autocomplete query : {}", param);
-            config.deserialize_str(&param).map_err(|_| {
+            config.deserialize_str(&param).map_err(|err| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
                     info: err.to_string(),
@@ -185,7 +184,7 @@ pub fn forward_geocoder_explain_query(
         // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
         let config = Config::new(2, false);
         tracing::info!("forward_geocoder_explain query : {}", param);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
                 info: err.to_string(),
@@ -287,7 +286,7 @@ pub fn reverse_geocoder_query(
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
         tracing::info!("Reverse geocoder query : {}", param);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
                 info: err.to_string(),
@@ -300,7 +299,7 @@ pub fn features_query() -> impl Filter<Extract = (FeaturesQuery,), Error = Rejec
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
         tracing::info!("Features query : {}", param);
-        config.deserialize_str(&param).map_err(|_| {
+        config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
                 info: err.to_string(),
