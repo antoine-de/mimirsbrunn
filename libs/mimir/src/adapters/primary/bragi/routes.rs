@@ -372,7 +372,6 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
     };
     let reply = warp::reply::with_header(reply, "content-type", "application/json");
     Ok(reply)
-
 }
 
 pub fn cache_filter<F, T>(
