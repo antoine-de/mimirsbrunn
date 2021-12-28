@@ -25,8 +25,6 @@ pub struct Filters {
 
 pub fn build_query(
     q: &str,
-    _filters: Filters,
-    _langs: &[&str],
     settings: &QuerySettings,
 ) -> serde_json::Value {
     json!({
@@ -39,7 +37,7 @@ pub fn build_query(
     })
 }
 
-fn build_string_query(q: &str, settings: &StringQuery) -> serde_json::Value {
+fn build_autocomplete_should_query(q: &str, lang: &str, settings: &StringQuery) -> serde_json::Value {
     json!({
         "bool": {
             "boost": settings.global,
@@ -47,23 +45,39 @@ fn build_string_query(q: &str, settings: &StringQuery) -> serde_json::Value {
                 {
                     "multi_match": {
                         "query": q,
-                        "fields": ["name"],
+                        "fields": ["name", format!("names.{}", lang)],
                         "boost": settings.boosts.name
                     }
                 },
                 {
                     "multi_match": {
                         "query": q,
-                        "fields": ["label"],
+                        "fields": ["label", format!("label.{}", lang)],
                         "boost": settings.boosts.label
                     }
                 },
                 {
                     "multi_match": {
                         "query": q,
-                        "fields": ["label.prefix"],
+                        "fields": ["label.prefix", format!("label.prefix.{}", lang)],
                         "boost": settings.boosts.label_prefix
                     }
+                },
+                {
+                    "match": {
+                        "zip_codes": {
+                        "query": q,
+                    }
+                    }
+                    "boost": settings.boosts.zip_codes
+                },
+                {
+                    "match": {
+                        "house_number": {,
+                         "query": q,
+                    }
+                    }
+                   "boost": settings.boosts.house_number
                 }
             ]
         }

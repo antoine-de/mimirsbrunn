@@ -1119,11 +1119,11 @@ impl ElasticsearchStorage {
         let response = match query {
             Query::QueryString(_) => {
                 return Err(Error::Internal {
-                    reason: format!("QueryString not handled for get document by id"),
+                    reason: "QueryString not handled for get document by id".to_string(),
                 })
             }
             Query::QueryDSL(json) => get.body(json).send().await.context(ElasticsearchClient {
-                details: format!("could not get document by id"),
+                details: "could not get document by id".to_string(),
             })?,
         };
 
