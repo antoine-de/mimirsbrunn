@@ -1,6 +1,5 @@
 use geojson::Geometry;
 use serde_json::json;
-use std::collections::BTreeMap;
 
 use super::coord::Coord;
 use super::{filters, settings};
@@ -345,13 +344,16 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
 }
 
 pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Value {
-    let vec: Vec<BTreeMap<&str, &str>> = indices
+    let vec: Vec<serde_json::Value> = indices
         .iter()
-        .map(|index| {
-            vec![("_index", index.as_str()), ("_id", doc_id)]
-                .into_iter()
-                .collect()
-        })
-        .collect();
+        .map(|index|
+            json!({
+                "_index": index,
+                "_id" : doc_id,
+                "_source" : {
+                    "exclude" : "boundary"
+                }
+            })
+        ).collect();
     json!({ "docs": vec })
 }

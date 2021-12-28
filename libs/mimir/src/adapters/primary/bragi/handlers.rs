@@ -200,6 +200,12 @@ where
         build_es_indices_to_search(&None, &params.pt_dataset, &params.poi_dataset);
     let dsl = dsl::build_features_query(&es_indices_to_search_in, &doc_id);
 
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
+
     match client
         .get_documents_by_id(Query::QueryDSL(dsl), timeout)
         .await
