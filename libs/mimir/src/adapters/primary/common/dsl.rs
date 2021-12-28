@@ -1,3 +1,4 @@
+use crate::adapters::primary::common::settings::{BuildWeight, ImportanceQueryBoosts, StringQuery};
 use geojson::Geometry;
 use serde_json::json;
 
@@ -7,45 +8,35 @@ use super::{filters, settings};
 pub fn build_query(
     q: &str,
     filters: filters::Filters,
-    _langs: &[&str],
+    lang: &str,
     settings: &settings::QuerySettings,
 ) -> serde_json::Value {
-    let string_query = build_string_query(q, &settings.string_query);
+    let type_query = build_place_type_boost(&settings.type_query.boosts);
+    let string_query = build_string_query(q, lang, &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
-    let filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
-    if filters.is_empty() {
-        json!({
-            "query": {
-                "bool": {
-                    "must": [ string_query ],
-                    "should": boosts
-                }
-            },
-            "_source": {
-                "excludes": [ "boundary" ]
-            },
-        })
-    } else {
-        json!({
-            "query": {
-                "bool": {
-                    "must": [ string_query ],
-                    "should": boosts,
-                    "filter": {
-                        "bool": {
-                            "must": filters
-                        }
+
+    let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
+    let filters = vec![build_house_number_condition(q), build_matching_condition(q)]
+        .append(filters_poi.as_mut());
+    json!({
+        "query": {
+            "bool": {
+                "must": [ type_query, string_query ],
+                "should": boosts,
+                "filter": {
+                    "bool": {
+                        "must": filters
                     }
                 }
-            },
-            "_source": {
-                "excludes": [ "boundary" ]
-            },
-        })
-    }
+            }
+        },
+        "_source": {
+          "excludes": [ "boundary" ]
+        },
+    })
 }
 
-fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::Value {
+fn build_string_query(q: &str, lang: &str, settings: &StringQuery) -> serde_json::Value {
     json!({
         "bool": {
             "boost": settings.global,
@@ -53,30 +44,44 @@ fn build_string_query(q: &str, settings: &settings::StringQuery) -> serde_json::
                 {
                     "multi_match": {
                         "query": q,
-                        "type": "bool_prefix",
-                        "fields": [
-                            "label", "label._2gram", "label._3gram", "name"
-                        ]
+                        "fields": ["name", format!("names.{}", lang)],
+                        "boost": settings.boosts.name
+                    }
+                },
+                {
+                    "multi_match": {
+                        "query": q,
+                        "fields": ["label", format!("label.{}", lang)],
+                        "boost": settings.boosts.label
+                    }
+                },
+                {
+                    "multi_match": {
+                        "query": q,
+                        "fields": ["label.prefix", format!("label.prefix.{}", lang)],
+                        "boost": settings.boosts.label_prefix
+                    }
+                },
+                {
+                    "match": {
+                        "zip_codes": {
+                        "query": q,
+                        "boost": settings.boosts.zip_codes
+                        }
+                    }
+
+                },
+                {
+                    "match": {
+                        "house_number": {
+                         "query": q,
+                         "boost": settings.boosts.house_number
+                        }
                     }
                 }
             ]
         }
     })
-}
-
-fn build_filters(
-    shape: Option<(Geometry, Vec<String>)>,
-    poi_types: Option<Vec<String>>,
-    zone_types: Option<Vec<String>>,
-) -> Vec<serde_json::Value> {
-    let mut filters: Vec<Option<serde_json::Value>> = Vec::new();
-    let geoshape_filter = shape.map(|(geometry, scope)| build_shape_query(geometry, scope));
-    filters.push(geoshape_filter);
-    let poi_types_filter = poi_types.map(build_poi_types_filter);
-    filters.push(poi_types_filter);
-    let zone_types_filter = zone_types.map(build_zone_types_filter);
-    filters.push(zone_types_filter);
-    filters.into_iter().flatten().collect()
 }
 
 fn build_boosts(
@@ -86,7 +91,10 @@ fn build_boosts(
 ) -> Vec<serde_json::Value> {
     let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
     // TODO: in production, admins are boosted by their weight only in prefix mode.
-    let admin_weight_boost = Some(build_admin_weight_query(&settings.importance_query));
+    let admin_weight_boost = Some(build_admin_weight_query(
+        &settings.importance_query,
+        &filters.coord,
+    ));
     boosts.push(admin_weight_boost);
     let mut decay = settings.importance_query.proximity.decay.clone();
     if let Some(proximity) = &filters.proximity {
@@ -99,12 +107,121 @@ fn build_boosts(
         .clone()
         .map(|coord| build_proximity_boost(coord, &decay));
     boosts.push(proximity_boost);
-    let place_type_boost = Some(build_place_type_boost(&settings.type_query.boosts));
-    boosts.push(place_type_boost);
     boosts.into_iter().flatten().collect()
 }
 
-fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde_json::Value {
+fn build_filters(
+    shape: Option<(Geometry, Vec<String>)>,
+    poi_types: Option<Vec<String>>,
+    zone_types: Option<Vec<String>>,
+) -> Vec<serde_json::Value> {
+    let mut filters: Vec<serde_json::Value> = Vec::new();
+    if let Some(geoshape_filter) = shape.map(|(geometry, scope)| build_shape_query(geometry, scope))
+    {
+        filters.push(geoshape_filter);
+    };
+    if let Some(poi_types_filter) = poi_types.map(build_poi_types_filter) {
+        filters.push(poi_types_filter);
+    }
+    if let Some(zone_types_filter) = zone_types.map(build_zone_types_filter) {
+        filters.push(zone_types_filter);
+    }
+    filters
+}
+
+fn build_weight_depending_on_radius(
+    importance_query_settings: &ImportanceQueryBoosts,
+    coord: &Option<Coord>,
+) -> BuildWeight {
+    let settings_weight = importance_query_settings.clone().weights;
+
+    // Weights for minimal radius
+    let min_weights = settings_weight.clone().min_radius_prefix;
+
+    // Weights for maximal radius
+    let max_weights = settings_weight.clone().max_radius;
+
+    // Compute a linear combination of `min_weights` and `max_weights` depending of
+    // the level of zoom.
+    let zoom_ratio = match coord {
+        None => 1.,
+        Some(_) => {
+            let (min_radius, max_radius) = settings_weight.radius_range;
+            let curve = importance_query_settings.clone().proximity.decay;
+            let radius = (curve.offset + curve.scale).min(max_radius).max(min_radius);
+            (radius.ln_1p() - min_radius.ln_1p()) / (max_radius.ln_1p() - min_radius.ln_1p())
+        }
+    };
+
+    BuildWeight {
+        admin: (1. - zoom_ratio) * min_weights.admin + zoom_ratio * max_weights.admin,
+        factor: (1. - zoom_ratio) * min_weights.factor + zoom_ratio * max_weights.factor,
+        missing: (1. - zoom_ratio) * min_weights.missing + zoom_ratio * max_weights.missing,
+    }
+}
+
+fn build_house_number_condition(q: &str) -> serde_json::Value {
+    if q.split_whitespace().count() > 1 {
+        // Filter to handle house number.
+        // We either want:
+        // * to exactly match the document house_number
+        // * or that the document has no house_number
+        json!({
+            "bool": {
+                "should": [
+                {
+                    "bool": {
+                        "must_not": {
+                            "exists": {
+                              "field": "house_number"
+                            }
+                        },
+                    }
+                },
+                {
+                    "match": {
+                        "house_number": {
+                            "query": q
+                        }
+                    }
+                }
+                ]
+            }
+        })
+    } else {
+        // If the query contains a single word, we don't exact any house number in the result.
+        json!({
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "house_number"
+                    }
+                },
+            }
+        })
+    }
+}
+
+fn build_matching_condition(q: &str) -> serde_json::Value {
+    // Filter to handle house number.
+    // We either want:
+    // * to exactly match the document house_number
+    // * or that the document has no house_number
+    json!({
+        "match": {
+            "full_label.prefix": {
+                "query": q,
+                "operator": "and"
+            }
+        }
+    })
+}
+
+fn build_admin_weight_query(
+    settings: &settings::ImportanceQueryBoosts,
+    coord: &Option<Coord>,
+) -> serde_json::Value {
+    let weights = build_weight_depending_on_radius(settings, coord);
     json!({
         "function_score": {
             "query": { "term": { "type": "admin" } },
@@ -119,8 +236,7 @@ fn build_admin_weight_query(settings: &settings::ImportanceQueryBoosts) -> serde
                     }
                 },
                 {
-                    // TODO: in production, this weight depends of the focus radius
-                    "weight": settings.weights.max_radius.admin
+                    "weight": weights.admin
                 }
             ]
         }
@@ -358,3 +474,100 @@ pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Val
         .collect();
     json!({ "docs": vec })
 }
+
+// fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {
+//     json!({
+//         "function_score": {
+//             "boost_mode": "replace",
+//             "functions": [
+//                 {
+//                         "query": { "term": { "_type": "admin" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                     }
+//                 },
+//                 {
+//                         "query": { "term": { "_type": "address" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                         }
+//                 },
+//                                 {
+//                         "query": { "term": { "_type": "admin" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                         }
+//                 },
+//                                 {
+//                         "query": { "term": { "_type": "poi" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                     }
+//                 },
+//                 {
+//                         "query": { "term": { "_type": "street" } },
+//                         "field_value_factor": {
+//                             "field": "weight",
+//                             "factor": build_weight.factor,
+//                             "missing": build_weight.missing
+//                     }
+//                 }
+//             ]
+//         }
+//     })
+// }
+
+//
+// fn build_coverage_condition() -> serde_json::Value {
+//     // filter to handle PT coverages
+//     // we either want:
+//     // * to get objects with no coverage at all (non-PT objects)
+//     // * or the objects with coverage matching the ones we're allowed to get
+//     json!({
+//             "bool": {
+//                 "should": [
+//                 {
+//                     "bool": {
+//                         "must_not": {
+//                             "exists": {
+//                               "field": "coverages"
+//                             }
+//                         },
+//                     }
+//                 },
+//                 {
+//                     "term": {
+//                         "coverages": []
+//                     }
+//                 }
+//             ]
+//         }
+//     })
+// }
+
+// fn build_search_as_you_type_query(q: &str, settings: &settings::StringQuery) -> serde_json::Value {
+//     json!({
+//         "bool": {
+//             "boost": settings.global,
+//             "should": [
+//                 {
+//                     "multi_match": {
+//                         "query": q,
+//                         "type": "bool_prefix", // match_phrase_prefix query match terms order
+//                         "fields": [
+//                             "label", "label._2gram", "label._3gram", "name"
+//                         ]
+//                     }
+//                 }
+//             ]
+//         }
+//     })
+// }

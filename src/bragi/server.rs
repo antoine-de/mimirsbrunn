@@ -119,7 +119,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
             routes::cache_filter(filter, settings.http_cache_duration)
         }))
         .with(warp::trace::request())
-        .with(warp::log::custom(move |log| update_metrics(log)));
+        .with(warp::log::custom(update_metrics));
 
     info!("api ready");
 

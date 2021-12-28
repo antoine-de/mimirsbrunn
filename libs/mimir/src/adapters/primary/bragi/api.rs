@@ -11,6 +11,8 @@ use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, PlaceDocType};
 
 pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
+pub const DEFAULT_LIMIT_RESULT_REVERSE_API: i64 = 1;
+pub const DEFAULT_LANG: &str = "fr";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -40,6 +42,8 @@ pub struct ForwardGeocoderQuery {
     pub poi_types: Option<Vec<String>>,
     #[serde(default = "default_result_limit")]
     pub limit: i64,
+    #[serde(default = "default_lang")]
+    pub lang: String,
     #[serde(deserialize_with = "deserialize_opt_duration", default)]
     pub timeout: Option<Duration>,
     pub pt_dataset: Option<Vec<String>>,
@@ -51,6 +55,14 @@ pub struct ForwardGeocoderQuery {
 
 fn default_result_limit() -> i64 {
     DEFAULT_LIMIT_RESULT_ES
+}
+
+fn default_result_limit_reverse() -> i64 {
+    DEFAULT_LIMIT_RESULT_REVERSE_API
+}
+
+fn default_lang() -> String {
+    DEFAULT_LANG.to_string()
 }
 
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
@@ -114,7 +126,7 @@ pub struct FeaturesQuery {
 pub struct ReverseGeocoderQuery {
     pub lat: f64,
     pub lon: f64,
-    #[serde(default = "default_result_limit")]
+    #[serde(default = "default_result_limit_reverse")]
     pub limit: i64,
     #[serde(deserialize_with = "deserialize_opt_duration", default)]
     pub timeout: Option<Duration>,
