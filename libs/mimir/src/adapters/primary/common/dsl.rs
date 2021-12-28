@@ -346,7 +346,7 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
 pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Value {
     let vec: Vec<serde_json::Value> = indices
         .iter()
-        .map(|index|
+        .map(|index| {
             json!({
                 "_index": index,
                 "_id" : doc_id,
@@ -354,6 +354,7 @@ pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Val
                     "exclude" : "boundary"
                 }
             })
-        ).collect();
+        })
+        .collect();
     json!({ "docs": vec })
 }
