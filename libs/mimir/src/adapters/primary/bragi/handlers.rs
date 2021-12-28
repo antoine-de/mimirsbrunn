@@ -106,7 +106,7 @@ pub async fn forward_geocoder(
                     Err(_err) => Err(warp::reject::custom(InternalError {
                         reason: InternalErrorReason::ObjectNotFoundError,
                         info: "Unable to find object".to_string(),
-                    }))
+                    })),
                 }
             } else {
                 println!("Prefix query");
@@ -127,12 +127,13 @@ async fn send_query(
     es_indices_to_search_in: Vec<String>,
     filters: Filters,
     q: &str,
-) -> Result<GeocodeJsonResponse, StatusCode> { // TODO Status code is not usefull anymore
+) -> Result<GeocodeJsonResponse, StatusCode> {
+    // TODO Status code is not usefull anymore
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
         .search_documents(
-            es_indices_to_search_in.clone(),
+            es_indices_to_search_in,
             Query::QueryDSL(dsl),
             filters.limit,
             timeout,
@@ -153,10 +154,10 @@ async fn send_query(
                         .collect();
                     Ok(GeocodeJsonResponse::new(q.to_string(), features))
                 }
-                Err(_err) => Err(StatusCode::ACCEPTED)
+                Err(_err) => Err(StatusCode::ACCEPTED),
             }
         }
-        Err(_err) => Err(StatusCode::ACCEPTED)
+        Err(_err) => Err(StatusCode::ACCEPTED),
     }
 }
 
