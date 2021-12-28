@@ -598,4 +598,26 @@ mod tests {
         assert_eq!(resp.0.types.unwrap(), [Type::House]);
         assert_eq!(resp.0.q, "Bob");
     }
+
+    #[tokio::test]
+    async fn should_correctly_extract_default_limit() {
+        let filter = reverse_geocoder();
+        let resp = warp::test::request()
+            .path("/api/v1/reverse?lon=6.15&lat=49.14")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.limit, 1);
+    }
+
+    #[tokio::test]
+    async fn should_correctly_extract_with_limit() {
+        let filter = reverse_geocoder();
+        let resp = warp::test::request()
+            .path("/api/v1/reverse?lon=6.15&lat=49.14&limit=20")
+            .filter(&filter)
+            .await
+            .unwrap();
+        assert_eq!(resp.limit, 20);
+    }
 }

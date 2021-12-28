@@ -84,7 +84,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .with(warp::wrap_fn(|filter| {
             routes::cache_filter(filter, settings.http_cache_duration)
         }))
-        .with(warp::log::custom(move |log| update_metrics(log)))
+        .with(warp::log::custom(update_metrics));
         .with(warp::trace(|info| {
             // Create a span using tracing macros
             tracing::info_span!(
@@ -93,6 +93,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
                 path = %info.path(),
             )
         }));
+
 
     info!("api ready");
 
