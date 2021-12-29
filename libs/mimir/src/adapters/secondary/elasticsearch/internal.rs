@@ -1070,9 +1070,7 @@ impl ElasticsearchStorage {
             // search in each *shard* will end after timeout_str
             .timeout(&timeout_str)
             // global search will end after 2*timeout
-            .request_timeout(timeout.saturating_add(timeout))
-            
-            ;
+            .request_timeout(timeout.saturating_add(timeout));
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
