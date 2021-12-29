@@ -154,10 +154,10 @@ async fn send_query(
                         .collect();
                     Ok(GeocodeJsonResponse::new(q.to_string(), features))
                 }
-                Err(_err) => Err("Unable to find object")
+                Err(_err) => Err("Unable to find object"),
             }
         }
-        Err(_err) => Err("Unable to find object")
+        Err(_err) => Err("Unable to find object"),
     }
 }
 
