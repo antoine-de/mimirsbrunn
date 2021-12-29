@@ -1054,12 +1054,13 @@ impl ElasticsearchStorage {
                 }
             }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
             .unwrap_or(self.config.timeout);
+        let timeout_str = format!("{}ms", timeout.as_millis());
 
         let search = self
             .client
             .search(SearchParts::Index(&indices))
-            .size(limit_result)
-            .request_timeout(timeout);
+            .terminate_after(limit_result)
+            .timeout(&timeout_str);
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {

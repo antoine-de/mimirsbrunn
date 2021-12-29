@@ -78,6 +78,7 @@ where
         .await
     {
         Ok(res) => {
+            tracing::trace!("Elasticsearch response {}", serde_json::to_string_pretty(&res).unwrap());
             let places: Result<Vec<Place>, serde_json::Error> = res
                 .into_iter()
                 .map(|json| serde_json::from_value::<Place>(json.into()))
@@ -102,10 +103,13 @@ where
                 })),
             }
         }
-        Err(err) => Err(warp::reject::custom(InternalError {
-            reason: InternalErrorReason::ElasticSearchError,
-            info: err.to_string(),
-        })),
+        Err(err) => {
+            tracing::trace!("Elasticsearch reponded with error {}", &err);
+            Err(warp::reject::custom(InternalError {
+                reason: InternalErrorReason::ElasticSearchError,
+                info: err.to_string(),
+            }))
+        },
     }
 }
 
