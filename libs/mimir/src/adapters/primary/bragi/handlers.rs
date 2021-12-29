@@ -67,6 +67,13 @@ pub async fn forward_geocoder(
         &settings,
         QueryType::PREFIX,
     );
+
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl_query_prefix).unwrap()
+    );
+
     let result_prefix_query = send_query(
         client.clone(),
         dsl_query_prefix,
@@ -77,11 +84,6 @@ pub async fn forward_geocoder(
     )
     .await;
 
-    tracing::trace!(
-        "Searching in indexes {:?} with query {}",
-        es_indices_to_search_in,
-        serde_json::to_string_pretty(&dsl).unwrap()
-    );
     match result_prefix_query {
         Ok(resp) => {
             if resp.features.is_empty() {
