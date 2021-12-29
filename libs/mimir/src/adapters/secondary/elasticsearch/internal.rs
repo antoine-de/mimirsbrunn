@@ -6,6 +6,7 @@ use elasticsearch::indices::{
     IndicesPutIndexTemplateParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
+use elasticsearch::params::TrackTotalHits;
 use elasticsearch::{
     BulkOperation, BulkParts, ExplainParts, MgetParts, OpenPointInTimeParts, SearchParts,
 };
@@ -1059,8 +1060,19 @@ impl ElasticsearchStorage {
         let search = self
             .client
             .search(SearchParts::Index(&indices))
+            // we don't care for the total number of hits, and it takes some time to compute
+            // so we disable it
+            .track_total_hits(TrackTotalHits::Track(false))
+            // search in each *shard* will end after limit_result hits are found
             .terminate_after(limit_result)
-            .timeout(&timeout_str);
+            // global search will end when limit_result are found
+            .size(limit_result)
+            // search in each *shard* will end after timeout_str
+            .timeout(&timeout_str)
+            // global search will end after 2*timeout
+            .request_timeout(timeout.saturating_add(timeout))
+            
+            ;
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
