@@ -31,11 +31,6 @@ pub struct Poi {
     pub config: Option<crate::osm_reader::poi::PoiConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
 #[cfg(feature = "db-storage")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
@@ -46,7 +41,6 @@ pub struct Database {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub pois: Poi,
     pub streets: Street,
@@ -110,7 +104,7 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["osm2mimir", "elasticsearch", "logging"],
+            &["osm2mimir", "elasticsearch"],
             opts.run_mode.as_deref(),
             "MIMIR",
             opts.settings.clone(),

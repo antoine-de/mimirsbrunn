@@ -21,11 +21,6 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coordinates {
     pub id_precision: usize,
 }
@@ -40,7 +35,6 @@ pub struct Database {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
     pub coordinates: Coordinates,
@@ -100,7 +94,7 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["openaddresses2mimir", "elasticsearch", "logging"],
+            &["openaddresses2mimir", "elasticsearch"],
             opts.run_mode.as_deref(),
             "MIMIR",
             opts.settings.clone(),

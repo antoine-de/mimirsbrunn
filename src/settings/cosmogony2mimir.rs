@@ -21,14 +21,8 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub langs: Vec<String>,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
@@ -86,7 +80,7 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["cosmogony2mimir", "elasticsearch", "logging"],
+            &["cosmogony2mimir", "elasticsearch"],
             opts.run_mode.as_deref(),
             "MIMIR",
             opts.settings.clone(),

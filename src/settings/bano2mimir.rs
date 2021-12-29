@@ -20,11 +20,6 @@ pub enum Error {
     Invalid { msg: String },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
 #[cfg(feature = "db-storage")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
@@ -35,7 +30,6 @@ pub struct Database {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
     #[cfg(feature = "db-storage")]
@@ -94,7 +88,7 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["bano2mimir", "elasticsearch", "logging"],
+            &["bano2mimir", "elasticsearch"],
             opts.run_mode.as_deref(),
             "MIMIR",
             opts.settings.clone(),

@@ -24,14 +24,8 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub nb_threads: Option<usize>,
 }
@@ -91,7 +85,7 @@ impl Settings {
             .with_merged(
                 common::config::config_from(
                     opts.config_dir.as_ref(),
-                    &["elasticsearch", "logging"],
+                    &["elasticsearch"],
                     opts.run_mode.as_deref(),
                     "MIMIR",
                     opts.settings.clone(),

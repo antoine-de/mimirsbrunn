@@ -39,11 +39,6 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Service {
     /// Host on which we expose bragi. Example: 'http://localhost', '0.0.0.0'
     pub host: String,
@@ -56,7 +51,6 @@ pub struct Service {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: String,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub query: QuerySettings,
     pub service: Service,
@@ -109,7 +103,7 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["bragi", "elasticsearch", "query", "logging"],
+            &["bragi", "elasticsearch", "query"],
             opts.run_mode.as_deref(),
             "BRAGI",
             opts.settings.clone(),

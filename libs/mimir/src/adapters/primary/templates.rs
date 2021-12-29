@@ -39,12 +39,14 @@ pub async fn import<C: Clone + ConfigureBackend>(
     dir_to_stream(path)
         .await?
         .try_for_each(|template| {
+            tracing::debug!("Importing {:?}", template);
             let template_name = template
                 .file_stem()
                 .expect("file stem")
                 .to_str()
                 .expect("template_name")
                 .to_string();
+
             let client = client.clone();
             async move {
                 let config = config::Config::default()

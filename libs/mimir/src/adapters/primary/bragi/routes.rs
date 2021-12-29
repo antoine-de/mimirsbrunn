@@ -162,6 +162,7 @@ pub fn forward_geocoder_query(
             // max_depth=1:
             // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
             let config = Config::new(2, false);
+            tracing::info!("Autocomplete query : {}", param);
             config.deserialize_str(&param).map_err(|err| {
                 warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::CannotDeserialize,
@@ -182,6 +183,7 @@ pub fn forward_geocoder_explain_query(
         // max_depth=1:
         // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
         let config = Config::new(2, false);
+        tracing::info!("forward_geocoder_explain query : {}", param);
         config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
@@ -283,6 +285,7 @@ pub fn reverse_geocoder_query(
 ) -> impl Filter<Extract = (ReverseGeocoderQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
+        tracing::info!("Reverse geocoder query : {}", param);
         config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
@@ -295,6 +298,7 @@ pub fn reverse_geocoder_query(
 pub fn features_query() -> impl Filter<Extract = (FeaturesQuery,), Error = Rejection> + Copy {
     warp::filters::query::raw().and_then(|param: String| async move {
         let config = Config::new(2, false);
+        tracing::info!("Features query : {}", param);
         config.deserialize_str(&param).map_err(|err| {
             warp::reject::custom(InvalidRequest {
                 reason: InvalidRequestReason::CannotDeserialize,
@@ -317,6 +321,7 @@ pub fn metrics() -> impl Filter<Extract = (), Error = Rejection> + Clone {
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
     let reply = if let Some(err) = rejection.find::<warp::reject::InvalidQuery>() {
+        tracing::info!("Invalid query {:?}", err);
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "invalid query".to_string(),
@@ -325,6 +330,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::BAD_REQUEST,
         )
     } else if let Some(err) = rejection.find::<InvalidRequest>() {
+        tracing::info!("Invalid request {:?}", err);
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "validation error".to_string(),
@@ -333,6 +339,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::BAD_REQUEST,
         )
     } else if let Some(err) = rejection.find::<InternalError>() {
+        tracing::info!("Internal error {:?}", err);
         let short = match err.reason {
             InternalErrorReason::ObjectNotFoundError => "Unable to find object".to_string(),
             _ => "query error".to_string(),
@@ -345,6 +352,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::BAD_REQUEST,
         )
     } else if let Some(err) = rejection.find::<MethodNotAllowed>() {
+        tracing::info!("MethodNotAllowed {:?}", err);
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "no route".to_string(),
@@ -353,6 +361,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::NOT_FOUND,
         )
     } else {
+        tracing::info!("Internal server error");
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "INTERNAL_SERVER_ERROR".to_string(),

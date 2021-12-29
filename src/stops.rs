@@ -212,6 +212,7 @@ pub async fn index_ntfs(
         stop.weight = (stop.weight + admin_weight) / 2.0;
     }
 
+    tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, config, futures::stream::iter(stops)).await
 }
 
