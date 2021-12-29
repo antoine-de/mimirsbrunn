@@ -105,19 +105,18 @@ pub async fn forward_geocoder(
                 .await;
                 match result_fuzzy_query {
                     Ok(resp) => Ok(with_status(json(&resp), StatusCode::OK)),
-                    Err(_err) => Err(warp::reject::custom(InternalError {
+                    Err(err) => Err(warp::reject::custom(InternalError {
                         reason: InternalErrorReason::ObjectNotFoundError,
-                        info: "Unable to find object".to_string(),
+                        info: err.to_string(),
                     })),
                 }
             } else {
-                println!("Prefix query");
                 Ok(with_status(json(&resp), StatusCode::OK))
             }
         }
-        Err(_err) => Err(warp::reject::custom(InternalError {
+        Err(err) => Err(warp::reject::custom(InternalError {
             reason: InternalErrorReason::ObjectNotFoundError,
-            info: "Unable to find object".to_string(),
+            info: err.to_string(),
         })),
     }
 }
@@ -129,8 +128,7 @@ async fn send_query(
     es_indices_to_search_in: Vec<String>,
     filters: Filters,
     q: &str,
-) -> Result<GeocodeJsonResponse, StatusCode> {
-    // TODO Status code is not usefull anymore
+) -> Result<GeocodeJsonResponse, &str> {
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
@@ -156,10 +154,10 @@ async fn send_query(
                         .collect();
                     Ok(GeocodeJsonResponse::new(q.to_string(), features))
                 }
-                Err(_err) => Err(StatusCode::ACCEPTED),
+                Err(_err) => Err("Unable to find object")
             }
         }
-        Err(_err) => Err(StatusCode::ACCEPTED),
+        Err(_err) => Err("Unable to find object")
     }
 }
 
