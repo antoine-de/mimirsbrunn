@@ -99,7 +99,7 @@ pub async fn index_pois(
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
     let mut config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["osm2mimir", "elasticsearch", "logging"],
+        &["osm2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],
@@ -172,7 +172,7 @@ pub async fn index_streets(
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
     let mut config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["osm2mimir", "elasticsearch", "logging"],
+        &["osm2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],

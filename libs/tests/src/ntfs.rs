@@ -50,7 +50,7 @@ pub async fn index_stops(
 
     let mut config: mimirsbrunn::settings::ntfs2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["ntfs2mimir", "elasticsearch", "logging"],
+        &["ntfs2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],

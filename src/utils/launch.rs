@@ -30,7 +30,6 @@
 
 use futures::future::Future;
 use lazy_static::lazy_static;
-use std::path::Path;
 use tokio::runtime;
 use tracing::error;
 
@@ -42,10 +41,7 @@ lazy_static! {
 
 // Ensures the logger is initialized prior to launching a function, and also making sure the logger
 // is flushed at the end. Whatever is returned by the main function is forwarded out.
-pub async fn wrapped_launch_async<F, Fut>(
-    _logging_path: &Path,
-    run: F,
-) -> Result<(), Box<dyn std::error::Error>>
+pub async fn wrapped_launch_async<F, Fut>(run: F) -> Result<(), Box<dyn std::error::Error>>
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
@@ -74,7 +70,6 @@ where
 // Ensures the logger is initialized prior to launching a function, and also making sure the logger
 // is flushed at the end. Whatever is returned by the main function is forwarded out.
 pub fn launch_with_runtime<F>(
-    _logging_path: &Path,
     nb_threads: Option<usize>,
     run: F,
 ) -> Result<(), Box<dyn std::error::Error>>

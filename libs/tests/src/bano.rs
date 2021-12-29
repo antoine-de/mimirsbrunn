@@ -79,7 +79,7 @@ pub async fn index_addresses(
     // Load file
     let mut config: mimirsbrunn::settings::bano2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["bano2mimir", "elasticsearch", "logging"],
+        &["bano2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],

@@ -21,11 +21,6 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Container {
     pub dataset: String,
 }
@@ -33,7 +28,6 @@ pub struct Container {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
     pub nb_threads: Option<usize>,
@@ -90,7 +84,7 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["poi2mimir", "elasticsearch", "logging"],
+            &["poi2mimir", "elasticsearch"],
             opts.run_mode.as_deref(),
             "MIMIR",
             opts.settings.clone(),
