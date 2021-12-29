@@ -1055,7 +1055,8 @@ impl ElasticsearchStorage {
                 }
             }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
             .unwrap_or(self.config.timeout);
-        let timeout_str = format!("{}ms", timeout.as_millis());
+        let shard_timeout = format!("{}ms", timeout.as_millis());
+        let request_timeout = timeout.saturating_add(timeout);
 
         let search = self
             .client
@@ -1067,10 +1068,12 @@ impl ElasticsearchStorage {
             .terminate_after(limit_result)
             // global search will end when limit_result are found
             .size(limit_result)
-            // search in each *shard* will end after timeout_str
-            .timeout(&timeout_str)
-            // global search will end after 2*timeout
-            .request_timeout(timeout.saturating_add(timeout));
+            // search in each *shard* will end after shard_timeout
+            .timeout(&shard_timeout)
+            // response will be a 408 REQUEST TIMEOUT
+            // if I did not receive a full http response from elasticsearch
+            // after request_timeout
+            .request_timeout(request_timeout);
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
