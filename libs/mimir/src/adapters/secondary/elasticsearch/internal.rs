@@ -1064,8 +1064,6 @@ impl ElasticsearchStorage {
             // we don't care for the total number of hits, and it takes some time to compute
             // so we disable it
             .track_total_hits(TrackTotalHits::Track(false))
-            // search in each *shard* will end after limit_result hits are found
-            .terminate_after(limit_result)
             // global search will end when limit_result are found
             .size(limit_result)
             // search in each *shard* will end after shard_timeout
@@ -1073,7 +1071,13 @@ impl ElasticsearchStorage {
             // response will be a 408 REQUEST TIMEOUT
             // if I did not receive a full http response from elasticsearch
             // after request_timeout
-            .request_timeout(request_timeout);
+            .request_timeout(request_timeout)
+            // search in each *shard* will end after shard_limit_result hits are found
+            // we do not active it, since it means that we may not find the right hit.
+            // We did some test when looking for a specific address : we could not 
+            // obtain the right address even with shard_limit_result = 10_000
+            //.terminate_after(shard_limit_result)
+            ;
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
