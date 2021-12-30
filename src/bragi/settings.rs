@@ -1,9 +1,11 @@
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::utils::deserialize::deserialize_duration;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use snafu::Snafu;
 use std::env;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use mimir::adapters::primary::common::settings::QuerySettings;
 
@@ -56,6 +58,12 @@ pub struct Settings {
     pub service: Service,
     pub nb_threads: Option<usize>,
     pub http_cache_duration: usize,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub autocomplete_timeout: Duration,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub reverse_timeout: Duration,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub features_timeout: Duration,
 }
 
 #[derive(Debug, clap::Parser)]

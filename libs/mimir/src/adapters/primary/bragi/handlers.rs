@@ -1,5 +1,6 @@
 use crate::adapters::primary::bragi::prometheus_handler;
 use geojson::Geometry;
+use std::time::Duration;
 use tracing::{debug, instrument};
 use warp::reply::{json, with_status};
 use warp::{http::StatusCode, reject::Reject};
@@ -49,13 +50,14 @@ pub async fn forward_geocoder<S>(
     geometry: Option<Geometry>,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
     S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
-    let timeout = params.timeout;
+    let timeout = params.timeout.unwrap_or(timeout);
     let es_indices_to_search_in =
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
@@ -73,7 +75,7 @@ where
             es_indices_to_search_in,
             Query::QueryDSL(dsl),
             filters.limit,
-            timeout,
+            Some(timeout),
         )
         .await
     {
@@ -122,6 +124,7 @@ pub async fn forward_geocoder_explain<S>(
     geometry: Option<Geometry>,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: ExplainDocument,
@@ -150,11 +153,13 @@ pub async fn reverse_geocoder<S>(
     params: ReverseGeocoderQuery,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
     S::Document: Serialize + Into<serde_json::Value>,
 {
+    let timeout = params.timeout.unwrap_or(timeout);
     let distance = format!("{}m", settings.reverse_query.radius);
     let dsl = dsl::build_reverse_query(&distance, params.lat, params.lon);
 
@@ -174,7 +179,7 @@ where
             es_indices_to_search_in,
             Query::QueryDSL(dsl),
             params.limit,
-            params.timeout,
+            Some(timeout),
         )
         .await
     {
@@ -198,13 +203,13 @@ pub async fn features<S>(
     doc_id: String,
     params: FeaturesQuery,
     client: S,
-    _settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: GetDocuments,
     S::Document: Serialize + Into<serde_json::Value>,
 {
-    let timeout = params.timeout;
+    let timeout = params.timeout.unwrap_or(timeout);
     let es_indices_to_search_in =
         build_es_indices_to_search(&None, &params.pt_dataset, &params.poi_dataset);
     let dsl = dsl::build_features_query(&es_indices_to_search_in, &doc_id);
@@ -216,7 +221,7 @@ where
     );
 
     match client
-        .get_documents_by_id(Query::QueryDSL(dsl), timeout)
+        .get_documents_by_id(Query::QueryDSL(dsl), Some(timeout))
         .await
     {
         Ok(res) => {

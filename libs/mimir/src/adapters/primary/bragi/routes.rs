@@ -9,6 +9,7 @@ use geojson::{GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_qs::Config;
 use std::convert::Infallible;
+use std::time::Duration;
 use tracing::instrument;
 use url::Url;
 use warp::reject::MethodNotAllowed;
@@ -116,6 +117,12 @@ pub fn with_settings(
     settings: QuerySettings,
 ) -> impl Filter<Extract = (QuerySettings,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || settings.clone())
+}
+
+pub fn with_timeout(
+    timeout: Duration,
+) -> impl Filter<Extract = (Duration,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || timeout)
 }
 
 pub fn with_elasticsearch(
