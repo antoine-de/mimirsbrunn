@@ -15,19 +15,16 @@ pub fn build_query(
     let string_query = build_string_query(q, lang, &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
 
-    let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
-    let filters = vec![build_house_number_condition(q), build_matching_condition(q)]
-        .append(filters_poi.as_mut());
+    let _filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
+    let filter_matching_condition = build_matching_condition(q);
+    let _filter_house_number_condition = build_house_number_condition(q);
+
     json!({
         "query": {
             "bool": {
                 "must": [ type_query, string_query ],
                 "should": boosts,
-                "filter": {
-                    "bool": {
-                        "must": filters
-                    }
-                }
+                "filter": [filter_matching_condition]
             }
         },
         "_source": {
@@ -208,10 +205,10 @@ fn build_matching_condition(q: &str) -> serde_json::Value {
     // * to exactly match the document house_number
     // * or that the document has no house_number
     json!({
-        "match": {
-            "full_label.prefix": {
-                "query": q,
-                "operator": "and"
+        "prefix": {
+            "label": {
+              "value": q,
+              "case_insensitive": true
             }
         }
     })
