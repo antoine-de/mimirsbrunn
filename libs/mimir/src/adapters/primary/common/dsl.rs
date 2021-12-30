@@ -383,16 +383,18 @@ pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
             "should": [
             {
                 "bool": {
-                    "must": {
-                        "term": {
-                            "_source.type": "poi"
+                    "must": [
+                        {
+                            "term": {
+                                "_source.type": "poi"
+                            }
+                        },
+                        {
+                            "term": {
+                                "_source.poi_type.id": poi_types
+                            }
                         }
-                    },
-                    "filter": {
-                        "terms": {
-                            "_source.poi_type.id": poi_types
-                        }
-                    }
+                    ]
                 }
             },
             {
@@ -430,16 +432,18 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
             "should": [
                 {
                     "bool": {
-                        "must": {
-                            "term": {
-                                "type": "admin"
+                        "must": [
+                            {
+                                "term": {
+                                    "type": "admin"
+                                }
+                            },
+                            {
+                                "term": {
+                                    "zone_type": zone_types
+                                }
                             }
-                        },
-                        "filter": {
-                            "terms": {
-                                "zone_type":zone_types
-                            }
-                        }
+                        ]
                     }
                 },
                 {
