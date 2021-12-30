@@ -15,19 +15,16 @@ pub fn build_query(
     let string_query = build_string_query(q, lang, &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
 
-    let mut filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
-    let filters = vec![build_house_number_condition(q), build_matching_condition(q)]
-        .append(filters_poi.as_mut());
+    let mut filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
+    filters.push(build_matching_condition(q));
+    filters.push(build_house_number_condition(q));
+
     json!({
         "query": {
             "bool": {
                 "must": [ type_query, string_query ],
                 "should": boosts,
-                "filter": {
-                    "bool": {
-                        "must": filters
-                    }
-                }
+                "filter": filters
             }
         },
         "_source": {
@@ -192,11 +189,11 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
         // If the query contains a single word, we don't exact any house number in the result.
         json!({
             "bool": {
-                "must_not": {
-                    "exists": {
-                        "field": "house_number"
-                    }
-                },
+              "must_not": {
+                "exists": {
+                  "field": "house_number"
+                }
+              }
             }
         })
     }
@@ -208,10 +205,10 @@ fn build_matching_condition(q: &str) -> serde_json::Value {
     // * to exactly match the document house_number
     // * or that the document has no house_number
     json!({
-        "match": {
-            "full_label.prefix": {
-                "query": q,
-                "operator": "and"
+        "prefix": {
+            "label": {
+              "value": q,
+              "case_insensitive": true
             }
         }
     })
@@ -386,16 +383,18 @@ pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
             "should": [
             {
                 "bool": {
-                    "must": {
-                        "term": {
-                            "_source.type": "poi"
+                    "must": [
+                        {
+                            "term": {
+                                "_source.type": "poi"
+                            }
+                        },
+                        {
+                            "term": {
+                                "_source.poi_type.id": poi_types
+                            }
                         }
-                    },
-                    "filter": {
-                        "terms": {
-                            "_source.poi_type.id": poi_types
-                        }
-                    }
+                    ]
                 }
             },
             {
@@ -433,16 +432,18 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
             "should": [
                 {
                     "bool": {
-                        "must": {
-                            "term": {
-                                "type": "admin"
+                        "must": [
+                            {
+                                "term": {
+                                    "type": "admin"
+                                }
+                            },
+                            {
+                                "term": {
+                                    "zone_type": zone_types
+                                }
                             }
-                        },
-                        "filter": {
-                            "terms": {
-                                "zone_type":zone_types
-                            }
-                        }
+                        ]
                     }
                 },
                 {
