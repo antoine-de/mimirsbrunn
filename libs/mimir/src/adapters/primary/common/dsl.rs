@@ -15,16 +15,16 @@ pub fn build_query(
     let string_query = build_string_query(q, lang, &settings.string_query);
     let boosts = build_boosts(q, settings, &filters);
 
-    let _filters_poi = build_filters(filters.shape, filters.poi_types, filters.zone_types);
-    let filter_matching_condition = build_matching_condition(q);
-    let _filter_house_number_condition = build_house_number_condition(q);
+    let mut filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
+    filters.push(build_matching_condition(q));
+    filters.push(build_house_number_condition(q));
 
     json!({
         "query": {
             "bool": {
                 "must": [ type_query, string_query ],
                 "should": boosts,
-                "filter": [filter_matching_condition]
+                "filter": filters
             }
         },
         "_source": {
@@ -189,11 +189,11 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
         // If the query contains a single word, we don't exact any house number in the result.
         json!({
             "bool": {
-                "must_not": {
-                    "exists": {
-                        "field": "house_number"
-                    }
-                },
+              "must_not": {
+                "exists": {
+                  "field": "house_number"
+                }
+              }
             }
         })
     }
