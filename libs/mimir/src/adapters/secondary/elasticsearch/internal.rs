@@ -6,6 +6,7 @@ use elasticsearch::indices::{
     IndicesPutIndexTemplateParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
+use elasticsearch::params::TrackTotalHits;
 use elasticsearch::{
     BulkOperation, BulkParts, ExplainParts, MgetParts, OpenPointInTimeParts, SearchParts,
 };
@@ -1054,12 +1055,29 @@ impl ElasticsearchStorage {
                 }
             }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
             .unwrap_or(self.config.timeout);
+        let shard_timeout = format!("{}ms", timeout.as_millis());
+        let request_timeout = timeout.saturating_add(timeout);
 
         let search = self
             .client
             .search(SearchParts::Index(&indices))
+            // we don't care for the total number of hits, and it takes some time to compute
+            // so we disable it
+            .track_total_hits(TrackTotalHits::Track(false))
+            // global search will end when limit_result are found
             .size(limit_result)
-            .request_timeout(timeout);
+            // search in each *shard* will end after shard_timeout
+            .timeout(&shard_timeout)
+            // response will be a 408 REQUEST TIMEOUT
+            // if I did not receive a full http response from elasticsearch
+            // after request_timeout
+            .request_timeout(request_timeout)
+            // search in each *shard* will end after shard_limit_result hits are found
+            // we do not active it, since it means that we may not find the right hit.
+            // We did some test when looking for a specific address : we could not 
+            // obtain the right address even with shard_limit_result = 10_000
+            //.terminate_after(shard_limit_result)
+            ;
 
         let response = match query {
             Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {

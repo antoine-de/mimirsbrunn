@@ -184,12 +184,13 @@ pub struct StatusResponseBody {
 /// in the body.
 #[macro_export]
 macro_rules! forward_geocoder {
-    ($cl:expr, $st:expr) => {
+    ($cl:expr, $st:expr, $ti:expr) => {
         routes::forward_geocoder_get()
             .or(routes::forward_geocoder_post())
             .unify()
             .and(routes::with_client($cl))
             .and(routes::with_settings($st))
+            .and(routes::with_timeout($ti))
             .and_then(handlers::forward_geocoder)
     };
 }
@@ -198,12 +199,13 @@ pub use forward_geocoder;
 
 #[macro_export]
 macro_rules! forward_geocoder_explain {
-    ($cl:expr, $st:expr) => {
+    ($cl:expr, $st:expr, $ti:expr) => {
         routes::forward_geocoder_explain_get()
             .or(routes::forward_geocoder_explain_post())
             .unify()
             .and(routes::with_client($cl))
             .and(routes::with_settings($st))
+            .and(routes::with_timeout($ti))
             .and_then(handlers::forward_geocoder_explain)
     };
 }
@@ -211,10 +213,11 @@ pub use forward_geocoder_explain;
 
 #[macro_export]
 macro_rules! reverse_geocoder {
-    ($cl:expr, $st:expr) => {
+    ($cl:expr, $st:expr, $ti:expr) => {
         routes::reverse_geocoder()
             .and(routes::with_client($cl))
             .and(routes::with_settings($st))
+            .and(routes::with_timeout($ti))
             .and_then(handlers::reverse_geocoder)
     };
 }
@@ -222,10 +225,10 @@ pub use reverse_geocoder;
 
 #[macro_export]
 macro_rules! features {
-    ($cl:expr, $st:expr) => {
+    ($cl:expr, $ti:expr) => {
         routes::features()
             .and(routes::with_client($cl))
-            .and(routes::with_settings($st))
+            .and(routes::with_timeout($ti))
             .and_then(handlers::features)
     };
 }

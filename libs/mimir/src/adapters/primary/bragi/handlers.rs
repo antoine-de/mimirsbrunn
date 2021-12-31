@@ -53,9 +53,14 @@ pub async fn forward_geocoder(
     geometry: Option<Geometry>,
     client: ElasticsearchStorage,
     settings: settings::QuerySettings,
-) -> Result<impl warp::Reply, warp::Rejection> {
+    timeout: Duration,
+) -> Result<impl warp::Reply, warp::Rejection>
+/*where
+    S: SearchDocuments,
+    S::Document: Serialize + Into<serde_json::Value>,*/
+{
     let q = params.q.clone();
-    let timeout = params.timeout;
+    let timeout = params.timeout.unwrap_or(timeout);
     let es_indices_to_search_in =
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
@@ -77,7 +82,7 @@ pub async fn forward_geocoder(
     let result_prefix_query = send_query(
         client.clone(),
         dsl_query_prefix,
-        timeout,
+        Some(timeout),
         es_indices_to_search_in.clone(),
         filters.clone(),
         &q,
@@ -97,7 +102,7 @@ pub async fn forward_geocoder(
                 let result_fuzzy_query = send_query(
                     client,
                     dsl_query_fuzzy,
-                    timeout,
+                    Some(timeout),
                     es_indices_to_search_in,
                     filters,
                     &q,
@@ -141,6 +146,10 @@ async fn send_query(
         .await
     {
         Ok(res) => {
+            tracing::trace!(
+                "Elasticsearch response {}",
+                serde_json::to_string_pretty(&res).unwrap()
+            );
             let places: Result<Vec<Place>, serde_json::Error> = res
                 .into_iter()
                 .map(serde_json::from_value::<Place>)
@@ -157,7 +166,10 @@ async fn send_query(
                 Err(_err) => Err("Unable to find object"),
             }
         }
-        Err(_err) => Err("Unable to find object"),
+        Err(err) => {
+            tracing::trace!("Elasticsearch reponded with error {:?}", &err);
+            Err("no object found")
+        }
     }
 }
 
@@ -167,6 +179,7 @@ pub async fn forward_geocoder_explain<S>(
     geometry: Option<Geometry>,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: ExplainDocument,
@@ -195,11 +208,13 @@ pub async fn reverse_geocoder<S>(
     params: ReverseGeocoderQuery,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
     S::Document: Serialize + Into<serde_json::Value>,
 {
+    let timeout = params.timeout.unwrap_or(timeout);
     let distance = format!("{}m", settings.reverse_query.radius);
     let dsl = dsl::build_reverse_query(&distance, params.lat, params.lon);
 
@@ -219,7 +234,7 @@ where
             es_indices_to_search_in,
             Query::QueryDSL(dsl),
             params.limit,
-            params.timeout,
+            Some(timeout),
         )
         .await
     {
@@ -243,13 +258,13 @@ pub async fn features<S>(
     doc_id: String,
     params: FeaturesQuery,
     client: S,
-    _settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: GetDocuments,
     S::Document: Serialize + Into<serde_json::Value>,
 {
-    let timeout = params.timeout;
+    let timeout = params.timeout.unwrap_or(timeout);
     let es_indices_to_search_in =
         build_es_indices_to_search(&None, &params.pt_dataset, &params.poi_dataset);
     let dsl = dsl::build_features_query(&es_indices_to_search_in, &doc_id);
@@ -261,7 +276,7 @@ where
     );
 
     match client
-        .get_documents_by_id(Query::QueryDSL(dsl), timeout)
+        .get_documents_by_id(Query::QueryDSL(dsl), Some(timeout))
         .await
     {
         Ok(res) => {

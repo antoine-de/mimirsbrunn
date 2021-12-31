@@ -74,25 +74,37 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
         .context(ElasticsearchConnection)?;
 
     // Here I place reverse_geocoder first because its most likely to get hit.
-    let api = reverse_geocoder!(client.clone(), settings.query.clone())
-        .or(forward_geocoder!(client.clone(), settings.query.clone()))
-        .or(features!(client.clone(), settings.query.clone()))
-        .or(forward_geocoder_explain!(client.clone(), settings.query))
-        .or(status!(client.clone(), &settings.elasticsearch.url))
-        .or(metrics!())
-        .recover(routes::report_invalid)
-        .with(warp::wrap_fn(|filter| {
-            routes::cache_filter(filter, settings.http_cache_duration)
-        }))
-        .with(warp::log::custom(update_metrics))
-        .with(warp::trace(|info| {
-            // Create a span using tracing macros
-            tracing::info_span!(
-                "request",
-                method = %info.method(),
-                path = %info.path(),
-            )
-        }));
+    let api = reverse_geocoder!(
+        client.clone(),
+        settings.query.clone(),
+        settings.reverse_timeout
+    )
+    .or(forward_geocoder!(
+        client.clone(),
+        settings.query.clone(),
+        settings.autocomplete_timeout
+    ))
+    .or(features!(client.clone(), settings.features_timeout))
+    .or(forward_geocoder_explain!(
+        client.clone(),
+        settings.query,
+        settings.autocomplete_timeout
+    ))
+    .or(status!(client.clone(), &settings.elasticsearch.url))
+    .or(metrics!())
+    .recover(routes::report_invalid)
+    .with(warp::wrap_fn(|filter| {
+        routes::cache_filter(filter, settings.http_cache_duration)
+    }))
+    .with(warp::log::custom(update_metrics))
+    .with(warp::trace(|info| {
+        // Create a span using tracing macros
+        tracing::info_span!(
+            "request",
+            method = %info.method(),
+            path = %info.path(),
+        )
+    }));
 
     info!("api ready");
 
