@@ -6,6 +6,7 @@ use warp::reply::{json, with_status};
 use warp::{http::StatusCode, reject::Reject};
 
 use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
+use crate::adapters::primary::common::dsl::QueryType;
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
@@ -62,60 +63,80 @@ where
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
     let filters = filters::Filters::from((params, geometry));
-    let dsl = dsl::build_query(&q, filters.clone(), lang.as_str(), &settings);
+    let dsl_query_prefix = dsl::build_query(
+        &q,
+        filters.clone(),
+        lang.as_str(),
+        &settings,
+        QueryType::PREFIX,
+    );
+    let dsl_query_fuzzy = dsl::build_query(
+        &q,
+        filters.clone(),
+        lang.as_str(),
+        &settings,
+        QueryType::FUZZY,
+    );
 
     tracing::trace!(
         "Searching in indexes {:?} with query {}",
         es_indices_to_search_in,
-        serde_json::to_string_pretty(&dsl).unwrap()
+        serde_json::to_string_pretty(&dsl_query_prefix).unwrap()
     );
 
-    match client
-        .search_documents(
-            es_indices_to_search_in,
-            Query::QueryDSL(dsl),
+    let futurs = vec![
+        client.search_documents(
+            es_indices_to_search_in.clone(),
+            Query::QueryDSL(dsl_query_prefix.clone()),
             filters.limit,
             Some(timeout),
-        )
-        .await
-    {
-        Ok(res) => {
-            tracing::trace!(
-                "Elasticsearch response {}",
-                serde_json::to_string_pretty(&res).unwrap()
-            );
-            let places: Result<Vec<Place>, serde_json::Error> = res
-                .into_iter()
-                .map(|json| serde_json::from_value::<Place>(json.into()))
-                .collect();
+        ),
+        client.search_documents(
+            es_indices_to_search_in.clone(),
+            Query::QueryDSL(dsl_query_fuzzy),
+            filters.limit,
+            Some(timeout),
+        ),
+    ];
 
-            match places {
-                Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
-                    reason: InternalErrorReason::ObjectNotFoundError,
-                    info: "Unable to find object".to_string(),
-                })),
-                Ok(places) => {
-                    let features = places
-                        .into_iter()
-                        .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
-                        .collect();
-                    let resp = GeocodeJsonResponse::new(q, features);
-                    Ok(with_status(json(&resp), StatusCode::OK))
+    for futur in futurs {
+        match futur.await {
+            Ok(res) => {
+                let places: Result<Vec<Place>, serde_json::Error> = res
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json.into()))
+                    .collect();
+                match places {
+                    Ok(places) if places.is_empty() => {}
+                    Ok(places) => {
+                        let features = places
+                            .into_iter()
+                            .map(|p| Feature::from_with_lang(p, None))
+                            .collect();
+                        let resp = GeocodeJsonResponse::new(q, features);
+                        return Ok(with_status(json(&resp), StatusCode::OK));
+                    }
+                    Err(err) => {
+                        return Err(warp::reject::custom(InternalError {
+                            reason: InternalErrorReason::SerializationError,
+                            info: err.to_string(),
+                        }))
+                    }
                 }
-                Err(err) => Err(warp::reject::custom(InternalError {
-                    reason: InternalErrorReason::SerializationError,
+            }
+            Err(err) => {
+                return Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::ElasticSearchError,
                     info: err.to_string(),
-                })),
+                }))
             }
         }
-        Err(err) => {
-            tracing::trace!("Elasticsearch reponded with error {}", &err);
-            Err(warp::reject::custom(InternalError {
-                reason: InternalErrorReason::ElasticSearchError,
-                info: err.to_string(),
-            }))
-        }
     }
+
+    Err(warp::reject::custom(InternalError {
+        reason: InternalErrorReason::ObjectNotFoundError,
+        info: "Object not found".to_string(),
+    }))
 }
 
 #[instrument(skip(client, settings))]
@@ -133,7 +154,7 @@ where
     let q = params.query.q.clone();
     let lang = params.query.lang.clone();
     let filters = filters::Filters::from((params.query, geometry));
-    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings);
+    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings, QueryType::PREFIX);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
@@ -410,7 +431,7 @@ mod tests {
         let es_indices = indices_builder(
             "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house&type[]=public_transport:stop_area",
         )
-        .await;
+            .await;
         assert_eq!(es_indices, ["",]);
     }
 

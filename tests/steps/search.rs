@@ -10,6 +10,7 @@ use std::cmp::Ordering;
 use crate::error::Error;
 use crate::state::{GlobalState, State, Step, StepStatus};
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::primary::common::dsl::QueryType;
 use mimir::adapters::primary::{
     common::coord::Coord, common::dsl::build_query, common::filters::Filters,
     common::settings::QuerySettings,
@@ -107,6 +108,7 @@ impl Step for Search {
             self.filters.clone(),
             "fr",
             &QuerySettings::default(),
+            QueryType::PREFIX,
         );
 
         // Fetch documents

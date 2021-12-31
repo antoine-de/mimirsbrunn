@@ -5,18 +5,25 @@ use serde_json::json;
 use super::coord::Coord;
 use super::{filters, settings};
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum QueryType {
+    PREFIX,
+    FUZZY,
+}
+
 pub fn build_query(
     q: &str,
     filters: filters::Filters,
     lang: &str,
     settings: &settings::QuerySettings,
+    query_type: QueryType,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query.boosts);
-    let string_query = build_string_query(q, lang, &settings.string_query);
-    let boosts = build_boosts(q, settings, &filters);
-
+    let string_query =
+        build_string_query(q, lang, &settings.string_query, query_type, &filters.coord);
+    let boosts = build_boosts(q, settings, &filters, query_type);
     let mut filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
-    filters.push(build_matching_condition(q));
+    filters.push(build_matching_condition(q, query_type));
     filters.push(build_house_number_condition(q));
 
     json!({
@@ -33,7 +40,51 @@ pub fn build_query(
     })
 }
 
-fn build_string_query(q: &str, lang: &str, settings: &StringQuery) -> serde_json::Value {
+fn build_string_query(
+    q: &str,
+    lang: &str,
+    settings: &StringQuery,
+    query_type: QueryType,
+    coord: &Option<Coord>,
+) -> serde_json::Value {
+    let mut string_should = Vec::new();
+    string_should.push(build_multi_match_query(
+        q,
+        vec!["name", format!("names.{}", lang).as_str()],
+        settings.boosts.name,
+    ));
+    string_should.push(build_multi_match_query(
+        q,
+        vec!["label", format!("label.{}", lang).as_str()],
+        settings.boosts.label,
+    ));
+    string_should.push(build_multi_match_query(
+        q,
+        vec!["label.prefix", format!("label.{}.prefix", lang).as_str()],
+        settings.boosts.label_prefix,
+    ));
+    string_should.push(build_match_query(q, "zip_codes", settings.boosts.zip_codes));
+    string_should.push(build_match_query(
+        q,
+        "house_number",
+        settings.boosts.house_number,
+    ));
+
+    if let QueryType::FUZZY = query_type {
+        if coord.is_some() {
+            string_should.push(build_multi_match_query(
+                q,
+                vec!["label.ngram", format!("label.{}.ngram", lang).as_str()],
+                settings.boosts.label_ngram_with_coord,
+            ));
+        } else {
+            string_should.push(build_multi_match_query(
+                q,
+                vec!["label.ngram", format!("label.{}.ngram", lang).as_str()],
+                settings.boosts.label_ngram,
+            ));
+        }
+    }
     json!({
         "bool": {
             "boost": settings.global,
@@ -85,14 +136,18 @@ fn build_boosts(
     _q: &str,
     settings: &settings::QuerySettings,
     filters: &filters::Filters,
+    query_type: QueryType,
 ) -> Vec<serde_json::Value> {
     let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
-    // TODO: in production, admins are boosted by their weight only in prefix mode.
-    let admin_weight_boost = Some(build_admin_weight_query(
-        &settings.importance_query,
-        &filters.coord,
-    ));
-    boosts.push(admin_weight_boost);
+
+    if let QueryType::PREFIX = query_type {
+        let admin_weight_boost = Some(build_admin_weight_query(
+            &settings.importance_query,
+            &filters.coord,
+        ));
+        boosts.push(admin_weight_boost);
+    }
+
     let mut decay = settings.importance_query.proximity.decay.clone();
     if let Some(proximity) = &filters.proximity {
         decay.scale = proximity.scale;
@@ -199,19 +254,44 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
     }
 }
 
-fn build_matching_condition(q: &str) -> serde_json::Value {
+fn build_matching_condition(q: &str, query_type: QueryType) -> serde_json::Value {
     // Filter to handle house number.
     // We either want:
     // * to exactly match the document house_number
     // * or that the document has no house_number
-    json!({
-        "prefix": {
-            "label": {
-              "value": q,
-              "case_insensitive": true
+    match query_type {
+        // When the match type is Prefix, we want to use every possible information even though
+        // these are not present in label, for instance, the zip_code.
+        // The field full_label contains all of them and will do the trick.
+        // The query must at least match with elision activated, matching without elision will
+        // provide extra score bellow.
+        QueryType::PREFIX => json!({
+            "prefix": {
+                "label": {
+                  "value": q,
+                  "case_insensitive": true
+                }
             }
-        }
-    })
+        }),
+        // for fuzzy search we lower our expectation & we accept a certain percentage of token match
+        // on full_label.ngram
+        // The values defined here are empirical,
+        // it's supposed to be able to manage cases BOTH missspelt one-word
+        // www.elastic.co/guide/en/elasticsearch/guide/current/match-multi-word.html#match-precision
+        // requests AND very long requests.
+        // Missspelt one-word request:
+        //     Vaureaaal (instead of Vaureal)
+        // Very long requests:
+        //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
+        QueryType::FUZZY => json!({
+            "match": {
+                "label": {
+                    "query": q,
+                    "minimum_should_match": "1<-1 3<-2 9<-4 20<25"
+                }
+            }
+        }),
+    }
 }
 
 fn build_admin_weight_query(
@@ -254,6 +334,8 @@ fn build_place_type_boost(settings: &settings::Types) -> serde_json::Value {
     })
 }
 
+/// Create a `Query` that boosts results according to the
+/// distance to `coord`.
 fn build_proximity_boost(coord: Coord, settings_decay: &settings::Decay) -> serde_json::Value {
     let settings::Decay {
         func,
@@ -474,6 +556,27 @@ pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Val
         })
         .collect();
     json!({ "docs": vec })
+}
+
+fn build_multi_match_query(query: &str, fields: Vec<&str>, boost: f64) -> serde_json::Value {
+    json!({
+        "multi_match": {
+            "query": query,
+            "fields": fields,
+            "boost": boost
+        }
+    })
+}
+
+fn build_match_query(query: &str, field: &str, boost: f64) -> serde_json::Value {
+    json!({
+        "match": {
+            field: {
+                "query": query,
+                "boost": boost
+            }
+        }
+    })
 }
 
 // fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {

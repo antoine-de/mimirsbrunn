@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use tokio::fs::File;
 
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::primary::common::dsl::QueryType;
 use mimir::adapters::secondary::elasticsearch::{
     remote::connection_test_pool, ElasticsearchStorageConfig,
 };
@@ -97,7 +98,8 @@ fn bench(c: &mut Criterion) {
                         let rec = rec.unwrap();
                         let client = client.clone();
                         let filters = filters.clone();
-                        let dsl = build_query(&rec.query, filters, "fr", &settings);
+                        let dsl =
+                            build_query(&rec.query, filters, "fr", &settings, QueryType::PREFIX);
 
                         async move {
                             let _values = client
