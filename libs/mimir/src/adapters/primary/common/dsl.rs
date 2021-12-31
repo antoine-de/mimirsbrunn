@@ -285,7 +285,7 @@ fn build_matching_condition(q: &str, query_type: QueryType) -> serde_json::Value
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
         QueryType::FUZZY => json!({
             "match": {
-                "full_label.ngram": {
+                "label": {
                     "query": q,
                     "minimum_should_match": "1<-1 3<-2 9<-4 20<25"
                 }

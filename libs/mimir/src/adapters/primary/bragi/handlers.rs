@@ -1,4 +1,5 @@
 use crate::adapters::primary::bragi::prometheus_handler;
+use futures::future;
 use geojson::Geometry;
 use std::time::Duration;
 use tracing::{debug, instrument};
@@ -7,7 +8,6 @@ use warp::{http::StatusCode, reject::Reject};
 
 use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
 use crate::adapters::primary::common::dsl::QueryType;
-use crate::adapters::primary::common::filters::Filters;
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
@@ -18,7 +18,6 @@ use crate::adapters::primary::{
         settings,
     },
 };
-use crate::adapters::secondary::elasticsearch::ElasticsearchStorage;
 use crate::domain::model::configuration::{root_doctype, root_doctype_dataset};
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::explain_query::ExplainDocument;
@@ -48,16 +47,16 @@ pub struct InternalError {
 impl Reject for InternalError {}
 
 #[instrument(skip(client, settings))]
-pub async fn forward_geocoder(
+pub async fn forward_geocoder<S>(
     params: ForwardGeocoderQuery,
     geometry: Option<Geometry>,
-    client: ElasticsearchStorage,
+    client: S,
     settings: settings::QuerySettings,
     timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
-/*where
+where
     S: SearchDocuments,
-    S::Document: Serialize + Into<serde_json::Value>,*/
+    S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
     let timeout = params.timeout.unwrap_or(timeout);
@@ -72,6 +71,13 @@ pub async fn forward_geocoder(
         &settings,
         QueryType::PREFIX,
     );
+    let dsl_query_fuzzy = dsl::build_query(
+        &q,
+        filters.clone(),
+        lang.as_str(),
+        &settings,
+        QueryType::FUZZY,
+    );
 
     tracing::trace!(
         "Searching in indexes {:?} with query {}",
@@ -79,98 +85,62 @@ pub async fn forward_geocoder(
         serde_json::to_string_pretty(&dsl_query_prefix).unwrap()
     );
 
-    let result_prefix_query = send_query(
-        client.clone(),
-        dsl_query_prefix,
-        Some(timeout),
-        es_indices_to_search_in.clone(),
-        filters.clone(),
-        &q,
-    )
-    .await;
-
-    match result_prefix_query {
-        Ok(resp) => {
-            if resp.features.is_empty() {
-                let dsl_query_fuzzy = dsl::build_query(
-                    &q,
-                    filters.clone(),
-                    lang.as_str(),
-                    &settings,
-                    QueryType::FUZZY,
-                );
-                let result_fuzzy_query = send_query(
-                    client,
-                    dsl_query_fuzzy,
-                    Some(timeout),
-                    es_indices_to_search_in,
-                    filters,
-                    &q,
-                )
-                .await;
-                match result_fuzzy_query {
-                    Ok(resp) => Ok(with_status(json(&resp), StatusCode::OK)),
-                    Err(err) => Err(warp::reject::custom(InternalError {
-                        reason: InternalErrorReason::ObjectNotFoundError,
-                        info: err.to_string(),
-                    })),
-                }
-            } else {
-                Ok(with_status(json(&resp), StatusCode::OK))
-            }
-        }
-        Err(err) => Err(warp::reject::custom(InternalError {
-            reason: InternalErrorReason::ObjectNotFoundError,
-            info: err.to_string(),
-        })),
-    }
-}
-
-async fn send_query(
-    client: ElasticsearchStorage,
-    dsl: serde_json::Value,
-    timeout: Option<Duration>,
-    es_indices_to_search_in: Vec<String>,
-    filters: Filters,
-    q: &str,
-) -> Result<GeocodeJsonResponse, &str> {
-    debug!("{}", serde_json::to_string(&dsl).unwrap());
-
-    match client
-        .search_documents(
-            es_indices_to_search_in,
-            Query::QueryDSL(dsl),
+    let raw_futs = vec![
+        client.search_documents(
+            es_indices_to_search_in.clone(),
+            Query::QueryDSL(dsl_query_prefix.clone()),
             filters.limit,
-            timeout,
-        )
-        .await
-    {
-        Ok(res) => {
-            tracing::trace!(
-                "Elasticsearch response {}",
-                serde_json::to_string_pretty(&res).unwrap()
-            );
-            let places: Result<Vec<Place>, serde_json::Error> = res
-                .into_iter()
-                .map(serde_json::from_value::<Place>)
-                .collect();
+            Some(timeout),
+        ),
+        client.search_documents(
+            es_indices_to_search_in.clone(),
+            Query::QueryDSL(dsl_query_fuzzy),
+            filters.limit,
+            Some(timeout),
+        ),
+    ];
+    let unpin_futs: Vec<_> = raw_futs.into_iter().map(Box::pin).collect();
+    let mut futs = unpin_futs;
 
-            match places {
-                Ok(places) => {
-                    let features = places
-                        .into_iter()
-                        .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
-                        .collect();
-                    Ok(GeocodeJsonResponse::new(q.to_string(), features))
+    while !futs.is_empty() {
+        match future::select_all(futs).await {
+            (Ok(res), _index, remaining) => {
+                futs = remaining;
+                println!("---------------------------- {}", _index);
+                let places: Result<Vec<Place>, serde_json::Error> = res
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json.into()))
+                    .collect();
+                match places {
+                    Ok(places) if places.is_empty() => {}
+                    Ok(places) => {
+                        let features = places
+                            .into_iter()
+                            .map(|p| Feature::from_with_lang(p, None))
+                            .collect();
+                        let resp = GeocodeJsonResponse::new(q, features);
+                        return Ok(with_status(json(&resp), StatusCode::OK));
+                    }
+                    Err(err) => {
+                        return Err(warp::reject::custom(InternalError {
+                            reason: InternalErrorReason::SerializationError,
+                            info: err.to_string(),
+                        }))
+                    }
                 }
-                Err(_err) => Err("Unable to find object"),
             }
-        }
-        Err(err) => {
-            tracing::trace!("Elasticsearch reponded with error {:?}", &err);
-            Err("no object found")
-        }
+            (Err(err), _index, _remaining) => {
+                return Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::ElasticSearchError,
+                    info: err.to_string(),
+                }))
+            }
+        };
     }
+    Err(warp::reject::custom(InternalError {
+        reason: InternalErrorReason::ElasticSearchError,
+        info: "".to_string(),
+    }))
 }
 
 #[instrument(skip(client, settings))]
