@@ -1,5 +1,4 @@
 use crate::adapters::primary::bragi::prometheus_handler;
-use futures::future;
 use geojson::Geometry;
 use std::time::Duration;
 use tracing::{debug, instrument};
@@ -85,7 +84,7 @@ where
         serde_json::to_string_pretty(&dsl_query_prefix).unwrap()
     );
 
-    let raw_futs = vec![
+    let futurs = vec![
         client.search_documents(
             es_indices_to_search_in.clone(),
             Query::QueryDSL(dsl_query_prefix.clone()),
@@ -99,14 +98,10 @@ where
             Some(timeout),
         ),
     ];
-    let unpin_futs: Vec<_> = raw_futs.into_iter().map(Box::pin).collect();
-    let mut futs = unpin_futs;
 
-    while !futs.is_empty() {
-        match future::select_all(futs).await {
-            (Ok(res), _index, remaining) => {
-                futs = remaining;
-                println!("---------------------------- {}", _index);
+    for futur in futurs {
+        match futur.await {
+            Ok(res) => {
                 let places: Result<Vec<Place>, serde_json::Error> = res
                     .into_iter()
                     .map(|json| serde_json::from_value::<Place>(json.into()))
@@ -129,17 +124,18 @@ where
                     }
                 }
             }
-            (Err(err), _index, _remaining) => {
+            Err(err) => {
                 return Err(warp::reject::custom(InternalError {
                     reason: InternalErrorReason::ElasticSearchError,
                     info: err.to_string(),
                 }))
             }
-        };
+        }
     }
+
     Err(warp::reject::custom(InternalError {
-        reason: InternalErrorReason::ElasticSearchError,
-        info: "".to_string(),
+        reason: InternalErrorReason::ObjectNotFoundError,
+        info: "Object not found".to_string(),
     }))
 }
 
