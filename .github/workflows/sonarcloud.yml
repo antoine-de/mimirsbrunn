@@ -19,7 +19,7 @@ jobs:
       - name: Install Rust stable
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.56.1
+          toolchain: 1.56.0
           profile: minimal
           components: clippy
       - name: Run cargo clippy
