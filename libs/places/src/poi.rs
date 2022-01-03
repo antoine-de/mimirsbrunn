@@ -9,6 +9,7 @@ use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
 use super::Members;
+use crate::utils::normalize_id;
 use crate::Address;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -53,7 +54,7 @@ pub struct PoiType {
 impl From<&navitia_poi_model::PoiType> for PoiType {
     fn from(poi_type: &navitia_poi_model::PoiType) -> PoiType {
         PoiType {
-            id: format!("poi_type:{}", poi_type.id),
+            id: normalize_id("poi_type:", poi_type.id.as_str()),
             name: poi_type.name.clone(),
         }
     }
