@@ -88,46 +88,7 @@ fn build_string_query(
     json!({
         "bool": {
             "boost": settings.global,
-            "should": [
-                {
-                    "multi_match": {
-                        "query": q,
-                        "fields": ["name", format!("names.{}", lang)],
-                        "boost": settings.boosts.name
-                    }
-                },
-                {
-                    "multi_match": {
-                        "query": q,
-                        "fields": ["label", format!("label.{}", lang)],
-                        "boost": settings.boosts.label
-                    }
-                },
-                {
-                    "multi_match": {
-                        "query": q,
-                        "fields": ["label.prefix", format!("label.prefix.{}", lang)],
-                        "boost": settings.boosts.label_prefix
-                    }
-                },
-                {
-                    "match": {
-                        "zip_codes": {
-                        "query": q,
-                        "boost": settings.boosts.zip_codes
-                        }
-                    }
-
-                },
-                {
-                    "match": {
-                        "house_number": {
-                         "query": q,
-                         "boost": settings.boosts.house_number
-                        }
-                    }
-                }
-            ]
+            "should": string_should
         }
     })
 }
@@ -398,19 +359,19 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Va
     })
 }
 
-// If there is a shape, all the places listed in shape_scope are restricted to the shape.
-// and the places that are not listed are not restricted.
-// So if shape_scope = {A, B}, we should end up with something like
-// should [
-//   must {               => filwer_w_shape
-//     term: _type in {A, B}
-//     filter: geoshape
-//   },
-//   must_not {            => filter_wo_shape
-//      term: _type in {A, B}
-//   }
-// ]
-//
+/*If there is a shape, all the places listed in shape_scope are restricted to the shape.
+and the places that are not listed are not restricted.
+So if shape_scope = {A, B}, we should end up with something like
+should [
+  must {               => filwer_w_shape
+    term: _type in {A, B}
+    filter: geoshape
+  },
+  must_not {            => filter_wo_shape
+     term: _type in {A, B}
+  }
+]
+*/
 pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Value {
     json!({
         "bool": {
@@ -426,7 +387,7 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
                         "geo_shape": {
                             "approx_coord": {
                                 "shape": shape,
-                            "relation": "intersects"
+                                "relation": "intersects"
                             }
                         }
                     }
@@ -446,19 +407,19 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
     })
 }
 
-// If we search for POIs and we specify poi_types, then we add a filter that should say something
-// like:
-// If the place is a POI, then its poi_type must be part of the given list
-// So if poi_types = {A, B}, we should end up with something like
-// should [
-//   must {               => for pois, filter their poi types
-//     type: poi
-//     filter: poi_types = {A, B}
-//   },
-//   must_not {            => or don't filter for poi types on other places
-//      type: poi
-//   }
-// ]
+/*If we search for POIs and we specify poi_types, then we add a filter that should say something
+like:
+If the place is a POI, then its poi_type must be part of the given list
+So if poi_types = {A, B}, we should end up with something like
+should [
+  must {               => for pois, filter their poi types
+    type: poi
+    filter: poi_types = {A, B}
+  },
+  must_not {            => or don't filter for poi types on other places
+     type: poi
+  }
+]*/
 pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
     json!({
         "bool": {
@@ -468,12 +429,12 @@ pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
                     "must": [
                         {
                             "term": {
-                                "_source.type": "poi"
+                                "type": "poi"
                             }
                         },
                         {
                             "term": {
-                                "_source.poi_type.id": poi_types
+                                "poi_type.id": poi_types
                             }
                         }
                     ]
@@ -483,7 +444,7 @@ pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
                 "bool": {
                     "must_not": {
                         "term": {
-                            "_source.type": "poi"
+                            "type": "poi"
                         }
                     }
                 }
@@ -493,21 +454,20 @@ pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
     })
 }
 
-// If we search for administrative regions and we specify zone_types, then we add a filter that should say something
-// like:
-// If the place is an administrative region, then its zone_type must be part of the given list
-// So if zone_type = {A, B}, we should end up with something like
-// should [
-//   must {               => for admins, make sure they have the right zone type
-//     type: admin
-//     filter: zone_types
-//   },
-//   must_not {            => no filter on zone types for other places
-//      type: admin
-//   }
-// ]
-//
-//
+/*If we search for administrative regions and we specify zone_types, then we add a filter that should say something
+like:
+If the place is an administrative region, then its zone_type must be part of the given list
+So if zone_type = {A, B}, we should end up with something like
+should [
+  must {               => for admins, make sure they have the right zone type
+    type: admin
+    filter: zone_types
+  },
+  must_not {            => no filter on zone types for other places
+     type: admin
+  }
+]
+*/
 pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
     json!({
         "bool": {
