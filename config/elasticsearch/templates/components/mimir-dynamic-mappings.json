@@ -13,7 +13,7 @@
                 "analyzer": "word",
                 "fields": {
                   "prefix": {
-                    "type": "string",
+                    "type": "text",
                     "index_options": "docs",
                     "analyzer": "prefix",
                     "search_analyzer": "word"
@@ -37,23 +37,17 @@
                     "index_options": "docs",
                     "analyzer": "prefix",
                     "search_analyzer": "word",
-                    "norms": {
-                      "enabled": false
-                    }
+                    "norms": false
                   },
                   "ngram": {
                     "type": "text",
                     "index_options": "docs",
                     "analyzer": "ngram_with_synonyms",
                     "search_analyzer": "ngram",
-                    "norms": {
-                      "enabled": false
-                    }
+                    "norms": false
                   }
                 },
-                "norms": {
-                  "enabled": false
-                }
+                "norms": false
               }
             }
           },

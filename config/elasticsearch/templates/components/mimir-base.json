@@ -10,36 +10,62 @@
             "word": {
               "type": "custom",
               "tokenizer": "standard",
-              "filter": [ "lowercase", "asciifolding" ],
-              "char_filter" : [ ]
+              "filter": [
+                "lowercase",
+                "asciifolding"
+              ],
+              "char_filter": []
             },
             "word_elision": {
               "type": "custom",
               "tokenizer": "standard",
-              "filter": [ "lowercase", "elision_filter", "asciifolding" ],
-              "char_filter" : [ ]
+              "filter": [
+                "lowercase",
+                "elision",
+                "asciifolding"
+              ],
+              "char_filter": []
             },
             "prefix": {
               "type": "custom",
               "tokenizer": "standard",
-              "filter": [ "lowercase", "asciifolding", "synonym_filter", "prefix_filter" ],
-              "char_filter" : [ ]
+              "filter": [
+                "lowercase",
+                "asciifolding",
+                "synonym",
+                "prefix"
+              ],
+              "char_filter": []
             },
             "prefix_elision": {
               "type": "custom",
               "tokenizer": "standard",
-              "filter": [ "lowercase", "elision_filter", "asciifolding", "synonym_filter", "prefix_filter" ],
-              "char_filter" : [ ]
+              "filter": [
+                "lowercase",
+                "elision",
+                "asciifolding",
+                "synonym",
+                "prefix"
+              ],
+              "char_filter": []
             },
             "ngram_with_synonyms": {
               "type": "custom",
               "tokenizer": "standard",
-              "filter": [ "lowercase", "asciifolding", "synonym_filter", "ngram_filter" ],
-              "char_filter" : [ ]
+              "filter": [
+                "lowercase",
+                "asciifolding",
+                "synonym",
+                "ngram"
+              ],
+              "char_filter": []
             },
             "ngram": {
               "tokenizer": "my_ngram_tokenizer",
-              "filter": [ "lowercase", "asciifolding" ]
+              "filter": [
+                "lowercase",
+                "asciifolding"
+              ]
             }
           },
           "tokenizer": {
@@ -47,7 +73,10 @@
               "type": "nGram",
               "min_gram": "3",
               "max_gram": "3",
-              "token_chars": [ "letter", "digit" ]
+              "token_chars": [
+                "letter",
+                "digit"
+              ]
             }
           },
           "filter": {
@@ -119,7 +148,8 @@
           },
           "label": {
             "type": "text",
-            "analyzer": "label_analyzer",
+            "index_options": "docs",
+            "analyzer": "word",
             "copy_to": "full_label",
             "fields": {
               "prefix": {
@@ -127,23 +157,17 @@
                 "index_options": "docs",
                 "analyzer": "prefix",
                 "search_analyzer": "word",
-                "norms": {
-                  "enabled": false
-                }
+                "norms": false
               },
               "ngram": {
                 "type": "text",
                 "index_options": "docs",
                 "analyzer": "ngram_with_synonyms",
                 "search_analyzer": "ngram",
-                "norms": {
-                  "enabled": false
-                }
+                "norms": false
               }
             },
-            "norms": {
-              "enabled": false
-            }
+            "norms": false
           },
           "full_label": {
             "type": "text",
@@ -155,23 +179,17 @@
                 "index_options": "docs",
                 "analyzer": "prefix_elision",
                 "search_analyzer": "word_elision",
-                "norms": {
-                  "enabled": false
-                }
+                "norms": false
               },
               "ngram": {
                 "type": "text",
                 "index_options": "docs",
                 "analyzer": "ngram_with_synonyms",
                 "search_analyzer": "ngram",
-                "norms": {
-                  "enabled": false
-                }
+                "norms": false
               }
             },
-            "norms": {
-              "enabled": false
-            }
+            "norms": false
           },
           "name": {
             "type": "text",
@@ -179,7 +197,7 @@
             "analyzer": "word",
             "fields": {
               "prefix": {
-                "type": "string",
+                "type": "text",
                 "index_options": "docs",
                 "analyzer": "prefix",
                 "search_analyzer": "word"
@@ -196,7 +214,7 @@
             "copy_to": "full_label",
             "fields": {
               "prefix": {
-                "type": "string",
+                "type": "text",
                 "index_options": "docs",
                 "analyzer": "prefix",
                 "search_analyzer": "word"
