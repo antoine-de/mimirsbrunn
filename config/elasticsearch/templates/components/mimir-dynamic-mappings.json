@@ -8,7 +8,17 @@
               "match_pattern": "regex",
               "path_match": "^name($|s\\.\\w+)",
               "mapping": {
-                "type": "search_as_you_type"
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "word",
+                "fields": {
+                  "prefix": {
+                    "type": "string",
+                    "index_options": "docs",
+                    "analyzer": "prefix",
+                    "search_analyzer": "word"
+                  }
+                }
               }
             }
           },
@@ -17,7 +27,33 @@
               "match_pattern": "regex",
               "path_match": "^label($|s\\.\\w+)",
               "mapping": {
-                "type": "search_as_you_type"
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "word",
+                "copy_to": "full_label",
+                "fields": {
+                  "prefix": {
+                    "type": "text",
+                    "index_options": "docs",
+                    "analyzer": "prefix",
+                    "search_analyzer": "word",
+                    "norms": {
+                      "enabled": false
+                    }
+                  },
+                  "ngram": {
+                    "type": "text",
+                    "index_options": "docs",
+                    "analyzer": "ngram_with_synonyms",
+                    "search_analyzer": "ngram",
+                    "norms": {
+                      "enabled": false
+                    }
+                  }
+                },
+                "norms": {
+                  "enabled": false
+                }
               }
             }
           },
