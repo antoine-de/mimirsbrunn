@@ -1,6 +1,7 @@
 [![travis](https://travis-ci.org/CanalTP/mimirsbrunn.svg?branch=master)](https://travis-ci.org/CanalTP/mimirsbrunn)
 [![GitHub license](https://img.shields.io/github/license/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/blob/master/LICENSE)
 [![GitHub tag](https://img.shields.io/github/tag/CanalTP/mimirsbrunn.svg)](https://github.com/CanalTP/mimirsbrunn/tag)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=CanalTP_mimirsbrunn&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=CanalTP_mimirsbrunn)
 
 Mimirsbrunn
 =================
