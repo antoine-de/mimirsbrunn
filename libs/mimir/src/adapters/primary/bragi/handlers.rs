@@ -133,10 +133,7 @@ where
         }
     }
 
-    Err(warp::reject::custom(InternalError {
-        reason: InternalErrorReason::ObjectNotFoundError,
-        info: "Object not found".to_string(),
-    }))
+    Ok(with_status(json(&GeocodeJsonResponse::new(q, vec![])), StatusCode::OK))
 }
 
 #[instrument(skip(client, settings))]
