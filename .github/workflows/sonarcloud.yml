@@ -22,7 +22,7 @@ jobs:
           components: rustc, cargo, clippy, rustfmt
           profile: minimal
       - name: Run cargo clippy
-        run: cargo clippy --workspace --all-features --message-format=json -- --warn clippy::pedantic > clippy.json
+        run: cargo clippy --workspace --message-format=json -- --warn clippy::pedantic > clippy.json
       - name: Install 'cargo-sonar'
         run: cargo install cargo-sonar --version 0.9.0 --locked
       - name: Convert into Sonar compatible format
