@@ -133,7 +133,10 @@ where
         }
     }
 
-    Ok(with_status(json(&GeocodeJsonResponse::new(q, vec![])), StatusCode::OK))
+    Ok(with_status(
+        json(&GeocodeJsonResponse::new(q, vec![])),
+        StatusCode::OK,
+    ))
 }
 
 #[instrument(skip(client, settings))]
