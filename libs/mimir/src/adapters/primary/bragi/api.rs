@@ -87,11 +87,11 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                         })
                         .unwrap_or_else(|| {
                             vec![
-                                Type::House,
-                                Type::Poi,
-                                Type::StopArea,
-                                Type::Street,
-                                Type::Zone,
+                                PlaceDocType::Poi,
+                                PlaceDocType::Street,
+                                PlaceDocType::Admin,
+                                PlaceDocType::Addr,
+                                PlaceDocType::Stop,
                             ]
                             .iter()
                             .map(|t| t.as_str().to_string())
