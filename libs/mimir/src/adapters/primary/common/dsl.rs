@@ -18,7 +18,7 @@ pub fn build_query(
     settings: &settings::QuerySettings,
     query_type: QueryType,
 ) -> serde_json::Value {
-    let type_query = build_place_type_boost(&settings.type_query.boosts);
+    let type_query = build_place_type_boost(&settings.type_query);
     let string_query =
         build_string_query(q, lang, &settings.string_query, query_type, &filters.coord);
     let boosts = build_boosts(q, settings, &filters, query_type);
@@ -281,16 +281,18 @@ fn build_admin_weight_query(
     })
 }
 
-fn build_place_type_boost(settings: &settings::Types) -> serde_json::Value {
+fn build_place_type_boost(settings: &settings::TypeQueryBoosts) -> serde_json::Value {
+    let boosts = &settings.boosts;
     json!({
         "bool": {
             "should": [
-                { "term": { "type": { "value": "admin", "boost": settings.admin } } },
-                { "term": { "type": { "value": "addr", "boost": settings.address } } },
-                { "term": { "type": { "value": "stop", "boost": settings.stop } } },
-                { "term": { "type": { "value": "poi", "boost": settings.poi } } },
-                { "term": { "type": { "value": "street", "boost": settings.street } } },
-            ]
+                { "term": { "type": { "value": "admin", "boost": boosts.admin } } },
+                { "term": { "type": { "value": "addr", "boost": boosts.address } } },
+                { "term": { "type": { "value": "stop", "boost": boosts.stop } } },
+                { "term": { "type": { "value": "poi", "boost": boosts.poi } } },
+                { "term": { "type": { "value": "street", "boost": boosts.street } } },
+            ],
+            "boost": settings.global,
         }
     })
 }
