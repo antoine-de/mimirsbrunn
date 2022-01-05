@@ -107,7 +107,9 @@ where
                     .map(|json| serde_json::from_value::<Place>(json.into()))
                     .collect();
                 match places {
-                    Ok(places) if places.is_empty() => {}
+                    Ok(places) if places.is_empty() => {
+                        println!("Empty !")
+                    }
                     Ok(places) => {
                         let features = places
                             .into_iter()
