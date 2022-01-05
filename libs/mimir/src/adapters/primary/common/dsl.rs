@@ -1,4 +1,6 @@
-use crate::adapters::primary::common::settings::{BuildWeight, ImportanceQueryBoosts, StringQuery};
+use crate::adapters::primary::common::settings::{
+    BuildWeight, ImportanceQueryBoosts, StringQuery, Types,
+};
 use geojson::Geometry;
 use serde_json::json;
 
@@ -101,11 +103,15 @@ fn build_boosts(
 ) -> Vec<serde_json::Value> {
     let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
 
+    let weights = build_weight_depending_on_radius(&settings.importance_query, &filters.coord);
+
+    boosts.push(Some(build_with_weight(
+        weights.clone(),
+        &settings.importance_query.weights.types,
+    )));
+
     if let QueryType::PREFIX = query_type {
-        let admin_weight_boost = Some(build_admin_weight_query(
-            &settings.importance_query,
-            &filters.coord,
-        ));
+        let admin_weight_boost = Some(build_admin_weight_query(weights));
         boosts.push(admin_weight_boost);
     }
 
@@ -227,10 +233,10 @@ fn build_matching_condition(q: &str, query_type: QueryType) -> serde_json::Value
         // The query must at least match with elision activated, matching without elision will
         // provide extra score bellow.
         QueryType::PREFIX => json!({
-            "prefix": {
-                "label": {
-                  "value": q,
-                  "case_insensitive": true
+            "match": {
+                "full_label.prefix": {
+                  "query": q,
+                  "operator": "and"
                 }
             }
         }),
@@ -246,36 +252,31 @@ fn build_matching_condition(q: &str, query_type: QueryType) -> serde_json::Value
         //     Caisse Primaire d'Assurance Maladie de Haute Garonne, 33 Rue du Lot, 31100 Toulouse
         QueryType::FUZZY => json!({
             "match": {
-                "label": {
+                "full_label.ngram": {
                     "query": q,
-                    "minimum_should_match": "1<-1 3<-2 9<-4 20<25"
+                    "minimum_should_match": "1<-1 3<-2 9<-4 20<25%"
                 }
             }
         }),
     }
 }
 
-fn build_admin_weight_query(
-    settings: &settings::ImportanceQueryBoosts,
-    coord: &Option<Coord>,
-) -> serde_json::Value {
-    let weights = build_weight_depending_on_radius(settings, coord);
+fn build_admin_weight_query(weights: BuildWeight) -> serde_json::Value {
     json!({
         "function_score": {
-            "query": { "term": { "type": "admin" } },
+            "query": { "match_all": {} },
             "boost_mode": "replace",
             "functions": [
                 {
+                    "filter": { "term": { "type": "admin" } },
                     "field_value_factor": {
                         "field": "weight",
                         "factor": 1e6,
                         "modifier": "log1p",
                         "missing": 0
-                    }
-                },
-                {
+                    },
                     "weight": weights.admin
-                }
+                },
             ]
         }
     })
@@ -541,57 +542,62 @@ fn build_match_query(query: &str, field: &str, boost: f64) -> serde_json::Value 
     })
 }
 
-// fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {
-//     json!({
-//         "function_score": {
-//             "boost_mode": "replace",
-//             "functions": [
-//                 {
-//                         "query": { "term": { "_type": "admin" } },
-//                         "field_value_factor": {
-//                             "field": "weight",
-//                             "factor": build_weight.factor,
-//                             "missing": build_weight.missing
-//                     }
-//                 },
-//                 {
-//                         "query": { "term": { "_type": "address" } },
-//                         "field_value_factor": {
-//                             "field": "weight",
-//                             "factor": build_weight.factor,
-//                             "missing": build_weight.missing
-//                         }
-//                 },
-//                                 {
-//                         "query": { "term": { "_type": "admin" } },
-//                         "field_value_factor": {
-//                             "field": "weight",
-//                             "factor": build_weight.factor,
-//                             "missing": build_weight.missing
-//                         }
-//                 },
-//                                 {
-//                         "query": { "term": { "_type": "poi" } },
-//                         "field_value_factor": {
-//                             "field": "weight",
-//                             "factor": build_weight.factor,
-//                             "missing": build_weight.missing
-//                     }
-//                 },
-//                 {
-//                         "query": { "term": { "_type": "street" } },
-//                         "field_value_factor": {
-//                             "field": "weight",
-//                             "factor": build_weight.factor,
-//                             "missing": build_weight.missing
-//                     }
-//                 }
-//             ]
-//         }
-//     })
-// }
+fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {
+    json!({
+        "function_score": {
+            "query": { "match_all":{} },
+            "boost_mode": "replace",
+            "functions": [
+                {
+                        "filter": { "term": { "type": "stop" } },
+                        "field_value_factor": {
+                            "field": "weight",
+                            "factor": build_weight.factor,
+                            "missing": build_weight.missing
+                    },
+                        "weight": types.stop
+                },
+                {
+                        "filter": { "term": { "type": "address" } },
+                        "field_value_factor": {
+                            "field": "weight",
+                            "factor": build_weight.factor,
+                            "missing": build_weight.missing
+                        },
+                        "weight": types.address
+                },
+                                {
+                        "filter": { "term": { "type": "admin" } },
+                        "field_value_factor": {
+                            "field": "weight",
+                            "factor": build_weight.factor,
+                            "missing": build_weight.missing
+                        },
+                        "weight": types.admin
+                },
+                                {
+                        "filter": { "term": { "type": "poi" } },
+                        "field_value_factor": {
+                            "field": "weight",
+                            "factor": build_weight.factor,
+                            "missing": build_weight.missing
+                    },
+                        "weight": types.poi
+                },
+                {
+                        "filter": { "term": { "type": "street" } },
+                        "field_value_factor": {
+                            "field": "weight",
+                            "factor": build_weight.factor,
+                            "missing": build_weight.missing
+                    },
+                        "weight": types.street
+                }
+            ]
+        }
+    })
+}
 
-//
 // fn build_coverage_condition() -> serde_json::Value {
 //     // filter to handle PT coverages
 //     // we either want:
@@ -612,25 +618,6 @@ fn build_match_query(query: &str, field: &str, boost: f64) -> serde_json::Value 
 //                 {
 //                     "term": {
 //                         "coverages": []
-//                     }
-//                 }
-//             ]
-//         }
-//     })
-// }
-
-// fn build_search_as_you_type_query(q: &str, settings: &settings::StringQuery) -> serde_json::Value {
-//     json!({
-//         "bool": {
-//             "boost": settings.global,
-//             "should": [
-//                 {
-//                     "multi_match": {
-//                         "query": q,
-//                         "type": "bool_prefix", // match_phrase_prefix query match terms order
-//                         "fields": [
-//                             "label", "label._2gram", "label._3gram", "name"
-//                         ]
 //                     }
 //                 }
 //             ]
