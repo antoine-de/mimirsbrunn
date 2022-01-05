@@ -112,7 +112,9 @@ async fn run(
         move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
     };
 
-    let addresses = import_addresses_from_input_path(opts.input, true, into_addr);
+    let addresses = import_addresses_from_input_path(opts.input, true, into_addr)
+        .await
+        .map_err(Box::new)?;
 
     client
         .generate_index(&settings.container, addresses)
@@ -222,5 +224,25 @@ mod tests {
             results[0].zip_codes,
             vec!["06000", "06100", "06200", "06300"]
         )
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_fail_on_invalid_path() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: "does-not-exist.csv".into(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+        assert!(res.is_err());
     }
 }

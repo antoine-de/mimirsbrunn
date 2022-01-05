@@ -8,7 +8,7 @@ use std::ffi::OsStr;
 use std::marker::{Send, Sync};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs::File;
+use tokio::fs::{metadata, File};
 use tokio::io::BufReader;
 use tracing::{info_span, warn};
 use tracing_futures::Instrument;
@@ -24,6 +24,9 @@ pub enum Error {
     #[snafu(display("IO Error: {}", source))]
     InvalidIO { source: tokio::io::Error },
 
+    #[snafu(display("Path does not exist: {}", source))]
+    InvalidPath { source: tokio::io::Error },
+
     #[snafu(display("Invalid extention"))]
     InvalidExtention,
 }
@@ -34,21 +37,23 @@ const CSV_BUFFER_SIZE: usize = 1024 * 1024; // 1MB
 /// Import the addresses found in path, using the given (Elastiscsearch) configuration and client.
 /// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
 /// address.
-pub fn import_addresses_from_input_path<F, T>(
+pub async fn import_addresses_from_input_path<F, T>(
     path: PathBuf,
     has_headers: bool,
     into_addr: F,
-) -> impl Stream<Item = Addr>
+) -> Result<impl Stream<Item = Addr>, Error>
 where
     F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
+    metadata(&path).await.context(InvalidPath)?;
     let into_addr = Arc::new(into_addr);
 
     let recs = records_from_path(&path, has_headers)
         .filter_map(|rec| future::ready(rec.map_err(|err| warn!("Invalid CSV: {}", err)).ok()));
 
-    recs.chunks(1000)
+    let stream = recs
+        .chunks(1000)
         .map(move |addresses| {
             let into_addr = into_addr.clone();
 
@@ -82,7 +87,9 @@ where
             }
         })
         .buffered(num_cpus::get())
-        .flatten()
+        .flatten();
+
+    Ok(stream)
 }
 
 /// Same as records_from_file, but can take an entire directory as input
