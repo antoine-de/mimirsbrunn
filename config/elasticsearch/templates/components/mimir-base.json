@@ -8,6 +8,7 @@
         "analysis": {
           "analyzer": {
             "word": {
+              "type": "custom",
               "tokenizer": "standard",
               "filter": [
                 "lowercase",
@@ -15,15 +16,67 @@
               ],
               "char_filter": []
             },
-            "label_analyzer": {
+            "word_elision": {
+              "type": "custom",
+              "tokenizer": "standard",
+              "filter": [
+                "lowercase",
+                "elision",
+                "asciifolding"
+              ],
+              "char_filter": []
+            },
+            "prefix": {
+              "type": "custom",
               "tokenizer": "standard",
               "filter": [
                 "lowercase",
                 "asciifolding",
                 "synonym",
-                "elision"
+                "prefix"
               ],
               "char_filter": []
+            },
+            "prefix_elision": {
+              "type": "custom",
+              "tokenizer": "standard",
+              "filter": [
+                "lowercase",
+                "elision",
+                "asciifolding",
+                "synonym",
+                "prefix"
+              ],
+              "char_filter": []
+            },
+            "ngram_with_synonyms": {
+              "type": "custom",
+              "tokenizer": "standard",
+              "filter": [
+                "lowercase",
+                "asciifolding",
+                "synonym",
+                "ngram"
+              ],
+              "char_filter": []
+            },
+            "ngram": {
+              "tokenizer": "my_ngram_tokenizer",
+              "filter": [
+                "lowercase",
+                "asciifolding"
+              ]
+            }
+          },
+          "tokenizer": {
+            "my_ngram_tokenizer": {
+              "type": "nGram",
+              "min_gram": "3",
+              "max_gram": "3",
+              "token_chars": [
+                "letter",
+                "digit"
+              ]
             }
           },
           "filter": {
@@ -55,6 +108,16 @@
                 "l",
                 "d"
               ]
+            },
+            "ngram": {
+              "type": "nGram",
+              "min_gram": "3",
+              "max_gram": "3"
+            },
+            "prefix": {
+              "type": "edge_ngram",
+              "min_gram": 1,
+              "max_gram": 20
             }
           }
         }
@@ -84,12 +147,62 @@
             "enabled": false
           },
           "label": {
-            "type": "search_as_you_type",
-            "analyzer": "label_analyzer"
+            "type": "text",
+            "index_options": "docs",
+            "analyzer": "word",
+            "copy_to": "full_label",
+            "fields": {
+              "prefix": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "prefix",
+                "search_analyzer": "word",
+                "norms": false
+              },
+              "ngram": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "ngram_with_synonyms",
+                "search_analyzer": "ngram",
+                "norms": false
+              }
+            },
+            "norms": false
+          },
+          "full_label": {
+            "type": "text",
+            "index_options": "docs",
+            "analyzer": "word",
+            "fields": {
+              "prefix": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "prefix_elision",
+                "search_analyzer": "word_elision",
+                "norms": false
+              },
+              "ngram": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "ngram_with_synonyms",
+                "search_analyzer": "ngram",
+                "norms": false
+              }
+            },
+            "norms": false
           },
           "name": {
             "type": "text",
-            "analyzer": "word"
+            "index_options": "docs",
+            "analyzer": "word",
+            "fields": {
+              "prefix": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "prefix",
+                "search_analyzer": "word"
+              }
+            }
           },
           "weight": {
             "type": "float"
@@ -97,7 +210,16 @@
           "zip_codes": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "word"
+            "analyzer": "word",
+            "copy_to": "full_label",
+            "fields": {
+              "prefix": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "prefix",
+                "search_analyzer": "word"
+              }
+            }
           }
         }
       }
