@@ -254,7 +254,7 @@ fn build_matching_condition(q: &str, query_type: QueryType) -> serde_json::Value
             "match": {
                 "full_label.ngram": {
                     "query": q,
-                    "minimum_should_match": "1<-1 3<-2 9<-4 20<25"
+                    "minimum_should_match": "1<-1 3<-2 9<-4 20<25%"
                 }
             }
         }),
