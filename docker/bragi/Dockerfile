@@ -79,6 +79,5 @@ EXPOSE 4000
 
 ENV CONFIG_DIR  /etc/bragi
 ENV RUST_LOG    info,hyper=info
-ENV BUNYAN      0
 
 ENTRYPOINT [ "./run_with_default_config.sh", "bragi" ]
