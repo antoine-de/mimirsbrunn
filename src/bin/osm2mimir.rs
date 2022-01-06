@@ -70,8 +70,6 @@ fn main() -> Result<(), Error> {
     }
 }
 
-const POI_REVERSE_GEOCODING_CONCURRENCY: usize = 8;
-
 async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
@@ -153,13 +151,14 @@ async fn import_pois(
     client: &ElasticsearchStorage,
     config: &ContainerConfig,
 ) -> Result<(), Error> {
+    // This function rely on AdminGeoFinder::get_objs_and_deps
+    // which use all available cpu/cores to decode osm file and cannot be limited by tokio runtime
     let pois = mimirsbrunn::osm_reader::poi::pois(osm_reader, poi_config, admins_geofinder)
         .context(PoiOsmExtraction)?;
 
     let pois: Vec<places::poi::Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
-        .map(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
-        .buffer_unordered(POI_REVERSE_GEOCODING_CONCURRENCY)
+        .then(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
         .collect()
         .await;
 
