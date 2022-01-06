@@ -121,10 +121,15 @@ fn build_boosts(
         decay.offset = proximity.offset;
         decay.decay = proximity.decay;
     }
+    let weight_boost = match query_type {
+        QueryType::PREFIX => settings.importance_query.proximity.weight,
+        _ => settings.importance_query.proximity.weight_fuzzy,
+    };
+
     let proximity_boost = filters
         .coord
         .clone()
-        .map(|coord| build_proximity_boost(coord, &decay));
+        .map(|coord| build_proximity_boost(coord, &decay, weight_boost));
     boosts.push(proximity_boost);
     boosts.into_iter().flatten().collect()
 }
@@ -300,7 +305,11 @@ fn build_place_type_boost(settings: &settings::TypeQueryBoosts) -> serde_json::V
 
 /// Create a `Query` that boosts results according to the
 /// distance to `coord`.
-fn build_proximity_boost(coord: Coord, settings_decay: &settings::Decay) -> serde_json::Value {
+fn build_proximity_boost(
+    coord: Coord,
+    settings_decay: &settings::Decay,
+    weight_boost: f64,
+) -> serde_json::Value {
     let settings::Decay {
         func,
         scale,
@@ -310,7 +319,11 @@ fn build_proximity_boost(coord: Coord, settings_decay: &settings::Decay) -> serd
 
     json!({
         "function_score": {
-            func.clone(): {
+            "query": { "match_all": {} },
+            "boost_mode": "replace",
+            "functions": [
+            {
+                func.clone(): {
                 "coord": {
                     "origin": {
                         "lat": coord.lat,
@@ -321,6 +334,11 @@ fn build_proximity_boost(coord: Coord, settings_decay: &settings::Decay) -> serd
                     "decay": decay
                 }
             }
+            },
+              {
+                "weight": weight_boost
+              }
+            ]
         }
     })
 }
