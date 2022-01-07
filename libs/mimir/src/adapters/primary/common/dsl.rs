@@ -454,7 +454,7 @@ pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
                             }
                         },
                         {
-                            "term": {
+                            "terms": {
                                 "poi_type.id": poi_types
                             }
                         }
@@ -502,7 +502,7 @@ pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
                                 }
                             },
                             {
-                                "term": {
+                                "terms": {
                                     "zone_type": zone_types
                                 }
                             }
