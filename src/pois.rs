@@ -133,12 +133,11 @@ pub async fn index_pois(
     let poi_types = Arc::new(poi_types);
 
     let pois: Vec<_> = futures::stream::iter(pois.into_iter())
-        .map(|(_id, poi)| {
+        .then(|(_id, poi)| {
             let poi_types = poi_types.clone();
             let admins_geofinder = admins_geofinder.clone();
             into_poi(poi, poi_types, client, admins_geofinder)
         })
-        .buffer_unordered(8)
         .filter_map(|poi_res| futures::future::ready(poi_res.ok()))
         .collect()
         .await;

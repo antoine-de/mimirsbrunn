@@ -11,8 +11,6 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use places::street::Street;
 
-const POI_REVERSE_GEOCODING_CONCURRENCY: usize = 8;
-
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub(crate)")]
 pub enum Error {
@@ -119,8 +117,7 @@ pub async fn index_pois(
 
     let pois: Vec<Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
-        .map(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
-        .buffer_unordered(POI_REVERSE_GEOCODING_CONCURRENCY)
+        .then(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
         .collect()
         .await;
     let _ = client

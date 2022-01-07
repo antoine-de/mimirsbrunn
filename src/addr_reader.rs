@@ -56,9 +56,8 @@ where
         .chunks(1000)
         .map(move |addresses| {
             let into_addr = into_addr.clone();
-
             async move {
-                tokio::task::spawn_blocking(move || {
+                tokio::spawn(async move {
                     let addresses = addresses
                         .into_iter()
                         .filter_map(|rec| {
@@ -83,9 +82,12 @@ where
                     futures::stream::iter(addresses)
                 })
                 .await
-                .expect("tokio thread panicked")
+                .expect("tokio task panicked")
             }
         })
+        // This line will spawn at most num_cpus::get() tasks (running asynchronously)
+        // and give them to tokio runtime,
+        // so the real number of running threads is up to tokio runtime
         .buffered(num_cpus::get())
         .flatten();
 
