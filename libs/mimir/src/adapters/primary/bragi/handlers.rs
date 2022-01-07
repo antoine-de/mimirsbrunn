@@ -1,4 +1,5 @@
 use crate::adapters::primary::bragi::prometheus_handler;
+use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
 use std::time::Duration;
 use tracing::{debug, instrument};
@@ -13,8 +14,8 @@ use crate::adapters::primary::{
         StatusResponseBody, Type,
     },
     common::{
-        dsl, filters, geocoding::Feature, geocoding::FromWithLang, geocoding::GeocodeJsonResponse,
-        settings,
+        coord, dsl, filters, geocoding::Feature, geocoding::FromWithLang,
+        geocoding::GeocodeJsonResponse, settings,
     },
 };
 use crate::domain::model::configuration::{root_doctype, root_doctype_dataset};
@@ -44,6 +45,24 @@ pub struct InternalError {
 }
 
 impl Reject for InternalError {}
+
+pub fn build_feature(
+    places: Vec<places::Place>,
+    query_coord: Option<&coord::Coord>,
+) -> Vec<Feature> {
+    places
+        .into_iter()
+        .map(|mut p| {
+            if let Some(ref coord) = query_coord {
+                let geo_point = geo::Point::new(coord.lon as f64, coord.lat as f64);
+                let pp: geo::Point<f64> = geo::Point::new(p.coord().lon(), p.coord().lat());
+                let distance = geo_point.haversine_distance(&pp) as u32;
+                p.set_distance(distance);
+            }
+            Feature::from_with_lang(p, None)
+        })
+        .collect()
+}
 
 #[instrument(skip(client, settings))]
 pub async fn forward_geocoder<S>(
@@ -98,7 +117,6 @@ where
             Some(timeout),
         ),
     ];
-
     for futur in futurs {
         match futur.await {
             Ok(res) => {
@@ -109,10 +127,7 @@ where
                 match places {
                     Ok(places) if places.is_empty() => {}
                     Ok(places) => {
-                        let features = places
-                            .into_iter()
-                            .map(|p| Feature::from_with_lang(p, None))
-                            .collect();
+                        let features = build_feature(places, filters.coord.as_ref());
                         let resp = GeocodeJsonResponse::new(q, features);
                         return Ok(with_status(json(&resp), StatusCode::OK));
                     }
