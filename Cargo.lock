@@ -1381,6 +1381,19 @@ dependencies = [
 
 [[package]]
 name = "geo"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d893ed768bba4866e3e16b756c96ed7ef23ca270eac190000fc4e40c5d733467"
+dependencies = [
+ "geo-types 0.6.2",
+ "geographiclib-rs",
+ "num-traits",
+ "robust",
+ "rstar",
+]
+
+[[package]]
+name = "geo"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02bf7fb342abefefb0abbb8d033f37233e6f857a1a970805d15f96560834d699"
@@ -2077,6 +2090,7 @@ dependencies = [
  "criterion",
  "elasticsearch",
  "futures 0.3.17",
+ "geo 0.16.0",
  "geo-types 0.7.2",
  "geojson",
  "http",
