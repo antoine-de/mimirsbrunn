@@ -233,7 +233,13 @@ pub async fn index_cosmogony(
     let admins_without_boundaries = read_zones(path)?
         .map(|mut zone| {
             zone.boundary = None;
-            let admin = zone.into_admin(&cosmogony_id_to_osm_id, &langs, max_weight, french_id_retrocompatibility,None);
+            let admin = zone.into_admin(
+                &cosmogony_id_to_osm_id,
+                &langs,
+                max_weight,
+                french_id_retrocompatibility,
+                None,
+            );
             (admin.id.clone(), Arc::new(admin))
         })
         .collect::<HashMap<_, _>>();

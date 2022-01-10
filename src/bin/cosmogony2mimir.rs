@@ -89,11 +89,16 @@ async fn run(
     tracing::info!("Connected to elasticsearch.");
     tracing::info!("Indexing cosmogony from {:?}", &opts.input);
 
-    mimirsbrunn::admin::index_cosmogony(&opts.input, settings.langs, &settings.container,
-                                        settings.french_id_retrocompatibility, &client)
-        .await
-        .context(Import)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    mimirsbrunn::admin::index_cosmogony(
+        &opts.input,
+        settings.langs,
+        &settings.container,
+        settings.french_id_retrocompatibility,
+        &client,
+    )
+    .await
+    .context(Import)
+    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]
@@ -424,8 +429,8 @@ mod tests {
                 "limousin",
                 "limousin.jsonl.gz",
             ]
-                .iter()
-                .collect(),
+            .iter()
+            .collect(),
             cmd: settings::Command::Run,
         };
 
@@ -448,13 +453,15 @@ mod tests {
             .try_collect()
             .await
             .unwrap();
-        for adm_name in vec!["Saint-Sulpice-les-Champs", "Queyssac-les-Vignes",
-                             "Saint-Quentin-la-Chabanne"] {
+        for adm_name in vec![
+            "Saint-Sulpice-les-Champs",
+            "Queyssac-les-Vignes",
+            "Saint-Quentin-la-Chabanne",
+        ] {
             let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
             assert_eq!(admin.id, format!("admin:fr:{}", admin.insee));
         }
     }
-
 
     #[tokio::test]
     #[serial]
@@ -475,8 +482,8 @@ mod tests {
                 "limousin",
                 "limousin.jsonl.gz",
             ]
-                .iter()
-                .collect(),
+            .iter()
+            .collect(),
             cmd: settings::Command::Run,
         };
 
@@ -499,8 +506,11 @@ mod tests {
             .try_collect()
             .await
             .unwrap();
-        for adm_name in vec!["Saint-Sulpice-les-Champs", "Queyssac-les-Vignes",
-                             "Saint-Quentin-la-Chabanne"] {
+        for adm_name in vec![
+            "Saint-Sulpice-les-Champs",
+            "Queyssac-les-Vignes",
+            "Saint-Quentin-la-Chabanne",
+        ] {
             let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
             assert_eq!(admin.id.starts_with("admin:osm:relation"), true);
         }
