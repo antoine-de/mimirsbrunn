@@ -379,7 +379,6 @@ pub fn build_es_indices_to_search(
             root_doctype(Addr::static_doc_type()),
             root_doctype(Street::static_doc_type()),
             root_doctype(Admin::static_doc_type()),
-            root_doctype(Poi::static_doc_type()),
         ];
         if let Some(pt_datasets) = pt_dataset {
             let doc_type_str = Stop::static_doc_type();
@@ -392,6 +391,8 @@ pub fn build_es_indices_to_search(
             for poi_dataset in poi_datasets.iter() {
                 indices.push(root_doctype_dataset(doc_type_str, poi_dataset));
             }
+        } else {
+            indices.push(root_doctype(Poi::static_doc_type()))
         }
         indices
     }
