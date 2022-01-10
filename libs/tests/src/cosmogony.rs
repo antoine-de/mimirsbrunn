@@ -109,6 +109,7 @@ pub async fn index_admins(
     region: &str,
     dataset: &str,
     reindex_if_already_exists: bool,
+    french_id_retrocompatibility: bool
 ) -> Result<Status, Error> {
     // Check if the admin index already exists
     let container = root_doctype_dataset(Admin::static_doc_type(), dataset);
@@ -146,6 +147,7 @@ pub async fn index_admins(
             dataset: dataset.to_string(),
             visibility: ContainerVisibility::Public,
         },
+        french_id_retrocompatibility,
         client,
     )
     .await

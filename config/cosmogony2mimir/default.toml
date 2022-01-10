@@ -1,5 +1,6 @@
 langs = [ "fr" ]
 nb_threads = 2
+french_id_retrocompatibility = true
 
 [container]
   name = "admin"

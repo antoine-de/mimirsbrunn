@@ -89,7 +89,8 @@ async fn run(
     tracing::info!("Connected to elasticsearch.");
     tracing::info!("Indexing cosmogony from {:?}", &opts.input);
 
-    mimirsbrunn::admin::index_cosmogony(&opts.input, settings.langs, &settings.container, &client)
+    mimirsbrunn::admin::index_cosmogony(&opts.input, settings.langs, &settings.container,
+                                        settings.french_id_retrocompatibility, &client)
         .await
         .context(Import)
         .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?

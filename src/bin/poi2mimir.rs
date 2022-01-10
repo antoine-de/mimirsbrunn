@@ -81,7 +81,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        cosmogony::index_admins(&client, "limousin", "limousin", true)
+        cosmogony::index_admins(&client, "limousin", "limousin", true, true)
             .await
             .unwrap();
 
