@@ -36,7 +36,7 @@ impl Step for GenerateCosmogony {
         cosmogony::generate(region, false)
             .await
             .map(|status| status.into())
-            .context(error::GenerateCosmogony)
+            .context(error::GenerateCosmogonySnafu)
     }
 }
 
@@ -82,7 +82,7 @@ impl Step for IndexCosmogony {
         cosmogony::index_admins(&client, region, dataset, false, true)
             .await
             .map(|status| status.into())
-            .context(error::IndexCosmogony)
+            .context(error::IndexCosmogonySnafu)
     }
 }
 

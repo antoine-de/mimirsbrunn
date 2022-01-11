@@ -99,9 +99,9 @@ impl Settings {
             "MIMIR",
             opts.settings.clone(),
         )
-        .context(ConfigCompilation)?
+        .context(ConfigCompilationSnafu)?
         .try_into()
-        .context(ConfigBuild)
+        .context(ConfigBuildSnafu)
     }
 }
 

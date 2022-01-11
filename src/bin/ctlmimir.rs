@@ -22,14 +22,14 @@ pub enum Error {
 
 fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(Settings)?;
+    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
 
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             settings.nb_threads,
             run(opts, settings),
         )
-        .context(Execution),
+        .context(ExecutionSnafu),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -48,7 +48,7 @@ async fn run(
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
-        .context(ElasticsearchConnection)
+        .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
 
     tracing::info!("Connected to elasticsearch.");

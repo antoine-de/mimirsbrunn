@@ -81,7 +81,7 @@ impl Remote for SingleNodeConnectionPool {
     /// ```
     async fn conn(self, config: Self::Config) -> Result<Self::Conn, RemoteError> {
         let version_req = VersionReq::parse(&config.version_req)
-            .context(VersionRequirementInvalid {
+            .context(VersionRequirementInvalidSnafu {
                 details: &config.version_req,
             })
             .map_err(|err| RemoteError::Connection {
@@ -89,7 +89,7 @@ impl Remote for SingleNodeConnectionPool {
             })?;
         let transport = TransportBuilder::new(self)
             .build()
-            .context(ElasticsearchTransportError)
+            .context(ElasticsearchTransportSnafu)
             .map_err(|err| RemoteError::Connection {
                 source: Box::new(err),
             })?;
@@ -104,7 +104,7 @@ impl Remote for SingleNodeConnectionPool {
                 Some(config.timeout),
             )
             .await
-            .context(ElasticsearchConnectionError)
+            .context(ElasticsearchConnectionSnafu)
             .map_err(|err| RemoteError::Connection {
                 source: Box::new(err),
             })?;
@@ -127,7 +127,7 @@ impl Remote for SingleNodeConnectionPool {
             let json = response
                 .json::<Value>()
                 .await
-                .context(JsonDeserializationError)
+                .context(JsonDeserializationSnafu)
                 .map_err(|err| RemoteError::Connection {
                     source: Box::new(err),
                 })?;

@@ -29,11 +29,11 @@
 // www.navitia.io
 
 use crate::admin_geofinder::AdminGeoFinder;
+use crate::error::{Error, InvalidFantoirIdSnafu, InvalidInseeIdSnafu};
 use crate::labels;
-use crate::Error;
-use failure::ensure;
 use places::{addr::Addr, admin::Admin, coord::Coord, street::Street};
 use serde::{Deserialize, Serialize};
+use snafu::ensure;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -54,11 +54,11 @@ pub struct Bano {
 
 impl Bano {
     pub fn insee(&self) -> Result<&str, Error> {
-        ensure!(self.id.len() >= 5, "id must be longer than 5 characters");
+        ensure!(self.id.len() >= 5, InvalidInseeIdSnafu { id: &self.id });
         Ok(self.id[..5].trim_start_matches('0'))
     }
     pub fn fantoir(&self) -> Result<&str, Error> {
-        ensure!(self.id.len() >= 10, "id must be longer than 10 characters");
+        ensure!(self.id.len() >= 10, InvalidFantoirIdSnafu { id: &self.id });
         Ok(&self.id[..10])
     }
     pub fn into_addr(

@@ -11,7 +11,7 @@ const BANO_URL: &str = "http://bano.openstreetmap.fr";
 const OPENDATASOFT_URL: &str = "https://navitia.opendatasoft.com";
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Could not Download: {}", source))]
     Download { source: utils::Error },
@@ -60,11 +60,11 @@ pub async fn osm(region: &str) -> Result<Status, Error> {
     // No file in 'cache', so we download it
     utils::create_dir_if_not_exists_rec(&dir_path)
         .await
-        .context(CreateDir)?;
+        .context(CreateDirSnafu)?;
     let url = format!("{}/europe/france/{}-latest.osm.pbf", GEOFABRIK_URL, region);
     utils::download_to_file(&file_path, &url)
         .await
-        .context(Download)?;
+        .context(DownloadSnafu)?;
 
     Ok(Status::Done)
 }
@@ -84,7 +84,7 @@ pub async fn bano<D: AsRef<str>>(region: &str, departments: &[D]) -> Result<Stat
 
     utils::create_dir_if_not_exists_rec(&dir_path)
         .await
-        .context(CreateDir)?;
+        .context(CreateDirSnafu)?;
 
     // this is the path for the concatenated departments
     let file_path = &dir_path.join(format!("{}.csv", region));
@@ -98,7 +98,7 @@ pub async fn bano<D: AsRef<str>>(region: &str, departments: &[D]) -> Result<Stat
             let url = format!("{}/data/bano-{:02}.csv", BANO_URL, department.as_ref());
             utils::download_to_file(file_path, &url)
                 .await
-                .context(Download)
+                .context(DownloadSnafu)
         })
         .await?;
 
@@ -120,7 +120,7 @@ pub async fn ntfs(region: &str) -> Result<Status, Error> {
 
     utils::create_dir_if_not_exists_rec(&dir_path)
         .await
-        .context(CreateDir)?;
+        .context(CreateDirSnafu)?;
 
     let zip_file_path = dir_path.join(format!("{}.zip", region));
     let json_file_path = dir_path.join(format!("{}.json", region));
@@ -136,17 +136,17 @@ pub async fn ntfs(region: &str) -> Result<Status, Error> {
 
     utils::download_to_file(&json_file_path, &url)
         .await
-        .context(Download)?;
+        .context(DownloadSnafu)?;
 
     let datasets = fs::read_to_string(&json_file_path)
         .await
-        .context(InvalidIO {
+        .context(InvalidIOSnafu {
             details: format!(
                 "Could not read content of NTFS first download {}",
                 &json_file_path.display()
             ),
         })?;
-    let datasets: Vec<NTFSDataset> = serde_json::from_str(&datasets).context(Json {
+    let datasets: Vec<NTFSDataset> = serde_json::from_str(&datasets).context(JsonSnafu {
         details: "Could not deserialize NTFS datasets",
     })?;
     let url = datasets
@@ -166,13 +166,13 @@ pub async fn ntfs(region: &str) -> Result<Status, Error> {
 
     fs::remove_file(json_file_path.as_path())
         .await
-        .context(InvalidIO {
+        .context(InvalidIOSnafu {
             details: format!("Could not remove {}", json_file_path.display()),
         })?;
 
     utils::download_to_file(&zip_file_path, &url)
         .await
-        .context(Download)?;
+        .context(DownloadSnafu)?;
 
     let _res = tokio::task::spawn_blocking(move || {
         // Straight from example in zip crate.

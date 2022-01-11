@@ -56,7 +56,7 @@ pub async fn import<C: Clone + ConfigureBackend>(
                         template.to_str().unwrap(),
                         config::FileFormat::Json,
                     ))
-                    .context(ConfigMerge {
+                    .context(ConfigMergeSnafu {
                         details: format!(
                             "could not read template configuration from {}",
                             template.display()
@@ -68,13 +68,13 @@ pub async fn import<C: Clone + ConfigureBackend>(
                     Template::Component => {
                         client
                             .configure(String::from("create component template"), config)
-                            .context(Backend)
+                            .context(BackendSnafu)
                             .await
                     }
                     Template::Index => {
                         client
                             .configure(String::from("create index template"), config)
-                            .context(Backend)
+                            .context(BackendSnafu)
                             .await
                     }
                 }
@@ -89,13 +89,13 @@ async fn dir_to_stream(
 ) -> Result<impl Stream<Item = Result<PathBuf, Error>> + Unpin, Error> {
     let entries = tokio::fs::read_dir(dir.as_path())
         .await
-        .context(InvalidIO {
+        .context(InvalidIOSnafu {
             details: format!("{}", dir.display()),
         })?;
 
     let stream = tokio_stream::wrappers::ReadDirStream::new(entries);
 
-    Ok(stream.map_ok(|entry| entry.path()).context(InvalidIO {
+    Ok(stream.map_ok(|entry| entry.path()).context(InvalidIOSnafu {
         details: "could not get path",
     }))
 }

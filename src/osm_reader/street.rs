@@ -83,7 +83,7 @@ pub fn streets(
     exclusions: &StreetExclusion,
     database: Option<&crate::settings::osm2mimir::Database>,
 ) -> Result<Vec<places::street::Street>, Error> {
-    let objs_map = ObjWrapper::new(database).context(ObjWrapperCreation)?;
+    let objs_map = ObjWrapper::new(database).context(ObjWrapperCreationSnafu)?;
     inner_streets(osm_reader, admins_geofinder, exclusions, objs_map)
 }
 #[cfg(not(feature = "db-storage"))]
@@ -92,7 +92,7 @@ pub fn streets(
     admins_geofinder: &AdminGeoFinder,
     exclusions: &StreetExclusion,
 ) -> Result<Vec<places::street::Street>, Error> {
-    let objs_map = ObjWrapper::new().context(ObjWrapperCreation)?;
+    let objs_map = ObjWrapper::new().context(ObjWrapperCreationSnafu)?;
     inner_streets(osm_reader, admins_geofinder, exclusions, objs_map)
 }
 
@@ -139,7 +139,7 @@ pub fn inner_streets(
     info!("reading pbf...");
     osm_reader
         .get_objs_and_deps_store(is_valid_obj, &mut objs_map)
-        .context(OsmPbfReaderExtraction {
+        .context(OsmPbfReaderExtractionSnafu {
             msg: String::from("Could not read objects and dependencies from pbf"),
         })?;
 
@@ -214,7 +214,7 @@ pub fn inner_streets(
             .refs
             .iter()
             .filter(|ref_obj| ref_obj.member.is_way() && &ref_obj.role == "street")
-            .filter_map(|ref_obj| {
+            .find_map(|ref_obj| {
                 let obj = objs_map.get(&ref_obj.member)?;
                 let way = obj.way()?;
                 let coord = get_way_coord(&objs_map, way);
@@ -227,8 +227,7 @@ pub fn inner_streets(
                     get_street_admin(admins_geofinder, &objs_map, way),
                     coord,
                 ))
-            })
-            .next();
+            });
 
         if let Some(street) = rel_street {
             street_list.extend(street);
@@ -321,13 +320,12 @@ fn get_street_admin<T: StoreObjs + Getter>(
     nodes_right
         .chain(nodes_left)
         .filter_map(|node_id| obj_map.get(&(*node_id).into()))
-        .filter_map(|node_obj| {
+        .find_map(|node_obj| {
             node_obj.node().map(|node| geo_types::Coordinate {
                 x: node.lon(),
                 y: node.lat(),
             })
         })
-        .next()
         .map_or_else(Vec::new, |coord| {
             // If the coords are part of several cities or suburbs, they are
             // all part of the output together with their parents. For

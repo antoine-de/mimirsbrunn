@@ -12,7 +12,6 @@ use crate::domain::ports::secondary::get::{Get, Parameters};
 #[cfg(test)]
 use places::admin::Admin;
 
-#[cfg_attr(test, mockall::automock(type Document=Admin;))]
 #[async_trait]
 pub trait GetDocuments {
     type Document;

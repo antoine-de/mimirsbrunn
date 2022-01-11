@@ -61,10 +61,8 @@ pub enum Error {
         source: mimir::domain::ports::secondary::remote::Error,
     },
 
-    // Cosmogony uses failure::Error, which does not implement std::Error, so
-    // we use a String to get the error message instead.
-    #[snafu(display("Cosmogony Error: {}", details))]
-    Cosmogony { details: String },
+    #[snafu(display("Cosmogony Error: {}", source))]
+    Cosmogony { source: anyhow::Error },
 
     #[snafu(display("Index Generation Error {}", source))]
     IndexGeneration {
@@ -95,7 +93,7 @@ where
     let _ = client
         .generate_index(config, admins)
         .await
-        .context(IndexGeneration)?;
+        .context(IndexGenerationSnafu)?;
     Ok(())
 }
 
@@ -196,15 +194,9 @@ impl IntoAdmin for Zone {
     }
 }
 
-fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone>, Error> {
+fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone> + Send + Sync, Error> {
     let iter = cosmogony::read_zones_from_file(path)
-        .map_err(|err| Error::Cosmogony {
-            details: format!(
-                "could not read zones from file {}: {}",
-                path.display(),
-                err.to_string()
-            ),
-        })?
+        .context(CosmogonySnafu)?
         .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok());
     Ok(iter)
 }

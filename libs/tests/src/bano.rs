@@ -15,7 +15,7 @@ use places::addr::Addr;
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Indexing Error: {}", details))]
     Indexing { details: String },
@@ -46,7 +46,7 @@ pub async fn index_addresses(
     let index = client
         .find_container(container)
         .await
-        .context(ContainerSearch)?;
+        .context(ContainerSearchSnafu)?;
 
     // If the previous step has been skipped, then we don't need to index BANO file.
     if index.is_some() && !reindex_if_already_exists {
@@ -97,7 +97,7 @@ pub async fn index_addresses(
     let addresses =
         mimirsbrunn::addr_reader::import_addresses_from_input_path(input_file, false, into_addr)
             .await
-            .context(AddressFetch)?;
+            .context(AddressFetchSnafu)?;
 
     client
         .generate_index(&config.container, addresses)

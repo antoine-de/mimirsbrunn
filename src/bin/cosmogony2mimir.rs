@@ -57,14 +57,14 @@ pub enum Error {
 
 fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(Settings)?;
+    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
 
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             settings.nb_threads,
             run(opts, settings),
         )
-        .context(Execution),
+        .context(ExecutionSnafu),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -83,7 +83,7 @@ async fn run(
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
-        .context(ElasticsearchConnection)
+        .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
 
     tracing::info!("Connected to elasticsearch.");
@@ -97,7 +97,7 @@ async fn run(
         &client,
     )
     .await
-    .context(Import)
+    .context(ImportSnafu)
     .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
@@ -222,7 +222,7 @@ mod tests {
         assert!(res
             .unwrap_err()
             .to_string()
-            .contains("Cosmogony Error: could not read zones from file"));
+            .contains("Cosmogony Error: No such file or directory (os error 2)"));
     }
 
     #[tokio::test]
@@ -453,7 +453,7 @@ mod tests {
             .try_collect()
             .await
             .unwrap();
-        for adm_name in vec![
+        for adm_name in [
             "Saint-Sulpice-les-Champs",
             "Queyssac-les-Vignes",
             "Saint-Quentin-la-Chabanne",
@@ -506,13 +506,13 @@ mod tests {
             .try_collect()
             .await
             .unwrap();
-        for adm_name in vec![
+        for adm_name in [
             "Saint-Sulpice-les-Champs",
             "Queyssac-les-Vignes",
             "Saint-Quentin-la-Chabanne",
         ] {
             let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
-            assert_eq!(admin.id.starts_with("admin:osm:relation"), true);
+            assert!(admin.id.starts_with("admin:osm:relation"));
         }
     }
 }

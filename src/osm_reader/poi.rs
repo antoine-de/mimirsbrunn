@@ -126,7 +126,7 @@ impl Default for PoiConfig {
 
 impl PoiConfig {
     pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Error> {
-        let config: PoiConfig = serde_json::from_reader(r).context(JsonDeserialization)?;
+        let config: PoiConfig = serde_json::from_reader(r).context(JsonDeserializationSnafu)?;
         config.check()?;
         Ok(config)
     }
@@ -259,7 +259,7 @@ pub fn pois(
 ) -> Result<Vec<Poi>, Error> {
     let objects = osm_reader
         .get_objs_and_deps(|o| matcher.is_poi(o.tags()))
-        .context(OsmPbfReaderExtraction {
+        .context(OsmPbfReaderExtractionSnafu {
             msg: String::from("Could not read objects and dependencies from pbf"),
         })?;
     Ok(objects

@@ -13,7 +13,7 @@ use places::admin::Admin;
 use super::utils;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Could not Create Directory: {}", source))]
     CreateDir { source: utils::Error },
@@ -70,7 +70,7 @@ pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Resul
 
     create_dir_if_not_exists(&output_dir)
         .await
-        .context(CreateDir)?;
+        .context(CreateDirSnafu)?;
 
     // If the output already exists, and we don't need to regenerate it, skip this step.
     if file_exists(&output_file).await && !regenerate_if_already_exists {
@@ -78,7 +78,7 @@ pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Resul
     }
 
     // FIXME It would be nice not to resort to an env variable, and to use cosmogony as a library.
-    let cosmogony_path = std::env::var("COSMOGONY_EXE").context(EnvironmentVariable {
+    let cosmogony_path = std::env::var("COSMOGONY_EXE").context(EnvironmentVariableSnafu {
         details: "Could not get COSMOGONY_EXE environment variable".to_string(),
     })?;
 
@@ -93,7 +93,7 @@ pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Resul
         .expect("failed to spawn cosmogony")
         .wait()
         .await
-        .context(InvalidIO {
+        .context(InvalidIOSnafu {
             details: format!(
                 "failed to generate cosmogony with input {} and output {}",
                 input_file.display(),
@@ -117,7 +117,7 @@ pub async fn index_admins(
     let index = client
         .find_container(container.clone())
         .await
-        .context(ContainerSearch)?;
+        .context(ContainerSearchSnafu)?;
 
     // If the previous step has been skipped, then we don't need to index the
     // cosmogony file.

@@ -157,7 +157,7 @@ where
     client
         .generate_index(&config, pois)
         .await
-        .context(IndexGeneration)?;
+        .context(IndexGenerationSnafu)?;
 
     Ok(())
 }
@@ -198,11 +198,11 @@ async fn into_poi(
     let place = client
         .search_documents(es_indices_to_search, Query::QueryDSL(dsl), 1, None)
         .await
-        .context(ReverseAddressSearch)
+        .context(ReverseAddressSearchSnafu)
         .and_then(|values| match values.into_iter().next() {
             None => Ok(None), // If we didn't get any result, return 'no place'
             Some(value) => serde_json::from_value::<Place>(value)
-                .context(Json {
+                .context(JsonSnafu {
                     details: "could no deserialize place",
                 })
                 .map(Some),
@@ -245,10 +245,7 @@ async fn into_poi(
         weight,
         zip_codes: vec![],
         poi_type,
-        properties: properties
-            .into_iter()
-            .map(|property| (property.key, property.value))
-            .collect(),
+        properties,
         address: addr,
         country_codes,
         names: I18nProperties::default(),

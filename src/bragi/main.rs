@@ -18,7 +18,7 @@ pub enum Error {
 fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
     match opts.cmd {
-        settings::Command::Run => server::run(&opts).context(ServerError),
-        settings::Command::Config => server::config(&opts).context(ServerError),
+        settings::Command::Run => server::run(&opts).context(ServerSnafu),
+        settings::Command::Config => server::config(&opts).context(ServerSnafu),
     }
 }

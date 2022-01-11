@@ -59,7 +59,7 @@ impl Step for IndexBano {
         bano::index_addresses(&client, region, dataset, false)
             .await
             .map(|status| status.into())
-            .context(error::IndexBano)
+            .context(error::IndexBanoSnafu)
     }
 }
 

@@ -115,7 +115,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
 ) -> Result<(), Error> {
     match client.list_documents().await {
         Ok(stream) => {
-            let admins: Vec<Admin> = stream.try_collect().await.context(IndexGeneration)?;
+            let admins: Vec<Admin> = stream.try_collect().await.context(IndexGenerationSnafu)?;
 
             if admins.is_empty() {
                 return Err(Error::AdminRetrieval {
@@ -228,7 +228,7 @@ where
     client
         .generate_index(config, stops)
         .await
-        .context(IndexGeneration)?;
+        .context(IndexGenerationSnafu)?;
 
     Ok(())
 }

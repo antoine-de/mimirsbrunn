@@ -58,6 +58,6 @@ impl Step for IndexPois {
         osm::index_pois(&client, region, dataset, false)
             .await
             .map(|status| status.into())
-            .context(error::IndexOsm)
+            .context(error::IndexOsmSnafu)
     }
 }

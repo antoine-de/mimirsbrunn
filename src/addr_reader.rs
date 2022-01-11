@@ -43,10 +43,10 @@ pub async fn import_addresses_from_input_path<F, T>(
     into_addr: F,
 ) -> Result<impl Stream<Item = Addr>, Error>
 where
-    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, crate::error::Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    metadata(&path).await.context(InvalidPath)?;
+    metadata(&path).await.context(InvalidPathSnafu)?;
     let into_addr = Arc::new(into_addr);
 
     let recs = records_from_path(&path, has_headers)
@@ -103,7 +103,7 @@ where
     T: DeserializeOwned + Send + Sync + 'static,
 {
     utils::fs::walk_files_recursive(path)
-        .context(InvalidIO)
+        .context(InvalidIOSnafu)
         .try_filter_map(move |file| async move {
             Ok(match records_from_file(&file, has_headers).await {
                 Ok(recs) => {
@@ -127,8 +127,10 @@ async fn records_from_file<T>(
 where
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    let file_read =
-        BufReader::with_capacity(CSV_BUFFER_SIZE, File::open(file).await.context(InvalidIO)?);
+    let file_read = BufReader::with_capacity(
+        CSV_BUFFER_SIZE,
+        File::open(file).await.context(InvalidIOSnafu)?,
+    );
 
     let data_read = {
         if file.extension().and_then(OsStr::to_str) == Some("csv") {
@@ -144,7 +146,7 @@ where
         .has_headers(has_headers)
         .create_deserializer(data_read)
         .into_deserialize::<T>()
-        .context(Csv);
+        .context(CsvSnafu);
 
     Ok(records)
 }

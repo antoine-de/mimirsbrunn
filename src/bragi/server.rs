@@ -42,7 +42,7 @@ pub enum Error {
 }
 
 pub fn run(opts: &Opts) -> Result<(), Error> {
-    let settings = Settings::new(opts).context(SettingsProcessing)?;
+    let settings = Settings::new(opts).context(SettingsProcessingSnafu)?;
 
     let _log_guard = logger_init().map_err(|err| Error::InitLog { source: err })?;
 
@@ -56,7 +56,7 @@ pub fn run(opts: &Opts) -> Result<(), Error> {
 }
 
 pub fn config(opts: &Opts) -> Result<(), Error> {
-    let settings = Settings::new(opts).context(SettingsProcessing)?;
+    let settings = Settings::new(opts).context(SettingsProcessingSnafu)?;
     println!("{}", serde_json::to_string_pretty(&settings).unwrap());
     Ok(())
 }
@@ -71,7 +71,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
     let client = connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch.clone())
         .await
-        .context(ElasticsearchConnection)?;
+        .context(ElasticsearchConnectionSnafu)?;
 
     // Here I place reverse_geocoder first because its most likely to get hit.
     let api = reverse_geocoder!(
@@ -113,7 +113,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
     let addr = (host.as_str(), port);
     let addr = addr
         .to_socket_addrs()
-        .context(SockAddr { host, port })?
+        .context(SockAddrSnafu { host, port })?
         .next()
         .ok_or(Error::AddrResolution {
             msg: String::from("Cannot resolve bragi addr."),

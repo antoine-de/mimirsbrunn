@@ -54,6 +54,6 @@ impl Step for IndexNTFS {
         ntfs::index_stops(&client, region, dataset, false)
             .await
             .map(|status| status.into())
-            .context(error::IndexNTFS)
+            .context(error::IndexNTFSSnafu)
     }
 }

@@ -50,6 +50,6 @@ impl Step for IndexStreets {
         osm::index_streets(&client, region, dataset, false)
             .await
             .map(|status| status.into())
-            .context(error::IndexOsm)
+            .context(error::IndexOsmSnafu)
     }
 }

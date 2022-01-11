@@ -9,7 +9,7 @@ use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use places::stop::Stop;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Indexing Error: {}", details))]
     Indexing { details: String },
@@ -34,7 +34,7 @@ pub async fn index_stops(
     let index = client
         .find_container(container)
         .await
-        .context(ContainerSearch)?;
+        .context(ContainerSearchSnafu)?;
 
     // If the previous step has been skipped, then we don't need to index BANO file.
     if index.is_some() && !reindex_if_already_exists {

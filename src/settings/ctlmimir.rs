@@ -79,7 +79,7 @@ impl Settings {
 
         config
             .set_default("path", opts.config_dir.display().to_string())
-            .context(ConfigMerge { msg: "path" })?;
+            .context(ConfigMergeSnafu { msg: "path" })?;
 
         config
             .with_merged(
@@ -90,13 +90,13 @@ impl Settings {
                     "MIMIR",
                     opts.settings.clone(),
                 )
-                .context(ConfigCompilation)?,
+                .context(ConfigCompilationSnafu)?,
             )
-            .context(ConfigMerge {
+            .context(ConfigMergeSnafu {
                 msg: "Cannot build the configuration from sources",
             })?
             .try_into()
-            .context(ConfigMerge {
+            .context(ConfigMergeSnafu {
                 msg: "Cannot convert configuration into ctlmimir settings",
             })
     }

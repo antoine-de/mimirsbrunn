@@ -28,7 +28,7 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use crate::Error;
+use crate::error::Error;
 use places::addr::Addr;
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;

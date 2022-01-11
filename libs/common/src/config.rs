@@ -64,20 +64,20 @@ pub fn config_from<
             config.merge(File::from(local_path).required(false))?;
             Ok(config)
         })
-        .context(ConfigCompilation)?;
+        .context(ConfigCompilationSnafu)?;
 
     // Add in settings from the environment
     // Eg.. `<prefix>_DEBUG=1 ./target/app` would set the `debug` key
     if let Some(prefix) = prefix.into() {
         let prefix = Environment::with_prefix(prefix).separator("__");
-        config.merge(prefix).context(ConfigCompilation)?;
+        config.merge(prefix).context(ConfigCompilationSnafu)?;
     };
 
     // Add command line overrides
     if !overrides.is_empty() {
         config
             .merge(config_from_args(overrides)?)
-            .context(ConfigCompilation)?;
+            .context(ConfigCompilationSnafu)?;
     }
 
     Ok(config)
@@ -89,7 +89,7 @@ fn config_from_args(args: impl IntoIterator<Item = String>) -> Result<Config, Er
         .try_fold(Config::default(), |builder, arg| {
             builder.with_merged(config::File::from_str(&arg, config::FileFormat::Toml))
         })
-        .context(ConfigCompilation)
+        .context(ConfigCompilationSnafu)
 }
 
 #[cfg(test)]
