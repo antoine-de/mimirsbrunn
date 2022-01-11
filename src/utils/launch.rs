@@ -30,7 +30,7 @@
 
 use futures::future::Future;
 use lazy_static::lazy_static;
-use std::path::Path;
+use tokio::runtime;
 use tracing::error;
 
 use super::logger::logger_init;
@@ -41,21 +41,50 @@ lazy_static! {
 
 // Ensures the logger is initialized prior to launching a function, and also making sure the logger
 // is flushed at the end. Whatever is returned by the main function is forwarded out.
-pub async fn wrapped_launch_async<F, Fut>(
-    logging_path: &Path,
-    run: F,
-) -> Result<(), Box<dyn std::error::Error>>
+pub async fn wrapped_launch_async<F, Fut>(run: F) -> Result<(), Box<dyn std::error::Error>>
 where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<(), Box<dyn std::error::Error>>>,
 {
-    let guard = logger_init(logging_path).map_err(Box::new)?;
+    let guard = logger_init().map_err(Box::new)?;
 
     let res = if let Err(err) = run().await {
         // To revisit when rust #58520 is resolved
         // for cause in err.chain() {
         //     error!("{}", cause);
         // }
+        if let Some(source) = err.source() {
+            error!("{}", source);
+        }
+        Err(err)
+    } else {
+        Ok(())
+    };
+
+    // Ensure the logger persists until the future is resolved
+    // and is flushed before the process exits.
+    drop(guard);
+    res
+}
+
+// Ensures the logger is initialized prior to launching a function, and also making sure the logger
+// is flushed at the end. Whatever is returned by the main function is forwarded out.
+pub fn launch_with_runtime<F>(
+    nb_threads: Option<usize>,
+    run: F,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    F: Future<Output = Result<(), Box<dyn std::error::Error>>>,
+{
+    let guard = logger_init().map_err(Box::new)?;
+
+    let runtime = runtime::Builder::new_multi_thread()
+        .worker_threads(nb_threads.unwrap_or_else(num_cpus::get))
+        .enable_all()
+        .build()
+        .expect("Failed to build tokio runtime.");
+
+    let res = if let Err(err) = runtime.block_on(run) {
         if let Some(source) = err.source() {
             error!("{}", source);
         }

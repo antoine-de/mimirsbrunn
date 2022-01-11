@@ -15,13 +15,18 @@ use places::addr::Addr;
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Indexing Error: {}", details))]
     Indexing { details: String },
 
     #[snafu(display("Container Search Error: {}", source))]
     ContainerSearch { source: StorageError },
+
+    #[snafu(display("Address Fetching Error: {}", source))]
+    AddressFetch {
+        source: mimirsbrunn::addr_reader::Error,
+    },
 }
 
 pub enum Status {
@@ -41,7 +46,7 @@ pub async fn index_addresses(
     let index = client
         .find_container(container)
         .await
-        .context(ContainerSearch)?;
+        .context(ContainerSearchSnafu)?;
 
     // If the previous step has been skipped, then we don't need to index BANO file.
     if index.is_some() && !reindex_if_already_exists {
@@ -77,9 +82,9 @@ pub async fn index_addresses(
     };
 
     // Load file
-    let config: mimirsbrunn::settings::bano2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::bano2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["bano2mimir", "elasticsearch", "logging"],
+        &["bano2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],
@@ -87,9 +92,12 @@ pub async fn index_addresses(
     .expect("could not load bano2mimir configuration")
     .try_into()
     .expect("invalid bano2mimir configuration");
+    config.container.dataset = dataset.to_string();
 
     let addresses =
-        mimirsbrunn::addr_reader::import_addresses_from_input_path(input_file, false, into_addr);
+        mimirsbrunn::addr_reader::import_addresses_from_input_path(input_file, false, into_addr)
+            .await
+            .context(AddressFetchSnafu)?;
 
     client
         .generate_index(&config.container, addresses)

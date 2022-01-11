@@ -1,9 +1,11 @@
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
+use mimir::utils::deserialize::deserialize_duration;
 use serde::{Deserialize, Serialize};
 use snafu::ResultExt;
 use snafu::Snafu;
 use std::env;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use mimir::adapters::primary::common::settings::QuerySettings;
 
@@ -39,11 +41,6 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Service {
     /// Host on which we expose bragi. Example: 'http://localhost', '0.0.0.0'
     pub host: String,
@@ -56,10 +53,17 @@ pub struct Service {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: String,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub query: QuerySettings,
     pub service: Service,
+    pub nb_threads: Option<usize>,
+    pub http_cache_duration: usize,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub autocomplete_timeout: Duration,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub reverse_timeout: Duration,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub features_timeout: Duration,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -107,14 +111,14 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["bragi", "elasticsearch", "query", "logging"],
+            &["bragi", "elasticsearch", "query"],
             opts.run_mode.as_deref(),
             "BRAGI",
             opts.settings.clone(),
         )
-        .context(ConfigCompilation)?
+        .context(ConfigCompilationSnafu)?
         .try_into()
-        .context(ConfigMerge {
+        .context(ConfigMergeSnafu {
             msg: "cannot merge bragi settings",
         })
     }
@@ -163,7 +167,7 @@ mod tests {
     #[test]
     fn should_override_elasticsearch_port_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        std::env::set_var("BRAGI_ELASTICSEARCH_URL", "http://localhost:9999");
+        std::env::set_var("BRAGI_ELASTICSEARCH__URL", "http://localhost:9999");
         let opts = Opts {
             config_dir,
             run_mode: Some(String::from("testing")),

@@ -3,31 +3,42 @@ use cucumber::{then, when};
 use geo::algorithm::haversine_distance::HaversineDistance;
 use itertools::{EitherOrBoth::*, Itertools};
 use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
+use mimir::domain::model::configuration;
 use mimir::domain::ports::secondary::remote::Remote;
 use std::cmp::Ordering;
 
 use crate::error::Error;
 use crate::state::{GlobalState, State, Step, StepStatus};
-use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::primary::common::dsl::QueryType;
 use mimir::adapters::primary::{
     common::coord::Coord, common::dsl::build_query, common::filters::Filters,
     common::settings::QuerySettings,
 };
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
+use places::{addr::Addr, admin::Admin, poi::Poi};
 
 // Search place
 
 #[when(regex = r#"the user searches (.+) datatype for "(.*)" at (.+), (.+)$"#)]
 async fn search(state: &mut GlobalState, places: String, query: String, lat: f32, lon: f32) {
-    perform_search(state, places, query, Coord::new(lat, lon).into()).await;
+    perform_search(state, places, query, Coord::new(lat, lon).into(), None).await;
+}
+
+#[when(regex = r#"the user searches (.+) datatype for "(.+)" with "(.+)" filters$"#)]
+async fn search_with_zone_filters(
+    state: &mut GlobalState,
+    places: String,
+    query: String,
+    zone_types: String,
+) {
+    perform_search(state, places, query, None, Some(zone_types)).await;
 }
 
 #[when(regex = r#"the user searches (.+) datatype for "(.*)"$"#)]
 async fn search_no_coord(state: &mut GlobalState, places: String, query: String) {
-    perform_search(state, places, query, None).await;
+    perform_search(state, places, query, None, None).await;
 }
 
 async fn perform_search(
@@ -35,27 +46,31 @@ async fn perform_search(
     places: String,
     query: String,
     coord: Option<Coord>,
+    zone_types: Option<String>,
 ) {
     let places = {
         if places == "all" {
-            vec![
-                Addr::static_doc_type().to_string(),
-                Admin::static_doc_type().to_string(),
-                Street::static_doc_type().to_string(),
-                Stop::static_doc_type().to_string(),
-                Poi::static_doc_type().to_string(),
-            ]
+            vec![configuration::root()]
         } else {
             places
                 .split(',')
                 .map(str::trim)
                 .map(str::to_string)
+                .map(|s| configuration::root_doctype(&s))
                 .collect()
         }
     };
 
+    let zone_types = zone_types.map(|f| {
+        f.split(',')
+            .map(str::trim)
+            .map(str::to_string)
+            .collect::<Vec<String>>()
+    });
+
     let filters = Filters {
         coord,
+        zone_types,
         ..Default::default()
     };
 
@@ -91,8 +106,9 @@ impl Step for Search {
         let dsl = build_query(
             &self.query,
             self.filters.clone(),
-            &["fr"],
+            "fr",
             &QuerySettings::default(),
+            QueryType::PREFIX,
         );
 
         // Fetch documents
@@ -102,6 +118,7 @@ impl Step for Search {
                     self.places.clone(),
                     Query::QueryDSL(dsl),
                     DEFAULT_LIMIT_RESULT_ES,
+                    None,
                 )
                 .await
                 .unwrap()
@@ -152,12 +169,11 @@ impl Step for HasDocument {
 // Find Admin
 
 #[then(regex = r#"he finds admin "(.*)", a "(.*)", in the first (.*) results$"#)]
-async fn find_admin(state: &mut GlobalState, name: String, _zone_type: String, limit: usize) {
+async fn find_admin(state: &mut GlobalState, name: String, zone_type: String, limit: usize) {
     state
         .execute(HasAdmin {
             name: Some(name),
-            // TODO: zone_type,
-            zone_type: None,
+            zone_type: Some(zone_type),
             limit,
         })
         .await
@@ -180,7 +196,6 @@ impl Step for HasAdmin {
             .steps_for::<Search>()
             .next_back()
             .expect("the user must perform a search before checking results");
-
         let rank = search
             .results
             .clone()

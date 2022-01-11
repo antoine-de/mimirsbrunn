@@ -1,28 +1,68 @@
+use crate::adapters::primary::bragi::prometheus_handler;
+use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
-use serde::Serialize;
+use std::time::Duration;
 use tracing::{debug, instrument};
-use warp::http::StatusCode;
 use warp::reply::{json, with_status};
+use warp::{http::StatusCode, reject::Reject};
 
-use crate::adapters::primary::bragi::api::ForwardGeocoderExplainQuery;
+use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
+use crate::adapters::primary::common::dsl::QueryType;
 use crate::adapters::primary::{
     bragi::api::{
         BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
         StatusResponseBody, Type,
     },
     common::{
-        dsl, filters, geocoding::Feature, geocoding::FromWithLang, geocoding::GeocodeJsonResponse,
-        settings,
+        coord, dsl, filters, geocoding::Feature, geocoding::FromWithLang,
+        geocoding::GeocodeJsonResponse, settings,
     },
 };
+use crate::domain::model::configuration::{root_doctype, root_doctype_dataset};
 use crate::domain::model::query::Query;
 use crate::domain::ports::primary::explain_query::ExplainDocument;
+use crate::domain::ports::primary::get_documents::GetDocuments;
 use crate::domain::ports::primary::search_documents::SearchDocuments;
 use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
+use serde::{Deserialize, Serialize};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub enum InternalErrorReason {
+    ElasticSearchError,
+    SerializationError,
+    ObjectNotFoundError,
+    StatusError,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct InternalError {
+    pub reason: InternalErrorReason,
+    pub info: String,
+}
+
+impl Reject for InternalError {}
+
+pub fn build_feature(
+    places: Vec<places::Place>,
+    query_coord: Option<&coord::Coord>,
+) -> Vec<Feature> {
+    places
+        .into_iter()
+        .map(|mut p| {
+            if let Some(ref coord) = query_coord {
+                let geo_point = geo::Point::new(coord.lon as f64, coord.lat as f64);
+                let pp: geo::Point<f64> = geo::Point::new(p.coord().lon(), p.coord().lat());
+                let distance = geo_point.haversine_distance(&pp) as u32;
+                p.set_distance(distance);
+            }
+            Feature::from_with_lang(p, None)
+        })
+        .collect()
+}
 
 #[instrument(skip(client, settings))]
 pub async fn forward_geocoder<S>(
@@ -30,56 +70,88 @@ pub async fn forward_geocoder<S>(
     geometry: Option<Geometry>,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
     S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.q.clone();
-    let search_types = types_to_indices(&params.types);
+    let timeout = params.timeout.unwrap_or(timeout);
+    let es_indices_to_search_in =
+        build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
+    let lang = params.lang.clone();
     let filters = filters::Filters::from((params, geometry));
-    let dsl = dsl::build_query(&q, filters.clone(), &["fr"], &settings);
+    let dsl_query_prefix = dsl::build_query(
+        &q,
+        filters.clone(),
+        lang.as_str(),
+        &settings,
+        QueryType::PREFIX,
+    );
+    let dsl_query_fuzzy = dsl::build_query(
+        &q,
+        filters.clone(),
+        lang.as_str(),
+        &settings,
+        QueryType::FUZZY,
+    );
 
-    debug!("{}", serde_json::to_string(&dsl).unwrap());
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl_query_prefix).unwrap()
+    );
 
-    match client
-        .search_documents(search_types, Query::QueryDSL(dsl), filters.limit)
-        .await
-    {
-        Ok(res) => {
-            let places: Result<Vec<Place>, serde_json::Error> = res
-                .into_iter()
-                .map(|json| serde_json::from_value::<Place>(json.into()))
-                .collect();
-
-            match places {
-                Ok(places) => {
-                    let features = places
-                        .into_iter()
-                        .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
-                        .collect();
-                    let resp = GeocodeJsonResponse::new(q, features);
-                    Ok(with_status(json(&resp), StatusCode::OK))
+    let futurs = vec![
+        client.search_documents(
+            es_indices_to_search_in.clone(),
+            Query::QueryDSL(dsl_query_prefix.clone()),
+            filters.limit,
+            Some(timeout),
+        ),
+        client.search_documents(
+            es_indices_to_search_in.clone(),
+            Query::QueryDSL(dsl_query_fuzzy),
+            filters.limit,
+            Some(timeout),
+        ),
+    ];
+    for futur in futurs {
+        match futur.await {
+            Ok(res) => {
+                let places: Result<Vec<Place>, serde_json::Error> = res
+                    .into_iter()
+                    .map(|json| serde_json::from_value::<Place>(json.into()))
+                    .collect();
+                match places {
+                    Ok(places) if places.is_empty() => {}
+                    Ok(places) => {
+                        let features = build_feature(places, filters.coord.as_ref());
+                        let resp = GeocodeJsonResponse::new(q, features);
+                        return Ok(with_status(json(&resp), StatusCode::OK));
+                    }
+                    Err(err) => {
+                        return Err(warp::reject::custom(InternalError {
+                            reason: InternalErrorReason::SerializationError,
+                            info: err.to_string(),
+                        }))
+                    }
                 }
-                Err(err) => Ok(with_status(
-                    json(&format!(
-                        "Error while searching {}: {}",
-                        &q,
-                        err.to_string()
-                    )),
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                )),
+            }
+            Err(err) => {
+                return Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::ElasticSearchError,
+                    info: err.to_string(),
+                }))
             }
         }
-        Err(err) => Ok(with_status(
-            json(&format!(
-                "Error while searching {}: {}",
-                &q,
-                err.to_string()
-            )),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
     }
+
+    Ok(with_status(
+        json(&GeocodeJsonResponse::new(q, vec![])),
+        StatusCode::OK,
+    ))
 }
 
 #[instrument(skip(client, settings))]
@@ -88,14 +160,16 @@ pub async fn forward_geocoder_explain<S>(
     geometry: Option<Geometry>,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: ExplainDocument,
     S::Document: Serialize + Into<serde_json::Value>,
 {
     let q = params.query.q.clone();
+    let lang = params.query.lang.clone();
     let filters = filters::Filters::from((params.query, geometry));
-    let dsl = dsl::build_query(&q, filters, &["fr"], &settings);
+    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings, QueryType::PREFIX);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
@@ -104,14 +178,10 @@ where
         .await
     {
         Ok(res) => Ok(with_status(json(&res), StatusCode::OK)),
-        Err(err) => Ok(with_status(
-            json(&format!(
-                "Error while searching {}: {}",
-                &q,
-                err.to_string()
-            )),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ElasticSearchError,
+            info: err.to_string(),
+        })),
     }
 }
 
@@ -119,22 +189,33 @@ pub async fn reverse_geocoder<S>(
     params: ReverseGeocoderQuery,
     client: S,
     settings: settings::QuerySettings,
+    timeout: Duration,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
     S: SearchDocuments,
     S::Document: Serialize + Into<serde_json::Value>,
 {
+    let timeout = params.timeout.unwrap_or(timeout);
     let distance = format!("{}m", settings.reverse_query.radius);
     let dsl = dsl::build_reverse_query(&distance, params.lat, params.lon);
 
+    let es_indices_to_search_in = vec![
+        root_doctype(Street::static_doc_type()),
+        root_doctype(Addr::static_doc_type()),
+    ];
+
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
+
     match client
         .search_documents(
-            vec![
-                String::from(Street::static_doc_type()),
-                String::from(Addr::static_doc_type()),
-            ],
+            es_indices_to_search_in,
             Query::QueryDSL(dsl),
             params.limit,
+            Some(timeout),
         )
         .await
     {
@@ -147,13 +228,67 @@ where
             let resp = GeocodeJsonResponse::from_with_lang(places, None);
             Ok(with_status(json(&resp), StatusCode::OK))
         }
-        Err(err) => Ok(with_status(
-            json(&format!(
-                "Error while reverse searching: {}",
-                err.to_string()
-            )),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ElasticSearchError,
+            info: err.to_string(),
+        })),
+    }
+}
+
+pub async fn features<S>(
+    doc_id: String,
+    params: FeaturesQuery,
+    client: S,
+    timeout: Duration,
+) -> Result<impl warp::Reply, warp::Rejection>
+where
+    S: GetDocuments,
+    S::Document: Serialize + Into<serde_json::Value>,
+{
+    let timeout = params.timeout.unwrap_or(timeout);
+    let es_indices_to_search_in =
+        build_es_indices_to_search(&None, &params.pt_dataset, &params.poi_dataset);
+    let dsl = dsl::build_features_query(&es_indices_to_search_in, &doc_id);
+
+    tracing::trace!(
+        "Searching in indexes {:?} with query {}",
+        es_indices_to_search_in,
+        serde_json::to_string_pretty(&dsl).unwrap()
+    );
+
+    match client
+        .get_documents_by_id(Query::QueryDSL(dsl), Some(timeout))
+        .await
+    {
+        Ok(res) => {
+            let places: Result<Vec<Place>, serde_json::Error> = res
+                .into_iter()
+                .map(|json| serde_json::from_value::<Place>(json.into()))
+                .collect();
+
+            match places {
+                Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::ObjectNotFoundError,
+                    info: "Unable to find object".to_string(),
+                })),
+                Ok(places) => {
+                    let features: Vec<Feature> = places
+                        .into_iter()
+                        .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
+                        .collect();
+                    let resp = GeocodeJsonResponse::new("".to_string(), features);
+                    Ok(with_status(json(&resp), StatusCode::OK))
+                }
+                Err(err) => Err(warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::SerializationError,
+                    info: err.to_string(),
+                })),
+            }
+        }
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::ElasticSearchError,
+            info: err.to_string(),
+        })),
     }
 }
 
@@ -178,25 +313,188 @@ where
             };
             Ok(with_status(json(&resp), StatusCode::OK))
         }
-        Err(err) => Ok(with_status(
-            json(&format!("Error while querying status: {}", err.to_string())),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
+        Err(err) => Err(warp::reject::custom(InternalError {
+            reason: InternalErrorReason::StatusError,
+            info: err.to_string(),
+        })),
     }
 }
 
-// This translate the search types requested in the query into index types to search for.
-// If no type were specified, we search all indices.
-fn types_to_indices(types: &Option<Vec<Type>>) -> Vec<String> {
-    if let Some(ts) = types {
-        ts.iter().map(|t| t.as_index_type().to_string()).collect()
+pub async fn metrics() -> Result<impl warp::Reply, warp::Rejection> {
+    let reply = warp::reply::with_header(
+        prometheus_handler::metrics(),
+        "content-type",
+        "text/plain; charset=utf-8",
+    );
+    Ok(reply)
+}
+
+pub fn build_es_indices_to_search(
+    types: &Option<Vec<Type>>,
+    pt_dataset: &Option<Vec<String>>,
+    poi_dataset: &Option<Vec<String>>,
+) -> Vec<String> {
+    // some specific types are requested,
+    // let's search only for these types of objects
+    if let Some(types) = types {
+        let mut indices = Vec::new();
+        for doc_type in types.iter() {
+            match doc_type {
+                Type::House => indices.push(root_doctype(Addr::static_doc_type())),
+                Type::Street => indices.push(root_doctype(Street::static_doc_type())),
+                Type::Zone | Type::City => indices.push(root_doctype(Admin::static_doc_type())),
+                Type::Poi => {
+                    let doc_type_str = Poi::static_doc_type();
+                    // if some poi_dataset are specified
+                    // we search for poi only in the corresponding es indices
+                    if let Some(poi_datasets) = poi_dataset {
+                        for poi_dataset in poi_datasets.iter() {
+                            indices.push(root_doctype_dataset(doc_type_str, poi_dataset));
+                        }
+                    } else {
+                        // no poi_dataset specified
+                        // we search in the global alias for all poi
+                        indices.push(root_doctype(doc_type_str));
+                    }
+                }
+                Type::StopArea => {
+                    // if some pt_dataset are specified
+                    // we search for stops only in the corresponding es indices
+                    let doc_type_str = Stop::static_doc_type();
+                    if let Some(pt_datasets) = pt_dataset {
+                        for pt_dataset in pt_datasets.iter() {
+                            indices.push(root_doctype_dataset(doc_type_str, pt_dataset));
+                        }
+                    } else {
+                        // no pt_dataset specified
+                        // we search in the global alias for all stops
+                        indices.push(root_doctype(doc_type_str));
+                    }
+                }
+            }
+        }
+        indices
     } else {
-        vec![
-            String::from(Admin::static_doc_type()),
-            String::from(Street::static_doc_type()),
-            String::from(Addr::static_doc_type()),
-            String::from(Stop::static_doc_type()),
-            String::from(Poi::static_doc_type()),
-        ]
+        let mut indices = vec![
+            root_doctype(Addr::static_doc_type()),
+            root_doctype(Street::static_doc_type()),
+            root_doctype(Admin::static_doc_type()),
+        ];
+        if let Some(pt_datasets) = pt_dataset {
+            let doc_type_str = Stop::static_doc_type();
+            for pt_dataset in pt_datasets.iter() {
+                indices.push(root_doctype_dataset(doc_type_str, pt_dataset));
+            }
+        }
+        if let Some(poi_datasets) = poi_dataset {
+            let doc_type_str = Poi::static_doc_type();
+            for poi_dataset in poi_datasets.iter() {
+                indices.push(root_doctype_dataset(doc_type_str, poi_dataset));
+            }
+        } else {
+            indices.push(root_doctype(Poi::static_doc_type()))
+        }
+        indices
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::adapters::primary::bragi::routes::forward_geocoder_get;
+
+    async fn indices_builder(query: &str) -> Vec<String> {
+        let filter = forward_geocoder_get();
+        let params = warp::test::request()
+            .path(query)
+            .filter(&filter)
+            .await
+            .unwrap();
+        build_es_indices_to_search(&params.0.types, &params.0.pt_dataset, &params.0.poi_dataset)
+    }
+
+    // no dataset and no types
+    #[tokio::test]
+    #[should_panic]
+    async fn no_dataset_no_type() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob").await;
+        assert_eq!(es_indices, ["",]);
+    }
+
+    // no dataset + type public_transport:stop_area only
+    #[tokio::test]
+    #[should_panic]
+    async fn no_dataset_with_type_sa() {
+        let es_indices =
+            indices_builder("/api/v1/autocomplete?q=Bob&type[]=public_transport:stop_area").await;
+        assert_eq!(es_indices, [""]);
+    }
+
+    // no dataset + types poi, city, street, house
+    #[tokio::test]
+    #[should_panic]
+    async fn no_dataset_all_types_but_sa() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house",
+        )
+        .await;
+        assert_eq!(es_indices, ["",]);
+    }
+
+    // no dataset + types poi, city, street, house and public_transport:stop_area
+    #[tokio::test]
+    #[should_panic]
+    async fn no_dataset_all_types() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house&type[]=public_transport:stop_area",
+        )
+            .await;
+        assert_eq!(es_indices, ["",]);
+    }
+
+    // dataset fr + no type
+    #[tokio::test]
+    #[should_panic]
+    async fn fr_dataset_no_type() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob&pt_dataset[]=fr").await;
+        assert_eq!(es_indices, ["",]);
+    }
+
+    // dataset fr + type public_transport:stop_area only
+    #[tokio::test]
+    #[should_panic]
+    async fn fr_pt_dataset_with_type_sa() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=public_transport:stop_area",
+        )
+        .await;
+        assert_eq!(es_indices, [""]);
+    }
+
+    // no dataset + types poi, city, street, house
+    #[tokio::test]
+    #[should_panic]
+    async fn fr_dataset_all_types_but_sa() {
+        let es_indices = indices_builder(
+            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=poi&type[]=city&type[]=street&type[]=house",
+        )
+            .await;
+        assert_eq!(es_indices, ["",]);
+    }
+
+    // dataset fr + types poi, city, street, house and public_transport:stop_area
+    #[tokio::test]
+    #[should_panic]
+    async fn fr_dataset_all_types() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=poi&type[]=city&type[]=street&type[]=house&type[]=public_transport:stop_area").await;
+        assert_eq!(es_indices, ["",]);
+    }
+
+    // dataset fr + poi_dataset mti + types poi, city, street, house
+    #[tokio::test]
+    #[should_panic]
+    async fn fr_dataset_mti_poi_dataset_all_types_but_sa() {
+        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&poi_dataset[]=mti&type[]=poi&type[]=city&type[]=street&type[]=house").await;
+        assert_eq!(es_indices, ["",]);
     }
 }

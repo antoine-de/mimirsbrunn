@@ -8,7 +8,7 @@ use std::ffi::OsStr;
 use std::marker::{Send, Sync};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::fs::File;
+use tokio::fs::{metadata, File};
 use tokio::io::BufReader;
 use tracing::{info_span, warn};
 use tracing_futures::Instrument;
@@ -24,6 +24,9 @@ pub enum Error {
     #[snafu(display("IO Error: {}", source))]
     InvalidIO { source: tokio::io::Error },
 
+    #[snafu(display("Path does not exist: {}", source))]
+    InvalidPath { source: tokio::io::Error },
+
     #[snafu(display("Invalid extention"))]
     InvalidExtention,
 }
@@ -34,26 +37,27 @@ const CSV_BUFFER_SIZE: usize = 1024 * 1024; // 1MB
 /// Import the addresses found in path, using the given (Elastiscsearch) configuration and client.
 /// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
 /// address.
-pub fn import_addresses_from_input_path<F, T>(
+pub async fn import_addresses_from_input_path<F, T>(
     path: PathBuf,
     has_headers: bool,
     into_addr: F,
-) -> impl Stream<Item = Addr>
+) -> Result<impl Stream<Item = Addr>, Error>
 where
-    F: Fn(T) -> Result<Addr, crate::Error> + Send + Sync + 'static,
+    F: Fn(T) -> Result<Addr, crate::error::Error> + Send + Sync + 'static,
     T: DeserializeOwned + Send + Sync + 'static,
 {
+    metadata(&path).await.context(InvalidPathSnafu)?;
     let into_addr = Arc::new(into_addr);
 
     let recs = records_from_path(&path, has_headers)
         .filter_map(|rec| future::ready(rec.map_err(|err| warn!("Invalid CSV: {}", err)).ok()));
 
-    recs.chunks(1000)
+    let stream = recs
+        .chunks(1000)
         .map(move |addresses| {
             let into_addr = into_addr.clone();
-
             async move {
-                tokio::task::spawn_blocking(move || {
+                tokio::spawn(async move {
                     let addresses = addresses
                         .into_iter()
                         .filter_map(|rec| {
@@ -78,11 +82,16 @@ where
                     futures::stream::iter(addresses)
                 })
                 .await
-                .expect("tokio thread panicked")
+                .expect("tokio task panicked")
             }
         })
+        // This line will spawn at most num_cpus::get() tasks (running asynchronously)
+        // and give them to tokio runtime,
+        // so the real number of running threads is up to tokio runtime
         .buffered(num_cpus::get())
-        .flatten()
+        .flatten();
+
+    Ok(stream)
 }
 
 /// Same as records_from_file, but can take an entire directory as input
@@ -94,7 +103,7 @@ where
     T: DeserializeOwned + Send + Sync + 'static,
 {
     utils::fs::walk_files_recursive(path)
-        .context(InvalidIO)
+        .context(InvalidIOSnafu)
         .try_filter_map(move |file| async move {
             Ok(match records_from_file(&file, has_headers).await {
                 Ok(recs) => {
@@ -118,8 +127,10 @@ async fn records_from_file<T>(
 where
     T: DeserializeOwned + Send + Sync + 'static,
 {
-    let file_read =
-        BufReader::with_capacity(CSV_BUFFER_SIZE, File::open(file).await.context(InvalidIO)?);
+    let file_read = BufReader::with_capacity(
+        CSV_BUFFER_SIZE,
+        File::open(file).await.context(InvalidIOSnafu)?,
+    );
 
     let data_read = {
         if file.extension().and_then(OsStr::to_str) == Some("csv") {
@@ -135,7 +146,7 @@ where
         .has_headers(has_headers)
         .create_deserializer(data_read)
         .into_deserialize::<T>()
-        .context(Csv);
+        .context(CsvSnafu);
 
     Ok(records)
 }

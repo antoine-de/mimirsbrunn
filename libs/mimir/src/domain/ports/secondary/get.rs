@@ -9,11 +9,8 @@ use crate::domain::model::query::Query;
 
 #[derive(Debug, Clone)]
 pub struct Parameters {
-    // pub doc_types: Vec<String>,
     pub query: Query,
-    pub result_limit: i64,
     pub timeout: Option<Duration>,
-    pub es_indices_to_search_in: Vec<String>,
 }
 
 #[derive(Debug, Snafu)]
@@ -23,7 +20,7 @@ pub enum Error {
 }
 
 #[async_trait]
-pub trait Search {
+pub trait Get {
     type Doc: DeserializeOwned + Send + Sync + 'static;
-    async fn search_documents(&self, parameters: Parameters) -> Result<Vec<Self::Doc>, Error>;
+    async fn get_documents_by_id(&self, parameters: Parameters) -> Result<Vec<Self::Doc>, Error>;
 }

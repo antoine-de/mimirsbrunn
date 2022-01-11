@@ -62,7 +62,7 @@ use std::collections::BTreeMap;
 use super::street::Kind;
 
 #[cfg(feature = "db-storage")]
-use rusqlite::{Connection, DropBehavior, ToSql, NO_PARAMS};
+use rusqlite::{Connection, DropBehavior, ToSql};
 
 #[cfg(feature = "db-storage")]
 macro_rules! err_logger {
@@ -132,7 +132,7 @@ pub struct Db<'a> {
 impl<'a> Db<'a> {
     fn new(db_file: &'a Path, db_buffer_size: usize) -> Result<Db<'a>, Error> {
         let _ = fs::remove_file(db_file); // we ignore any potential error
-        let conn = Connection::open(&db_file).context(SqliteStorage)?;
+        let conn = Connection::open(&db_file).context(SqliteStorageSnafu)?;
 
         conn.execute(
             "CREATE TABLE ids (
@@ -141,9 +141,9 @@ impl<'a> Db<'a> {
                 kind INTEGER NOT NULL,
                 UNIQUE(id, kind)
              )",
-            NO_PARAMS,
+            [],
         )
-        .context(SqliteStorage)?;
+        .context(SqliteStorageSnafu)?;
         Ok(Db {
             conn,
             db_file,
@@ -187,7 +187,7 @@ impl<'a> Db<'a> {
             "Db::for_each: prepare failed",
             ()
         );
-        let mut rows = err_logger!(stmt.query(NO_PARAMS), "Db::for_each: query_map failed", ());
+        let mut rows = err_logger!(stmt.query([]), "Db::for_each: query_map failed", ());
         while let Some(row) = err_logger!(rows.next(), "Db::for_each: next failed", ()) {
             let obj: Vec<u8> = err_logger!(row.get(0), "Db::for_each: failed to get obj field", ());
 

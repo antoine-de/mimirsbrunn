@@ -21,17 +21,13 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub langs: Vec<String>,
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
+    pub nb_threads: Option<usize>,
+    pub french_id_retrocompatibility: bool,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -85,14 +81,14 @@ impl Settings {
     pub fn new(opts: &Opts) -> Result<Self, Error> {
         common::config::config_from(
             opts.config_dir.as_ref(),
-            &["cosmogony2mimir", "elasticsearch", "logging"],
+            &["cosmogony2mimir", "elasticsearch"],
             opts.run_mode.as_deref(),
             "MIMIR",
             opts.settings.clone(),
         )
-        .context(ConfigSource)?
+        .context(ConfigSourceSnafu)?
         .try_into()
-        .context(ConfigBuild)
+        .context(ConfigBuildSnafu)
     }
 }
 
@@ -144,7 +140,7 @@ mod tests {
     #[test]
     fn should_override_elasticsearch_url_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        std::env::set_var("MIMIR_ELASTICSEARCH_URL", "http://localhost:9999");
+        std::env::set_var("MIMIR_ELASTICSEARCH__URL", "http://localhost:9999");
         let opts = Opts {
             config_dir,
             run_mode: None,

@@ -115,7 +115,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
 ) -> Result<(), Error> {
     match client.list_documents().await {
         Ok(stream) => {
-            let admins: Vec<Admin> = stream.try_collect().await.context(IndexGeneration)?;
+            let admins: Vec<Admin> = stream.try_collect().await.context(IndexGenerationSnafu)?;
 
             if admins.is_empty() {
                 return Err(Error::AdminRetrieval {
@@ -212,6 +212,7 @@ pub async fn index_ntfs(
         stop.weight = (stop.weight + admin_weight) / 2.0;
     }
 
+    tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, config, futures::stream::iter(stops)).await
 }
 
@@ -227,7 +228,7 @@ where
     client
         .generate_index(config, stops)
         .await
-        .context(IndexGeneration)?;
+        .context(IndexGenerationSnafu)?;
 
     Ok(())
 }

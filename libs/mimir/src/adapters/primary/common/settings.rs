@@ -105,7 +105,8 @@ pub struct QuerySettingsWrapper {
 
 impl QuerySettings {
     pub fn new(settings: &str) -> Result<QuerySettings, Error> {
-        let wrapper: QuerySettingsWrapper = toml::from_str(settings).context(InvalidFileContent)?;
+        let wrapper: QuerySettingsWrapper =
+            toml::from_str(settings).context(InvalidFileContentSnafu)?;
         Ok(wrapper.query)
     }
 
@@ -118,12 +119,12 @@ impl QuerySettings {
         let mut settings_file = File::open(path)
             .await
             .map(BufReader::new)
-            .context(InvalidFileOpen)?;
+            .context(InvalidFileOpenSnafu)?;
 
         settings_file
             .read_to_string(&mut settings_content)
             .await
-            .context(InvalidFileOpen)?;
+            .context(InvalidFileOpenSnafu)?;
 
         QuerySettings::new(&settings_content)
     }

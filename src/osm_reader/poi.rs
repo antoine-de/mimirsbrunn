@@ -34,7 +34,10 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use config::Config;
+use mimir::domain::model::configuration::root_doctype;
 use osm_boundaries_utils::build_boundary;
+use places::addr::Addr;
+use places::street::Street;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use tracing::{info, instrument, warn};
@@ -123,7 +126,7 @@ impl Default for PoiConfig {
 
 impl PoiConfig {
     pub fn from_reader<R: io::Read>(r: R) -> Result<PoiConfig, Error> {
-        let config: PoiConfig = serde_json::from_reader(r).context(JsonDeserialization)?;
+        let config: PoiConfig = serde_json::from_reader(r).context(JsonDeserializationSnafu)?;
         config.check()?;
         Ok(config)
     }
@@ -256,7 +259,7 @@ pub fn pois(
 ) -> Result<Vec<Poi>, Error> {
     let objects = osm_reader
         .get_objs_and_deps(|o| matcher.is_poi(o.tags()))
-        .context(OsmPbfReaderExtraction {
+        .context(OsmPbfReaderExtractionSnafu {
             msg: String::from("Could not read objects and dependencies from pbf"),
         })?;
     Ok(objects
@@ -290,14 +293,18 @@ where
         poi.coord.lat(),
         poi.coord.lon(),
     );
+
+    let es_indices_to_search = vec![
+        root_doctype(Street::static_doc_type()),
+        root_doctype(Addr::static_doc_type()),
+    ];
+
     let documents = backend
         .search_documents(
-            vec![
-                places::addr::Addr::static_doc_type().to_string(),
-                places::street::Street::static_doc_type().to_string(),
-            ],
+            es_indices_to_search,
             Query::QueryDSL(reverse),
             DEFAULT_LIMIT_RESULT_ES,
+            None,
         )
         .await
         .map(|results| {

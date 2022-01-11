@@ -15,6 +15,10 @@ Developer Documentation
 
 ## Software Architecture
 
+[Introduction](./architecture.md)
+
+[Bragi](./bragi-architecture.md)
+
 # Contributing
 
 # Dependencies

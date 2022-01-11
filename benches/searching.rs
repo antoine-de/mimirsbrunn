@@ -1,12 +1,13 @@
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use futures::stream::StreamExt;
+use mimir::domain::model::configuration;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
 
-use common::document::ContainerDocument;
 use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
+use mimir::adapters::primary::common::dsl::QueryType;
 use mimir::adapters::secondary::elasticsearch::{
     remote::connection_test_pool, ElasticsearchStorageConfig,
 };
@@ -18,7 +19,6 @@ use mimir::{
     domain::ports::primary::search_documents::SearchDocuments,
     domain::ports::secondary::remote::Remote,
 };
-use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street};
 use tests::{bano, cosmogony, download, ntfs, osm};
 
 fn bench(c: &mut Criterion) {
@@ -47,7 +47,7 @@ fn bench(c: &mut Criterion) {
         // false: don't force regenerate admins for 'ile-de-france'
         cosmogony::generate("ile-de-france", false).await.unwrap();
         // true: force reindex admins on bench dataset for 'ile-de-france'
-        cosmogony::index_admins(&client, "ile-de-france", "bench", true)
+        cosmogony::index_admins(&client, "ile-de-france", "bench", true, true)
             .await
             .unwrap();
         bano::index_addresses(&client, "ile-de-france", "bench", true)
@@ -98,20 +98,16 @@ fn bench(c: &mut Criterion) {
                         let rec = rec.unwrap();
                         let client = client.clone();
                         let filters = filters.clone();
-                        let dsl = build_query(&rec.query, filters, &["fr"], &settings);
+                        let dsl =
+                            build_query(&rec.query, filters, "fr", &settings, QueryType::PREFIX);
 
                         async move {
                             let _values = client
                                 .search_documents(
-                                    vec![
-                                        Admin::static_doc_type().to_string(),
-                                        Addr::static_doc_type().to_string(),
-                                        Street::static_doc_type().to_string(),
-                                        Stop::static_doc_type().to_string(),
-                                        Poi::static_doc_type().to_string(),
-                                    ],
+                                    vec![configuration::root()],
                                     Query::QueryDSL(dsl),
                                     DEFAULT_LIMIT_RESULT_ES,
+                                    None,
                                 )
                                 .await
                                 .unwrap();

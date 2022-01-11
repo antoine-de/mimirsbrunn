@@ -61,10 +61,8 @@ pub enum Error {
         source: mimir::domain::ports::secondary::remote::Error,
     },
 
-    // Cosmogony uses failure::Error, which does not implement std::Error, so
-    // we use a String to get the error message instead.
-    #[snafu(display("Cosmogony Error: {}", details))]
-    Cosmogony { details: String },
+    #[snafu(display("Cosmogony Error: {}", source))]
+    Cosmogony { source: anyhow::Error },
 
     #[snafu(display("Index Generation Error {}", source))]
     IndexGeneration {
@@ -78,6 +76,7 @@ trait IntoAdmin {
         _: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
         max_weight: f64,
+        french_id_retrocompatibility: bool,
         all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin;
 }
@@ -94,7 +93,7 @@ where
     let _ = client
         .generate_index(config, admins)
         .await
-        .context(IndexGeneration)?;
+        .context(IndexGenerationSnafu)?;
     Ok(())
 }
 
@@ -115,6 +114,7 @@ impl IntoAdmin for Zone {
         zones_osm_id: &BTreeMap<ZoneIndex, (String, Option<String>)>,
         langs: &[String],
         max_weight: f64,
+        french_id_retrocompatibility: bool,
         all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin {
         let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
@@ -124,7 +124,14 @@ impl IntoAdmin for Zone {
         let center = self.center.map_or(places::coord::Coord::default(), |c| {
             places::coord::Coord::new(c.lng(), c.lat())
         });
-        let format_id = |id, _insee| format!("admin:osm:{}", id);
+        let format_id = |id, insee| {
+            // for retrocompatibity reasons, Navitia needs the
+            // french admins to have an id with the insee for cities
+            match insee {
+                Some(insee) if french_id_retrocompatibility => format!("admin:fr:{}", insee),
+                _ => format!("admin:osm:{}", id),
+            }
+        };
         let parent_osm_id = self
             .parent
             .and_then(|id| zones_osm_id.get(&id))
@@ -187,15 +194,9 @@ impl IntoAdmin for Zone {
     }
 }
 
-fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone>, Error> {
+fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone> + Send + Sync, Error> {
     let iter = cosmogony::read_zones_from_file(path)
-        .map_err(|err| Error::Cosmogony {
-            details: format!(
-                "could not read zones from file {}: {}",
-                path.display(),
-                err.to_string()
-            ),
-        })?
+        .context(CosmogonySnafu)?
         .filter_map(|r| r.map_err(|e| warn!("impossible to read zone: {}", e)).ok());
     Ok(iter)
 }
@@ -205,6 +206,7 @@ pub async fn index_cosmogony(
     path: &Path,
     langs: Vec<String>,
     config: &ContainerConfig,
+    french_id_retrocompatibility: bool,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     info!("building map cosmogony id => osm id");
@@ -223,7 +225,13 @@ pub async fn index_cosmogony(
     let admins_without_boundaries = read_zones(path)?
         .map(|mut zone| {
             zone.boundary = None;
-            let admin = zone.into_admin(&cosmogony_id_to_osm_id, &langs, max_weight, None);
+            let admin = zone.into_admin(
+                &cosmogony_id_to_osm_id,
+                &langs,
+                max_weight,
+                french_id_retrocompatibility,
+                None,
+            );
             (admin.id.clone(), Arc::new(admin))
         })
         .collect::<HashMap<_, _>>();
@@ -234,6 +242,7 @@ pub async fn index_cosmogony(
             &cosmogony_id_to_osm_id,
             &langs,
             max_weight,
+            french_id_retrocompatibility,
             Some(&admins_without_boundaries),
         )
     });

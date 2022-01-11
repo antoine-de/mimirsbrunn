@@ -6,7 +6,10 @@ use elasticsearch::indices::{
     IndicesPutIndexTemplateParts, IndicesRefreshParts,
 };
 use elasticsearch::ingest::IngestPutPipelineParts;
-use elasticsearch::{BulkOperation, BulkParts, ExplainParts, OpenPointInTimeParts, SearchParts};
+use elasticsearch::params::TrackTotalHits;
+use elasticsearch::{
+    BulkOperation, BulkParts, ExplainParts, MgetParts, OpenPointInTimeParts, SearchParts,
+};
 use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -17,6 +20,7 @@ use snafu::{ResultExt, Snafu};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
+use std::time::Duration;
 use tracing::info;
 
 use super::configuration::{
@@ -24,7 +28,9 @@ use super::configuration::{
 };
 use super::models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse};
 use super::ElasticsearchStorage;
-use crate::adapters::secondary::elasticsearch::models::ElasticsearchBulkResult;
+use crate::adapters::secondary::elasticsearch::models::{
+    ElasticsearchBulkResult, ElasticsearchGetResponse,
+};
 use crate::domain::model::{
     configuration,
     index::{Index, IndexStatus},
@@ -225,7 +231,7 @@ impl ElasticsearchStorage {
             .wait_for_active_shards(&self.config.wait_for_active_shards.to_string())
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot create index '{}'", index_name),
             })?;
 
@@ -236,7 +242,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let acknowledged = json
                 .as_object()
@@ -280,7 +286,7 @@ impl ElasticsearchStorage {
         let template_name = config.name.clone();
         let body = config
             .into_json_body()
-            .context(InvalidTemplateConfiguration)?;
+            .context(InvalidTemplateConfigurationSnafu)?;
         let response = self
             .client
             .cluster()
@@ -289,7 +295,7 @@ impl ElasticsearchStorage {
             .body(body)
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot create component template '{}'", template_name),
             })?;
 
@@ -300,7 +306,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let acknowledged = json
                 .as_object()
@@ -344,7 +350,7 @@ impl ElasticsearchStorage {
         let template_name = config.name.clone();
         let body = config
             .into_json_body()
-            .context(InvalidTemplateConfiguration)?;
+            .context(InvalidTemplateConfigurationSnafu)?;
         let response = self
             .client
             .indices()
@@ -353,7 +359,7 @@ impl ElasticsearchStorage {
             .body(body)
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot create component template '{}'", template_name),
             })?;
 
@@ -364,7 +370,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let acknowledged = json
                 .as_object()
@@ -409,7 +415,7 @@ impl ElasticsearchStorage {
             .request_timeout(self.config.timeout)
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot find index '{}'", index),
             })?;
 
@@ -420,7 +426,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let acknowledged = json
                 .as_object()
@@ -470,7 +476,7 @@ impl ElasticsearchStorage {
             .format("json")
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot find index '{}'", index),
             })?;
 
@@ -478,10 +484,10 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let mut indices: Vec<ElasticsearchIndex> =
-                serde_json::from_value(json).context(JsonDeserialization {
+                serde_json::from_value(json).context(JsonDeserializationSnafu {
                     details: String::from("could not deserialize Elasticsearch indices"),
                 })?;
 
@@ -584,7 +590,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .and_then(|res| res.error_for_status_code())
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: "cannot bulk insert",
             })?;
 
@@ -595,12 +601,22 @@ impl ElasticsearchStorage {
                 .expect("failed to fetch Elasticsearch exception")
                 .into())
         } else {
-            let es_response: ElasticsearchBulkResponse =
-                resp.json().await.context(ElasticsearchDeserialization)?;
-
+            let es_response: ElasticsearchBulkResponse = resp
+                .json()
+                .await
+                .context(ElasticsearchDeserializationSnafu)?;
             es_response.items.into_iter().try_for_each(|item| {
-                let result = item.inner().result.map_err(|err| Error::NotCreated {
-                    details: err.reason,
+                let inner = item.inner();
+                let result = inner.result.map_err(|err| {
+                    let reason = err
+                        .caused_by
+                        .map_or("".to_string(), |caused_by| caused_by.reason);
+                    Error::NotCreated {
+                        details: format!(
+                            "Object id {}, Error: {}, {}",
+                            inner.id, err.reason, reason
+                        ),
+                    }
                 })?;
 
                 match result {
@@ -655,14 +671,14 @@ impl ElasticsearchStorage {
             .send()
             .await
             .and_then(|res| res.error_for_status_code())
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot update alias '{}'", alias),
             })?;
 
         let json = response
             .json::<Value>()
             .await
-            .context(ElasticsearchDeserialization)?;
+            .context(ElasticsearchDeserializationSnafu)?;
 
         if json["acknowledged"] == true {
             Ok(())
@@ -688,7 +704,7 @@ impl ElasticsearchStorage {
             .request_timeout(self.config.timeout)
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot find aliases to {}", index),
             })?;
 
@@ -710,7 +726,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let aliases = json
                 .as_object()
@@ -740,7 +756,7 @@ impl ElasticsearchStorage {
 
     pub(super) async fn add_pipeline(&self, pipeline: &str, name: &str) -> Result<(), Error> {
         let pipeline: serde_json::Value =
-            serde_json::from_str(pipeline).context(JsonDeserialization {
+            serde_json::from_str(pipeline).context(JsonDeserializationSnafu {
                 details: format!("Could not deserialize pipeline {}", name),
             })?;
 
@@ -752,7 +768,7 @@ impl ElasticsearchStorage {
             .body(pipeline)
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot add pipeline '{}'", name,),
             })?;
 
@@ -763,7 +779,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let acknowledged = json
                 .as_object()
@@ -814,7 +830,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .and_then(|res| res.error_for_status_code())
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!(
                     "cannot force merge indices '{}'",
                     indices
@@ -828,7 +844,7 @@ impl ElasticsearchStorage {
         let json = response
             .json::<Value>()
             .await
-            .context(ElasticsearchDeserialization)?;
+            .context(ElasticsearchDeserializationSnafu)?;
 
         if json["_shards"]["successful"] == 1 {
             Ok(())
@@ -865,7 +881,7 @@ impl ElasticsearchStorage {
             .request_timeout(self.config.timeout)
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: format!("cannot refresh index {}", index),
             })?;
 
@@ -906,18 +922,18 @@ impl ElasticsearchStorage {
                 .keep_alive(&pit_alive)
                 .send()
                 .await
-                .context(ElasticsearchClient {
+                .context(ElasticsearchClientSnafu {
                     details: format!("failed to query PIT for {}", index),
                 })?
                 .error_for_status_code()
-                .context(ElasticsearchClient {
+                .context(ElasticsearchClientSnafu {
                     details: format!("failed to open PIT for {}", index),
                 })?;
 
             response
                 .json::<PitResponse>()
                 .await
-                .context(ElasticsearchDeserialization)?
+                .context(ElasticsearchDeserializationSnafu)?
                 .id
         };
 
@@ -956,14 +972,14 @@ impl ElasticsearchStorage {
                         .body(query)
                         .send()
                         .await
-                        .context(ElasticsearchClient {
+                        .context(ElasticsearchClientSnafu {
                             details: format!("failed to search for {}", index),
                         })?;
 
                     let body: ElasticsearchSearchResponse<D> = response
                         .json()
                         .await
-                        .context(ElasticsearchDeserialization)?;
+                        .context(ElasticsearchDeserializationSnafu)?;
 
                     let pit = body
                         .pit_id
@@ -1022,27 +1038,65 @@ impl ElasticsearchStorage {
         indices: Vec<String>,
         query: Query,
         limit_result: i64,
+        timeout: Option<Duration>,
     ) -> Result<Vec<D>, Error>
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
+        let timeout = timeout
+            .map(|t| {
+                if t > self.config.timeout {
+                    info!(
+                        "Requested timeout {:?} is too big. I'll use {:?} instead.",
+                        t, self.config.timeout
+                    );
+                    self.config.timeout
+                } else {
+                    t
+                }
+            }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
+            .unwrap_or(self.config.timeout);
+        let shard_timeout = format!("{}ms", timeout.as_millis());
+        let request_timeout = timeout.saturating_add(timeout);
+
         let search = self
             .client
             .search(SearchParts::Index(&indices))
+            // we don't care for the total number of hits, and it takes some time to compute
+            // so we disable it
+            .track_total_hits(TrackTotalHits::Track(false))
+            // global search will end when limit_result are found
             .size(limit_result)
-            .request_timeout(self.config.timeout);
+            // search in each *shard* will end after shard_timeout
+            .timeout(&shard_timeout)
+            // response will be a 408 REQUEST TIMEOUT
+            // if I did not receive a full http response from elasticsearch
+            // after request_timeout
+            .request_timeout(request_timeout)
+            // search in each *shard* will end after shard_limit_result hits are found
+            // we do not active it, since it means that we may not find the right hit.
+            // We did some test when looking for a specific address : we could not 
+            // obtain the right address even with shard_limit_result = 10_000
+            //.terminate_after(shard_limit_result)
+            ;
 
         let response = match query {
-            Query::QueryString(q) => search.q(&q).send().await.context(ElasticsearchClient {
-                details: format!("could not search indices {}", indices.join(", ")),
-            })?,
+            Query::QueryString(q) => {
+                search
+                    .q(&q)
+                    .send()
+                    .await
+                    .context(ElasticsearchClientSnafu {
+                        details: format!("could not search indices {}", indices.join(", ")),
+                    })?
+            }
             Query::QueryDSL(json) => {
                 search
                     .body(json)
                     .send()
                     .await
-                    .context(ElasticsearchClient {
+                    .context(ElasticsearchClientSnafu {
                         details: format!("could not search indices {}", indices.join(", ")),
                     })?
             }
@@ -1052,9 +1106,65 @@ impl ElasticsearchStorage {
             let body = response
                 .json::<ElasticsearchSearchResponse<D>>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             Ok(body.into_hits().collect())
+        } else {
+            Err(response
+                .exception()
+                .await
+                .expect("failed to fetch Elasticsearch exception")
+                .into())
+        }
+    }
+
+    pub(super) async fn get_documents_by_id<D>(
+        &self,
+        query: Query,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<D>, Error>
+    where
+        D: DeserializeOwned + Send + Sync + 'static,
+    {
+        let timeout = timeout
+            .map(|t| {
+                if t > self.config.timeout {
+                    info!(
+                        "Requested timeout {:?} is too big. I'll use {:?} instead.",
+                        t, self.config.timeout
+                    );
+                    self.config.timeout
+                } else {
+                    t
+                }
+            }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
+            .unwrap_or(self.config.timeout);
+
+        let get = self.client.mget(MgetParts::None).request_timeout(timeout);
+
+        let response = match query {
+            Query::QueryString(_) => {
+                return Err(Error::Internal {
+                    reason: "QueryString not handled for get document by id".to_string(),
+                })
+            }
+            Query::QueryDSL(json) => {
+                get.body(json)
+                    .send()
+                    .await
+                    .context(ElasticsearchClientSnafu {
+                        details: "could not get document by id".to_string(),
+                    })?
+            }
+        };
+
+        if response.status_code().is_success() {
+            let body = response
+                .json::<ElasticsearchGetResponse<D>>()
+                .await
+                .context(ElasticsearchDeserializationSnafu)?;
+
+            Ok(body.into_docs().collect())
         } else {
             Err(response
                 .exception()
@@ -1079,15 +1189,21 @@ impl ElasticsearchStorage {
             .request_timeout(self.config.timeout);
 
         let response = match query {
-            Query::QueryString(q) => explain.q(&q).send().await.context(ElasticsearchClient {
-                details: format!("could not explain document {} in index {}", id, index),
-            })?,
+            Query::QueryString(q) => {
+                explain
+                    .q(&q)
+                    .send()
+                    .await
+                    .context(ElasticsearchClientSnafu {
+                        details: format!("could not explain document {} in index {}", id, index),
+                    })?
+            }
             Query::QueryDSL(json) => {
                 explain
                     .body(json)
                     .send()
                     .await
-                    .context(ElasticsearchClient {
+                    .context(ElasticsearchClientSnafu {
                         details: format!("could not explain document {} in index {}", id, index),
                     })?
             }
@@ -1097,9 +1213,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
-
-            println!("json: {:?}", json);
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let explanation = json
                 .as_object()
@@ -1114,7 +1228,7 @@ impl ElasticsearchStorage {
                 })?
                 .to_owned();
             let explanation =
-                serde_json::from_value::<D>(explanation).context(JsonDeserialization {
+                serde_json::from_value::<D>(explanation).context(JsonDeserializationSnafu {
                     details: String::from("could not deserialize explanation"),
                 })?;
             Ok(explanation)
@@ -1135,7 +1249,7 @@ impl ElasticsearchStorage {
             .request_timeout(self.config.timeout)
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: String::from("cannot query cluster health"),
             })?;
 
@@ -1145,7 +1259,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let health = json
                 .as_object()
@@ -1187,7 +1301,7 @@ impl ElasticsearchStorage {
             .format("json")
             .send()
             .await
-            .context(ElasticsearchClient {
+            .context(ElasticsearchClientSnafu {
                 details: String::from("cannot query cluster health"),
             })?;
 
@@ -1195,7 +1309,7 @@ impl ElasticsearchStorage {
             let json = response
                 .json::<Value>()
                 .await
-                .context(ElasticsearchDeserialization)?;
+                .context(ElasticsearchDeserializationSnafu)?;
 
             let version = json
                 .as_array()

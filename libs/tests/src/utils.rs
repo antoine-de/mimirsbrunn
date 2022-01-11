@@ -4,7 +4,7 @@ use tokio::fs;
 use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Invalid Download URL: {} ({})", source, details))]
     InvalidUrl {
@@ -29,7 +29,7 @@ pub async fn file_exists(path: &Path) -> bool {
 
 pub async fn create_dir_if_not_exists(path: &Path) -> Result<(), Error> {
     if !file_exists(path).await {
-        fs::create_dir(path).await.context(InvalidIO {
+        fs::create_dir(path).await.context(InvalidIOSnafu {
             details: format!("could no create directory {}", path.display()),
         })?;
     }
@@ -57,30 +57,30 @@ pub async fn download_to_file(path: &Path, url: &str) -> Result<(), Error> {
             .create(true)
             .open(&path)
             .await
-            .context(InvalidIO {
+            .context(InvalidIOSnafu {
                 details: format!("could no create file for download {}", path.display()),
             })?
     });
 
     let mut resp = reqwest::get(url)
         .await
-        .context(Download {
+        .context(DownloadSnafu {
             details: format!("could not download url {}", url),
         })?
         .error_for_status()
-        .context(Download {
+        .context(DownloadSnafu {
             details: format!("download response error for {}", url),
         })?;
 
-    while let Some(chunk) = resp.chunk().await.context(Download {
+    while let Some(chunk) = resp.chunk().await.context(DownloadSnafu {
         details: format!("read chunk error during download of {}", url),
     })? {
-        file.write_all(&chunk).await.context(InvalidIO {
+        file.write_all(&chunk).await.context(InvalidIOSnafu {
             details: format!("write chunk error during download of {}", url),
         })?;
     }
 
-    file.flush().await.context(InvalidIO {
+    file.flush().await.context(InvalidIOSnafu {
         details: format!("flush error during download of {}", url),
     })?;
 

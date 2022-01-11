@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
 use crate::domain::model::{error::Error as ModelError, query::Query};
-use crate::domain::ports::secondary::search::{Parameters, Search};
+use crate::domain::ports::secondary::get::{Get, Parameters};
 
 // automock requires that the associated type be known at
 // compile time. So here we import admins when we are in
@@ -13,40 +13,31 @@ use crate::domain::ports::secondary::search::{Parameters, Search};
 use places::admin::Admin;
 
 #[async_trait]
-pub trait SearchDocuments {
+pub trait GetDocuments {
     type Document;
 
-    async fn search_documents(
+    async fn get_documents_by_id(
         &self,
-        es_indices_to_search_in: Vec<String>,
         query: Query,
-        result_limit: i64,
         timeout: Option<Duration>,
     ) -> Result<Vec<Self::Document>, ModelError>;
 }
 
 #[async_trait]
-impl<T> SearchDocuments for T
+impl<T> GetDocuments for T
 where
-    T: Search + Send + Sync,
+    T: Get + Send + Sync,
     T::Doc: DeserializeOwned,
 {
     type Document = T::Doc;
 
-    async fn search_documents(
+    async fn get_documents_by_id(
         &self,
-        es_indices_to_search_in: Vec<String>,
         query: Query,
-        result_limit: i64,
         timeout: Option<Duration>,
     ) -> Result<Vec<Self::Document>, ModelError> {
-        self.search_documents(Parameters {
-            es_indices_to_search_in,
-            query,
-            result_limit,
-            timeout,
-        })
-        .await
-        .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })
+        self.get_documents_by_id(Parameters { query, timeout })
+            .await
+            .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })
     }
 }

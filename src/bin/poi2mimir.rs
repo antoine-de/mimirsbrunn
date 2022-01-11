@@ -22,19 +22,16 @@ pub enum Error {
     Execution { source: Box<dyn std::error::Error> },
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-
-    let settings = settings::Settings::new(&opts).context(Settings)?;
+    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
 
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
-            &settings.logging.path.clone(),
-            move || run(opts, settings),
+        settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
+            settings.nb_threads,
+            run(opts, settings),
         )
-        .await
-        .context(Execution),
+        .context(ExecutionSnafu),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -49,7 +46,7 @@ async fn run(
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch.clone())
         .await
-        .context(ElasticsearchConnection)?;
+        .context(ElasticsearchConnectionSnafu)?;
 
     mimirsbrunn::pois::index_pois(opts.input, &client, settings.container).await?;
 
@@ -84,7 +81,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        cosmogony::index_admins(&client, "limousin", "limousin", true)
+        cosmogony::index_admins(&client, "limousin", "limousin", true, true)
             .await
             .unwrap();
 

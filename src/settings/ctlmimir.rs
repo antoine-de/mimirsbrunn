@@ -24,15 +24,10 @@ pub enum Error {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Logging {
-    pub path: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub mode: Option<String>,
-    pub logging: Logging,
     pub elasticsearch: ElasticsearchStorageConfig,
+    pub nb_threads: Option<usize>,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -84,24 +79,24 @@ impl Settings {
 
         config
             .set_default("path", opts.config_dir.display().to_string())
-            .context(ConfigMerge { msg: "path" })?;
+            .context(ConfigMergeSnafu { msg: "path" })?;
 
         config
             .with_merged(
                 common::config::config_from(
                     opts.config_dir.as_ref(),
-                    &["elasticsearch", "logging"],
+                    &["elasticsearch"],
                     opts.run_mode.as_deref(),
                     "MIMIR",
                     opts.settings.clone(),
                 )
-                .context(ConfigCompilation)?,
+                .context(ConfigCompilationSnafu)?,
             )
-            .context(ConfigMerge {
+            .context(ConfigMergeSnafu {
                 msg: "Cannot build the configuration from sources",
             })?
             .try_into()
-            .context(ConfigMerge {
+            .context(ConfigMergeSnafu {
                 msg: "Cannot convert configuration into ctlmimir settings",
             })
     }

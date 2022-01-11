@@ -11,10 +11,8 @@ use mimirsbrunn::admin_geofinder::AdminGeoFinder;
 use places::poi::Poi;
 use places::street::Street;
 
-const POI_REVERSE_GEOCODING_CONCURRENCY: usize = 8;
-
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Indexing Error: {}", details))]
     Indexing { details: String },
@@ -70,7 +68,7 @@ pub async fn index_pois(
     let index = client
         .find_container(container)
         .await
-        .context(ContainerSearch)?;
+        .context(ContainerSearchSnafu)?;
 
     // If the previous step has been skipped, then we don't need to index BANO file.
     if index.is_some() && !reindex_if_already_exists {
@@ -84,47 +82,48 @@ pub async fn index_pois(
     let input_file = input_dir.join(format!("{}-latest.osm.pbf", region));
 
     let mut osm_reader =
-        mimirsbrunn::osm_reader::make_osm_reader(&input_file).context(OsmPbfReader)?;
+        mimirsbrunn::osm_reader::make_osm_reader(&input_file).context(OsmPbfReaderSnafu)?;
 
     let admins_geofinder: AdminGeoFinder = client
         .list_documents()
         .await
-        .context(ListDocument)?
+        .context(ListDocumentSnafu)?
         .try_collect()
         .await
-        .context(ListDocument)?;
+        .context(ListDocumentSnafu)?;
 
     // Read the poi configuration from the osm2mimir configuration / testing mode.
     let base_path = env!("CARGO_MANIFEST_DIR");
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
-    let config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["osm2mimir", "elasticsearch", "logging"],
+        &["osm2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],
     )
-    .context(Config)?
+    .context(ConfigSnafu)?
     .try_into()
-    .context(ConfigInvalid)?;
+    .context(ConfigInvalidSnafu)?;
+    config.container_poi.dataset = dataset.to_string();
+    config.container_street.dataset = dataset.to_string();
 
     let pois = mimirsbrunn::osm_reader::poi::pois(
         &mut osm_reader,
         &config.pois.config.unwrap(),
         &admins_geofinder,
     )
-    .context(PoiOsmExtraction)?;
+    .context(PoiOsmExtractionSnafu)?;
 
     let pois: Vec<Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
-        .map(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
-        .buffer_unordered(POI_REVERSE_GEOCODING_CONCURRENCY)
+        .then(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
         .collect()
         .await;
     let _ = client
         .generate_index(&config.container_poi, futures::stream::iter(pois))
         .await
-        .context(PoiIndexCreation)?;
+        .context(PoiIndexCreationSnafu)?;
 
     Ok(Status::Done)
 }
@@ -141,7 +140,7 @@ pub async fn index_streets(
     let index = client
         .find_container(container)
         .await
-        .context(ContainerSearch)?;
+        .context(ContainerSearchSnafu)?;
 
     // If the previous step has been skipped, then we don't need to index OSM file.
     if index.is_some() && !reindex_if_already_exists {
@@ -155,36 +154,38 @@ pub async fn index_streets(
     let input_file = input_dir.join(format!("{}-latest.osm.pbf", region));
 
     let mut osm_reader =
-        mimirsbrunn::osm_reader::make_osm_reader(&input_file).context(OsmPbfReader)?;
+        mimirsbrunn::osm_reader::make_osm_reader(&input_file).context(OsmPbfReaderSnafu)?;
 
     let admins_geofinder: AdminGeoFinder = client
         .list_documents()
         .await
-        .context(ListDocument)?
+        .context(ListDocumentSnafu)?
         .try_collect()
         .await
-        .context(ListDocument)?;
+        .context(ListDocumentSnafu)?;
 
     // Read the street configuration from the osm2mimir configuration / testing mode.
     let base_path = env!("CARGO_MANIFEST_DIR");
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
-    let config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::osm2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["osm2mimir", "elasticsearch", "logging"],
+        &["osm2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],
     )
-    .context(Config)?
+    .context(ConfigSnafu)?
     .try_into()
-    .context(ConfigInvalid)?;
+    .context(ConfigInvalidSnafu)?;
+    config.container_poi.dataset = dataset.to_string();
+    config.container_street.dataset = dataset.to_string();
 
     let streets: Vec<Street> = mimirsbrunn::osm_reader::street::streets(
         &mut osm_reader,
         &admins_geofinder,
         &config.streets.exclusions,
     )
-    .context(StreetOsmExtraction)?
+    .context(StreetOsmExtractionSnafu)?
     .into_iter()
     .map(|street| street.set_weight_from_admins())
     .collect();
@@ -192,7 +193,7 @@ pub async fn index_streets(
     let _ = client
         .generate_index(&config.container_street, futures::stream::iter(streets))
         .await
-        .context(PoiIndexCreation)?;
+        .context(PoiIndexCreationSnafu)?;
 
     Ok(Status::Done)
 }

@@ -13,6 +13,11 @@ pipeline {
                  sh "git tag -l | xargs git tag -d"
              }
          }
+         stage('Prepare Rust env'){
+             steps{
+                 sh "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+             }
+         }
         stage('Install extra packages') {
             steps {
                 sh '''
@@ -26,7 +31,9 @@ pipeline {
                     sh '''
                         MIMIR_VERSION=`githubflow_get_new_version --release-type $release_type  --remote-name origin`
                         sed -i -e "s/^version\\s*=\\s*\\".*\\"/version = \\"$MIMIR_VERSION\\"/" Cargo.toml;
-                        git add Cargo.toml
+                        sed -i -e "s/^version\\s*=\\s*\\".*\\"/version = \\"$MIMIR_VERSION\\"/" libs/mimir/Cargo.toml;
+                        $HOME/.cargo/bin/cargo check
+                        git add Cargo.toml Cargo.lock libs/mimir/Cargo.toml
                         git commit -m "[Versioned] New $release_type version $MIMIR_VERSION"
                         git push https://${GITHUB_APP}:${GITHUB_TOKEN}@github.com/CanalTP/mimirsbrunn.git master
                     '''

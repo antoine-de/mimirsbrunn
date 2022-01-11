@@ -9,7 +9,7 @@ use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use places::stop::Stop;
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Indexing Error: {}", details))]
     Indexing { details: String },
@@ -34,7 +34,7 @@ pub async fn index_stops(
     let index = client
         .find_container(container)
         .await
-        .context(ContainerSearch)?;
+        .context(ContainerSearchSnafu)?;
 
     // If the previous step has been skipped, then we don't need to index BANO file.
     if index.is_some() && !reindex_if_already_exists {
@@ -48,9 +48,9 @@ pub async fn index_stops(
         .iter()
         .collect();
 
-    let config: mimirsbrunn::settings::ntfs2mimir::Settings = common::config::config_from(
+    let mut config: mimirsbrunn::settings::ntfs2mimir::Settings = common::config::config_from(
         &config_dir,
-        &["ntfs2mimir", "elasticsearch", "logging"],
+        &["ntfs2mimir", "elasticsearch"],
         "testing",
         None,
         vec![],
@@ -58,6 +58,9 @@ pub async fn index_stops(
     .expect("could not load ntfs2mimir configuration")
     .try_into()
     .expect("invalid ntfs2mimir configuration");
+
+    // Use dataset set by test instead of default config
+    config.container.dataset = dataset.to_string();
 
     mimirsbrunn::stops::index_ntfs(input_dir, &config.container, client)
         .await

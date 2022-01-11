@@ -3,7 +3,7 @@ use snafu::Snafu;
 use tests::{bano, cosmogony, download, ntfs, osm};
 
 #[derive(Debug, Snafu)]
-#[snafu(visibility = "pub(crate)")]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("Download Error: {}", source))]
     Download { source: download::Error },

@@ -28,7 +28,7 @@ impl Step for DownloadOsm {
         download::osm(region)
             .await
             .map(|status| status.into())
-            .context(error::Download)
+            .context(error::DownloadSnafu)
     }
 }
 
@@ -67,7 +67,7 @@ impl Step for DownloadBano {
         download::bano(region, departments)
             .await
             .map(|status| status.into())
-            .context(error::Download)
+            .context(error::DownloadSnafu)
     }
 }
 
@@ -93,6 +93,6 @@ impl Step for DownloadNTFS {
         download::ntfs(region)
             .await
             .map(|status| status.into())
-            .context(error::Download)
+            .context(error::DownloadSnafu)
     }
 }

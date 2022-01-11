@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use super::coord::Coord;
+use crate::adapters::primary::bragi::api::Proximity;
 use geojson::Geometry;
 
 // How to restrict the range of the query... Except for the place type (ie what indices we're
@@ -8,8 +11,9 @@ use geojson::Geometry;
 pub struct Filters {
     pub coord: Option<Coord>,
     pub shape: Option<(Geometry, Vec<String>)>, // We use String rather than Type to avoid dependencies toward bragi api.
-    pub datasets: Option<Vec<String>>,
     pub zone_types: Option<Vec<String>>,
     pub poi_types: Option<Vec<String>>,
     pub limit: i64,
+    pub timeout: Option<Duration>,
+    pub proximity: Option<Proximity>,
 }

@@ -20,18 +20,16 @@ pub enum Error {
     Execution { source: Box<dyn std::error::Error> },
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(Settings)?;
+    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
 
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
-            &settings.logging.path.clone(),
-            move || run(opts, settings),
+        settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
+            settings.nb_threads,
+            run(opts, settings),
         )
-        .await
-        .context(Execution),
+        .context(ExecutionSnafu),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -43,34 +41,36 @@ async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tracing::info!(
+        "Trying to connect to elasticsearch at {}",
+        &settings.elasticsearch.url
+    );
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
-        .context(ElasticsearchConnection)
+        .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
 
-    let path: PathBuf = [
-        opts.config_dir.to_str().unwrap(),
-        "elasticsearch",
-        "templates",
-        "components",
-    ]
-    .iter()
-    .collect();
+    tracing::info!("Connected to elasticsearch.");
 
+    let path: PathBuf = opts
+        .config_dir
+        .join("elasticsearch")
+        .join("templates")
+        .join("components");
+
+    tracing::info!("Beginning components imports from {:?}", &path);
     templates::import(client.clone(), path, templates::Template::Component)
         .await
         .map_err(Box::new)?;
 
-    let path: PathBuf = [
-        opts.config_dir.to_str().unwrap(),
-        "elasticsearch",
-        "templates",
-        "indices",
-    ]
-    .iter()
-    .collect();
+    let path: PathBuf = opts
+        .config_dir
+        .join("elasticsearch")
+        .join("templates")
+        .join("indices");
 
+    tracing::info!("Beginning indices imports from {:?}", &path);
     templates::import(client, path, templates::Template::Index)
         .await
         .map_err(Box::new)?;

@@ -9,6 +9,7 @@ use super::context::Context;
 use super::coord::Coord;
 use super::i18n_properties::I18nProperties;
 use super::Members;
+use crate::utils::normalize_id;
 use crate::Address;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -18,7 +19,7 @@ pub struct Poi {
     pub label: String,
     pub name: String,
     pub coord: Coord,
-    /// coord used for some geograhic queries in ES, less precise but  faster than `coord`
+    /// coord used for some geograhic queries in ES, less precise but faster than `coord`
     /// https://www.elastic.co/guide/en/elasticsearch/reference/2.4/geo-shape.html
     #[serde(skip_deserializing)]
     pub approx_coord: Option<Geometry>,
@@ -53,7 +54,7 @@ pub struct PoiType {
 impl From<&navitia_poi_model::PoiType> for PoiType {
     fn from(poi_type: &navitia_poi_model::PoiType) -> PoiType {
         PoiType {
-            id: poi_type.id.clone(),
+            id: normalize_id("poi_type:", poi_type.id.as_str()),
             name: poi_type.name.clone(),
         }
     }

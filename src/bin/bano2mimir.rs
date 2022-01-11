@@ -65,18 +65,16 @@ pub enum Error {
     },
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(Settings)?;
+    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
 
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
-            &settings.logging.path.clone(),
-            move || run(opts, settings),
+        settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
+            settings.nb_threads,
+            run(opts, settings),
         )
-        .await
-        .context(Execution),
+        .context(ExecutionSnafu),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -91,7 +89,7 @@ async fn run(
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch)
         .await
-        .context(ElasticsearchConnection)
+        .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
 
     // TODO There might be an opportunity for optimization here:
@@ -125,12 +123,14 @@ async fn run(
         move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder)
     };
 
-    let addresses = import_addresses_from_input_path(opts.input, false, into_addr);
+    let addresses = import_addresses_from_input_path(opts.input, false, into_addr)
+        .await
+        .map_err(Box::new)?;
 
     client
         .generate_index(&settings.container, addresses)
         .await
-        .context(IndexCreation)?;
+        .context(IndexCreationSnafu)?;
 
     Ok(())
 }
@@ -202,5 +202,25 @@ mod tests {
             .unwrap();
 
         assert_eq!(addr2.zip_codes, vec!["06000", "06100", "06200", "06300"]);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_fail_on_invalid_path() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+            run_mode: Some("testing".to_string()),
+            settings: vec![],
+            input: "does-not-exist.csv".into(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+        assert!(res.is_err());
     }
 }

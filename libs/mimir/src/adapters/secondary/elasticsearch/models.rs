@@ -30,6 +30,25 @@ impl<D> ElasticsearchSearchResponse<D> {
     }
 }
 
+/// ES response for a get query.
+#[derive(Deserialize)]
+pub struct ElasticsearchGetResponse<D> {
+    pub docs: Vec<ElasticsearchDocs<D>>,
+}
+
+#[derive(Deserialize)]
+pub struct ElasticsearchDocs<D> {
+    #[serde(rename = "_source")]
+    pub source: Option<D>,
+}
+
+impl<D> ElasticsearchGetResponse<D> {
+    /// Consume the response into an iterator over the responded documents.
+    pub fn into_docs(self) -> impl Iterator<Item = D> {
+        self.docs.into_iter().filter_map(|doc| doc.source)
+    }
+}
+
 /// ES response for bulk insert queries.
 #[derive(Debug, Eq, PartialEq, Deserialize)]
 pub struct ElasticsearchBulkResponse {
@@ -55,6 +74,8 @@ impl ElasticsearchBulkItem {
 #[derive(Debug, Eq, PartialEq, Deserialize)]
 pub struct ElasticsearchBulkStatus {
     pub status: u16,
+    #[serde(rename = "_id")]
+    pub id: String,
     #[serde(flatten, deserialize_with = "deserialize_bulk_result")]
     pub result: Result<ElasticsearchBulkResult, ElasticsearchBulkError>,
 }
@@ -68,6 +89,13 @@ pub enum ElasticsearchBulkResult {
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize)]
+pub struct ElasticsearchBulkErrorCausedBy {
+    #[serde(rename = "type")]
+    pub caused_by_type: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Eq, PartialEq, Deserialize)]
 pub struct ElasticsearchBulkError {
     #[serde(rename = "type")]
     pub err_type: String,
@@ -75,6 +103,7 @@ pub struct ElasticsearchBulkError {
     pub index: Option<String>,
     pub index_uuid: Option<String>,
     pub shard: Option<String>,
+    pub caused_by: Option<ElasticsearchBulkErrorCausedBy>,
 }
 
 // Custom deserializers
@@ -149,6 +178,31 @@ mod tests {
         })
     }
 
+    fn sample_400_error() -> serde_json::Value {
+        json!({
+            "took": 0,
+            "errors": true,
+            "items": [
+                {
+                    "index": {
+                    "_index": "test_coord",
+                    "_type": "_doc",
+                    "_id": "StopArea:TCL:01",
+                    "status": 400,
+                    "error": {
+                        "type": "mapper_parsing_exception",
+                        "reason": "failed to parse",
+                        "caused_by": {
+                            "type": "invalid_shape_exception",
+                            "reason": "Bad X value -7703653.0 is not in boundary Rect(minX=-180.0,maxX=180.0,minY=-90.0,maxY=90.0)"
+                        }
+                    }
+                }
+                }
+            ]
+        })
+    }
+
     #[test]
     fn test_elasticsearch_bulk_response_model() {
         let response: ElasticsearchBulkResponse = serde_json::from_value(sample()).unwrap();
@@ -159,17 +213,48 @@ mod tests {
                 items: vec![
                     ElasticsearchBulkItem::Index(ElasticsearchBulkStatus {
                         status: 404,
+                        id: "5".to_string(),
                         result: Err(ElasticsearchBulkError {
                             err_type: "document_missing_exception".to_string(),
                             reason: "[_doc][5]: document missing".to_string(),
                             index: "index1".to_string().into(),
                             index_uuid: "aAsFqTI0Tc2W0LCWgPNrOA".to_string().into(),
                             shard: "0".to_string().into(),
+                            caused_by: None
                         })
                     }),
                     ElasticsearchBulkItem::Update(ElasticsearchBulkStatus {
                         status: 201,
+                        id: "7".to_string(),
                         result: Ok(ElasticsearchBulkResult::Created)
+                    })
+                ]
+            }
+        )
+    }
+
+    #[test]
+    fn test_elasticsearch_bulk_400_error() {
+        let response: ElasticsearchBulkResponse =
+            serde_json::from_value(sample_400_error()).unwrap();
+        assert_eq!(
+            response,
+            ElasticsearchBulkResponse {
+                items: vec![
+                    ElasticsearchBulkItem::Index(ElasticsearchBulkStatus {
+                        status: 400,
+                        id: "StopArea:TCL:01".to_string(),
+                        result: Err(ElasticsearchBulkError {
+                            err_type: "mapper_parsing_exception".to_string(),
+                            reason: "failed to parse".to_string(),
+                            index: None,
+                            index_uuid: None,
+                            shard: None,
+                            caused_by: Some(ElasticsearchBulkErrorCausedBy {
+                                caused_by_type: "invalid_shape_exception".to_string(),
+                                reason: "Bad X value -7703653.0 is not in boundary Rect(minX=-180.0,maxX=180.0,minY=-90.0,maxY=90.0)".to_string()
+                            })
+                        })
                     })
                 ]
             }

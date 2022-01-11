@@ -31,6 +31,7 @@
 /// In this module we put the code related to stops, that need to draw on 'places', 'mimir',
 /// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
 use futures::stream::{Stream, StreamExt};
+use mimir::domain::model::configuration::root_doctype;
 use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as NavitiaPoiType};
 use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
@@ -132,12 +133,11 @@ pub async fn index_pois(
     let poi_types = Arc::new(poi_types);
 
     let pois: Vec<_> = futures::stream::iter(pois.into_iter())
-        .map(|(_id, poi)| {
+        .then(|(_id, poi)| {
             let poi_types = poi_types.clone();
             let admins_geofinder = admins_geofinder.clone();
             into_poi(poi, poi_types, client, admins_geofinder)
         })
-        .buffer_unordered(8)
         .filter_map(|poi_res| futures::future::ready(poi_res.ok()))
         .collect()
         .await;
@@ -157,7 +157,7 @@ where
     client
         .generate_index(&config, pois)
         .await
-        .context(IndexGeneration)?;
+        .context(IndexGenerationSnafu)?;
 
     Ok(())
 }
@@ -190,21 +190,19 @@ async fn into_poi(
     let distance = format!("{}m", 50); // FIXME Automagick: put in configuration
     let dsl = dsl::build_reverse_query(&distance, coord.lat(), coord.lon());
 
+    let es_indices_to_search = vec![
+        root_doctype(Street::static_doc_type()),
+        root_doctype(Addr::static_doc_type()),
+    ];
+
     let place = client
-        .search_documents(
-            vec![
-                String::from(Street::static_doc_type()),
-                String::from(Addr::static_doc_type()),
-            ],
-            Query::QueryDSL(dsl),
-            1,
-        )
+        .search_documents(es_indices_to_search, Query::QueryDSL(dsl), 1, None)
         .await
-        .context(ReverseAddressSearch)
+        .context(ReverseAddressSearchSnafu)
         .and_then(|values| match values.into_iter().next() {
             None => Ok(None), // If we didn't get any result, return 'no place'
             Some(value) => serde_json::from_value::<Place>(value)
-                .context(Json {
+                .context(JsonSnafu {
                     details: "could no deserialize place",
                 })
                 .map(Some),
@@ -247,10 +245,7 @@ async fn into_poi(
         weight,
         zip_codes: vec![],
         poi_type,
-        properties: properties
-            .into_iter()
-            .map(|property| (property.key, property.value))
-            .collect(),
+        properties,
         address: addr,
         country_codes,
         names: I18nProperties::default(),

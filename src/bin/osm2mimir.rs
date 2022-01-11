@@ -53,21 +53,16 @@ pub enum Error {
     Execution { source: Box<dyn std::error::Error> },
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
+fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-
-    let settings = settings::Settings::new(&opts)
-        .and_then(settings::validate)
-        .context(Settings)?;
+    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
 
     match opts.cmd {
-        settings::Command::Run => mimirsbrunn::utils::launch::wrapped_launch_async(
-            &settings.logging.path.clone(),
-            move || run(opts, settings),
+        settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
+            settings.nb_threads,
+            run(opts, settings),
         )
-        .await
-        .context(Execution),
+        .context(ExecutionSnafu),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -75,19 +70,17 @@ async fn main() -> Result<(), Error> {
     }
 }
 
-const POI_REVERSE_GEOCODING_CONCURRENCY: usize = 8;
-
 async fn run(
     opts: settings::Opts,
     settings: settings::Settings,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut osm_reader =
-        mimirsbrunn::osm_reader::make_osm_reader(&opts.input).context(OsmPbfReader)?;
+        mimirsbrunn::osm_reader::make_osm_reader(&opts.input).context(OsmPbfReaderSnafu)?;
 
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
         .conn(settings.elasticsearch.clone())
         .await
-        .context(ElasticsearchConnection)?;
+        .context(ElasticsearchConnectionSnafu)?;
 
     let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
         Ok(stream) => {
@@ -113,7 +106,7 @@ async fn run(
             #[cfg(feature = "db-storage")]
             settings.database.as_ref(),
         )
-        .context(StreetOsmExtraction)?;
+        .context(StreetOsmExtractionSnafu)?;
 
         import_streets(streets, &client, &settings.container_street).await?;
     }
@@ -145,7 +138,7 @@ async fn import_streets(
     let _index = client
         .generate_index(config, futures::stream::iter(streets))
         .await
-        .context(StreetIndexCreation)?;
+        .context(StreetIndexCreationSnafu)?;
 
     Ok(())
 }
@@ -158,20 +151,21 @@ async fn import_pois(
     client: &ElasticsearchStorage,
     config: &ContainerConfig,
 ) -> Result<(), Error> {
+    // This function rely on AdminGeoFinder::get_objs_and_deps
+    // which use all available cpu/cores to decode osm file and cannot be limited by tokio runtime
     let pois = mimirsbrunn::osm_reader::poi::pois(osm_reader, poi_config, admins_geofinder)
-        .context(PoiOsmExtraction)?;
+        .context(PoiOsmExtractionSnafu)?;
 
     let pois: Vec<places::poi::Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
-        .map(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
-        .buffer_unordered(POI_REVERSE_GEOCODING_CONCURRENCY)
+        .then(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
         .collect()
         .await;
 
     let _ = client
         .generate_index(config, futures::stream::iter(pois))
         .await
-        .context(PoiIndexCreation)?;
+        .context(PoiIndexCreationSnafu)?;
 
     Ok(())
 }
