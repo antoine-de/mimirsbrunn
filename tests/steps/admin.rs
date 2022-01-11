@@ -79,7 +79,7 @@ impl Step for IndexCosmogony {
             .status_of(&GenerateCosmogony(region.to_string()))
             .expect("can't generate cosmogony file without downloading from OSM first");
 
-        cosmogony::index_admins(&client, region, dataset, false)
+        cosmogony::index_admins(&client, region, dataset, false, true)
             .await
             .map(|status| status.into())
             .context(error::IndexCosmogony)

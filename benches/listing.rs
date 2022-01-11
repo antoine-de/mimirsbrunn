@@ -33,7 +33,7 @@ fn bench(c: &mut Criterion) {
         // false: don't force regenerate admins for 'ile-de-france'
         cosmogony::generate("ile-de-france", false).await.unwrap();
         // true: force reindex admins on bench dataset for 'ile-de-france'
-        cosmogony::index_admins(&client, "ile-de-france", "bench", true)
+        cosmogony::index_admins(&client, "ile-de-france", "bench", true, true)
             .await
             .unwrap();
         download::bano("ile-de-france", &["75", "77", "78", "92", "93", "94", "95"])

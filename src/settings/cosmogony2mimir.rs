@@ -27,6 +27,7 @@ pub struct Settings {
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
     pub nb_threads: Option<usize>,
+    pub french_id_retrocompatibility: bool,
 }
 
 #[derive(Debug, clap::Parser)]

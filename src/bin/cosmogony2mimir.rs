@@ -89,10 +89,16 @@ async fn run(
     tracing::info!("Connected to elasticsearch.");
     tracing::info!("Indexing cosmogony from {:?}", &opts.input);
 
-    mimirsbrunn::admin::index_cosmogony(&opts.input, settings.langs, &settings.container, &client)
-        .await
-        .context(Import)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    mimirsbrunn::admin::index_cosmogony(
+        &opts.input,
+        settings.langs,
+        &settings.container,
+        settings.french_id_retrocompatibility,
+        &client,
+    )
+    .await
+    .context(Import)
+    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]
@@ -402,5 +408,111 @@ mod tests {
             .map(|(k, v)| (k.to_string(), v.to_string()))
             .collect()
         )
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_index_cosmogony_activate_french_id_retrocompatibility() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("french_id_retrocompatibility=true")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony",
+                "limousin",
+                "limousin.jsonl.gz",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_test_pool()
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let admins: Vec<Admin> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+        for adm_name in vec![
+            "Saint-Sulpice-les-Champs",
+            "Queyssac-les-Vignes",
+            "Saint-Quentin-la-Chabanne",
+        ] {
+            let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
+            assert_eq!(admin.id, format!("admin:fr:{}", admin.insee));
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_index_cosmogony_deactivate_french_id_retrocompatibility() {
+        docker::initialize()
+            .await
+            .expect("elasticsearch docker initialization");
+
+        let opts = settings::Opts {
+            config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+            run_mode: Some("testing".to_string()),
+            settings: vec![String::from("french_id_retrocompatibility=false")],
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "cosmogony",
+                "limousin",
+                "limousin.jsonl.gz",
+            ]
+            .iter()
+            .collect(),
+            cmd: settings::Command::Run,
+        };
+
+        let settings = settings::Settings::new(&opts).unwrap();
+        let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+
+        // Now we query the index we just created. Since it's a small cosmogony file with few entries,
+        // we'll just list all the documents in the index, and check them.
+        let config = ElasticsearchStorageConfig::default_testing();
+
+        let client = remote::connection_test_pool()
+            .conn(config)
+            .await
+            .expect("Elasticsearch Connection Established");
+
+        let admins: Vec<Admin> = client
+            .list_documents()
+            .await
+            .unwrap()
+            .try_collect()
+            .await
+            .unwrap();
+        for adm_name in vec![
+            "Saint-Sulpice-les-Champs",
+            "Queyssac-les-Vignes",
+            "Saint-Quentin-la-Chabanne",
+        ] {
+            let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
+            assert_eq!(admin.id.starts_with("admin:osm:relation"), true);
+        }
     }
 }
