@@ -32,7 +32,7 @@ pipeline {
                         MIMIR_VERSION=`githubflow_get_new_version --release-type $release_type  --remote-name origin`
                         for file_toml in Cargo.toml libs/mimir/Cargo.toml libs/places/Cargo.toml libs/tests/Cargo.toml libs/common/Cargo.toml
                         do
-                            sed -i -e "s/^version\\s*=\\s*\\".*\\"/version = \\"$MIMIR_VERSION\\"/" Cargo.toml;
+                            sed -i -e "s/^version\\s*=\\s*\\".*\\"/version = \\"$MIMIR_VERSION\\"/" file_toml;
                         done
                         $HOME/.cargo/bin/cargo check
                         git add Cargo.lock Cargo.toml libs/mimir/Cargo.toml libs/places/Cargo.toml libs/tests/Cargo.toml libs/common/Cargo.toml
