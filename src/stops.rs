@@ -38,7 +38,7 @@ use std::hash::BuildHasherDefault;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
@@ -122,7 +122,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
                     details: String::from("no admin retrieved to enrich stops"),
                 });
             }
-
+            info!("{} admins retrieved from ES ", admins.len());
             let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
 
             let mut nb_unmatched = 0u32;
@@ -170,7 +170,7 @@ pub async fn index_ntfs(
             err.to_string()
         ),
     })?;
-
+    info!("Build number of stops per stoparea");
     let nb_stop_points: HashMap<String, u32, BuildHasherDefault<DefaultHasher>> = navitia
         .stop_areas
         .iter()
@@ -183,14 +183,17 @@ pub async fn index_ntfs(
         })
         .collect();
 
+    info!("Make mimir stops from navitia stops");
     let mut stops: Vec<Stop> = navitia
         .stop_areas
         .iter()
         .map(|(idx, sa)| places::stop::to_mimir(idx, sa, &navitia))
         .collect();
 
+    info!("Initialize stops weights");
     initialize_weights(stops.iter_mut(), &nb_stop_points);
 
+    info!("Attach stops to admins");
     attach_stops_to_admins(stops.iter_mut(), client).await?;
 
     // FIXME Should be done concurrently (for_each_concurrent....)
