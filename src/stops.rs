@@ -244,11 +244,13 @@ pub async fn index_ntfs(
     // FIXME Should be done concurrently (for_each_concurrent....)
     info!("Build stops weight by physical modes and city population");
     let md_weight_hash_map: Option<HashMap<String, f64>> = match physical_mode_weight {
-        Some(modes) => Some(modes.iter().map(|mode| {
-            (mode.id.to_string(), mode.weight as f64)
-        }).collect::<HashMap<String, f64>>()
+        Some(modes) => Some(
+            modes
+                .iter()
+                .map(|mode| (mode.id.to_string(), mode.weight as f64))
+                .collect::<HashMap<String, f64>>(),
         ),
-        _ => None
+        _ => None,
     };
     for stop in &mut stops {
         stop.coverages.push(config.dataset.clone());
@@ -277,13 +279,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use crate::stops::make_weight;
     use cosmogony::ZoneType;
     use mimir::domain::model::configuration::PhysicalModeWeight;
     use places::admin::Admin;
     use places::stop::{PhysicalMode, Stop};
     use serial_test::serial;
+    use std::collections::HashMap;
     use std::sync::Arc;
 
     fn approx_equal(a: f64, b: f64, dp: u8) -> bool {
@@ -335,7 +337,6 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_make_weight_with_physical_mode_weight_and_with_admins() {
-
         let physical_mode = PhysicalMode {
             id: "physical_mode:Tramway".to_string(),
             name: "Tramway".to_string(),
