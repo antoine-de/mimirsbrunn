@@ -4,3 +4,39 @@ nb_threads = 2
   name = "stop"
   dataset = "fr"
   visibility = "public"
+
+[[physical_mode_weight]]
+  id = "physical_mode:RapidTransit"
+  weight = 0.0
+[[physical_mode_weight]]
+  id = "physical_mode:Train"
+  weight = 0.0
+[[physical_mode_weight]]
+  id = "physical_mode:Metro"
+  weight = 0.0
+[[physical_mode_weight]]
+  id = "physical_mode:Coach"
+  weight = 0.0
+
+[[physical_mode_weight]]
+  id = "physical_mode:Tramway"
+  weight = 0.0
+[[physical_mode_weight]]
+  id = "physical_mode:RailShuttle"
+  weight = 0.0
+[[physical_mode_weight]]
+  id = "physical_mode:Funicular"
+  weight = 0.0
+
+[[physical_mode_weight]]
+  id = "physical_mode:Bus"
+  weight = 0.0
+
+[[physical_mode_weight]]
+  id = "physical_mode:LocalTrain"
+  weight = 0.0
+
+
+[[physical_mode_weight]]
+  id = "physical_mode:Car"
+  weight = 0.0

@@ -34,6 +34,12 @@ pub struct ContainerConfig {
     pub visibility: ContainerVisibility,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhysicalModeWeight {
+    pub id: String,
+    pub weight: f32,
+}
+
 pub fn root_doctype_dataset_ts(doc_type: &str, dataset: &str) -> String {
     format!(
         "{}_{}_{}_{}",
