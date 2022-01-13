@@ -267,3 +267,111 @@ where
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::stops::make_weight;
+    use cosmogony::ZoneType;
+    use mimir::domain::model::configuration::PhysicalModeWeight;
+    use places::admin::Admin;
+    use places::stop::{PhysicalMode, Stop};
+    use serial_test::serial;
+    use std::sync::Arc;
+
+    fn approx_equal(a: f64, b: f64, dp: u8) -> bool {
+        let p = 10f64.powi(-(dp as i32));
+        (a - b).abs() < p
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_make_weight_without_physical_mode_weight_and_without_admins() {
+        let physical_mode = PhysicalMode {
+            id: "physical_mode:Tramway".to_string(),
+            name: "Tramway".to_string(),
+        };
+        let mut stop = Stop {
+            id: "123".to_string(),
+            physical_modes: vec![physical_mode],
+            weight: 0.65,
+            ..Default::default()
+        };
+        make_weight(&mut stop, &None);
+        assert!(approx_equal(stop.weight, 0.325, 3));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_make_weight_without_physical_mode_weight_and_with_admins() {
+        let physical_mode = PhysicalMode {
+            id: "physical_mode:Tramway".to_string(),
+            name: "Tramway".to_string(),
+        };
+        let admin = Admin {
+            id: "adm:01".to_string(),
+            weight: 0.12,
+            zone_type: Some(ZoneType::City),
+            ..Default::default()
+        };
+        let mut stop = Stop {
+            id: "123".to_string(),
+            physical_modes: vec![physical_mode],
+            administrative_regions: vec![Arc::new(admin)],
+            weight: 0.65,
+            ..Default::default()
+        };
+        make_weight(&mut stop, &None);
+        approx_equal(stop.weight, 1.3715, 4);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_make_weight_with_physical_mode_weight_and_with_admins() {
+        let physical_mode = PhysicalMode {
+            id: "physical_mode:Tramway".to_string(),
+            name: "Tramway".to_string(),
+        };
+        let physical_mode_weight = PhysicalModeWeight {
+            id: "physical_mode:Tramway".to_string(),
+            weight: 5.0,
+        };
+        let admin = Admin {
+            id: "adm:01".to_string(),
+            weight: 0.12,
+            zone_type: Some(ZoneType::City),
+            ..Default::default()
+        };
+        let mut stop = Stop {
+            id: "123".to_string(),
+            physical_modes: vec![physical_mode],
+            administrative_regions: vec![Arc::new(admin)],
+            weight: 0.65,
+            ..Default::default()
+        };
+        make_weight(&mut stop, &Some(vec![physical_mode_weight]));
+        approx_equal(stop.weight, 2.581, 4);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_make_weight_without_physical_mode() {
+        let physical_mode_weight = PhysicalModeWeight {
+            id: "physical_mode:Tramway".to_string(),
+            weight: 5.0,
+        };
+        let admin = Admin {
+            id: "adm:01".to_string(),
+            weight: 0.12,
+            zone_type: Some(ZoneType::City),
+            ..Default::default()
+        };
+        let mut stop = Stop {
+            id: "123".to_string(),
+            administrative_regions: vec![Arc::new(admin)],
+            weight: 0.65,
+            ..Default::default()
+        };
+        make_weight(&mut stop, &Some(vec![physical_mode_weight]));
+        approx_equal(stop.weight, 1.3715, 4);
+    }
+}
