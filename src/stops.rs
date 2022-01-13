@@ -93,7 +93,7 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     }
 }
 
-pub fn make_weight(stop: &mut Stop, physical_mode_weight: &Option<Vec<PhysicalModeWeight>>) {
+pub fn make_weight(stop: &mut Stop, physical_mode_weight: &Option<HashMap<String, f64>>) {
     // Admin weight
     let mut admin_weight = stop
         .administrative_regions
@@ -115,9 +115,9 @@ pub fn make_weight(stop: &mut Stop, physical_mode_weight: &Option<Vec<PhysicalMo
             .physical_modes
             .iter()
             .map(|mode| {
-                let pm_w = ph_weight.iter().find(|&md| md.id == mode.id);
+                let pm_w = ph_weight.get(&*mode.id);
                 match pm_w {
-                    Some(value) => value.weight as f64,
+                    Some(value) => *value,
                     _ => {
                         warn!(
                             "Physical mode, id: {} name: {}, not found in mimir config.",
@@ -243,9 +243,16 @@ pub async fn index_ntfs(
 
     // FIXME Should be done concurrently (for_each_concurrent....)
     info!("Build stops weight by physical modes and city population");
+    let md_weight_hash_map: Option<HashMap<String, f64>> = match physical_mode_weight {
+        Some(modes) => Some(modes.iter().map(|mode| {
+            (mode.id.to_string(), mode.weight as f64)
+        }).collect::<HashMap<String, f64>>()
+        ),
+        _ => None
+    };
     for stop in &mut stops {
         stop.coverages.push(config.dataset.clone());
-        make_weight(stop, &physical_mode_weight);
+        make_weight(stop, &md_weight_hash_map);
     }
     tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, config, futures::stream::iter(stops)).await
@@ -270,6 +277,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use crate::stops::make_weight;
     use cosmogony::ZoneType;
     use mimir::domain::model::configuration::PhysicalModeWeight;
@@ -327,14 +335,14 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_make_weight_with_physical_mode_weight_and_with_admins() {
+
         let physical_mode = PhysicalMode {
             id: "physical_mode:Tramway".to_string(),
             name: "Tramway".to_string(),
         };
-        let physical_mode_weight = PhysicalModeWeight {
-            id: "physical_mode:Tramway".to_string(),
-            weight: 5.0,
-        };
+        let mut physical_mode_weight = HashMap::new();
+        physical_mode_weight.insert("physical_mode:Tramway".to_string(), 5.0);
+
         let admin = Admin {
             id: "adm:01".to_string(),
             weight: 0.12,
@@ -348,17 +356,15 @@ mod tests {
             weight: 0.65,
             ..Default::default()
         };
-        make_weight(&mut stop, &Some(vec![physical_mode_weight]));
+        make_weight(&mut stop, &Some(physical_mode_weight));
         approx_equal(stop.weight, 2.581, 4);
     }
 
     #[tokio::test]
     #[serial]
     async fn test_make_weight_without_physical_mode() {
-        let physical_mode_weight = PhysicalModeWeight {
-            id: "physical_mode:Tramway".to_string(),
-            weight: 5.0,
-        };
+        let mut physical_mode_weight = HashMap::new();
+        physical_mode_weight.insert("physical_mode:Tramway".to_string(), 5.0);
         let admin = Admin {
             id: "adm:01".to_string(),
             weight: 0.12,
@@ -371,7 +377,8 @@ mod tests {
             weight: 0.65,
             ..Default::default()
         };
-        make_weight(&mut stop, &Some(vec![physical_mode_weight]));
+
+        make_weight(&mut stop, &Some(physical_mode_weight));
         approx_equal(stop.weight, 1.3715, 4);
     }
 }
