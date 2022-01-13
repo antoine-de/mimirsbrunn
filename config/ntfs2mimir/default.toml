@@ -5,38 +5,68 @@ nb_threads = 2
   dataset = "fr"
   visibility = "public"
 
+# RapidTransit, Train, Air, Boat, Ferry, LocalTrain, LongDistanceTrain = 8
 [[physical_mode_weight]]
   id = "physical_mode:RapidTransit"
-  weight = 0.0
+  weight = 8.0
+
 [[physical_mode_weight]]
   id = "physical_mode:Train"
-  weight = 0.0
+  weight = 8.0
+
+[[physical_mode_weight]]
+  id = "physical_mode:Air"
+  weight = 8.0
+
+[[physical_mode_weight]]
+  id = "physical_mode:Boat"
+  weight = 8.0
+[[physical_mode_weight]]
+  id = "physical_mode:Ferry"
+  weight = 8.0
+[[physical_mode_weight]]
+  id = "physical_mode:LocalTrain"
+  weight = 8.0
+[[physical_mode_weight]]
+  id = "physical_mode:LongDistanceTrain"
+  weight = 8.0
+
+# Metro, BusRapidTransit = 5
 [[physical_mode_weight]]
   id = "physical_mode:Metro"
-  weight = 0.0
+  weight = 5.0
+[[physical_mode_weight]]
+  id = "physical_mode:BusRapidTransit"
+  weight = 5.0
+
+# Coach = 3
 [[physical_mode_weight]]
   id = "physical_mode:Coach"
-  weight = 0.0
+  weight = 3.0
 
+# Tramway, RailShuttle, Funicular, Shuttle, SuspendedCableCar = 2
 [[physical_mode_weight]]
   id = "physical_mode:Tramway"
-  weight = 0.0
+  weight = 2.0
 [[physical_mode_weight]]
   id = "physical_mode:RailShuttle"
-  weight = 0.0
+  weight = 2.0
 [[physical_mode_weight]]
   id = "physical_mode:Funicular"
-  weight = 0.0
+  weight = 2.0
+[[physical_mode_weight]]
+  id = "physical_mode:Shuttle"
+  weight = 2.0
+[[physical_mode_weight]]
+  id = "physical_mode:SuspendedCableCar"
+  weight = 2.0
 
+# Bus = 1
 [[physical_mode_weight]]
   id = "physical_mode:Bus"
-  weight = 0.0
+  weight = 1.0
 
 [[physical_mode_weight]]
   id = "physical_mode:LocalTrain"
-  weight = 0.0
+  weight = 1.0
 
-
-[[physical_mode_weight]]
-  id = "physical_mode:Car"
-  weight = 0.0
