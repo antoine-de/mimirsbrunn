@@ -111,7 +111,9 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().mode, None);
+        let settings_unwrap = settings.unwrap();
+        assert_eq!(settings_unwrap.mode, None);
+        assert!(settings_unwrap.physical_mode_weight.unwrap().len() > 0);
     }
 
     #[test]
