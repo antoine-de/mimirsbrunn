@@ -31,7 +31,7 @@
 /// In this module we put the code related to stops, that need to draw on 'places', 'mimir',
 /// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
 use futures::stream::{Stream, TryStreamExt};
-use mimir::domain::model::configuration::ContainerConfig;
+use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use snafu::{ResultExt, Snafu};
 use std::collections::{hash_map::DefaultHasher, HashMap};
 use std::hash::BuildHasherDefault;
@@ -91,6 +91,50 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
             0.0
         };
     }
+}
+
+pub fn make_weight(stop: &mut Stop, physical_mode_weight: &Option<Vec<PhysicalModeWeight>>) {
+    // Admin weight
+    let mut admin_weight = stop
+        .administrative_regions
+        .iter()
+        .filter(|adm| adm.is_city())
+        .map(|adm| adm.weight)
+        .next()
+        .unwrap_or(0.0);
+    // FIXME: 1024, automagic!
+    // It's a factor used to bring the stop weight and the admin weight in the same order of
+    // magnitude...
+    // We then use a log to compress the distance between low admin weight and high ones.
+    admin_weight = admin_weight * 1024.0 + 1.0;
+    admin_weight = admin_weight.log10();
+
+    let mut result = Vec::new();
+    if let Some(ph_weight) = physical_mode_weight {
+        result = stop
+            .physical_modes
+            .iter()
+            .map(|mode| {
+                let pm_w = ph_weight.iter().find(|&md| md.id == mode.id);
+                match pm_w {
+                    Some(value) => value.weight as f64,
+                    _ => {
+                        warn!(
+                            "Physical mode, id: {} name: {}, not found in mimir config.",
+                            mode.id, mode.name
+                        );
+                        0.0
+                    }
+                }
+            })
+            .filter(|weight| !weight.is_nan())
+            .collect();
+    }
+
+    result.push(stop.weight);
+    result.push(admin_weight);
+    let sum: f64 = Iterator::sum(result.iter());
+    stop.weight = sum / (result.len() as f64);
 }
 
 fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
@@ -161,6 +205,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
 pub async fn index_ntfs(
     input: PathBuf,
     config: &ContainerConfig,
+    physical_mode_weight: &Option<Vec<PhysicalModeWeight>>,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
@@ -197,24 +242,11 @@ pub async fn index_ntfs(
     attach_stops_to_admins(stops.iter_mut(), client).await?;
 
     // FIXME Should be done concurrently (for_each_concurrent....)
+    info!("Build stops weight by physical modes and city population");
     for stop in &mut stops {
         stop.coverages.push(config.dataset.clone());
-        let mut admin_weight = stop
-            .administrative_regions
-            .iter()
-            .filter(|adm| adm.is_city())
-            .map(|adm| adm.weight)
-            .next()
-            .unwrap_or(0.0);
-        // FIXME: 1024, automagic!
-        // It's a factor used to bring the stop weight and the admin weight in the same order of
-        // magnitude...
-        // We then use a log to compress the distance between low admin weight and high ones.
-        admin_weight = admin_weight * 1024.0 + 1.0;
-        admin_weight = admin_weight.log10();
-        stop.weight = (stop.weight + admin_weight) / 2.0;
+        make_weight(stop, &physical_mode_weight);
     }
-
     tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, config, futures::stream::iter(stops)).await
 }

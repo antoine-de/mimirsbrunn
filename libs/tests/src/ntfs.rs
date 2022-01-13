@@ -62,9 +62,14 @@ pub async fn index_stops(
     // Use dataset set by test instead of default config
     config.container.dataset = dataset.to_string();
 
-    mimirsbrunn::stops::index_ntfs(input_dir, &config.container, client)
-        .await
-        .expect("error while indexing Ntfs");
+    mimirsbrunn::stops::index_ntfs(
+        input_dir,
+        &config.container,
+        &config.physical_mode_weight,
+        client,
+    )
+    .await
+    .expect("error while indexing Ntfs");
 
     Ok(Status::Done)
 }
