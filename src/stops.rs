@@ -93,7 +93,7 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     }
 }
 
-pub fn make_weight(stop: &mut Stop, physical_mode_weight: &Option<HashMap<String, f64>>) {
+pub fn make_weight(stop: &mut Stop, physical_mode_weight: &HashMap<String, f64>) {
     // Admin weight
     let mut admin_weight = stop
         .administrative_regions
@@ -109,27 +109,24 @@ pub fn make_weight(stop: &mut Stop, physical_mode_weight: &Option<HashMap<String
     admin_weight = admin_weight * 1024.0 + 1.0;
     admin_weight = admin_weight.log10();
 
-    let mut result = Vec::new();
-    if let Some(ph_weight) = physical_mode_weight {
-        result = stop
-            .physical_modes
-            .iter()
-            .map(|mode| {
-                let pm_w = ph_weight.get(&*mode.id);
-                match pm_w {
-                    Some(value) => *value,
-                    _ => {
-                        warn!(
-                            "Physical mode, id: {} name: {}, not found in mimir config.",
-                            mode.id, mode.name
-                        );
-                        0.0
-                    }
+    let mut result: Vec<f64> = stop
+        .physical_modes
+        .iter()
+        .map(|mode| {
+            let pm_w = physical_mode_weight.get(&*mode.id);
+            match pm_w {
+                Some(value) => *value,
+                _ => {
+                    warn!(
+                        "Physical mode, id: {} name: {}, not found in mimir config.",
+                        mode.id, mode.name
+                    );
+                    0.0
                 }
-            })
-            .filter(|weight| !weight.is_nan())
-            .collect();
-    }
+            }
+        })
+        .filter(|weight| !weight.is_nan())
+        .collect();
 
     result.push(stop.weight);
     result.push(admin_weight);
@@ -243,14 +240,12 @@ pub async fn index_ntfs(
 
     // FIXME Should be done concurrently (for_each_concurrent....)
     info!("Build stops weight by physical modes and city population");
-    let md_weight_hash_map: Option<HashMap<String, f64>> = match physical_mode_weight {
-        Some(modes) => Some(
-            modes
-                .iter()
-                .map(|mode| (mode.id.to_string(), mode.weight as f64))
-                .collect::<HashMap<String, f64>>(),
-        ),
-        _ => None,
+    let md_weight_hash_map: HashMap<String, f64> = match physical_mode_weight {
+        Some(modes) => modes
+            .iter()
+            .map(|mode| (mode.id.to_string(), mode.weight as f64))
+            .collect::<HashMap<String, f64>>(),
+        _ => HashMap::new(),
     };
     for stop in &mut stops {
         stop.coverages.push(config.dataset.clone());
@@ -281,7 +276,6 @@ where
 mod tests {
     use crate::stops::make_weight;
     use cosmogony::ZoneType;
-    use mimir::domain::model::configuration::PhysicalModeWeight;
     use places::admin::Admin;
     use places::stop::{PhysicalMode, Stop};
     use serial_test::serial;
@@ -306,7 +300,7 @@ mod tests {
             weight: 0.65,
             ..Default::default()
         };
-        make_weight(&mut stop, &None);
+        make_weight(&mut stop, &HashMap::new());
         assert!(approx_equal(stop.weight, 0.325, 3));
     }
 
@@ -330,7 +324,7 @@ mod tests {
             weight: 0.65,
             ..Default::default()
         };
-        make_weight(&mut stop, &None);
+        make_weight(&mut stop, &HashMap::new());
         approx_equal(stop.weight, 1.3715, 4);
     }
 
@@ -357,7 +351,7 @@ mod tests {
             weight: 0.65,
             ..Default::default()
         };
-        make_weight(&mut stop, &Some(physical_mode_weight));
+        make_weight(&mut stop, &physical_mode_weight);
         approx_equal(stop.weight, 2.581, 4);
     }
 
@@ -379,7 +373,7 @@ mod tests {
             ..Default::default()
         };
 
-        make_weight(&mut stop, &Some(physical_mode_weight));
+        make_weight(&mut stop, &physical_mode_weight);
         approx_equal(stop.weight, 1.3715, 4);
     }
 }
