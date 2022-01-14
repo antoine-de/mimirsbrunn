@@ -125,7 +125,7 @@ pub fn make_weight(stop: &mut Stop, physical_mode_weight: &HashMap<String, f64>)
                 }
             }
         })
-        .filter(|weight| !weight.is_nan())
+        .filter(|&weight| weight != 0.0)
         .collect();
 
     result.push(stop.weight);
