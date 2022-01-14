@@ -33,8 +33,7 @@
 use futures::stream::{Stream, TryStreamExt};
 use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use snafu::{ResultExt, Snafu};
-use std::collections::{hash_map::DefaultHasher, HashMap};
-use std::hash::BuildHasherDefault;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -93,7 +92,48 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     }
 }
 
-pub fn make_weight(stop: &mut Stop, physical_mode_weight: &HashMap<String, f64>) {
+pub fn build_stop_area_weight(
+    navitia: &transit_model::Model,
+    physical_mode_weight: &Option<Vec<PhysicalModeWeight>>,
+) -> HashMap<String, f64> {
+    let md_weight_hash_map: HashMap<String, f64> = match physical_mode_weight {
+        Some(modes) => modes
+            .iter()
+            .map(|mode| (mode.id.to_string().to_lowercase(), mode.weight as f64))
+            .collect::<HashMap<String, f64>>(),
+        _ => HashMap::new(),
+    };
+    let mut result = HashMap::new();
+    for (idx, sp) in &navitia.stop_points {
+        let stop_area = places::utils::normalize_id("stop_area", &sp.stop_area_id);
+
+        let mut weights: f64 = navitia
+            .get_corresponding_from_idx::<_, transit_model::objects::PhysicalMode>(idx)
+            .into_iter()
+            .map(|idx| {
+                let ph_mode = &navitia.physical_modes[idx].id;
+                let pm_w = md_weight_hash_map.get(&ph_mode.to_lowercase());
+                match pm_w {
+                    Some(value) => *value,
+                    _ => {
+                        warn!("Physical mode, id: {}, not found in mimir config.", ph_mode);
+                        0.0
+                    }
+                }
+            })
+            .filter(|&weight| weight != 0.0)
+            .into_iter()
+            .sum();
+        let res = result.get(&stop_area);
+        if let Some(value) = res {
+            weights += value;
+        }
+        result.insert(stop_area, weights);
+    }
+    result
+}
+
+pub fn make_weight(stop: &mut Stop, stop_areas_weights: &HashMap<String, f64>) {
     // Admin weight
     let mut admin_weight = stop
         .administrative_regions
@@ -109,29 +149,12 @@ pub fn make_weight(stop: &mut Stop, physical_mode_weight: &HashMap<String, f64>)
     admin_weight = admin_weight * 1024.0 + 1.0;
     admin_weight = admin_weight.log10();
 
-    let mut result: Vec<f64> = stop
-        .physical_modes
-        .iter()
-        .map(|mode| {
-            let pm_w = physical_mode_weight.get(&*mode.id);
-            match pm_w {
-                Some(value) => *value,
-                _ => {
-                    warn!(
-                        "Physical mode, id: {} name: {}, not found in mimir config.",
-                        mode.id, mode.name
-                    );
-                    0.0
-                }
-            }
-        })
-        .filter(|&weight| weight != 0.0)
-        .collect();
-
-    result.push(stop.weight);
-    result.push(admin_weight);
-    let sum: f64 = Iterator::sum(result.iter());
-    stop.weight = sum / (result.len() as f64);
+    let weights = stop_areas_weights.get(&*stop.id);
+    if let Some(value) = weights {
+        stop.weight = (value + admin_weight) / (2 as f64);
+    } else {
+        stop.weight = admin_weight
+    }
 }
 
 fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
@@ -212,18 +235,9 @@ pub async fn index_ntfs(
             err.to_string()
         ),
     })?;
-    info!("Build number of stops per stoparea");
-    let nb_stop_points: HashMap<String, u32, BuildHasherDefault<DefaultHasher>> = navitia
-        .stop_areas
-        .iter()
-        .map(|(idx, sa)| {
-            let id = places::utils::normalize_id("stop_area", &sa.id);
-            let nb_stop_points = navitia
-                .get_corresponding_from_idx::<_, transit_model::objects::StopPoint>(idx)
-                .len();
-            (id, nb_stop_points as u32)
-        })
-        .collect();
+
+    info!("Build stops weight by physical modes");
+    let stop_areas_weights = build_stop_area_weight(&navitia, &physical_mode_weight);
 
     info!("Make mimir stops from navitia stops");
     let mut stops: Vec<Stop> = navitia
@@ -232,25 +246,14 @@ pub async fn index_ntfs(
         .map(|(idx, sa)| places::stop::to_mimir(idx, sa, &navitia))
         .collect();
 
-    info!("Initialize stops weights");
-    initialize_weights(stops.iter_mut(), &nb_stop_points);
-
     info!("Attach stops to admins");
     attach_stops_to_admins(stops.iter_mut(), client).await?;
 
-    // FIXME Should be done concurrently (for_each_concurrent....)
-    info!("Build stops weight by physical modes and city population");
-    let md_weight_hash_map: HashMap<String, f64> = match physical_mode_weight {
-        Some(modes) => modes
-            .iter()
-            .map(|mode| (mode.id.to_string(), mode.weight as f64))
-            .collect::<HashMap<String, f64>>(),
-        _ => HashMap::new(),
-    };
     for stop in &mut stops {
         stop.coverages.push(config.dataset.clone());
-        make_weight(stop, &md_weight_hash_map);
+        make_weight(stop, &stop_areas_weights);
     }
+
     tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, config, futures::stream::iter(stops)).await
 }
@@ -277,7 +280,7 @@ mod tests {
     use crate::stops::make_weight;
     use cosmogony::ZoneType;
     use places::admin::Admin;
-    use places::stop::{PhysicalMode, Stop};
+    use places::stop::Stop;
     use serial_test::serial;
     use std::collections::HashMap;
     use std::sync::Arc;
@@ -290,27 +293,17 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_make_weight_without_physical_mode_weight_and_without_admins() {
-        let physical_mode = PhysicalMode {
-            id: "physical_mode:Tramway".to_string(),
-            name: "Tramway".to_string(),
-        };
         let mut stop = Stop {
             id: "123".to_string(),
-            physical_modes: vec![physical_mode],
-            weight: 0.65,
             ..Default::default()
         };
         make_weight(&mut stop, &HashMap::new());
-        assert!(approx_equal(stop.weight, 0.325, 3));
+        assert!(approx_equal(stop.weight, 0.0, 1));
     }
 
     #[tokio::test]
     #[serial]
     async fn test_make_weight_without_physical_mode_weight_and_with_admins() {
-        let physical_mode = PhysicalMode {
-            id: "physical_mode:Tramway".to_string(),
-            name: "Tramway".to_string(),
-        };
         let admin = Admin {
             id: "adm:01".to_string(),
             weight: 0.12,
@@ -319,24 +312,18 @@ mod tests {
         };
         let mut stop = Stop {
             id: "123".to_string(),
-            physical_modes: vec![physical_mode],
             administrative_regions: vec![Arc::new(admin)],
-            weight: 0.65,
             ..Default::default()
         };
         make_weight(&mut stop, &HashMap::new());
-        approx_equal(stop.weight, 1.3715, 4);
+        approx_equal(stop.weight, 2.0930, 4);
     }
 
     #[tokio::test]
     #[serial]
     async fn test_make_weight_with_physical_mode_weight_and_with_admins() {
-        let physical_mode = PhysicalMode {
-            id: "physical_mode:Tramway".to_string(),
-            name: "Tramway".to_string(),
-        };
         let mut physical_mode_weight = HashMap::new();
-        physical_mode_weight.insert("physical_mode:Tramway".to_string(), 5.0);
+        physical_mode_weight.insert("123".to_string(), 5.0);
 
         let admin = Admin {
             id: "adm:01".to_string(),
@@ -346,34 +333,10 @@ mod tests {
         };
         let mut stop = Stop {
             id: "123".to_string(),
-            physical_modes: vec![physical_mode],
             administrative_regions: vec![Arc::new(admin)],
-            weight: 0.65,
             ..Default::default()
         };
         make_weight(&mut stop, &physical_mode_weight);
-        approx_equal(stop.weight, 2.581, 4);
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_make_weight_without_physical_mode() {
-        let mut physical_mode_weight = HashMap::new();
-        physical_mode_weight.insert("physical_mode:Tramway".to_string(), 5.0);
-        let admin = Admin {
-            id: "adm:01".to_string(),
-            weight: 0.12,
-            zone_type: Some(ZoneType::City),
-            ..Default::default()
-        };
-        let mut stop = Stop {
-            id: "123".to_string(),
-            administrative_regions: vec![Arc::new(admin)],
-            weight: 0.65,
-            ..Default::default()
-        };
-
-        make_weight(&mut stop, &physical_mode_weight);
-        approx_equal(stop.weight, 1.3715, 4);
+        approx_equal(stop.weight, 3.5465, 4);
     }
 }

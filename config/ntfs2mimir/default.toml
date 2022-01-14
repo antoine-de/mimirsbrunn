@@ -7,66 +7,66 @@ nb_threads = 2
 
 # RapidTransit, Train, Air, Boat, Ferry, LocalTrain, LongDistanceTrain = 8
 [[physical_mode_weight]]
-  id = "physical_mode:RapidTransit"
+  id = "RapidTransit"
   weight = 8.0
 
 [[physical_mode_weight]]
-  id = "physical_mode:Train"
+  id = "Train"
   weight = 8.0
 
 [[physical_mode_weight]]
-  id = "physical_mode:Air"
+  id = "Air"
   weight = 8.0
 
 [[physical_mode_weight]]
-  id = "physical_mode:Boat"
+  id = "Boat"
   weight = 8.0
 [[physical_mode_weight]]
-  id = "physical_mode:Ferry"
+  id = "Ferry"
   weight = 8.0
 [[physical_mode_weight]]
-  id = "physical_mode:LocalTrain"
+  id = "LocalTrain"
   weight = 8.0
 [[physical_mode_weight]]
-  id = "physical_mode:LongDistanceTrain"
+  id = "LongDistanceTrain"
   weight = 8.0
 
 # Metro, BusRapidTransit = 5
 [[physical_mode_weight]]
-  id = "physical_mode:Metro"
+  id = "Metro"
   weight = 5.0
 [[physical_mode_weight]]
-  id = "physical_mode:BusRapidTransit"
+  id = "BusRapidTransit"
   weight = 5.0
 
 # Coach = 3
 [[physical_mode_weight]]
-  id = "physical_mode:Coach"
+  id = "Coach"
   weight = 3.0
 
 # Tramway, RailShuttle, Funicular, Shuttle, SuspendedCableCar = 2
 [[physical_mode_weight]]
-  id = "physical_mode:Tramway"
+  id = "Tramway"
   weight = 2.0
 [[physical_mode_weight]]
-  id = "physical_mode:RailShuttle"
+  id = "RailShuttle"
   weight = 2.0
 [[physical_mode_weight]]
-  id = "physical_mode:Funicular"
+  id = "Funicular"
   weight = 2.0
 [[physical_mode_weight]]
-  id = "physical_mode:Shuttle"
+  id = "Shuttle"
   weight = 2.0
 [[physical_mode_weight]]
-  id = "physical_mode:SuspendedCableCar"
+  id = "SuspendedCableCar"
   weight = 2.0
 
 # Bus = 1
 [[physical_mode_weight]]
-  id = "physical_mode:Bus"
+  id = "Bus"
   weight = 1.0
 
 [[physical_mode_weight]]
-  id = "physical_mode:LocalTrain"
+  id = "LocalTrain"
   weight = 1.0
 
