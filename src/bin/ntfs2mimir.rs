@@ -88,10 +88,15 @@ async fn run(
 
     tracing::info!("Connected to elasticsearch.");
 
-    mimirsbrunn::stops::index_ntfs(opts.input, &settings.container, &client)
-        .await
-        .context(ImportSnafu)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    mimirsbrunn::stops::index_ntfs(
+        opts.input,
+        &settings.container,
+        &settings.physical_mode_weight,
+        &client,
+    )
+    .await
+    .context(ImportSnafu)
+    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]

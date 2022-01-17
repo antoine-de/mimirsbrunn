@@ -1,5 +1,5 @@
 /// This module contains the definition for bano2mimir configuration and command line arguments.
-use mimir::domain::model::configuration::ContainerConfig;
+use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::env;
@@ -26,6 +26,7 @@ pub struct Settings {
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
     pub nb_threads: Option<usize>,
+    pub physical_mode_weight: Option<Vec<PhysicalModeWeight>>,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -110,7 +111,9 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err().to_string()
         );
-        assert_eq!(settings.unwrap().mode, None);
+        let settings_unwrap = settings.unwrap();
+        assert_eq!(settings_unwrap.mode, None);
+        assert!(settings_unwrap.physical_mode_weight.unwrap().len() > 0);
     }
 
     #[test]
