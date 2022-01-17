@@ -9,15 +9,12 @@ nb_threads = 2
 [[physical_mode_weight]]
   id = "RapidTransit"
   weight = 8.0
-
 [[physical_mode_weight]]
   id = "Train"
   weight = 8.0
-
 [[physical_mode_weight]]
   id = "Air"
   weight = 8.0
-
 [[physical_mode_weight]]
   id = "Boat"
   weight = 8.0
@@ -65,8 +62,3 @@ nb_threads = 2
 [[physical_mode_weight]]
   id = "Bus"
   weight = 1.0
-
-[[physical_mode_weight]]
-  id = "LocalTrain"
-  weight = 1.0
-
