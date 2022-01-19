@@ -577,6 +577,7 @@ fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Va
                 },
                 {
                         "filter": { "term": { "type": "address" } },
+                        "filter": { "term": { "type": "addr" } },
                         "field_value_factor": {
                             "field": "weight",
                             "factor": build_weight.factor,
