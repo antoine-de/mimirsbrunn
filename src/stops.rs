@@ -31,14 +31,13 @@
 /// In this module we put the code related to stops, that need to draw on 'places', 'mimir',
 /// 'common', and 'config' (ie all the workspaces that make up mimirsbrunn).
 use futures::stream::{Stream, TryStreamExt};
-use mimir::domain::model::configuration::ContainerConfig;
+use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use snafu::{ResultExt, Snafu};
-use std::collections::{hash_map::DefaultHasher, HashMap};
-use std::hash::BuildHasherDefault;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::admin_geofinder::AdminGeoFinder;
 use crate::labels;
@@ -93,6 +92,71 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
     }
 }
 
+pub fn build_stop_area_weight(
+    navitia: &transit_model::Model,
+    physical_mode_weight: &Option<Vec<PhysicalModeWeight>>,
+) -> HashMap<String, f64> {
+    let md_weight_hash_map: HashMap<String, f64> = match physical_mode_weight {
+        Some(modes) => modes
+            .iter()
+            .map(|mode| (mode.id.to_string().to_lowercase(), mode.weight as f64))
+            .collect::<HashMap<String, f64>>(),
+        _ => HashMap::new(),
+    };
+    let mut result = HashMap::new();
+    for (idx, sp) in &navitia.stop_points {
+        let stop_area = places::utils::normalize_id("stop_area", &sp.stop_area_id);
+
+        let mut weights: f64 = navitia
+            .get_corresponding_from_idx::<_, transit_model::objects::PhysicalMode>(idx)
+            .into_iter()
+            .map(|idx| {
+                let ph_mode = &navitia.physical_modes[idx].id;
+                let pm_w = md_weight_hash_map.get(&ph_mode.to_lowercase());
+                match pm_w {
+                    Some(value) => *value,
+                    _ => {
+                        warn!("Physical mode, id: {}, not found in mimir config.", ph_mode);
+                        0.0
+                    }
+                }
+            })
+            .filter(|&weight| weight != 0.0)
+            .into_iter()
+            .sum();
+        let res = result.get(&stop_area);
+        if let Some(value) = res {
+            weights += value;
+        }
+        result.insert(stop_area, weights);
+    }
+    result
+}
+
+pub fn make_weight(stop: &mut Stop, stop_areas_weights: &HashMap<String, f64>) {
+    // Admin weight
+    let mut admin_weight = stop
+        .administrative_regions
+        .iter()
+        .filter(|adm| adm.is_city())
+        .map(|adm| adm.weight)
+        .next()
+        .unwrap_or(0.0);
+    // FIXME: 1024, automagic!
+    // It's a factor used to bring the stop weight and the admin weight in the same order of
+    // magnitude...
+    // We then use a log to compress the distance between low admin weight and high ones.
+    admin_weight = admin_weight * 1024.0 + 1.0;
+    admin_weight = admin_weight.log10();
+
+    let weights = stop_areas_weights.get(&*stop.id);
+    if let Some(value) = weights {
+        stop.weight = (value + admin_weight) / (2 as f64);
+    } else {
+        stop.weight = admin_weight
+    }
+}
+
 fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
     let admins_iter = admins.iter().map(|a| a.deref());
     let country_codes = places::admin::find_country_codes(admins_iter.clone());
@@ -122,7 +186,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
                     details: String::from("no admin retrieved to enrich stops"),
                 });
             }
-
+            info!("{} admins retrieved from ES ", admins.len());
             let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
 
             let mut nb_unmatched = 0u32;
@@ -161,6 +225,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
 pub async fn index_ntfs(
     input: PathBuf,
     config: &ContainerConfig,
+    physical_mode_weight: &Option<Vec<PhysicalModeWeight>>,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
@@ -171,45 +236,22 @@ pub async fn index_ntfs(
         ),
     })?;
 
-    let nb_stop_points: HashMap<String, u32, BuildHasherDefault<DefaultHasher>> = navitia
-        .stop_areas
-        .iter()
-        .map(|(idx, sa)| {
-            let id = places::utils::normalize_id("stop_area", &sa.id);
-            let nb_stop_points = navitia
-                .get_corresponding_from_idx::<_, transit_model::objects::StopPoint>(idx)
-                .len();
-            (id, nb_stop_points as u32)
-        })
-        .collect();
+    info!("Build stops weight by physical modes");
+    let stop_areas_weights = build_stop_area_weight(&navitia, &physical_mode_weight);
 
+    info!("Make mimir stops from navitia stops");
     let mut stops: Vec<Stop> = navitia
         .stop_areas
         .iter()
         .map(|(idx, sa)| places::stop::to_mimir(idx, sa, &navitia))
         .collect();
 
-    initialize_weights(stops.iter_mut(), &nb_stop_points);
-
+    info!("Attach stops to admins");
     attach_stops_to_admins(stops.iter_mut(), client).await?;
 
-    // FIXME Should be done concurrently (for_each_concurrent....)
     for stop in &mut stops {
         stop.coverages.push(config.dataset.clone());
-        let mut admin_weight = stop
-            .administrative_regions
-            .iter()
-            .filter(|adm| adm.is_city())
-            .map(|adm| adm.weight)
-            .next()
-            .unwrap_or(0.0);
-        // FIXME: 1024, automagic!
-        // It's a factor used to bring the stop weight and the admin weight in the same order of
-        // magnitude...
-        // We then use a log to compress the distance between low admin weight and high ones.
-        admin_weight = admin_weight * 1024.0 + 1.0;
-        admin_weight = admin_weight.log10();
-        stop.weight = (stop.weight + admin_weight) / 2.0;
+        make_weight(stop, &stop_areas_weights);
     }
 
     tracing::info!("Beginning to import stops into elasticsearch.");
@@ -231,4 +273,70 @@ where
         .context(IndexGenerationSnafu)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::stops::make_weight;
+    use cosmogony::ZoneType;
+    use places::admin::Admin;
+    use places::stop::Stop;
+    use serial_test::serial;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    fn approx_equal(a: f64, b: f64, dp: u8) -> bool {
+        let p = 10f64.powi(-(dp as i32));
+        (a - b).abs() < p
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_make_weight_without_physical_mode_weight_and_without_admins() {
+        let mut stop = Stop {
+            id: "123".to_string(),
+            ..Default::default()
+        };
+        make_weight(&mut stop, &HashMap::new());
+        assert!(approx_equal(stop.weight, 0.0, 1));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_make_weight_without_physical_mode_weight_and_with_admins() {
+        let admin = Admin {
+            id: "adm:01".to_string(),
+            weight: 0.12,
+            zone_type: Some(ZoneType::City),
+            ..Default::default()
+        };
+        let mut stop = Stop {
+            id: "123".to_string(),
+            administrative_regions: vec![Arc::new(admin)],
+            ..Default::default()
+        };
+        make_weight(&mut stop, &HashMap::new());
+        approx_equal(stop.weight, 2.0930, 4);
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_make_weight_with_physical_mode_weight_and_with_admins() {
+        let mut physical_mode_weight = HashMap::new();
+        physical_mode_weight.insert("123".to_string(), 5.0);
+
+        let admin = Admin {
+            id: "adm:01".to_string(),
+            weight: 0.12,
+            zone_type: Some(ZoneType::City),
+            ..Default::default()
+        };
+        let mut stop = Stop {
+            id: "123".to_string(),
+            administrative_regions: vec![Arc::new(admin)],
+            ..Default::default()
+        };
+        make_weight(&mut stop, &physical_mode_weight);
+        approx_equal(stop.weight, 3.5465, 4);
+    }
 }
