@@ -2,6 +2,7 @@ use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use futures::stream::StreamExt;
 use mimir::domain::model::configuration;
+use serde::de::Unexpected::Option;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
@@ -98,8 +99,14 @@ fn bench(c: &mut Criterion) {
                         let rec = rec.unwrap();
                         let client = client.clone();
                         let filters = filters.clone();
-                        let dsl =
-                            build_query(&rec.query, filters, "fr", &settings, QueryType::PREFIX);
+                        let dsl = build_query(
+                            &rec.query,
+                            filters,
+                            "fr",
+                            &settings,
+                            QueryType::PREFIX,
+                            &Option::None,
+                        );
 
                         async move {
                             let _values = client
