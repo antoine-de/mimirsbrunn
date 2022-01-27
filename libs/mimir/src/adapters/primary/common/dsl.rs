@@ -616,30 +616,3 @@ fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Va
         }
     })
 }
-
-// fn build_coverage_condition() -> serde_json::Value {
-//     // filter to handle PT coverages
-//     // we either want:
-//     // * to get objects with no coverage at all (non-PT objects)
-//     // * or the objects with coverage matching the ones we're allowed to get
-//     json!({
-//             "bool": {
-//                 "should": [
-//                 {
-//                     "bool": {
-//                         "must_not": {
-//                             "exists": {
-//                               "field": "coverages"
-//                             }
-//                         },
-//                     }
-//                 },
-//                 {
-//                     "term": {
-//                         "coverages": []
-//                     }
-//                 }
-//             ]
-//         }
-//     })
-// }
