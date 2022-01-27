@@ -172,7 +172,14 @@ where
     let q = params.query.q.clone();
     let lang = params.query.lang.clone();
     let filters = filters::Filters::from((params.query, geometry));
-    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings, QueryType::PREFIX, &Option::None);
+    let dsl = dsl::build_query(
+        &q,
+        filters,
+        lang.as_str(),
+        &settings,
+        QueryType::PREFIX,
+        &Option::None,
+    );
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
