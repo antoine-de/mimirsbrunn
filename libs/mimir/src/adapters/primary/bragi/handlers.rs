@@ -82,12 +82,14 @@ where
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
     let filters = filters::Filters::from((params, geometry));
+    let excludes = vec!["boundary".to_string()];
     let dsl_query_prefix = dsl::build_query(
         &q,
         filters.clone(),
         lang.as_str(),
         &settings,
         QueryType::PREFIX,
+        &Option::Some(excludes.clone()),
     );
     let dsl_query_fuzzy = dsl::build_query(
         &q,
@@ -95,6 +97,7 @@ where
         lang.as_str(),
         &settings,
         QueryType::FUZZY,
+        &Option::Some(excludes),
     );
 
     tracing::trace!(
@@ -169,7 +172,7 @@ where
     let q = params.query.q.clone();
     let lang = params.query.lang.clone();
     let filters = filters::Filters::from((params.query, geometry));
-    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings, QueryType::PREFIX);
+    let dsl = dsl::build_query(&q, filters, lang.as_str(), &settings, QueryType::PREFIX, &Option::None);
 
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 

@@ -57,7 +57,7 @@ async fn main() {
 
     let settings = QuerySettings::default();
 
-    let dsl = build_query(&opt.q, filters, "fr", &settings, QueryType::PREFIX);
+    let dsl = build_query(&opt.q, filters, "fr", &settings, QueryType::PREFIX, &Option::None);
 
     println!("{}", dsl);
 
