@@ -269,7 +269,6 @@ fn build_matching_condition(q: &str, query_type: QueryType) -> serde_json::Value
 fn build_admin_weight_query(weights: BuildWeight) -> serde_json::Value {
     json!({
         "function_score": {
-            "query": { "match_all": {} },
             "boost_mode": "replace",
             "functions": [
                 {
@@ -319,7 +318,6 @@ fn build_proximity_boost(
 
     json!({
         "function_score": {
-            "query": { "match_all": {} },
             "boost_mode": "replace",
             "functions": [
             {
@@ -347,9 +345,6 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Va
     json!({
     "query": {
         "bool": {
-            "must": {
-                "match_all": {}
-            },
             "filter": {
                 "geo_distance": {
                     "distance": distance,
@@ -563,7 +558,6 @@ fn build_match_query(query: &str, field: &str, boost: f64) -> serde_json::Value 
 fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {
     json!({
         "function_score": {
-            "query": { "match_all":{} },
             "boost_mode": "replace",
             "functions": [
                 {
