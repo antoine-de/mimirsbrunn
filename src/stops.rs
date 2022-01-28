@@ -151,7 +151,7 @@ pub fn make_weight(stop: &mut Stop, stop_areas_weights: &HashMap<String, f64>) {
 
     let weights = stop_areas_weights.get(&*stop.id);
     if let Some(value) = weights {
-        stop.weight = (value + admin_weight) / (2 as f64);
+        stop.weight = (value + admin_weight) / (2_f64);
     } else {
         stop.weight = admin_weight
     }

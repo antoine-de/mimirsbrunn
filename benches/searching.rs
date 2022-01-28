@@ -2,7 +2,6 @@ use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 use futures::stream::StreamExt;
 use mimir::domain::model::configuration;
-use serde::de::Unexpected::Option;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
@@ -105,7 +104,7 @@ fn bench(c: &mut Criterion) {
                             "fr",
                             &settings,
                             QueryType::PREFIX,
-                            &Option::None,
+                            &None,
                         );
 
                         async move {

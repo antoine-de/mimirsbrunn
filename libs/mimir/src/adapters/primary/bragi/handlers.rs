@@ -53,7 +53,7 @@ pub fn build_feature(
     places
         .into_iter()
         .map(|mut p| {
-            if let Some(ref coord) = query_coord {
+            if let Some(coord) = query_coord {
                 let geo_point = geo::Point::new(coord.lon as f64, coord.lat as f64);
                 let pp: geo::Point<f64> = geo::Point::new(p.coord().lon(), p.coord().lat());
                 let distance = geo_point.haversine_distance(&pp) as u32;
