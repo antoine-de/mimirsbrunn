@@ -109,6 +109,7 @@ impl Step for Search {
             "fr",
             &QuerySettings::default(),
             QueryType::PREFIX,
+            &Option::None,
         );
 
         // Fetch documents

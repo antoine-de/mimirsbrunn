@@ -19,6 +19,7 @@ pub fn build_query(
     lang: &str,
     settings: &settings::QuerySettings,
     query_type: QueryType,
+    excludes: &Option<Vec<String>>,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query);
     let string_query =
@@ -27,19 +28,33 @@ pub fn build_query(
     let mut filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
     filters.push(build_matching_condition(q, query_type));
     filters.push(build_house_number_condition(q));
-
-    json!({
-        "query": {
-            "bool": {
-                "must": [ type_query, string_query ],
-                "should": boosts,
-                "filter": filters
-            }
-        },
-        "_source": {
-          "excludes": [ "boundary" ]
-        },
-    })
+    match excludes {
+        Some(values) => {
+            json!({
+                 "query": {
+                     "bool": {
+                         "must": [ type_query, string_query ],
+                         "should": boosts,
+                         "filter": filters
+                     }
+                 },
+             "_source": {
+                 "excludes": values
+            },
+             })
+        }
+        _ => {
+            json!({
+                "query": {
+                    "bool": {
+                        "must": [ type_query, string_query ],
+                        "should": boosts,
+                        "filter": filters
+                    }
+                },
+            })
+        }
+    }
 }
 
 fn build_string_query(
@@ -269,7 +284,6 @@ fn build_matching_condition(q: &str, query_type: QueryType) -> serde_json::Value
 fn build_admin_weight_query(weights: BuildWeight) -> serde_json::Value {
     json!({
         "function_score": {
-            "query": { "match_all": {} },
             "boost_mode": "replace",
             "functions": [
                 {
@@ -319,7 +333,6 @@ fn build_proximity_boost(
 
     json!({
         "function_score": {
-            "query": { "match_all": {} },
             "boost_mode": "replace",
             "functions": [
             {
@@ -347,9 +360,6 @@ pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Va
     json!({
     "query": {
         "bool": {
-            "must": {
-                "match_all": {}
-            },
             "filter": {
                 "geo_distance": {
                     "distance": distance,
@@ -563,7 +573,6 @@ fn build_match_query(query: &str, field: &str, boost: f64) -> serde_json::Value 
 fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {
     json!({
         "function_score": {
-            "query": { "match_all":{} },
             "boost_mode": "replace",
             "functions": [
                 {
@@ -616,30 +625,3 @@ fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Va
         }
     })
 }
-
-// fn build_coverage_condition() -> serde_json::Value {
-//     // filter to handle PT coverages
-//     // we either want:
-//     // * to get objects with no coverage at all (non-PT objects)
-//     // * or the objects with coverage matching the ones we're allowed to get
-//     json!({
-//             "bool": {
-//                 "should": [
-//                 {
-//                     "bool": {
-//                         "must_not": {
-//                             "exists": {
-//                               "field": "coverages"
-//                             }
-//                         },
-//                     }
-//                 },
-//                 {
-//                     "term": {
-//                         "coverages": []
-//                     }
-//                 }
-//             ]
-//         }
-//     })
-// }

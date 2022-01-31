@@ -135,7 +135,7 @@ pub fn build_stop_area_weight(
 
 pub fn make_weight(stop: &mut Stop, stop_areas_weights: &HashMap<String, f64>) {
     // Admin weight
-    let mut admin_weight = stop
+    let admin_weight = stop
         .administrative_regions
         .iter()
         .filter(|adm| adm.is_city())
@@ -146,12 +146,12 @@ pub fn make_weight(stop: &mut Stop, stop_areas_weights: &HashMap<String, f64>) {
     // It's a factor used to bring the stop weight and the admin weight in the same order of
     // magnitude...
     // We then use a log to compress the distance between low admin weight and high ones.
-    admin_weight = admin_weight * 1024.0 + 1.0;
-    admin_weight = admin_weight.log10();
+    // admin_weight = admin_weight * 1024.0 + 1.0;
+    // admin_weight = admin_weight.log10();
 
     let weights = stop_areas_weights.get(&*stop.id);
     if let Some(value) = weights {
-        stop.weight = (value + admin_weight) / (2 as f64);
+        stop.weight = (value + admin_weight) / (2_f64);
     } else {
         stop.weight = admin_weight
     }

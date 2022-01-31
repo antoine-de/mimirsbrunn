@@ -113,7 +113,7 @@ mod tests {
         );
         let settings_unwrap = settings.unwrap();
         assert_eq!(settings_unwrap.mode, None);
-        assert!(settings_unwrap.physical_mode_weight.unwrap().len() > 0);
+        assert!(!settings_unwrap.physical_mode_weight.unwrap().is_empty());
     }
 
     #[test]
