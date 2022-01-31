@@ -19,6 +19,7 @@ pub fn build_query(
     lang: &str,
     settings: &settings::QuerySettings,
     query_type: QueryType,
+    excludes: &Option<Vec<String>>,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query);
     let string_query =
@@ -27,19 +28,33 @@ pub fn build_query(
     let mut filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
     filters.push(build_matching_condition(q, query_type));
     filters.push(build_house_number_condition(q));
-
-    json!({
-        "query": {
-            "bool": {
-                "must": [ type_query, string_query ],
-                "should": boosts,
-                "filter": filters
-            }
-        },
-        "_source": {
-          "excludes": [ "boundary" ]
-        },
-    })
+    match excludes {
+        Some(values) => {
+            json!({
+                 "query": {
+                     "bool": {
+                         "must": [ type_query, string_query ],
+                         "should": boosts,
+                         "filter": filters
+                     }
+                 },
+             "_source": {
+                 "excludes": values
+            },
+             })
+        }
+        _ => {
+            json!({
+                "query": {
+                    "bool": {
+                        "must": [ type_query, string_query ],
+                        "should": boosts,
+                        "filter": filters
+                    }
+                },
+            })
+        }
+    }
 }
 
 fn build_string_query(
