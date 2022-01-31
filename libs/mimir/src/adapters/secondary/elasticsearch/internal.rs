@@ -989,6 +989,7 @@ impl ElasticsearchStorage {
                     let res_status = {
                         if let Some(last_hit) = body.hits.hits.last() {
                             let tiebreaker = last_hit.sort.get(0).unwrap().as_u64().unwrap();
+                            info!("Number of documents to retrieve: {} ", tiebreaker);
                             State::Next(ContinuationToken { pit, tiebreaker })
                         } else {
                             State::End(pit)
