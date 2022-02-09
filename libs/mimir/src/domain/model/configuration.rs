@@ -32,6 +32,8 @@ pub struct ContainerConfig {
     pub name: String,
     pub dataset: String,
     pub visibility: ContainerVisibility,
+    pub number_of_shards: u64,
+    pub number_of_replicas: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

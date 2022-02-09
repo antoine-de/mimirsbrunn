@@ -23,18 +23,22 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
     async fn create_container(&self, config: &ContainerConfig) -> Result<Index, StorageError> {
         let index_name = root_doctype_dataset_ts(&config.name, &config.dataset);
 
-        self.create_index(&index_name)
-            .and_then(|_| {
-                self.find_index(index_name.clone()).and_then(|res| {
-                    futures::future::ready(res.ok_or(internal::Error::ElasticsearchUnknownIndex {
-                        index: index_name.to_string(),
-                    }))
-                })
+        self.create_index(
+            &index_name,
+            config.number_of_shards,
+            config.number_of_replicas,
+        )
+        .and_then(|_| {
+            self.find_index(index_name.clone()).and_then(|res| {
+                futures::future::ready(res.ok_or(internal::Error::ElasticsearchUnknownIndex {
+                    index: index_name.to_string(),
+                }))
             })
-            .await
-            .map_err(|err| StorageError::ContainerCreationError {
-                source: Box::new(err),
-            })
+        })
+        .await
+        .map_err(|err| StorageError::ContainerCreationError {
+            source: Box::new(err),
+        })
     }
 
     async fn delete_container(&self, index: String) -> Result<(), StorageError> {

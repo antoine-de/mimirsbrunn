@@ -6,3 +6,5 @@ french_id_retrocompatibility = true
   name = "admin"
   dataset = "fr"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0

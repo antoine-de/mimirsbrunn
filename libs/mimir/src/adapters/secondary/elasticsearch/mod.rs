@@ -133,6 +133,8 @@ pub mod tests {
             name: "foo".to_string(),
             dataset: "bar".to_string(),
             visibility: ContainerVisibility::Public,
+            number_of_shards: 1,
+            number_of_replicas: 0,
         };
 
         let res = client.create_container(&config).await;
@@ -172,6 +174,8 @@ pub mod tests {
             name: TestObj::static_doc_type().to_string(),
             dataset: "default".to_string(),
             visibility: ContainerVisibility::Public,
+            number_of_shards: 1,
+            number_of_replicas: 0,
         };
 
         client

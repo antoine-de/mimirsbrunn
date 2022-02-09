@@ -237,7 +237,7 @@ pub async fn index_ntfs(
     })?;
 
     info!("Build stops weight by physical modes");
-    let stop_areas_weights = build_stop_area_weight(&navitia, &physical_mode_weight);
+    let stop_areas_weights = build_stop_area_weight(&navitia, physical_mode_weight);
 
     info!("Make mimir stops from navitia stops");
     let mut stops: Vec<Stop> = navitia

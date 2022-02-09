@@ -33,6 +33,8 @@ async fn generate_and_update_poi(id: &str, updates: Vec<UpdateOperation>) -> Vec
         name: "poi".to_string(),
         dataset: "test".to_string(),
         visibility: ContainerVisibility::Public,
+        number_of_shards: 1,
+        number_of_replicas: 0,
     };
 
     let poi_updates = updates.into_iter().map(|op| (id.to_string(), op));

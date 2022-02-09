@@ -4,11 +4,15 @@ nb_threads = 2
   name = "poi"
   dataset = "fr"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0
 
 [container-street]
   name = "street"
   dataset = "fr"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0
 
 # This section is ignored if mimirsbrunn is compiled without the `db-storage`
 # option.

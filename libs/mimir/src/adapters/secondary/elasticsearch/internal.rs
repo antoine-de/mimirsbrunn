@@ -222,11 +222,22 @@ impl From<Option<Exception>> for Error {
 }
 
 impl ElasticsearchStorage {
-    pub(super) async fn create_index(&self, index_name: &str) -> Result<(), Error> {
+    pub(super) async fn create_index(
+        &self,
+        index_name: &str,
+        number_of_shards: u64,
+        number_of_replicas: u64,
+    ) -> Result<(), Error> {
         let response = self
             .client
             .indices()
             .create(IndicesCreateParts::Index(index_name))
+            .body(json!({
+                "settings": {
+                    "number_of_shards": number_of_shards,
+                    "number_of_replicas": number_of_replicas
+                }
+            }))
             .request_timeout(self.config.timeout)
             .wait_for_active_shards(&self.config.wait_for_active_shards.to_string())
             .send()

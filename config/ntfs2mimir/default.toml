@@ -4,6 +4,8 @@ nb_threads = 2
   name = "stop"
   dataset = "fr"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0
 
 # RapidTransit, Train, Air, Boat, Ferry, LocalTrain, LongDistanceTrain = 8
 [[physical_mode_weight]]

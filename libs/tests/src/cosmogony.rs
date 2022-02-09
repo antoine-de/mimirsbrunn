@@ -146,6 +146,8 @@ pub async fn index_admins(
             name: Admin::static_doc_type().to_string(),
             dataset: dataset.to_string(),
             visibility: ContainerVisibility::Public,
+            number_of_shards: 1,
+            number_of_replicas: 0,
         },
         french_id_retrocompatibility,
         client,
