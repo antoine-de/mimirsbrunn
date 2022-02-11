@@ -139,6 +139,7 @@ before creating any index, you need to import all the templates in Elasticsearch
 ```
 cd mimirsbrunn
 ./target/release/ctlmimir \
+  -s "elasticsearch.url='http://localhost:9200'" \
   -c ./config \
   -m testing \
   run
