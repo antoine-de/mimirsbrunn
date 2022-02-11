@@ -186,7 +186,7 @@ cd mimirsbrunn
 ./target/release/cosmogony2mimir \
   -c ./config \
   -m testing \
-  -s elasticsearch.url='http://localhost:9200' \
+  -s "elasticsearch.url='http://localhost:9200'" \
   -s langs=['en', 'da'] \
   -i <path/to/denmark.jsonl.gz> \
   run
