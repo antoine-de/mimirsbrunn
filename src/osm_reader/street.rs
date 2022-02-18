@@ -34,7 +34,7 @@
     clippy::option_map_unit_fn
 )]
 use cosmogony::ZoneType;
-use osmpbfreader::{OsmId, StoreObjs};
+use osmpbfreader::OsmId;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -137,13 +137,19 @@ pub fn inner_streets(
     };
 
     info!("reading pbf...");
-    osm_reader
-        .get_objs_and_deps_store(is_valid_obj, &mut objs_map)
-        .context(OsmPbfReaderExtractionSnafu {
-            msg: String::from("Could not read objects and dependencies from pbf"),
-        })?;
 
-    info!("reading pbf done.");
+    {
+        #[cfg(feature = "db-storage")]
+        let mut objs_map = objs_map.get_writter().context(ObjWrapperCreationSnafu)?;
+
+        osm_reader
+            .get_objs_and_deps_store(is_valid_obj, &mut objs_map)
+            .context(OsmPbfReaderExtractionSnafu {
+                msg: "Could not read objects and dependencies from pbf",
+            })?;
+    }
+
+    info!("reading pbf done");
 
     // Builder for street object
     let build_street = |id: String,
@@ -196,6 +202,9 @@ pub fn inner_streets(
     // the osm ways in the relation not to index them twice.
     let mut street_in_relation = HashSet::new();
 
+    #[cfg(feature = "db-storage")]
+    let objs_map = objs_map.get_reader().context(ObjWrapperCreationSnafu)?;
+
     objs_map.for_each_filter(Kind::Relation, |obj| {
         let rel = obj.relation().expect("invalid relation filter");
         let rel_name = rel.tags.get("name");
@@ -234,6 +243,8 @@ pub fn inner_streets(
         }
     });
 
+    info!("added {} streets from relations", street_list.len());
+
     // We merge all the ways with same `way_name` and `admin list of level(=city_level)`
     // We use a Map to keep track of the way of smallest Id for a given pair of "name + cities list"
     let mut name_admin_map = BTreeMap::new();
@@ -268,6 +279,8 @@ pub fn inner_streets(
         }
     });
 
+    info!("merging streets duplicates done");
+
     // For each street, construct the list of admins it will be added in.
     // This step ensure that documents have distinguishable IDs if they are
     // added for the same street but different admins.
@@ -280,29 +293,35 @@ pub fn inner_streets(
             .push(admins);
     }
 
-    street_list.extend(
-        all_admins_for_street
-            .into_iter()
-            .filter_map(|(id, all_admins)| {
-                let obj = objs_map.get(&id)?;
-                let way = obj.way()?;
+    for street in all_admins_for_street
+        .into_iter()
+        .filter_map(|(id, all_admins)| {
+            let obj = objs_map.get(&id)?;
+            let way = obj.way()?;
 
-                Some(build_streets_for_admins(
-                    way.tags.get("name")?.to_string(),
-                    way.id.0,
-                    "way",
-                    all_admins,
-                    get_way_coord(&objs_map, way),
-                ))
-            })
-            .flatten(),
-    );
+            Some(build_streets_for_admins(
+                way.tags.get("name")?.to_string(),
+                way.id.0,
+                "way",
+                all_admins,
+                get_way_coord(&objs_map, way),
+            ))
+        })
+        .flatten()
+    {
+        street_list.push(street);
 
+        if street_list.len() % 10_000 == 0 {
+            info!("{} streets so far", street_list.len());
+        }
+    }
+
+    info!("finished loading streets, got {}", street_list.len());
     Ok(street_list)
 }
 
 /// Returns branches of admins encompassing the street `way`.
-fn get_street_admin<T: StoreObjs + Getter>(
+fn get_street_admin<T: Getter>(
     admins_geofinder: &AdminGeoFinder,
     obj_map: &T,
     way: &osmpbfreader::objects::Way,

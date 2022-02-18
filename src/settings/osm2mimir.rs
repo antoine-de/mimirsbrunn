@@ -35,7 +35,7 @@ pub struct Poi {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
     pub file: PathBuf,
-    pub buffer_size: usize,
+    pub cache_size: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -18,7 +18,7 @@ nb_threads = 2
 # option.
 [database]
   file = "/tmp/osm_db.tmp"
-  buffer_size = 50_000
+  cache_size = 10_000
 
 [pois]
   import = false
