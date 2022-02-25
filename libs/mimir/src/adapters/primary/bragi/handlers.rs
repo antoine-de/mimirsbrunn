@@ -49,6 +49,7 @@ impl Reject for InternalError {}
 pub fn build_feature(
     places: Vec<places::Place>,
     query_coord: Option<&coord::Coord>,
+    lang: Option<&str>,
 ) -> Vec<Feature> {
     places
         .into_iter()
@@ -59,7 +60,7 @@ pub fn build_feature(
                 let distance = geo_point.haversine_distance(&pp) as u32;
                 p.set_distance(distance);
             }
-            Feature::from_with_lang(p, None)
+            Feature::from_with_lang(p, lang)
         })
         .collect()
 }
@@ -130,7 +131,8 @@ where
                 match places {
                     Ok(places) if places.is_empty() => {}
                     Ok(places) => {
-                        let features = build_feature(places, filters.coord.as_ref());
+                        let features =
+                            build_feature(places, filters.coord.as_ref(), Some(lang.as_str()));
                         let resp = GeocodeJsonResponse::new(q, features);
                         return Ok(with_status(json(&resp), StatusCode::OK));
                     }
