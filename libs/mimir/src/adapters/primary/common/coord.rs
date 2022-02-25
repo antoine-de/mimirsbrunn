@@ -1,6 +1,6 @@
 // FIXME Probably should not be there
 //
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Coord {
     pub lat: f32,
     pub lon: f32,

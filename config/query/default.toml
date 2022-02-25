@@ -1,6 +1,6 @@
 [query]
   [query.type_query]
-  global = 30.0
+  global = 0.025
   
     [query.type_query.boosts]
     address = 30.0
@@ -10,7 +10,7 @@
     street = 1.0
   
   [query.string_query]
-  global = 1.0
+  global = 0.00083
   
     [query.string_query.boosts]
     name = 1.8

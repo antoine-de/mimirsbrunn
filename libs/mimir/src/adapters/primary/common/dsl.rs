@@ -22,39 +22,35 @@ pub fn build_query(
     excludes: &Option<Vec<String>>,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query);
+    let boosts = build_boosts(settings, &filters, query_type);
+
     let string_query =
         build_string_query(q, lang, &settings.string_query, query_type, &filters.coord);
-    let boosts = build_boosts(q, settings, &filters, query_type);
-    let mut filters = build_filters(filters.shape, filters.poi_types, filters.zone_types);
-    filters.push(build_matching_condition(q, query_type));
-    filters.push(build_house_number_condition(q));
-    match excludes {
-        Some(values) => {
-            json!({
-                 "query": {
-                     "bool": {
-                         "must": [ type_query, string_query ],
-                         "should": boosts,
-                         "filter": filters
-                     }
-                 },
-             "_source": {
-                 "excludes": values
-            },
-             })
-        }
-        _ => {
-            json!({
-                "query": {
-                    "bool": {
-                        "must": [ type_query, string_query ],
-                        "should": boosts,
-                        "filter": filters
-                    }
-                },
-            })
-        }
+
+    let filters = [
+        build_filters(filters.shape, filters.poi_types, filters.zone_types),
+        vec![
+            build_matching_condition(q, query_type),
+            build_house_number_condition(q),
+        ],
+    ]
+    .concat();
+
+    let mut query = json!({
+        "query": {
+            "bool": {
+                "must": [ type_query, string_query ],
+                "should": boosts,
+                "filter": filters
+            }
+        },
+    });
+
+    if let Some(values) = excludes {
+        query["_source"] = json!({ "excludes": values });
     }
+
+    query
 }
 
 fn build_string_query(
@@ -64,44 +60,42 @@ fn build_string_query(
     query_type: QueryType,
     coord: &Option<Coord>,
 ) -> serde_json::Value {
-    let mut string_should = Vec::new();
-    string_should.push(build_multi_match_query(
-        q,
-        vec!["name", format!("names.{}", lang).as_str()],
-        settings.boosts.name,
-    ));
-    string_should.push(build_multi_match_query(
-        q,
-        vec!["label", format!("label.{}", lang).as_str()],
-        settings.boosts.label,
-    ));
-    string_should.push(build_multi_match_query(
-        q,
-        vec!["label.prefix", format!("label.{}.prefix", lang).as_str()],
-        settings.boosts.label_prefix,
-    ));
-    string_should.push(build_match_query(q, "zip_codes", settings.boosts.zip_codes));
-    string_should.push(build_match_query(
-        q,
-        "house_number",
-        settings.boosts.house_number,
-    ));
+    let mut string_should = vec![
+        build_multi_match_query(
+            q,
+            &["name", &format!("names.{}", lang)],
+            settings.boosts.name,
+        ),
+        build_multi_match_query(
+            q,
+            &["label", &format!("labels.{}", lang)],
+            settings.boosts.label,
+        ),
+        build_multi_match_query(
+            q,
+            &["label.prefix", &format!("labels.{}.prefix", lang)],
+            settings.boosts.label_prefix,
+        ),
+        build_match_query(q, "zip_codes", settings.boosts.zip_codes),
+        build_match_query(q, "house_number", settings.boosts.house_number),
+    ];
 
-    if let QueryType::FUZZY = query_type {
+    if query_type == QueryType::FUZZY {
         if coord.is_some() {
             string_should.push(build_multi_match_query(
                 q,
-                vec!["label.ngram", format!("label.{}.ngram", lang).as_str()],
+                &["label.ngram", &format!("labels.{}.ngram", lang)],
                 settings.boosts.label_ngram_with_coord,
             ));
         } else {
             string_should.push(build_multi_match_query(
                 q,
-                vec!["label.ngram", format!("label.{}.ngram", lang).as_str()],
+                &["label.ngram", &format!("labels.{}.ngram", lang)],
                 settings.boosts.label_ngram,
             ));
         }
     }
+
     json!({
         "bool": {
             "boost": settings.global,
@@ -111,42 +105,39 @@ fn build_string_query(
 }
 
 fn build_boosts(
-    _q: &str,
     settings: &settings::QuerySettings,
     filters: &filters::Filters,
     query_type: QueryType,
 ) -> Vec<serde_json::Value> {
-    let mut boosts: Vec<Option<serde_json::Value>> = Vec::new();
-
     let weights = build_weight_depending_on_radius(&settings.importance_query, &filters.coord);
 
-    boosts.push(Some(build_with_weight(
-        weights.clone(),
+    let mut boosts = vec![build_with_weight(
+        &weights,
         &settings.importance_query.weights.types,
-    )));
+    )];
 
     if let QueryType::PREFIX = query_type {
-        let admin_weight_boost = Some(build_admin_weight_query(weights));
-        boosts.push(admin_weight_boost);
+        boosts.push(build_admin_weight_query(weights));
     }
 
-    let mut decay = settings.importance_query.proximity.decay.clone();
-    if let Some(proximity) = &filters.proximity {
-        decay.scale = proximity.scale;
-        decay.offset = proximity.offset;
-        decay.decay = proximity.decay;
-    }
-    let weight_boost = match query_type {
-        QueryType::PREFIX => settings.importance_query.proximity.weight,
-        _ => settings.importance_query.proximity.weight_fuzzy,
-    };
+    if let Some(coord) = filters.coord {
+        let mut decay = settings.importance_query.proximity.decay.clone();
 
-    let proximity_boost = filters
-        .coord
-        .clone()
-        .map(|coord| build_proximity_boost(coord, &decay, weight_boost));
-    boosts.push(proximity_boost);
-    boosts.into_iter().flatten().collect()
+        if let Some(proximity) = &filters.proximity {
+            decay.scale = proximity.scale;
+            decay.offset = proximity.offset;
+            decay.decay = proximity.decay;
+        }
+
+        let weight_boost = match query_type {
+            QueryType::PREFIX => settings.importance_query.proximity.weight,
+            _ => settings.importance_query.proximity.weight_fuzzy,
+        };
+
+        boosts.push(build_proximity_boost(coord, &decay, weight_boost));
+    }
+
+    boosts
 }
 
 fn build_filters(
@@ -154,31 +145,27 @@ fn build_filters(
     poi_types: Option<Vec<String>>,
     zone_types: Option<Vec<String>>,
 ) -> Vec<serde_json::Value> {
-    let mut filters: Vec<serde_json::Value> = Vec::new();
-    if let Some(geoshape_filter) = shape.map(|(geometry, scope)| build_shape_query(geometry, scope))
-    {
-        filters.push(geoshape_filter);
-    };
-    if let Some(poi_types_filter) = poi_types.map(build_poi_types_filter) {
-        filters.push(poi_types_filter);
-    }
-    if let Some(zone_types_filter) = zone_types.map(build_zone_types_filter) {
-        filters.push(zone_types_filter);
-    }
-    filters
+    [
+        shape.map(|(geometry, scope)| build_shape_query(geometry, scope)),
+        poi_types.map(build_poi_types_filter),
+        zone_types.map(build_zone_types_filter),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn build_weight_depending_on_radius(
     importance_query_settings: &ImportanceQueryBoosts,
     coord: &Option<Coord>,
 ) -> BuildWeight {
-    let settings_weight = importance_query_settings.clone().weights;
+    let settings_weight = &importance_query_settings.weights;
 
     // Weights for minimal radius
-    let min_weights = settings_weight.clone().min_radius_prefix;
+    let min_weights = settings_weight.min_radius_prefix;
 
     // Weights for maximal radius
-    let max_weights = settings_weight.clone().max_radius;
+    let max_weights = settings_weight.max_radius;
 
     // Compute a linear combination of `min_weights` and `max_weights` depending of
     // the level of zoom.
@@ -186,7 +173,7 @@ fn build_weight_depending_on_radius(
         None => 1.,
         Some(_) => {
             let (min_radius, max_radius) = settings_weight.radius_range;
-            let curve = importance_query_settings.clone().proximity.decay;
+            let curve = &importance_query_settings.proximity.decay;
             let radius = (curve.offset + curve.scale).min(max_radius).max(min_radius);
             (radius.ln_1p() - min_radius.ln_1p()) / (max_radius.ln_1p() - min_radius.ln_1p())
         }
@@ -208,22 +195,22 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
         json!({
             "bool": {
                 "should": [
-                {
-                    "bool": {
-                        "must_not": {
-                            "exists": {
-                              "field": "house_number"
+                    {
+                        "bool": {
+                            "must_not": {
+                                "exists": {
+                                    "field": "house_number"
+                                }
+                            },
+                        }
+                    },
+                    {
+                        "match": {
+                            "house_number": {
+                                "query": q
                             }
-                        },
-                    }
-                },
-                {
-                    "match": {
-                        "house_number": {
-                            "query": q
                         }
                     }
-                }
                 ]
             }
         })
@@ -231,11 +218,11 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
         // If the query contains a single word, we don't exact any house number in the result.
         json!({
             "bool": {
-              "must_not": {
-                "exists": {
-                  "field": "house_number"
+                "must_not": {
+                  "exists": {
+                      "field": "house_number"
+                  }
                 }
-              }
             }
         })
     }
@@ -285,7 +272,9 @@ fn build_admin_weight_query(weights: BuildWeight) -> serde_json::Value {
     json!({
         "function_score": {
             "boost_mode": "replace",
+            "score_mode": "max",
             "functions": [
+                { "weight": 0 }, // default value when not matching will be 0
                 {
                     "filter": { "term": { "type": "admin" } },
                     "field_value_factor": {
@@ -335,22 +324,22 @@ fn build_proximity_boost(
         "function_score": {
             "boost_mode": "replace",
             "functions": [
-            {
-                func.clone(): {
-                "coord": {
-                    "origin": {
-                        "lat": coord.lat,
-                        "lon": coord.lon
-                    },
-                    "scale": format!("{}km", scale),
-                    "offset": format!("{}km", offset),
-                    "decay": decay
+                {
+                    func: {
+                        "coord": {
+                            "origin": {
+                                "lat": coord.lat,
+                                "lon": coord.lon
+                            },
+                            "scale": format!("{}km", scale),
+                            "offset": format!("{}km", offset),
+                            "decay": decay
+                        }
+                    }
+                },
+                {
+                    "weight": weight_boost
                 }
-            }
-            },
-              {
-                "weight": weight_boost
-              }
             ]
         }
     })
@@ -358,35 +347,35 @@ fn build_proximity_boost(
 
 pub fn build_reverse_query(distance: &str, lat: f64, lon: f64) -> serde_json::Value {
     json!({
-    "query": {
-        "bool": {
-            "filter": {
-                "geo_distance": {
-                    "distance": distance,
-                    "coord": {
-                        "lat": lat,
-                        "lon": lon
+        "query": {
+            "bool": {
+                "filter": {
+                    "geo_distance": {
+                        "distance": distance,
+                        "coord": {
+                            "lat": lat,
+                            "lon": lon
+                        }
                     }
                 }
             }
-        }
-    },
-    "_source": {
-        "excludes": [ "boundary" ]
-    },
-    "sort": [{
-         "_geo_distance": {
-             "coord": {
-                 "lat": lat,
-                 "lon": lon
-             },
-             "order": "asc",
-             "unit": "m",
-             "mode": "min",
-             "distance_type": "arc",
-             "ignore_unmapped": true
-         }
-     }]
+        },
+        "_source": {
+            "excludes": [ "boundary" ]
+        },
+        "sort": [{
+            "_geo_distance": {
+                "coord": {
+                    "lat": lat,
+                    "lon": lon
+                },
+                "order": "asc",
+                "unit": "m",
+                "mode": "min",
+                "distance_type": "arc",
+                "ignore_unmapped": true
+            }
+        }]
     })
 }
 
@@ -407,32 +396,32 @@ pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Val
     json!({
         "bool": {
             "should": [
-            {
-                "bool": {
-                    "must": {
-                        "terms": {
-                            "type": scope
+                {
+                    "bool": {
+                        "must": {
+                            "terms": {
+                                "type": scope
+                            }
+                        },
+                        "filter": {
+                            "geo_shape": {
+                                "approx_coord": {
+                                    "shape": shape,
+                                    "relation": "intersects"
+                                }
+                            }
                         }
-                    },
-                    "filter": {
-                        "geo_shape": {
-                            "approx_coord": {
-                                "shape": shape,
-                                "relation": "intersects"
+                    }
+                },
+                {
+                    "bool": {
+                        "must_not": {
+                            "terms": {
+                                "type": scope
                             }
                         }
                     }
                 }
-            },
-            {
-                "bool": {
-                    "must_not": {
-                        "terms": {
-                            "type": scope
-                        }
-                    }
-                }
-            }
             ]
         }
     })
@@ -455,31 +444,31 @@ pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
     json!({
         "bool": {
             "should": [
-            {
-                "bool": {
-                    "must": [
-                        {
+                {
+                    "bool": {
+                        "must": [
+                            {
+                                "term": {
+                                    "type": "poi"
+                                }
+                            },
+                            {
+                                "terms": {
+                                    "poi_type.id": poi_types
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "bool": {
+                        "must_not": {
                             "term": {
                                 "type": "poi"
                             }
-                        },
-                        {
-                            "terms": {
-                                "poi_type.id": poi_types
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                "bool": {
-                    "must_not": {
-                        "term": {
-                            "type": "poi"
                         }
                     }
                 }
-            }
             ]
         }
     })
@@ -549,7 +538,7 @@ pub fn build_features_query(indices: &[String], doc_id: &str) -> serde_json::Val
     json!({ "docs": vec })
 }
 
-fn build_multi_match_query(query: &str, fields: Vec<&str>, boost: f64) -> serde_json::Value {
+fn build_multi_match_query(query: &str, fields: &[&str], boost: f64) -> serde_json::Value {
     json!({
         "multi_match": {
             "query": query,
@@ -570,56 +559,56 @@ fn build_match_query(query: &str, field: &str, boost: f64) -> serde_json::Value 
     })
 }
 
-fn build_with_weight(build_weight: BuildWeight, types: &Types) -> serde_json::Value {
+fn build_with_weight(build_weight: &BuildWeight, types: &Types) -> serde_json::Value {
     json!({
         "function_score": {
             "boost_mode": "replace",
             "functions": [
                 {
-                        "filter": { "term": { "type": "stop" } },
-                        "field_value_factor": {
-                            "field": "weight",
-                            "factor": build_weight.factor,
-                            "missing": build_weight.missing
+                    "filter": { "term": { "type": "stop" } },
+                    "field_value_factor": {
+                        "field": "weight",
+                        "factor": build_weight.factor,
+                        "missing": build_weight.missing
                     },
-                        "weight": types.stop
+                    "weight": types.stop
                 },
                 {
-                        "filter": { "term": { "type": "address" } },
-                        "filter": { "term": { "type": "addr" } },
-                        "field_value_factor": {
-                            "field": "weight",
-                            "factor": build_weight.factor,
-                            "missing": build_weight.missing
-                        },
-                        "weight": types.address
-                },
-                                {
-                        "filter": { "term": { "type": "admin" } },
-                        "field_value_factor": {
-                            "field": "weight",
-                            "factor": build_weight.factor,
-                            "missing": build_weight.missing
-                        },
-                        "weight": types.admin
-                },
-                                {
-                        "filter": { "term": { "type": "poi" } },
-                        "field_value_factor": {
-                            "field": "weight",
-                            "factor": build_weight.factor,
-                            "missing": build_weight.missing
+                    "filter": { "term": { "type": "address" } },
+                    "filter": { "term": { "type": "addr" } },
+                    "field_value_factor": {
+                        "field": "weight",
+                        "factor": build_weight.factor,
+                        "missing": build_weight.missing
                     },
-                        "weight": types.poi
+                    "weight": types.address
                 },
                 {
-                        "filter": { "term": { "type": "street" } },
-                        "field_value_factor": {
-                            "field": "weight",
-                            "factor": build_weight.factor,
-                            "missing": build_weight.missing
+                    "filter": { "term": { "type": "admin" } },
+                    "field_value_factor": {
+                        "field": "weight",
+                        "factor": build_weight.factor,
+                        "missing": build_weight.missing
                     },
-                        "weight": types.street
+                    "weight": types.admin
+                },
+                {
+                    "filter": { "term": { "type": "poi" } },
+                    "field_value_factor": {
+                        "field": "weight",
+                        "factor": build_weight.factor,
+                        "missing": build_weight.missing
+                    },
+                    "weight": types.poi
+                },
+                {
+                    "filter": { "term": { "type": "street" } },
+                    "field_value_factor": {
+                        "field": "weight",
+                        "factor": build_weight.factor,
+                        "missing": build_weight.missing
+                    },
+                    "weight": types.street
                 }
             ]
         }

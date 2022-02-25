@@ -13,7 +13,7 @@ pub enum Error {
     InvalidFileContent { source: toml::de::Error },
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Types {
     pub address: f64,
     pub admin: f64,
@@ -22,13 +22,13 @@ pub struct Types {
     pub street: f64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct TypeQueryBoosts {
     pub global: f64,
     pub boosts: Types,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct StringQueryBoosts {
     pub name: f64,
     pub label: f64,
@@ -39,7 +39,7 @@ pub struct StringQueryBoosts {
     pub label_ngram: f64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct StringQuery {
     pub global: f64,
     pub boosts: StringQueryBoosts,
@@ -60,14 +60,14 @@ pub struct Proximity {
     pub decay: Decay,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct BuildWeight {
     pub admin: f64,
     pub factor: f64,
     pub missing: f64,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Weights {
     pub radius_range: (f64, f64),
     pub max_radius: BuildWeight,
@@ -83,7 +83,7 @@ pub struct ImportanceQueryBoosts {
     pub weights: Weights,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct ReverseQuery {
     pub radius: u32, // search radius in meters
 }
