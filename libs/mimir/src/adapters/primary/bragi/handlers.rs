@@ -171,13 +171,16 @@ where
     S: ExplainDocument,
     S::Document: Serialize + Into<serde_json::Value>,
 {
-    let q = params.query.q.clone();
-    let lang = params.query.lang.clone();
-    let filters = filters::Filters::from((params.query, geometry));
+    let doc_id = params.doc_id.clone();
+    let doc_type = params.doc_type.clone();
+    let q = params.q.clone();
+    let lang = params.lang.clone();
+
+    let filters = filters::Filters::from((params.into(), geometry));
     let dsl = dsl::build_query(
         &q,
         filters,
-        lang.as_str(),
+        &lang,
         &settings,
         QueryType::PREFIX,
         &Option::None,
@@ -186,7 +189,7 @@ where
     debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
-        .explain_document(Query::QueryDSL(dsl), params.doc_id, params.doc_type)
+        .explain_document(Query::QueryDSL(dsl), doc_id, doc_type)
         .await
     {
         Ok(res) => Ok(with_status(json(&res), StatusCode::OK)),
