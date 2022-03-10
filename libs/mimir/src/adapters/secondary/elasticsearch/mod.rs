@@ -41,7 +41,10 @@ pub struct ElasticsearchStorageConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ElasticsearchStorageForceMergeConfig {
     pub enabled: bool,
-    pub max_number_segments: i64,
+    pub max_number_segments: Option<i64>,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub timeout: Duration,
+    pub allow_timeout: bool,
 }
 
 impl Default for ElasticsearchStorageConfig {

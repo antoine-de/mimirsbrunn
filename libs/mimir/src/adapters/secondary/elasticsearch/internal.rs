@@ -21,13 +21,13 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::pin::Pin;
 use std::time::Duration;
-use tracing::info;
+use tracing::{info, warn};
 
 use super::configuration::{
     ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
 };
 use super::models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse};
-use super::ElasticsearchStorage;
+use super::{ElasticsearchStorage, ElasticsearchStorageForceMergeConfig};
 use crate::adapters::secondary::elasticsearch::models::{
     ElasticsearchBulkResult, ElasticsearchGetResponse,
 };
@@ -828,28 +828,40 @@ impl ElasticsearchStorage {
     pub(super) async fn force_merge(
         &self,
         indices: &[&str],
-        max_num_segments: i64,
+        config: &ElasticsearchStorageForceMergeConfig,
     ) -> Result<(), Error> {
-        let response = self
-            .client
-            .indices()
+        let indices_client = self.client.indices();
+
+        let request = indices_client
             .forcemerge(IndicesForcemergeParts::Index(indices))
-            .max_num_segments(max_num_segments)
-            // .request_timeout(self.config.timeout) This call is not using timeout because
-            // it can take a long time and would require the timeout to become very large,
-            // and meaningless for other operations.
-            .send()
-            .await
+            .request_timeout(config.timeout);
+
+        let request = {
+            if let Some(max_num_segments) = config.max_number_segments {
+                request.max_num_segments(max_num_segments)
+            } else {
+                request
+            }
+        };
+
+        let response = request.send().await;
+
+        // The forcemerge operation can be very long if a large number of segments have to be
+        // merged, in such a case the user may set `allow_timeout` to true in order to let the
+        // operation run in background.
+        if config.allow_timeout && matches!(&response, Err(err) if err.is_timeout()) {
+            warn!(
+                "forcemerge query timeout after {:?} on indices {}, it will continue running in background",
+                config.timeout,
+                indices.join(", "),
+            );
+            return Ok(());
+        }
+
+        let response = response
             .and_then(|res| res.error_for_status_code())
             .context(ElasticsearchClientSnafu {
-                details: format!(
-                    "cannot force merge indices '{}'",
-                    indices
-                        .iter()
-                        .map(|s| &**s)
-                        .collect::<Vec<&str>>()
-                        .join(", ")
-                ),
+                details: format!("cannot force merge indices '{}'", indices.join(", ")),
             })?;
 
         let json = response
@@ -861,14 +873,7 @@ impl ElasticsearchStorage {
             Ok(())
         } else {
             Err(Error::Failed {
-                details: format!(
-                    "cannot force merge '{}'",
-                    indices
-                        .iter()
-                        .map(|s| &**s)
-                        .collect::<Vec<&str>>()
-                        .join(", ")
-                ),
+                details: format!("cannot force merge '{}'", indices.join(", ")),
             })
         }
     }

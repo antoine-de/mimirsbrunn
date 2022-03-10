@@ -176,7 +176,7 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         }
 
         if self.config.force_merge.enabled {
-            self.force_merge(&[&index.name], self.config.force_merge.max_number_segments)
+            self.force_merge(&[&index.name], &self.config.force_merge)
                 .await
                 .map_err(|err| StorageError::ForceMergeError {
                     source: Box::new(err),
