@@ -36,6 +36,14 @@ pub struct ElasticsearchStorageConfig {
     pub insertion_chunk_size: usize,
     pub wait_for_active_shards: u64,
     pub force_merge: ElasticsearchStorageForceMergeConfig,
+    pub bulk_backoff: ElasticsearchStorageBackoffConfig,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ElasticsearchStorageBackoffConfig {
+    retry: u8,
+    #[serde(deserialize_with = "deserialize_duration")]
+    wait: Duration,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

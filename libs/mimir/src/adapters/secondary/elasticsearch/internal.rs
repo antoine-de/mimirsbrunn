@@ -38,6 +38,7 @@ use crate::domain::model::{
     stats::InsertStats as ModelInsertStats,
     status::{StorageHealth, Version as StorageVersion},
 };
+use crate::utils::futures::with_backoff;
 use common::document::Document;
 
 #[derive(Debug, Snafu)]
@@ -593,17 +594,22 @@ impl ElasticsearchStorage {
     {
         let mut stats = InsertStats::default();
 
-        let resp = self
-            .client
-            .bulk(BulkParts::Index(index.as_str()))
-            .request_timeout(self.config.timeout)
-            .body(chunk)
-            .send()
-            .await
-            .and_then(|res| res.error_for_status_code())
-            .context(ElasticsearchClientSnafu {
-                details: "cannot bulk insert",
-            })?;
+        let resp = with_backoff(
+            || {
+                self.client
+                    .bulk(BulkParts::Index(index.as_str()))
+                    .request_timeout(self.config.timeout)
+                    .body(chunk.iter().collect())
+                    .send()
+            },
+            self.config.bulk_backoff.retry,
+            self.config.bulk_backoff.wait,
+        )
+        .await
+        .and_then(|res| res.error_for_status_code())
+        .context(ElasticsearchClientSnafu {
+            details: "cannot bulk insert",
+        })?;
 
         if !resp.status_code().is_success() {
             Err(resp
