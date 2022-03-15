@@ -1,7 +1,10 @@
 use crate::adapters::primary::common::settings::{
     BuildWeight, ImportanceQueryBoosts, StringQuery, Types,
 };
+use crate::domain::model::configuration::INDEX_ROOT;
+use common::document::ContainerDocument;
 use geojson::Geometry;
+use places::addr::Addr;
 use serde_json::json;
 
 use super::coord::Coord;
@@ -188,18 +191,22 @@ fn build_weight_depending_on_radius(
 
 fn build_house_number_condition(q: &str) -> serde_json::Value {
     if q.split_whitespace().count() > 1 {
-        // Filter to handle house number.
-        // We either want:
+        // Filter to handle house number. We either want:
         // * to exactly match the document house_number
-        // * or that the document has no house_number
+        // * or that the document is not an address
+        //
+        // Note that in previous versions of Bragi we were checking for the existence of the
+        // house_number field instead of checking for the index name, but there is a performance
+        // issue with such queries in recent elasticsearch versions:
+        // https://github.com/elastic/elasticsearch/issues/64837
         json!({
             "bool": {
                 "should": [
                     {
                         "bool": {
                             "must_not": {
-                                "exists": {
-                                    "field": "house_number"
+                                "term": {
+                                    "_index": format!("{}_{}", INDEX_ROOT, Addr::static_doc_type())
                                 }
                             },
                         }
@@ -215,13 +222,13 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
             }
         })
     } else {
-        // If the query contains a single word, we don't exact any house number in the result.
+        // If the query contains a single word, we don't search for any address.
         json!({
             "bool": {
                 "must_not": {
-                  "exists": {
-                      "field": "house_number"
-                  }
+                    "term": {
+                        "_index": format!("{}_{}", INDEX_ROOT, Addr::static_doc_type())
+                    }
                 }
             }
         })
