@@ -64,11 +64,11 @@ async fn main() {
 
     let dsl = build_query(
         &opt.q,
-        filters,
+        &filters,
         "fr",
         &settings,
         QueryType::PREFIX,
-        &Option::None,
+        Option::None,
     );
 
     println!("{}", dsl);

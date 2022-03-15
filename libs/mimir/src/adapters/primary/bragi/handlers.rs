@@ -2,12 +2,10 @@ use crate::adapters::primary::bragi::prometheus_handler;
 use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
 use std::time::Duration;
-use tracing::{debug, instrument};
-use warp::{
-    http::StatusCode,
-    reject::Reject,
-    reply::{json, with_status},
-};
+use tracing::instrument;
+use warp::http::StatusCode;
+use warp::reject::Reject;
+use warp::reply::{json, with_status};
 
 use crate::{
     adapters::primary::{
@@ -93,73 +91,55 @@ where
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
     let filters = filters::Filters::from((params, geometry));
-    let excludes = vec!["boundary".to_string()];
-    let dsl_query_prefix = dsl::build_query(
-        &q,
-        filters.clone(),
-        lang.as_str(),
-        &settings,
-        QueryType::PREFIX,
-        &Option::Some(excludes.clone()),
-    );
-    let dsl_query_fuzzy = dsl::build_query(
-        &q,
-        filters.clone(),
-        lang.as_str(),
-        &settings,
-        QueryType::FUZZY,
-        &Option::Some(excludes),
-    );
+    let excludes = ["boundary".to_string()];
 
-    tracing::trace!(
-        "Searching in indexes {:?} with query {}",
-        es_indices_to_search_in,
-        serde_json::to_string_pretty(&dsl_query_prefix).unwrap()
-    );
+    for query_type in [QueryType::PREFIX, QueryType::FUZZY] {
+        let dsl_query = dsl::build_query(
+            &q,
+            &filters,
+            lang.as_str(),
+            &settings,
+            query_type,
+            Option::Some(&excludes),
+        );
 
-    let futurs = vec![
-        client.search_documents(
-            es_indices_to_search_in.clone(),
-            Query::QueryDSL(dsl_query_prefix.clone()),
-            filters.limit,
-            Some(timeout),
-        ),
-        client.search_documents(
-            es_indices_to_search_in.clone(),
-            Query::QueryDSL(dsl_query_fuzzy),
-            filters.limit,
-            Some(timeout),
-        ),
-    ];
-    for futur in futurs {
-        match futur.await {
-            Ok(res) => {
-                let places: Result<Vec<Place>, serde_json::Error> = res
-                    .into_iter()
-                    .map(|json| serde_json::from_value::<Place>(json.into()))
-                    .collect();
-                match places {
-                    Ok(places) if places.is_empty() => {}
-                    Ok(places) => {
-                        let features =
-                            build_feature(places, filters.coord.as_ref(), Some(lang.as_str()));
-                        let resp = GeocodeJsonResponse::new(q, features);
-                        return Ok(with_status(json(&resp), StatusCode::OK));
-                    }
-                    Err(err) => {
-                        return Err(warp::reject::custom(InternalError {
-                            reason: InternalErrorReason::SerializationError,
-                            info: err.to_string(),
-                        }))
-                    }
-                }
-            }
-            Err(err) => {
-                return Err(warp::reject::custom(InternalError {
+        tracing::trace!(
+            query_type = ?query_type,
+            indices = ?es_indices_to_search_in,
+            query = tracing::field::display(dsl_query.to_string()),
+            "Query ES",
+        );
+
+        let res = client
+            .search_documents(
+                es_indices_to_search_in.clone(),
+                Query::QueryDSL(dsl_query),
+                filters.limit,
+                Some(timeout),
+            )
+            .await;
+
+        let places: Vec<Place> = res
+            .map_err(|err| {
+                warp::reject::custom(InternalError {
                     reason: InternalErrorReason::ElasticSearchError,
                     info: err.to_string(),
-                }))
-            }
+                })
+            })?
+            .into_iter()
+            .map(|json| serde_json::from_value::<Place>(json.into()))
+            .collect::<Result<_, _>>()
+            .map_err(|err| {
+                warp::reject::custom(InternalError {
+                    reason: InternalErrorReason::SerializationError,
+                    info: err.to_string(),
+                })
+            })?;
+
+        if !places.is_empty() {
+            let features = build_feature(places, filters.coord.as_ref(), Some(lang.as_str()));
+            let resp = GeocodeJsonResponse::new(q, features);
+            return Ok(with_status(json(&resp), StatusCode::OK));
         }
     }
 
@@ -189,14 +169,12 @@ where
     let filters = filters::Filters::from((params.into(), geometry));
     let dsl = dsl::build_query(
         &q,
-        filters,
-        &lang,
+        &filters,
+        lang.as_str(),
         &settings,
         QueryType::PREFIX,
-        &Option::None,
+        None,
     );
-
-    debug!("{}", serde_json::to_string(&dsl).unwrap());
 
     match client
         .explain_document(Query::QueryDSL(dsl), doc_id, doc_type)

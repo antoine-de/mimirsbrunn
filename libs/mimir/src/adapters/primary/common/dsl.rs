@@ -17,20 +17,24 @@ pub enum QueryType {
 
 pub fn build_query(
     q: &str,
-    filters: filters::Filters,
+    filters: &filters::Filters,
     lang: &str,
     settings: &settings::QuerySettings,
     query_type: QueryType,
-    excludes: &Option<Vec<String>>,
+    excludes: Option<&[String]>,
 ) -> serde_json::Value {
     let type_query = build_place_type_boost(&settings.type_query);
-    let boosts = build_boosts(settings, &filters, query_type);
+    let boosts = build_boosts(settings, filters, query_type);
 
     let string_query =
         build_string_query(q, lang, &settings.string_query, query_type, &filters.coord);
 
     let filters = [
-        build_filters(filters.shape, filters.poi_types, filters.zone_types),
+        build_filters(
+            filters.shape.as_ref(),
+            filters.poi_types.as_deref(),
+            filters.zone_types.as_deref(),
+        ),
         vec![
             build_matching_condition(q, query_type),
             build_house_number_condition(q),
@@ -143,9 +147,9 @@ fn build_boosts(
 }
 
 fn build_filters(
-    shape: Option<(Geometry, Vec<String>)>,
-    poi_types: Option<Vec<String>>,
-    zone_types: Option<Vec<String>>,
+    shape: Option<&(Geometry, Vec<String>)>,
+    poi_types: Option<&[String]>,
+    zone_types: Option<&[String]>,
 ) -> Vec<serde_json::Value> {
     [
         shape.map(|(geometry, scope)| build_shape_query(geometry, scope)),
@@ -398,7 +402,7 @@ should [
   }
 ]
 */
-pub fn build_shape_query(shape: Geometry, scope: Vec<String>) -> serde_json::Value {
+pub fn build_shape_query(shape: &Geometry, scope: &[String]) -> serde_json::Value {
     json!({
         "bool": {
             "should": [
@@ -446,7 +450,7 @@ should [
      type: poi
   }
 ]*/
-pub fn build_poi_types_filter(poi_types: Vec<String>) -> serde_json::Value {
+pub fn build_poi_types_filter(poi_types: &[String]) -> serde_json::Value {
     json!({
         "bool": {
             "should": [
@@ -494,7 +498,7 @@ should [
   }
 ]
 */
-pub fn build_zone_types_filter(zone_types: Vec<String>) -> serde_json::Value {
+pub fn build_zone_types_filter(zone_types: &[String]) -> serde_json::Value {
     json!({
         "bool": {
             "should": [
