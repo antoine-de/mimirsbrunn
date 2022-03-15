@@ -115,11 +115,11 @@ impl Step for Search {
         // Build ES query
         let dsl = build_query(
             &self.query,
-            self.filters.clone(),
+            &self.filters,
             "fr",
             &QuerySettings::default(),
             QueryType::PREFIX,
-            &Option::None,
+            None,
         );
 
         // Fetch documents

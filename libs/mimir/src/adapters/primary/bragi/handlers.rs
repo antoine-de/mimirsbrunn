@@ -1,12 +1,15 @@
-use crate::adapters::primary::bragi::prometheus_handler;
+use std::time::Duration;
+
 use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
-use std::time::Duration;
-use tracing::instrument;
+use prometheus::{exponential_buckets, register_histogram_vec, HistogramVec};
+use serde::{Deserialize, Serialize};
+use tracing::{error_span, instrument};
 use warp::http::StatusCode;
 use warp::reject::Reject;
 use warp::reply::{json, with_status};
 
+use crate::adapters::primary::bragi::prometheus_handler;
 use crate::{
     adapters::primary::{
         bragi::api::{
@@ -34,9 +37,18 @@ use crate::{
 };
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
-use serde::{Deserialize, Serialize};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+lazy_static::lazy_static! {
+    static ref ES_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
+        "bragi_elasticsearch_request_duration_seconds",
+        "The elasticsearch request latencies in seconds.",
+        &["search_type"],
+        exponential_buckets(0.001, 1.5, 25).unwrap()
+    )
+    .unwrap();
+}
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub enum InternalErrorReason {
@@ -110,6 +122,17 @@ where
             "Query ES",
         );
 
+        let timer = ES_REQ_HISTOGRAM
+            .get_metric_with_label_values(&[query_type.as_str()])
+            .map(|h| h.start_timer())
+            .map_err(|err| {
+                error_span!(
+                    "impossible to get ES_REQ_HISTOGRAM metrics",
+                    err = err.to_string().as_str()
+                )
+            })
+            .ok();
+
         let res = client
             .search_documents(
                 es_indices_to_search_in.clone(),
@@ -118,6 +141,10 @@ where
                 Some(timeout),
             )
             .await;
+
+        if let Some(timer) = timer {
+            timer.observe_duration();
+        }
 
         let places: Vec<Place> = res
             .map_err(|err| {

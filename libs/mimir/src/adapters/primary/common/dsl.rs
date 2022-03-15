@@ -15,6 +15,15 @@ pub enum QueryType {
     FUZZY,
 }
 
+impl QueryType {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            QueryType::PREFIX => "prefix",
+            QueryType::FUZZY => "fuzzy",
+        }
+    }
+}
+
 pub fn build_query(
     q: &str,
     filters: &filters::Filters,
