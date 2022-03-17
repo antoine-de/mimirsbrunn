@@ -1,11 +1,13 @@
 use futures::stream::{Stream, TryStreamExt};
-use snafu::futures::TryFutureExt;
-use snafu::futures::TryStreamExt as SnafuTryStreamExt;
-use snafu::{ResultExt, Snafu};
+use snafu::{
+    futures::{TryFutureExt, TryStreamExt as SnafuTryStreamExt},
+    ResultExt, Snafu,
+};
 use std::path::PathBuf;
 
-use crate::domain::model::error::Error as ModelError;
-use crate::domain::ports::primary::configure_backend::ConfigureBackend;
+use crate::domain::{
+    model::error::Error as ModelError, ports::primary::configure_backend::ConfigureBackend,
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

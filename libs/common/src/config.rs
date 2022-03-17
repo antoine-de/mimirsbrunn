@@ -1,7 +1,6 @@
 use config::{Config, Environment, File};
 use snafu::{ResultExt, Snafu};
-use std::env;
-use std::path::Path;
+use std::{env, path::Path};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

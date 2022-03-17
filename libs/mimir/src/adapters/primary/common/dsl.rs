@@ -1,14 +1,13 @@
-use crate::adapters::primary::common::settings::{
-    BuildWeight, ImportanceQueryBoosts, StringQuery, Types,
+use crate::{
+    adapters::primary::common::settings::{BuildWeight, ImportanceQueryBoosts, StringQuery, Types},
+    domain::model::configuration::INDEX_ROOT,
 };
-use crate::domain::model::configuration::INDEX_ROOT;
 use common::document::ContainerDocument;
 use geojson::Geometry;
 use places::addr::Addr;
 use serde_json::json;
 
-use super::coord::Coord;
-use super::{filters, settings};
+use super::{coord::Coord, filters, settings};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum QueryType {

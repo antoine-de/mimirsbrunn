@@ -1,15 +1,20 @@
 use async_compression::tokio::bufread::GzipDecoder;
-use futures::future;
-use futures::stream::{Stream, StreamExt, TryStreamExt};
+use futures::{
+    future,
+    stream::{Stream, StreamExt, TryStreamExt},
+};
 use serde::de::DeserializeOwned;
-use snafu::futures::TryStreamExt as SnafuTryStreamExt;
-use snafu::{ResultExt, Snafu};
-use std::ffi::OsStr;
-use std::marker::{Send, Sync};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use tokio::fs::{metadata, File};
-use tokio::io::BufReader;
+use snafu::{futures::TryStreamExt as SnafuTryStreamExt, ResultExt, Snafu};
+use std::{
+    ffi::OsStr,
+    marker::{Send, Sync},
+    path::{Path, PathBuf},
+    sync::Arc,
+};
+use tokio::{
+    fs::{metadata, File},
+    io::BufReader,
+};
 use tracing::{info_span, warn};
 use tracing_futures::Instrument;
 

@@ -1,8 +1,5 @@
-use serde::de::Deserializer;
-use serde::ser::Serializer;
-use serde::Deserialize;
-use std::collections::BTreeMap;
-use std::iter::FromIterator;
+use serde::{de::Deserializer, ser::Serializer, Deserialize};
+use std::{collections::BTreeMap, iter::FromIterator};
 
 use super::Property;
 

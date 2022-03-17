@@ -1,19 +1,26 @@
 use async_trait::async_trait;
 use config::Config;
-use futures::future::TryFutureExt;
-use futures::stream::{Stream, StreamExt};
+use futures::{
+    future::TryFutureExt,
+    stream::{Stream, StreamExt},
+};
 use serde::Serialize;
 use serde_json::json;
 
-use super::configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration};
-use super::internal;
-use super::ElasticsearchStorage;
-use crate::domain::model::configuration::{
-    root_doctype_dataset_ts, ContainerConfig, ContainerVisibility,
+use super::{
+    configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration},
+    internal, ElasticsearchStorage,
 };
-use crate::domain::model::update::UpdateOperation;
-use crate::domain::model::{configuration, index::Index, stats::InsertStats};
-use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use crate::domain::{
+    model::{
+        configuration,
+        configuration::{root_doctype_dataset_ts, ContainerConfig, ContainerVisibility},
+        index::Index,
+        stats::InsertStats,
+        update::UpdateOperation,
+    },
+    ports::secondary::storage::{Error as StorageError, Storage},
+};
 use common::document::Document;
 
 #[async_trait]

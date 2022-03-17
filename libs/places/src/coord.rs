@@ -1,7 +1,9 @@
 use geojson::Geometry;
-use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
-use serde::ser::SerializeStruct;
-use serde::Deserialize;
+use serde::{
+    de::{self, Deserializer, MapAccess, SeqAccess, Visitor},
+    ser::SerializeStruct,
+    Deserialize,
+};
 use std::fmt;
 
 // we want a custom serialization for coords, and so far the cleanest way

@@ -2,8 +2,7 @@
 use mimir::domain::model::configuration::ContainerConfig;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 
@@ -123,7 +122,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(settings.unwrap().mode, None);
     }
@@ -142,7 +141,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(
             settings.unwrap().elasticsearch.url.as_str(),
@@ -165,7 +164,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(
             settings.unwrap().elasticsearch.url.as_str(),

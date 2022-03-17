@@ -1,7 +1,5 @@
 use snafu::{ResultExt, Snafu};
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
+use std::{fs::File, io::BufReader, path::Path};
 
 pub mod admin;
 pub mod osm_store;

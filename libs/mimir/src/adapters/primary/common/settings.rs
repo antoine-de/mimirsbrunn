@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::path::Path;
-use tokio::fs::File;
-use tokio::io::{AsyncReadExt, BufReader};
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, BufReader},
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

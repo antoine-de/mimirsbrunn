@@ -1,11 +1,10 @@
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir::utils::deserialize::deserialize_duration;
+use mimir::{
+    adapters::secondary::elasticsearch::ElasticsearchStorageConfig,
+    utils::deserialize::deserialize_duration,
+};
 use serde::{Deserialize, Serialize};
-use snafu::ResultExt;
-use snafu::Snafu;
-use std::env;
-use std::path::PathBuf;
-use std::time::Duration;
+use snafu::{ResultExt, Snafu};
+use std::{env, path::PathBuf, time::Duration};
 
 use mimir::adapters::primary::common::settings::QuerySettings;
 
@@ -141,7 +140,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(settings.unwrap().mode, String::from("testing"));
     }
@@ -159,7 +158,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }
@@ -178,7 +177,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }

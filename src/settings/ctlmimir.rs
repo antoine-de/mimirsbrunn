@@ -2,8 +2,7 @@
 use config::Config;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 

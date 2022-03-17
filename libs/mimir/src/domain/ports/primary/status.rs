@@ -1,5 +1,7 @@
-use crate::domain::model::{error::Error as ModelError, status::Status as DomainStatus};
-use crate::domain::ports::secondary::status::Status as SecondaryStatus;
+use crate::domain::{
+    model::{error::Error as ModelError, status::Status as DomainStatus},
+    ports::secondary::status::Status as SecondaryStatus,
+};
 use async_trait::async_trait;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");

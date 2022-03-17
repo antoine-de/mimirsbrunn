@@ -1,8 +1,7 @@
 use crate::utils::deserialize::deserialize_duration;
 use elasticsearch::Elasticsearch;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 use url::Url;
 
 pub mod configuration;
@@ -110,10 +109,13 @@ pub mod tests {
 
     use super::*;
 
-    use crate::domain::model::configuration::ContainerVisibility;
-    use crate::domain::ports::secondary::storage::Storage;
-    use crate::domain::{model::configuration::ContainerConfig, ports::secondary::remote::Remote};
-    use crate::utils::docker;
+    use crate::{
+        domain::{
+            model::configuration::{ContainerConfig, ContainerVisibility},
+            ports::secondary::{remote::Remote, storage::Storage},
+        },
+        utils::docker,
+    };
     use common::document::{ContainerDocument, Document};
 
     #[tokio::test]

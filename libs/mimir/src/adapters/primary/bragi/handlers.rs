@@ -3,27 +3,37 @@ use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
 use std::time::Duration;
 use tracing::{debug, instrument};
-use warp::reply::{json, with_status};
-use warp::{http::StatusCode, reject::Reject};
+use warp::{
+    http::StatusCode,
+    reject::Reject,
+    reply::{json, with_status},
+};
 
-use crate::adapters::primary::bragi::api::{FeaturesQuery, ForwardGeocoderExplainQuery};
-use crate::adapters::primary::common::dsl::QueryType;
-use crate::adapters::primary::{
-    bragi::api::{
-        BragiStatus, ElasticsearchStatus, ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery,
-        StatusResponseBody, Type,
+use crate::{
+    adapters::primary::{
+        bragi::api::{
+            BragiStatus, ElasticsearchStatus, FeaturesQuery, ForwardGeocoderExplainQuery,
+            ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery, StatusResponseBody, Type,
+        },
+        common::{
+            coord, dsl,
+            dsl::QueryType,
+            filters,
+            geocoding::{Feature, FromWithLang, GeocodeJsonResponse},
+            settings,
+        },
     },
-    common::{
-        coord, dsl, filters, geocoding::Feature, geocoding::FromWithLang,
-        geocoding::GeocodeJsonResponse, settings,
+    domain::{
+        model::{
+            configuration::{root_doctype, root_doctype_dataset},
+            query::Query,
+        },
+        ports::primary::{
+            explain_query::ExplainDocument, get_documents::GetDocuments,
+            search_documents::SearchDocuments, status::Status,
+        },
     },
 };
-use crate::domain::model::configuration::{root_doctype, root_doctype_dataset};
-use crate::domain::model::query::Query;
-use crate::domain::ports::primary::explain_query::ExplainDocument;
-use crate::domain::ports::primary::get_documents::GetDocuments;
-use crate::domain::ports::primary::search_documents::SearchDocuments;
-use crate::domain::ports::primary::status::Status;
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
 use serde::{Deserialize, Serialize};
