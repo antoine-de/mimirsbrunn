@@ -49,8 +49,7 @@ use osmpbfreader::{OsmId, OsmObj, StoreObjs};
 use snafu::Snafu;
 use tracing::info;
 
-use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use super::street::Kind;
 
@@ -100,7 +99,7 @@ pub trait Getter {
 
 impl Getter for BTreeMap<OsmId, OsmObj> {
     fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>> {
-        self.get(key).map(|x| Cow::Borrowed(x))
+        self.get(key).map(Cow::Borrowed)
     }
 }
 
@@ -369,7 +368,7 @@ impl ObjWrapper {
 impl Getter for ObjWrapper {
     fn get(&self, key: &OsmId) -> Option<Cow<OsmObj>> {
         match *self {
-            ObjWrapper::Map(ref m) => m.get(key).map(|x| Cow::Borrowed(x)),
+            ObjWrapper::Map(ref m) => m.get(key).map(Cow::Borrowed),
         }
     }
 }

@@ -31,8 +31,7 @@
 use clap::Parser;
 use snafu::{ResultExt, Snafu};
 
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::secondary::remote::Remote;
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::settings::ntfs2mimir as settings;
 
 #[derive(Debug, Snafu)]
@@ -106,9 +105,11 @@ mod tests {
 
     use super::*;
     use ::tests::cosmogony;
-    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir::domain::ports::primary::list_documents::ListDocuments;
-    use mimir::utils::docker;
+    use mimir::{
+        adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+        domain::ports::primary::list_documents::ListDocuments,
+        utils::docker,
+    };
     use places::stop::Stop;
 
     #[tokio::test]

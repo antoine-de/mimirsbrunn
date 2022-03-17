@@ -2,17 +2,21 @@ use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use snafu::{ResultExt, Snafu};
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use common::document::ContainerDocument;
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir::domain::model::configuration::root_doctype_dataset;
-use mimir::domain::ports::primary::list_documents::ListDocuments;
-use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use mimir::{
+    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    domain::{
+        model::configuration::root_doctype_dataset,
+        ports::{
+            primary::list_documents::ListDocuments,
+            secondary::storage::{Error as StorageError, Storage},
+        },
+    },
+};
 use mimirsbrunn::bano::Bano;
-use places::addr::Addr;
-use places::admin::Admin;
+use places::{addr::Addr, admin::Admin};
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
@@ -103,7 +107,7 @@ pub async fn index_addresses(
         .generate_index(&config.container, addresses)
         .await
         .map_err(|err| Error::Indexing {
-            details: format!("could not index bano: {}", err.to_string(),),
+            details: format!("could not index bano: {}", err,),
         })?;
 
     Ok(Status::Done)

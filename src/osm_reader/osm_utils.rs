@@ -29,8 +29,7 @@
 // www.navitia.io
 
 use super::osm_store::Getter;
-use geo::centroid::Centroid;
-use geo::MultiPolygon;
+use geo::{centroid::Centroid, MultiPolygon};
 use std::collections::BTreeMap;
 
 pub fn get_way_coord<T: Getter>(

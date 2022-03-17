@@ -2,9 +2,11 @@ use async_trait::async_trait;
 use cucumber::given;
 use snafu::ResultExt;
 
-use crate::error;
-use crate::error::Error;
-use crate::state::{GlobalState, State, Step, StepStatus};
+use crate::{
+    error,
+    error::Error,
+    state::{GlobalState, State, Step, StepStatus},
+};
 use tests::download;
 
 // Download OSM

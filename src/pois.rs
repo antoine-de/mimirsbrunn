@@ -34,20 +34,23 @@ use futures::stream::{Stream, StreamExt};
 use mimir::domain::model::configuration::root_doctype;
 use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as NavitiaPoiType};
 use snafu::{ResultExt, Snafu};
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
 use tracing::{instrument, warn};
 
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::labels;
+use crate::{admin_geofinder::AdminGeoFinder, labels};
 use common::document::ContainerDocument;
-use mimir::adapters::primary::common::dsl;
-use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::model::{configuration::ContainerConfig, query::Query};
-use mimir::domain::ports::primary::{
-    generate_index::GenerateIndex, list_documents::ListDocuments, search_documents::SearchDocuments,
+use mimir::{
+    adapters::{
+        primary::common::dsl,
+        secondary::elasticsearch::{self, ElasticsearchStorage},
+    },
+    domain::{
+        model::{configuration::ContainerConfig, query::Query},
+        ports::primary::{
+            generate_index::GenerateIndex, list_documents::ListDocuments,
+            search_documents::SearchDocuments,
+        },
+    },
 };
 use places::{
     addr::Addr,
@@ -109,7 +112,7 @@ pub async fn index_pois(
             details: format!(
                 "Could not read navitia model from {}: {}",
                 input.display(),
-                err.to_string()
+                err
             ),
         })?;
 

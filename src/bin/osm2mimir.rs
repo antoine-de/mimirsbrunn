@@ -4,12 +4,16 @@ use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
 use tracing::{instrument, warn};
 
-use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::osm_reader::street::streets;
-use mimirsbrunn::settings::osm2mimir as settings;
+use mimir::{
+    adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
+    domain::ports::{
+        primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
+        secondary::remote::Remote,
+    },
+};
+use mimirsbrunn::{
+    admin_geofinder::AdminGeoFinder, osm_reader::street::streets, settings::osm2mimir as settings,
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

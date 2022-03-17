@@ -3,14 +3,14 @@ use std::time::Duration;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 
-use crate::domain::model::{error::Error as ModelError, query::Query};
-use crate::domain::ports::secondary::get::{Get, Parameters};
+use crate::domain::{
+    model::{error::Error as ModelError, query::Query},
+    ports::secondary::get::{Get, Parameters},
+};
 
 // automock requires that the associated type be known at
 // compile time. So here we import admins when we are in
 // testing configuration.
-#[cfg(test)]
-use places::admin::Admin;
 
 #[async_trait]
 pub trait GetDocuments {

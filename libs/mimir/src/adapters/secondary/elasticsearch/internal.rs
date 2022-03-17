@@ -1,44 +1,44 @@
-use elasticsearch::cat::CatIndicesParts;
-use elasticsearch::cluster::{ClusterHealthParts, ClusterPutComponentTemplateParts};
-use elasticsearch::http::response::Exception;
-use elasticsearch::indices::{
-    IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
-    IndicesPutIndexTemplateParts, IndicesRefreshParts,
-};
-use elasticsearch::ingest::IngestPutPipelineParts;
-use elasticsearch::params::TrackTotalHits;
 use elasticsearch::{
+    cat::CatIndicesParts,
+    cluster::{ClusterHealthParts, ClusterPutComponentTemplateParts},
+    http::response::Exception,
+    indices::{
+        IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
+        IndicesPutIndexTemplateParts, IndicesRefreshParts,
+    },
+    ingest::IngestPutPipelineParts,
+    params::TrackTotalHits,
     BulkOperation, BulkParts, ExplainParts, MgetParts, OpenPointInTimeParts, SearchParts,
 };
 use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use snafu::{ResultExt, Snafu};
-use std::collections::BTreeMap;
-use std::convert::TryFrom;
-use std::pin::Pin;
-use std::time::Duration;
+use std::{collections::BTreeMap, convert::TryFrom, pin::Pin, time::Duration};
 use tracing::{info, warn};
 
-use super::configuration::{
-    ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
+use super::{
+    configuration::{
+        ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
+    },
+    models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse},
+    ElasticsearchStorage, ElasticsearchStorageForceMergeConfig,
 };
-use super::models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse};
-use super::{ElasticsearchStorage, ElasticsearchStorageForceMergeConfig};
-use crate::adapters::secondary::elasticsearch::models::{
-    ElasticsearchBulkResult, ElasticsearchGetResponse,
+use crate::{
+    adapters::secondary::elasticsearch::models::{
+        ElasticsearchBulkResult, ElasticsearchGetResponse,
+    },
+    domain::model::{
+        configuration,
+        index::{Index, IndexStatus},
+        query::Query,
+        stats::InsertStats as ModelInsertStats,
+        status::{StorageHealth, Version as StorageVersion},
+    },
+    utils::futures::with_backoff,
 };
-use crate::domain::model::{
-    configuration,
-    index::{Index, IndexStatus},
-    query::Query,
-    stats::InsertStats as ModelInsertStats,
-    status::{StorageHealth, Version as StorageVersion},
-};
-use crate::utils::futures::with_backoff;
 use common::document::Document;
 
 #[derive(Debug, Snafu)]
@@ -1399,7 +1399,7 @@ impl TryFrom<ElasticsearchIndex> for Index {
             configuration::split_index_name(&name).map_err(|err| Error::IndexConversion {
                 details: format!(
                     "could not convert elasticsearch index into model index: {}",
-                    err.to_string()
+                    err
                 ),
             })?;
 

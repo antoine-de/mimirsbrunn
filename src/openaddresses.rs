@@ -33,8 +33,7 @@ use places::addr::Addr;
 use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::labels;
+use crate::{admin_geofinder::AdminGeoFinder, labels};
 use places::admin::find_country_codes;
 
 #[derive(Serialize, Deserialize)]
@@ -99,14 +98,14 @@ impl OpenAddress {
         let id_suffix = format!(
             ":{}",
             self.number
-                .replace(" ", "")
-                .replace("\t", "")
-                .replace("\r", "")
-                .replace("\n", "")
-                .replace("/", "-")
-                .replace(".", "-")
-                .replace(":", "-")
-                .replace(";", "-")
+                .replace(' ', "")
+                .replace('\t', "")
+                .replace('\r', "")
+                .replace('\n', "")
+                .replace('/', "-")
+                .replace('.', "-")
+                .replace(':', "-")
+                .replace(';', "-")
         );
 
         let id = {

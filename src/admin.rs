@@ -28,19 +28,18 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use cosmogony::ZoneType::City;
-use cosmogony::{Zone, ZoneIndex};
+use cosmogony::{Zone, ZoneIndex, ZoneType::City};
 use futures::stream::Stream;
 use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::path::Path;
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, HashMap},
+    path::Path,
+    sync::Arc,
+};
 use tracing::{info, warn};
 
-use crate::osm_reader::admin;
-use crate::osm_reader::osm_utils;
+use crate::osm_reader::{admin, osm_utils};
 use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
     domain::ports::primary::generate_index::GenerateIndex,
@@ -187,7 +186,7 @@ impl IntoAdmin for Zone {
             admin.administrative_regions = parent_ids
                 .into_iter()
                 .filter_map(|a| admins.get(&a))
-                .map(|x| Arc::clone(x))
+                .map(Arc::clone)
                 .collect::<Vec<_>>();
         }
         admin

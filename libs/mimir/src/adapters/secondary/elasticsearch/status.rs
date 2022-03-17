@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 
 use super::ElasticsearchStorage;
-use crate::domain::model::status::StorageStatus;
-use crate::domain::ports::secondary::status::{Error as StatusError, Status};
+use crate::domain::{
+    model::status::StorageStatus,
+    ports::secondary::status::{Error as StatusError, Status},
+};
 
 #[async_trait]
 impl Status for ElasticsearchStorage {

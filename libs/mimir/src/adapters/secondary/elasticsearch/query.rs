@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 
 use super::ElasticsearchStorage;
-use crate::domain::ports::secondary::get::{Error as GetError, Get, Parameters as GetParameters};
-use crate::domain::ports::secondary::search::{
-    Error as SearchError, Parameters as SearchParameters, Search,
+use crate::domain::ports::secondary::{
+    get::{Error as GetError, Get, Parameters as GetParameters},
+    search::{Error as SearchError, Parameters as SearchParameters, Search},
 };
 
 #[async_trait]

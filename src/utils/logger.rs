@@ -1,7 +1,6 @@
 use snafu::Snafu;
 use tracing::metadata::LevelFilter;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{layer::SubscriberExt, EnvFilter};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

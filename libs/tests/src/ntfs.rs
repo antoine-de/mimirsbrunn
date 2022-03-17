@@ -3,9 +3,13 @@ use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
 use common::document::ContainerDocument;
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir::domain::model::configuration::root_doctype_dataset;
-use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use mimir::{
+    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    domain::{
+        model::configuration::root_doctype_dataset,
+        ports::secondary::storage::{Error as StorageError, Storage},
+    },
+};
 use places::stop::Stop;
 
 #[derive(Debug, Snafu)]

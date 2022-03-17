@@ -1,7 +1,8 @@
 use clap::Parser;
-use mimir::adapters::primary::templates;
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::secondary::remote::Remote;
+use mimir::{
+    adapters::{primary::templates, secondary::elasticsearch},
+    domain::ports::secondary::remote::Remote,
+};
 use mimirsbrunn::settings::ctlmimir as settings;
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;

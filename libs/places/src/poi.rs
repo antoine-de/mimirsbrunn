@@ -1,16 +1,12 @@
 use common::document::{ContainerDocument, Document};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
-use super::admin::Admin;
-use super::context::Context;
-use super::coord::Coord;
-use super::i18n_properties::I18nProperties;
-use super::Members;
-use crate::utils::normalize_id;
-use crate::Address;
+use super::{
+    admin::Admin, context::Context, coord::Coord, i18n_properties::I18nProperties, Members,
+};
+use crate::{utils::normalize_id, Address};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(tag = "type", rename = "poi")]

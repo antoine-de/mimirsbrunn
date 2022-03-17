@@ -3,13 +3,18 @@ use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
 use common::document::ContainerDocument;
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir::domain::model::configuration::root_doctype_dataset;
-use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
-use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use mimir::{
+    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    domain::{
+        model::configuration::root_doctype_dataset,
+        ports::{
+            primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
+            secondary::storage::{Error as StorageError, Storage},
+        },
+    },
+};
 use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use places::poi::Poi;
-use places::street::Street;
+use places::{poi::Poi, street::Street};
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]

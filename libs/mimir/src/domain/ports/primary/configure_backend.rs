@@ -1,5 +1,4 @@
-use crate::domain::model::error::Error as ModelError;
-use crate::domain::ports::secondary::storage::Storage;
+use crate::domain::{model::error::Error as ModelError, ports::secondary::storage::Storage};
 use async_trait::async_trait;
 use config::Config;
 

@@ -37,16 +37,19 @@ use cosmogony::ZoneType;
 use osmpbfreader::OsmId;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    ops::Deref,
+    sync::Arc,
+};
 use tracing::{info, instrument};
 
-use super::osm_store::{Error as OsmStoreError, Getter, ObjWrapper};
-use super::osm_utils::get_way_coord;
-use super::OsmPbfReader;
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::labels;
+use super::{
+    osm_store::{Error as OsmStoreError, Getter, ObjWrapper},
+    osm_utils::get_way_coord,
+    OsmPbfReader,
+};
+use crate::{admin_geofinder::AdminGeoFinder, labels};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

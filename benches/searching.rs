@@ -1,23 +1,27 @@
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion};
 use futures::stream::StreamExt;
 use mimir::domain::model::configuration;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs::File;
 
-use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-use mimir::adapters::primary::common::dsl::QueryType;
-use mimir::adapters::secondary::elasticsearch::{
-    remote::connection_test_pool, ElasticsearchStorageConfig,
-};
-use mimir::utils::docker;
 use mimir::{
-    adapters::primary::common::settings::QuerySettings,
-    adapters::primary::common::{dsl::build_query, filters::Filters},
-    domain::model::query::Query,
-    domain::ports::primary::search_documents::SearchDocuments,
-    domain::ports::secondary::remote::Remote,
+    adapters::{
+        primary::{
+            bragi::api::DEFAULT_LIMIT_RESULT_ES,
+            common::{
+                dsl::{build_query, QueryType},
+                filters::Filters,
+                settings::QuerySettings,
+            },
+        },
+        secondary::elasticsearch::{remote::connection_test_pool, ElasticsearchStorageConfig},
+    },
+    domain::{
+        model::query::Query,
+        ports::{primary::search_documents::SearchDocuments, secondary::remote::Remote},
+    },
+    utils::docker,
 };
 use tests::{bano, cosmogony, download, ntfs, osm};
 

@@ -6,13 +6,16 @@ use tracing::{info, instrument};
 use warp::Filter;
 
 use super::settings::{Error as SettingsError, Opts, Settings};
-use mimir::adapters::primary::bragi::prometheus_handler::update_metrics;
 use mimir::{
-    adapters::primary::bragi::api::{
-        features, forward_geocoder, forward_geocoder_explain, reverse_geocoder, status,
+    adapters::{
+        primary::bragi::{
+            api::{features, forward_geocoder, forward_geocoder_explain, reverse_geocoder, status},
+            handlers,
+            prometheus_handler::update_metrics,
+            routes,
+        },
+        secondary::elasticsearch::remote::connection_pool_url,
     },
-    adapters::primary::bragi::{handlers, routes},
-    adapters::secondary::elasticsearch::remote::connection_pool_url,
     domain::ports::secondary::remote::{Error as PortRemoteError, Remote},
     metrics,
 };

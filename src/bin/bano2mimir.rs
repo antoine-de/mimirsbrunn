@@ -36,11 +36,11 @@ use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use tracing::warn;
 
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::primary::list_documents::ListDocuments;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::bano::Bano;
-use mimirsbrunn::settings::bano2mimir as settings;
+use mimir::{
+    adapters::secondary::elasticsearch,
+    domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
+};
+use mimirsbrunn::{bano::Bano, settings::bano2mimir as settings};
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
@@ -139,9 +139,11 @@ async fn run(
 mod tests {
     use super::*;
     use futures::TryStreamExt;
-    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir::domain::ports::primary::list_documents::ListDocuments;
-    use mimir::utils::docker;
+    use mimir::{
+        adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+        domain::ports::primary::list_documents::ListDocuments,
+        utils::docker,
+    };
     use mimirsbrunn::settings::bano2mimir as settings;
     use places::addr::Addr;
     use serial_test::serial;

@@ -1,4 +1,3 @@
-use bollard::service::{HostConfig, PortBinding};
 use bollard::{
     container::{
         Config as BollardConfig, CreateContainerOptions, ListContainersOptions,
@@ -6,6 +5,7 @@ use bollard::{
     },
     errors::Error as BollardError,
     image::CreateImageOptions,
+    service::{HostConfig, PortBinding},
     Docker,
 };
 use elasticsearch::{
@@ -17,14 +17,16 @@ use elasticsearch::{
 use futures::stream::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::collections::HashMap;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 use tokio::time::{sleep, Duration};
 
-use crate::adapters::primary::templates;
-use crate::adapters::secondary::elasticsearch::remote;
-use crate::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use crate::domain::ports::secondary::remote::{Error as RemoteError, Remote};
+use crate::{
+    adapters::{
+        primary::templates,
+        secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+    },
+    domain::ports::secondary::remote::{Error as RemoteError, Remote},
+};
 
 pub async fn initialize() -> Result<(), Error> {
     initialize_with_param(true).await

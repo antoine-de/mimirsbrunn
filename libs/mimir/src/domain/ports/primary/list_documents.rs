@@ -1,5 +1,7 @@
-use crate::domain::model::error::Error as ModelError;
-use crate::domain::ports::secondary::list::{List, Parameters};
+use crate::domain::{
+    model::error::Error as ModelError,
+    ports::secondary::list::{List, Parameters},
+};
 use async_trait::async_trait;
 use common::document::ContainerDocument;
 use futures::stream::{Stream, StreamExt};

@@ -34,12 +34,14 @@ use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use snafu::{ResultExt, Snafu};
 use tracing::{info, warn};
 
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::primary::list_documents::ListDocuments;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::addr_reader::import_addresses_from_input_path;
-use mimirsbrunn::openaddresses::OpenAddress;
-use mimirsbrunn::settings::openaddresses2mimir as settings;
+use mimir::{
+    adapters::secondary::elasticsearch,
+    domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
+};
+use mimirsbrunn::{
+    addr_reader::import_addresses_from_input_path, openaddresses::OpenAddress,
+    settings::openaddresses2mimir as settings,
+};
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
@@ -131,12 +133,17 @@ mod tests {
     use serial_test::serial;
 
     use common::document::ContainerDocument;
-    use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir::domain::model::query::Query;
-    use mimir::domain::ports::primary::list_documents::ListDocuments;
-    use mimir::domain::ports::primary::search_documents::SearchDocuments;
-    use mimir::utils::docker;
+    use mimir::{
+        adapters::{
+            primary::bragi::api::DEFAULT_LIMIT_RESULT_ES,
+            secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+        },
+        domain::{
+            model::query::Query,
+            ports::primary::{list_documents::ListDocuments, search_documents::SearchDocuments},
+        },
+        utils::docker,
+    };
     use places::{addr::Addr, Place};
 
     use super::*;

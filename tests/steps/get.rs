@@ -1,15 +1,21 @@
 use async_trait::async_trait;
 use cucumber::{then, when};
-use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir::domain::ports::secondary::remote::Remote;
+use mimir::{
+    adapters::secondary::elasticsearch::remote::connection_test_pool,
+    domain::ports::secondary::remote::Remote,
+};
 
-use crate::error::Error;
-use crate::state::{GlobalState, State, Step, StepStatus};
-use mimir::adapters::primary::bragi::handlers::build_es_indices_to_search;
-use mimir::adapters::primary::common::dsl::build_features_query;
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir::domain::model::query::Query;
-use mimir::domain::ports::primary::get_documents::GetDocuments;
+use crate::{
+    error::Error,
+    state::{GlobalState, State, Step, StepStatus},
+};
+use mimir::{
+    adapters::{
+        primary::{bragi::handlers::build_es_indices_to_search, common::dsl::build_features_query},
+        secondary::elasticsearch::ElasticsearchStorageConfig,
+    },
+    domain::{model::query::Query, ports::primary::get_documents::GetDocuments},
+};
 
 // get place
 #[when(regex = r#"the user ask for id "(.+)" with poi_dataset "(.+)" and pt_dataset "(.+)"$"#)]
