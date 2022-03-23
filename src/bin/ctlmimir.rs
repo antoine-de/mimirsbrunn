@@ -5,7 +5,6 @@ use mimirsbrunn::settings::ctlmimir as settings;
 use mimirsbrunn::utils::template::update_templates;
 use snafu::{ResultExt, Snafu};
 
-
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]

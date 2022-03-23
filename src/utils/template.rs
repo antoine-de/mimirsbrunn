@@ -1,12 +1,9 @@
-use mimir::{
-    adapters::{primary::templates, secondary::elasticsearch::ElasticsearchStorage}
-};
+use mimir::adapters::{primary::templates, secondary::elasticsearch::ElasticsearchStorage};
 use std::path::PathBuf;
-
 
 pub async fn update_templates(
     client: &ElasticsearchStorage,
-    db_file: PathBuf
+    db_file: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let path: PathBuf = db_file
         .join("elasticsearch")
