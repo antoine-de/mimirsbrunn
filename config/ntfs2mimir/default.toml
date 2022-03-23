@@ -1,4 +1,5 @@
 nb_threads = 2
+update_templates = true
 
 [container]
   name = "stop"

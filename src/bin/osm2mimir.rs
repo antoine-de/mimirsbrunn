@@ -14,6 +14,7 @@ use mimir::{
 use mimirsbrunn::{
     admin_geofinder::AdminGeoFinder, osm_reader::street::streets, settings::osm2mimir as settings,
 };
+use mimirsbrunn::utils::template::update_templates;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -85,6 +86,11 @@ async fn run(
         .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnectionSnafu)?;
+
+    // Update all the template coponents and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
         Ok(stream) => {

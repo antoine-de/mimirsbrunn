@@ -42,6 +42,7 @@ use mimirsbrunn::{
     addr_reader::import_addresses_from_input_path, openaddresses::OpenAddress,
     settings::openaddresses2mimir as settings,
 };
+use mimirsbrunn::utils::template::update_templates;
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
@@ -94,6 +95,13 @@ async fn run(
         .await
         .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
+
+    tracing::info!("Connected to elasticsearch.");
+
+    // Update all the template coponents and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     // Fetch and index admins for `into_addr`
     let into_addr = {
