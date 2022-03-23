@@ -87,7 +87,7 @@ async fn run(
         .await
         .context(ElasticsearchConnectionSnafu)?;
 
-    // Update all the template coponents and indexes
+    // Update all the template components and indexes
     if settings.update_templates {
         update_templates(&client, opts.config_dir).await?;
     }

@@ -52,7 +52,7 @@ async fn run(
 
     tracing::info!("Connected to elasticsearch.");
 
-    // Update all the template coponents and indexes
+    // Update all the template components and indexes
     update_templates(&client, opts.config_dir).await?;
 
     Ok(())
