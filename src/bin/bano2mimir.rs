@@ -31,8 +31,9 @@
 use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
-use mimirsbrunn::addr_reader::import_addresses_from_input_path;
-use mimirsbrunn::utils::template::update_templates;
+use mimirsbrunn::{
+    addr_reader::import_addresses_from_input_path, utils::template::update_templates,
+};
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use tracing::warn;
