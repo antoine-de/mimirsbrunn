@@ -33,6 +33,7 @@ use snafu::{ResultExt, Snafu};
 
 use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::settings::ntfs2mimir as settings;
+use mimirsbrunn::utils::template::update_templates;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -86,6 +87,11 @@ async fn run(
         .map_err(Box::new)?;
 
     tracing::info!("Connected to elasticsearch.");
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     mimirsbrunn::stops::index_ntfs(
         opts.input,

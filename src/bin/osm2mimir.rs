@@ -11,6 +11,7 @@ use mimir::{
         secondary::remote::Remote,
     },
 };
+use mimirsbrunn::utils::template::update_templates;
 use mimirsbrunn::{
     admin_geofinder::AdminGeoFinder, osm_reader::street::streets, settings::osm2mimir as settings,
 };
@@ -85,6 +86,11 @@ async fn run(
         .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnectionSnafu)?;
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
         Ok(stream) => {

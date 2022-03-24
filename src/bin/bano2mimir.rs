@@ -32,6 +32,7 @@ use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimirsbrunn::addr_reader::import_addresses_from_input_path;
+use mimirsbrunn::utils::template::update_templates;
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use tracing::warn;
@@ -91,6 +92,13 @@ async fn run(
         .await
         .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
+
+    tracing::info!("Connected to elasticsearch.");
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     // TODO There might be an opportunity for optimization here:
     // Lets say we're indexing a single bano department.... we don't need to retrieve

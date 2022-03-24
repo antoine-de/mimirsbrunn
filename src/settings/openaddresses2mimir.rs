@@ -40,6 +40,8 @@ pub struct Settings {
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,
     pub nb_threads: Option<usize>,
+    #[serde(default)]
+    pub update_templates: bool,
 }
 
 #[derive(Debug, clap::Parser)]

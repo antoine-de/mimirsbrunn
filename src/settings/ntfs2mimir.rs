@@ -26,6 +26,8 @@ pub struct Settings {
     pub container: ContainerConfig,
     pub nb_threads: Option<usize>,
     pub physical_mode_weight: Option<Vec<PhysicalModeWeight>>,
+    #[serde(default)]
+    pub update_templates: bool,
 }
 
 #[derive(Debug, clap::Parser)]

@@ -38,6 +38,7 @@ use mimir::{
     adapters::secondary::elasticsearch,
     domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
 };
+use mimirsbrunn::utils::template::update_templates;
 use mimirsbrunn::{
     addr_reader::import_addresses_from_input_path, openaddresses::OpenAddress,
     settings::openaddresses2mimir as settings,
@@ -94,6 +95,13 @@ async fn run(
         .await
         .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
+
+    tracing::info!("Connected to elasticsearch.");
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     // Fetch and index admins for `into_addr`
     let into_addr = {

@@ -3,6 +3,7 @@ use snafu::{ResultExt, Snafu};
 
 use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::settings::poi2mimir as settings;
+use mimirsbrunn::utils::template::update_templates;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -46,6 +47,11 @@ async fn run(
         .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnectionSnafu)?;
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     mimirsbrunn::pois::index_pois(opts.input, &client, settings.container).await?;
 

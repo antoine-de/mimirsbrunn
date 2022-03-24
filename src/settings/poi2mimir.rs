@@ -32,6 +32,8 @@ pub struct Settings {
     pub elasticsearch: ElasticsearchStorageConfig,
     pub container: ContainerConfig,
     pub nb_threads: Option<usize>,
+    #[serde(default)]
+    pub update_templates: bool,
 }
 
 #[derive(Debug, clap::Parser)]

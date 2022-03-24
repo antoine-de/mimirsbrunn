@@ -27,6 +27,8 @@ pub struct Settings {
     pub container: ContainerConfig,
     pub nb_threads: Option<usize>,
     pub french_id_retrocompatibility: bool,
+    #[serde(default)]
+    pub update_templates: bool,
 }
 
 #[derive(Debug, clap::Parser)]
