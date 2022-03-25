@@ -38,10 +38,9 @@ use mimir::{
     adapters::secondary::elasticsearch,
     domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
 };
-use mimirsbrunn::utils::template::update_templates;
 use mimirsbrunn::{
     addr_reader::import_addresses_from_input_path, openaddresses::OpenAddress,
-    settings::openaddresses2mimir as settings,
+    settings::openaddresses2mimir as settings, utils::template::update_templates,
 };
 use places::admin::Admin;
 

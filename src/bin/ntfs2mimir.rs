@@ -32,8 +32,7 @@ use clap::Parser;
 use snafu::{ResultExt, Snafu};
 
 use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
-use mimirsbrunn::settings::ntfs2mimir as settings;
-use mimirsbrunn::utils::template::update_templates;
+use mimirsbrunn::{settings::ntfs2mimir as settings, utils::template::update_templates};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

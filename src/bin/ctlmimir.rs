@@ -1,8 +1,6 @@
 use clap::Parser;
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::ctlmimir as settings;
-use mimirsbrunn::utils::template::update_templates;
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use mimirsbrunn::{settings::ctlmimir as settings, utils::template::update_templates};
 use snafu::{ResultExt, Snafu};
 
 #[derive(Debug, Snafu)]

@@ -11,9 +11,9 @@ use mimir::{
         secondary::remote::Remote,
     },
 };
-use mimirsbrunn::utils::template::update_templates;
 use mimirsbrunn::{
     admin_geofinder::AdminGeoFinder, osm_reader::street::streets, settings::osm2mimir as settings,
+    utils::template::update_templates,
 };
 
 #[derive(Debug, Snafu)]
