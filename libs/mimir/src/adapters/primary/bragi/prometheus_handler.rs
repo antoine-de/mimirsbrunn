@@ -1,6 +1,5 @@
 #[cfg(feature = "metrics")]
 use prometheus::{Encoder, TextEncoder};
-use tracing::trace;
 
 #[cfg(feature = "metrics")]
 lazy_static::lazy_static! {
@@ -61,7 +60,7 @@ lazy_static::lazy_static! {
 
 #[cfg(feature = "metrics")]
 pub fn update_metrics(info: warp::log::Info) {
-    trace!(
+    tracing::trace!(
         "Metric Status: {} - Method: {} - Path: {} - Time: {:?}",
         &info.status().as_u16().to_string(),
         &info.method(),
