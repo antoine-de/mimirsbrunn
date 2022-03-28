@@ -19,8 +19,68 @@ pub struct ForwardGeocoderExplainQuery {
     pub doc_id: String,
     pub doc_type: String,
 
+    // Fields from ForwardGeocoderQuery are repeated here as nesting two levels
+    // of `flatten` with serde_qs is not supported.
+    // See https://github.com/samscott89/serde_qs/issues/14
+    pub q: String,
+    pub lat: Option<f32>,
+    pub lon: Option<f32>,
+    pub shape_scope: Option<Vec<PlaceDocType>>,
+    #[serde(default, rename = "type")]
+    pub types: Option<Vec<Type>>,
+    #[serde(default, rename = "zone_type")]
+    pub zone_types: Option<Vec<ZoneType>>,
+    pub poi_types: Option<Vec<String>>,
+    #[serde(default = "default_result_limit")]
+    pub limit: i64,
+    #[serde(default = "default_lang")]
+    pub lang: String,
+    #[serde(deserialize_with = "deserialize_opt_duration", default)]
+    pub timeout: Option<Duration>,
+    pub pt_dataset: Option<Vec<String>>,
+    pub poi_dataset: Option<Vec<String>>,
+    pub request_id: Option<String>,
     #[serde(flatten)]
-    pub query: ForwardGeocoderQuery,
+    pub proximity: Option<Proximity>,
+}
+
+impl From<ForwardGeocoderExplainQuery> for ForwardGeocoderQuery {
+    fn from(val: ForwardGeocoderExplainQuery) -> Self {
+        let ForwardGeocoderExplainQuery {
+            q,
+            lat,
+            lon,
+            shape_scope,
+            types,
+            zone_types,
+            poi_types,
+            limit,
+            lang,
+            timeout,
+            pt_dataset,
+            poi_dataset,
+            request_id,
+            proximity,
+            ..
+        } = val;
+
+        ForwardGeocoderQuery {
+            q,
+            lat,
+            lon,
+            shape_scope,
+            types,
+            zone_types,
+            poi_types,
+            limit,
+            lang,
+            timeout,
+            pt_dataset,
+            poi_dataset,
+            request_id,
+            proximity,
+        }
+    }
 }
 
 /// This structure contains all the query parameters that
