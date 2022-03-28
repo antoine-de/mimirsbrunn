@@ -104,11 +104,11 @@ fn bench(c: &mut Criterion) {
                         let filters = filters.clone();
                         let dsl = build_query(
                             &rec.query,
-                            filters,
+                            &filters,
                             "fr",
                             &settings,
                             QueryType::PREFIX,
-                            &None,
+                            None,
                         );
 
                         async move {

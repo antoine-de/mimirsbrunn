@@ -1,9 +1,13 @@
 BRAGI_VERSION = $(shell cat Cargo.toml | grep '^version' | cut -d '=' -f 2 | tr -d '[[:space:]]'\")
 
 SHELL=/bin/bash
+
 # Configuration
 .PHONY: check help
 .DEFAULT_GOAL := help
+
+CLIPPY_PACKAGES := -p mimir -p common -p places
+CLIPPY_EXTRA := --warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings
 
 check: pre-build ## Runs several tests (alias for pre-build)
 pre-build: fmt lint test
@@ -14,9 +18,9 @@ format: ## Check formatting of the code
 
 clippy: lint ## Check quality of the code (alias for 'lint')
 lint: ## Check quality of the code
-	CLIPPY_EXTRA="--warn clippy::cargo --allow clippy::multiple_crate_versions --deny warnings"
-	cargo clippy --all-targets -- $$CLIPPY_EXTRA
-	cargo clippy --bins --all-features -- $$CLIPPY_EXTRA
+	cargo clippy $(CLIPPY_PACKAGES) --all-targets -- $(CLIPPY_EXTRA)
+	cargo clippy $(CLIPPY_PACKAGES) --bins --all-features -- $(CLIPPY_EXTRA)
+	cargo clippy $(CLIPPY_PACKAGES) --all-targets --no-default-features -- $(CLIPPY_EXTRA)
 
 test: ## Launch all tests
 	cargo test --lib
