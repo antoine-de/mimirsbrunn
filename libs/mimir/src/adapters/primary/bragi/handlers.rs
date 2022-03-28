@@ -37,12 +37,12 @@ use crate::{
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, Place};
 
-#[cfg(metrics)]
+#[cfg(features = "metrics")]
 use prometheus::{exponential_buckets, register_histogram_vec, HistogramVec};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[cfg(metrics)]
+#[cfg(features = "metrics")]
 lazy_static::lazy_static! {
     static ref ES_REQ_HISTOGRAM: HistogramVec = register_histogram_vec!(
         "bragi_elasticsearch_request_duration_seconds",
@@ -125,7 +125,7 @@ where
             "Query ES",
         );
 
-        #[cfg(metrics)]
+        #[cfg(features = "metrics")]
         let timer = ES_REQ_HISTOGRAM
             .get_metric_with_label_values(&[query_type.as_str()])
             .map(|h| h.start_timer())
@@ -146,7 +146,7 @@ where
             )
             .await;
 
-        #[cfg(metrics)]
+        #[cfg(features = "metrics")]
         if let Some(timer) = timer {
             timer.observe_duration();
         }
