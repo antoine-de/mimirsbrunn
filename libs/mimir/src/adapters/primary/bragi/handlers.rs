@@ -4,16 +4,20 @@ use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
-use warp::http::StatusCode;
-use warp::reject::Reject;
-use warp::reply::{json, with_status};
+use warp::{
+    http::StatusCode,
+    reject::Reject,
+    reply::{json, with_status},
+};
 
-use crate::adapters::primary::bragi::prometheus_handler;
 use crate::{
     adapters::primary::{
-        bragi::api::{
-            BragiStatus, ElasticsearchStatus, FeaturesQuery, ForwardGeocoderExplainQuery,
-            ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery, StatusResponseBody, Type,
+        bragi::{
+            api::{
+                BragiStatus, ElasticsearchStatus, FeaturesQuery, ForwardGeocoderExplainQuery,
+                ForwardGeocoderQuery, MimirStatus, ReverseGeocoderQuery, StatusResponseBody, Type,
+            },
+            prometheus_handler,
         },
         common::{
             coord, dsl,
