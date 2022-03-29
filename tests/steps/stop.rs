@@ -1,13 +1,16 @@
 use async_trait::async_trait;
 use cucumber::given;
-use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir::domain::ports::secondary::remote::Remote;
+use mimir::{
+    adapters::secondary::elasticsearch::remote::connection_test_pool,
+    domain::ports::secondary::remote::Remote,
+};
 use snafu::ResultExt;
 
-use crate::error::{self, Error};
-use crate::state::{GlobalState, State, Step, StepStatus};
-use crate::steps::admin::IndexCosmogony;
-use crate::steps::download::download_ntfs;
+use crate::{
+    error::{self, Error},
+    state::{GlobalState, State, Step, StepStatus},
+    steps::{admin::IndexCosmogony, download::download_ntfs},
+};
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use tests::ntfs;
 

@@ -82,8 +82,8 @@ pub fn normalize_id(prefix: &str, id: &str) -> String {
         "stop_area" => format!(
             "{}:{}",
             prefix,
-            &id.replacen("StopArea:", "", 1).replace(" ", "")
+            &id.replacen("StopArea:", "", 1).replace(' ', "")
         ),
-        _ => format!("{}:{}", prefix, &id.replace(" ", "")),
+        _ => format!("{}:{}", prefix, &id.replace(' ', "")),
     }
 }

@@ -1,10 +1,14 @@
 use async_trait::async_trait;
-use elasticsearch::http::headers::HeaderMap;
-use elasticsearch::http::transport::{
-    BuildError as TransportBuilderError, SingleNodeConnectionPool, TransportBuilder,
+use elasticsearch::{
+    http::{
+        headers::HeaderMap,
+        transport::{
+            BuildError as TransportBuilderError, SingleNodeConnectionPool, TransportBuilder,
+        },
+        Method,
+    },
+    Elasticsearch,
 };
-use elasticsearch::http::Method;
-use elasticsearch::Elasticsearch;
 use semver::{Version, VersionReq};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};

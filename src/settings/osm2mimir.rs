@@ -3,8 +3,7 @@ use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::model::configuration::ContainerConfig;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -35,7 +34,7 @@ pub struct Poi {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
     pub file: PathBuf,
-    pub buffer_size: usize,
+    pub cache_size: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +50,8 @@ pub struct Settings {
     #[cfg(feature = "db-storage")]
     pub database: Option<Database>,
     pub nb_threads: Option<usize>,
+    #[serde(default)]
+    pub update_templates: bool,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -147,7 +148,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(settings.unwrap().mode, None);
     }
@@ -166,7 +167,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(
             settings.unwrap().elasticsearch.url.as_str(),
@@ -189,7 +190,7 @@ mod tests {
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
-            settings.unwrap_err().to_string()
+            settings.unwrap_err()
         );
         assert_eq!(
             settings.unwrap().elasticsearch.url.as_str(),

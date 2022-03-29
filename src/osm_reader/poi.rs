@@ -28,24 +28,20 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use std::collections::BTreeMap;
-use std::io;
-use std::ops::Deref;
-use std::path::PathBuf;
+use std::{collections::BTreeMap, io, ops::Deref, path::PathBuf};
 
 use config::Config;
 use mimir::domain::model::configuration::root_doctype;
 use osm_boundaries_utils::build_boundary;
-use places::addr::Addr;
-use places::street::Street;
+use places::{addr::Addr, street::Street};
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use tracing::{info, instrument, warn};
 
 use common::document::ContainerDocument;
-use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
 use mimir::{
-    domain::model::query::Query, domain::ports::primary::search_documents::SearchDocuments,
+    adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES,
+    domain::{model::query::Query, ports::primary::search_documents::SearchDocuments},
 };
 use places::{
     coord::Coord,
@@ -54,12 +50,12 @@ use places::{
     Address,
 };
 
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::labels;
+use crate::{admin_geofinder::AdminGeoFinder, labels};
 
-use super::osm_utils::get_way_coord;
-use super::osm_utils::make_centroid;
-use super::OsmPbfReader;
+use super::{
+    osm_utils::{get_way_coord, make_centroid},
+    OsmPbfReader,
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

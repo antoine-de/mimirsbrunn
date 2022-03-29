@@ -1,6 +1,8 @@
 use super::ElasticsearchStorage;
-use crate::domain::model::configuration::root_doctype;
-use crate::domain::ports::secondary::list::{Error, List, Parameters};
+use crate::domain::{
+    model::configuration::root_doctype,
+    ports::secondary::list::{Error, List, Parameters},
+};
 use async_trait::async_trait;
 use futures::stream::{Stream, StreamExt};
 use serde::de::DeserializeOwned;

@@ -31,9 +31,8 @@
 use clap::Parser;
 use snafu::{ResultExt, Snafu};
 
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::cosmogony2mimir as settings;
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use mimirsbrunn::{settings::cosmogony2mimir as settings, utils::template::update_templates};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -87,6 +86,12 @@ async fn run(
         .map_err(Box::new)?;
 
     tracing::info!("Connected to elasticsearch.");
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
+
     tracing::info!("Indexing cosmogony from {:?}", &opts.input);
 
     mimirsbrunn::admin::index_cosmogony(
@@ -108,9 +113,11 @@ mod tests {
     use serial_test::serial;
 
     use super::*;
-    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir::domain::ports::primary::list_documents::ListDocuments;
-    use mimir::utils::docker;
+    use mimir::{
+        adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+        domain::ports::primary::list_documents::ListDocuments,
+        utils::docker,
+    };
     use places::admin::Admin;
 
     #[tokio::test]

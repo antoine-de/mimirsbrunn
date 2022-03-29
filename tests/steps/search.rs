@@ -2,21 +2,31 @@ use async_trait::async_trait;
 use cucumber::{then, when};
 use geo::algorithm::haversine_distance::HaversineDistance;
 use itertools::{EitherOrBoth::*, Itertools};
-use mimir::adapters::secondary::elasticsearch::remote::connection_test_pool;
-use mimir::domain::model::configuration;
-use mimir::domain::ports::secondary::remote::Remote;
+use mimir::{
+    adapters::secondary::elasticsearch::remote::connection_test_pool,
+    domain::{model::configuration, ports::secondary::remote::Remote},
+};
 use std::cmp::Ordering;
 
-use crate::error::Error;
-use crate::state::{GlobalState, State, Step, StepStatus};
-use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-use mimir::adapters::primary::common::dsl::QueryType;
-use mimir::adapters::primary::{
-    common::coord::Coord, common::dsl::build_query, common::filters::Filters,
-    common::settings::QuerySettings,
+use crate::{
+    error::Error,
+    state::{GlobalState, State, Step, StepStatus},
 };
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
-use mimir::domain::{model::query::Query, ports::primary::search_documents::SearchDocuments};
+use mimir::{
+    adapters::{
+        primary::{
+            bragi::api::DEFAULT_LIMIT_RESULT_ES,
+            common::{
+                coord::Coord,
+                dsl::{build_query, QueryType},
+                filters::Filters,
+                settings::QuerySettings,
+            },
+        },
+        secondary::elasticsearch::ElasticsearchStorageConfig,
+    },
+    domain::{model::query::Query, ports::primary::search_documents::SearchDocuments},
+};
 use places::{addr::Addr, admin::Admin, poi::Poi};
 
 // Search place
@@ -105,11 +115,11 @@ impl Step for Search {
         // Build ES query
         let dsl = build_query(
             &self.query,
-            self.filters.clone(),
+            &self.filters,
             "fr",
             &QuerySettings::default(),
             QueryType::PREFIX,
-            &Option::None,
+            None,
         );
 
         // Fetch documents

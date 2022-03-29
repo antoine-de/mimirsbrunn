@@ -2,7 +2,7 @@
   url = "http://localhost:9200"
 
   # Timeout in milliseconds on client calls to Elasticsearch.
-  timeout = 10000
+  timeout = 10_000
 
   # Constraint on the version of Elasticsearch.
   version_req = ">=7.13.0"
@@ -26,8 +26,25 @@
 [elasticsearch.force_merge]
   # If this is set to `true` a force merge will be performed after an index
   # is published. For more details see
-  # https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-forcemerge.html
+  # https://www.elastic.co/guide/en/elasticsearch/reference/7.17/indices-forcemerge.html
   enabled = true
 
-  # Number of segments to merge to.
+  # Timeout in milliseconds for the forcemerge operation
+  timeout = 10_000 # 10s
+
+  # Allow the forcemerge query to timeout, which would only result in a
+  # warning. Note that the forcemerge operation will still continue to be
+  # performed in the background anyway.
+  allow_timeout = true
+
+  # Number of segments to merge to, uses ES's default behavior by default
   max_number_segments = 1
+
+# Setup a backoff to wait after a bulk operation fail and retry the operation,
+# each successive retry will wait twice as long as the previous one.
+[elasticsearch.bulk_backoff]
+  # Number of retries after the first failure (set 0 to never retry)
+  retry = 6
+
+  # Waiting time in milliseconds after the first failure
+  wait = 1000

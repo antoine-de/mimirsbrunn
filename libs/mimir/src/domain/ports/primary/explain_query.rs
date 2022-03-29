@@ -1,5 +1,7 @@
-use crate::domain::model::{error::Error as ModelError, query::Query};
-use crate::domain::ports::secondary::explain::{Explain, Parameters};
+use crate::domain::{
+    model::{error::Error as ModelError, query::Query},
+    ports::secondary::explain::{Explain, Parameters},
+};
 use async_trait::async_trait;
 
 #[async_trait]

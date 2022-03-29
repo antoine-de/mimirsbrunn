@@ -1,6 +1,6 @@
 [package]
 name = "mimir"
-version = "2.5.0"
+version = "2.6.0"
 authors = ["Kisio Digital", "Qwant"]
 edition = "2021"
 description = "library for manipulating document index, based on elasticsearch"

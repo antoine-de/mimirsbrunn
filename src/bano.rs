@@ -28,15 +28,15 @@
 // https://groups.google.com/d/forum/navitia
 // www.navitia.io
 
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::error::{Error, InvalidFantoirIdSnafu, InvalidInseeIdSnafu};
-use crate::labels;
+use crate::{
+    admin_geofinder::AdminGeoFinder,
+    error::{Error, InvalidFantoirIdSnafu, InvalidInseeIdSnafu},
+    labels,
+};
 use places::{addr::Addr, admin::Admin, coord::Coord, street::Street};
 use serde::{Deserialize, Serialize};
 use snafu::ensure;
-use std::collections::BTreeMap;
-use std::ops::Deref;
-use std::sync::Arc;
+use std::{collections::BTreeMap, ops::Deref, sync::Arc};
 
 type AdminFromInsee = BTreeMap<String, Arc<Admin>>;
 
@@ -66,7 +66,7 @@ impl Bano {
         admins_from_insee: &AdminFromInsee,
         admins_geofinder: &AdminGeoFinder,
     ) -> Result<Addr, Error> {
-        let street_id = format!("street:{}", self.fantoir()?.to_string());
+        let street_id = format!("street:{}", self.fantoir()?);
         let mut admins = admins_geofinder.get(&geo::Coordinate {
             x: self.lon,
             y: self.lat,
@@ -131,14 +131,14 @@ impl Bano {
                 format!(
                     ":{}",
                     self.house_number
-                        .replace(" ", "")
-                        .replace("\t", "")
-                        .replace("\r", "")
-                        .replace("\n", "")
-                        .replace("/", "-")
-                        .replace(".", "-")
-                        .replace(":", "-")
-                        .replace(";", "-")
+                        .replace(' ', "")
+                        .replace('\t', "")
+                        .replace('\r', "")
+                        .replace('\n', "")
+                        .replace('/', "-")
+                        .replace('.', "-")
+                        .replace(':', "-")
+                        .replace(';', "-")
                 )
             ),
             name: addr_name,

@@ -3,10 +3,7 @@ use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use super::admin::Admin;
-use super::context::Context;
-use super::coord::Coord;
-use super::Members;
+use super::{admin::Admin, context::Context, coord::Coord, Members};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(tag = "type", rename = "street")]

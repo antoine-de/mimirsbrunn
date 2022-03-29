@@ -1,13 +1,20 @@
 use futures::{stream, TryStreamExt};
 use serial_test::serial;
 
-use crate::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-use crate::domain::model::configuration::{ContainerConfig, ContainerVisibility};
-use crate::domain::model::update::UpdateOperation;
-use crate::domain::ports::primary::generate_index::GenerateIndex;
-use crate::domain::ports::primary::list_documents::ListDocuments;
-use crate::domain::ports::secondary::remote::Remote;
-use crate::utils::docker;
+use crate::{
+    adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+    domain::{
+        model::{
+            configuration::{ContainerConfig, ContainerVisibility},
+            update::UpdateOperation,
+        },
+        ports::{
+            primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
+            secondary::remote::Remote,
+        },
+    },
+    utils::docker,
+};
 use places::poi::Poi;
 
 fn sample_poi() -> Poi {
@@ -33,6 +40,8 @@ async fn generate_and_update_poi(id: &str, updates: Vec<UpdateOperation>) -> Vec
         name: "poi".to_string(),
         dataset: "test".to_string(),
         visibility: ContainerVisibility::Public,
+        number_of_shards: 1,
+        number_of_replicas: 0,
     };
 
     let poi_updates = updates.into_iter().map(|op| (id.to_string(), op));

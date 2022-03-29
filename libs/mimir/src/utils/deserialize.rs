@@ -1,5 +1,4 @@
-use serde::de::Deserializer;
-use serde::Deserialize;
+use serde::{de::Deserializer, Deserialize};
 use std::time::Duration;
 
 pub fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

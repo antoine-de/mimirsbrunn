@@ -1,19 +1,26 @@
 use async_trait::async_trait;
 use config::Config;
-use futures::future::TryFutureExt;
-use futures::stream::{Stream, StreamExt};
+use futures::{
+    future::TryFutureExt,
+    stream::{Stream, StreamExt},
+};
 use serde::Serialize;
 use serde_json::json;
 
-use super::configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration};
-use super::internal;
-use super::ElasticsearchStorage;
-use crate::domain::model::configuration::{
-    root_doctype_dataset_ts, ContainerConfig, ContainerVisibility,
+use super::{
+    configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration},
+    internal, ElasticsearchStorage,
 };
-use crate::domain::model::update::UpdateOperation;
-use crate::domain::model::{configuration, index::Index, stats::InsertStats};
-use crate::domain::ports::secondary::storage::{Error as StorageError, Storage};
+use crate::domain::{
+    model::{
+        configuration,
+        configuration::{root_doctype_dataset_ts, ContainerConfig, ContainerVisibility},
+        index::Index,
+        stats::InsertStats,
+        update::UpdateOperation,
+    },
+    ports::secondary::storage::{Error as StorageError, Storage},
+};
 use common::document::Document;
 
 #[async_trait]
@@ -23,18 +30,22 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
     async fn create_container(&self, config: &ContainerConfig) -> Result<Index, StorageError> {
         let index_name = root_doctype_dataset_ts(&config.name, &config.dataset);
 
-        self.create_index(&index_name)
-            .and_then(|_| {
-                self.find_index(index_name.clone()).and_then(|res| {
-                    futures::future::ready(res.ok_or(internal::Error::ElasticsearchUnknownIndex {
-                        index: index_name.to_string(),
-                    }))
-                })
+        self.create_index(
+            &index_name,
+            config.number_of_shards,
+            config.number_of_replicas,
+        )
+        .and_then(|_| {
+            self.find_index(index_name.clone()).and_then(|res| {
+                futures::future::ready(res.ok_or(internal::Error::ElasticsearchUnknownIndex {
+                    index: index_name.to_string(),
+                }))
             })
-            .await
-            .map_err(|err| StorageError::ContainerCreationError {
-                source: Box::new(err),
-            })
+        })
+        .await
+        .map_err(|err| StorageError::ContainerCreationError {
+            source: Box::new(err),
+        })
     }
 
     async fn delete_container(&self, index: String) -> Result<(), StorageError> {
@@ -172,7 +183,7 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         }
 
         if self.config.force_merge.enabled {
-            self.force_merge(&[&index.name], self.config.force_merge.max_number_segments)
+            self.force_merge(&[&index.name], &self.config.force_merge)
                 .await
                 .map_err(|err| StorageError::ForceMergeError {
                     source: Box::new(err),

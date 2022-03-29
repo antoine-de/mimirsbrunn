@@ -1,19 +1,24 @@
 use clap::Parser;
 use common::document::ContainerDocument;
-use mimir::adapters::primary::bragi::api::DEFAULT_LIMIT_RESULT_ES;
-use mimir::adapters::primary::common::dsl::QueryType;
-use mimir::domain::model::configuration::root_doctype;
 use mimir::{
-    adapters::primary::common::{
-        coord::Coord, dsl::build_query, filters::Filters, settings::QuerySettings,
+    adapters::{
+        primary::{
+            bragi::api::DEFAULT_LIMIT_RESULT_ES,
+            common::{
+                coord::Coord,
+                dsl::{build_query, QueryType},
+                filters::Filters,
+                settings::QuerySettings,
+            },
+        },
+        secondary::elasticsearch::remote::connection_test_pool,
     },
-    adapters::secondary::elasticsearch::remote::connection_test_pool,
-    domain::model::query::Query,
-    domain::ports::primary::search_documents::SearchDocuments,
-    domain::ports::secondary::remote::Remote,
+    domain::{
+        model::{configuration::root_doctype, query::Query},
+        ports::{primary::search_documents::SearchDocuments, secondary::remote::Remote},
+    },
 };
-use places::addr::Addr;
-use places::admin::Admin;
+use places::{addr::Addr, admin::Admin};
 
 #[derive(Debug, Parser)]
 #[clap(name = "query", about = "Querying Bragi from the commandline")]
@@ -59,11 +64,11 @@ async fn main() {
 
     let dsl = build_query(
         &opt.q,
-        filters,
+        &filters,
         "fr",
         &settings,
         QueryType::PREFIX,
-        &Option::None,
+        Option::None,
     );
 
     println!("{}", dsl);

@@ -31,16 +31,18 @@
 use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
-use mimirsbrunn::addr_reader::import_addresses_from_input_path;
+use mimirsbrunn::{
+    addr_reader::import_addresses_from_input_path, utils::template::update_templates,
+};
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
 use tracing::warn;
 
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::primary::list_documents::ListDocuments;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::bano::Bano;
-use mimirsbrunn::settings::bano2mimir as settings;
+use mimir::{
+    adapters::secondary::elasticsearch,
+    domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
+};
+use mimirsbrunn::{bano::Bano, settings::bano2mimir as settings};
 use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
@@ -92,6 +94,13 @@ async fn run(
         .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
 
+    tracing::info!("Connected to elasticsearch.");
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
+
     // TODO There might be an opportunity for optimization here:
     // Lets say we're indexing a single bano department.... we don't need to retrieve
     // the admins for other regions!
@@ -139,9 +148,11 @@ async fn run(
 mod tests {
     use super::*;
     use futures::TryStreamExt;
-    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir::domain::ports::primary::list_documents::ListDocuments;
-    use mimir::utils::docker;
+    use mimir::{
+        adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+        domain::ports::primary::list_documents::ListDocuments,
+        utils::docker,
+    };
     use mimirsbrunn::settings::bano2mimir as settings;
     use places::addr::Addr;
     use serial_test::serial;

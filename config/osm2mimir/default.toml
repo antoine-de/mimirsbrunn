@@ -1,20 +1,25 @@
 nb_threads = 2
+update_templates = true
 
 [container-poi]
   name = "poi"
   dataset = "fr"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0
 
 [container-street]
   name = "street"
   dataset = "fr"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0
 
 # This section is ignored if mimirsbrunn is compiled without the `db-storage`
 # option.
 [database]
   file = "/tmp/osm_db.tmp"
-  buffer_size = 50_000
+  cache_size = 10_000
 
 [pois]
   import = false

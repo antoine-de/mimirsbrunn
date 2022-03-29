@@ -1,17 +1,12 @@
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 use tracing::warn;
 use transit_model::objects::Rgb;
 use typed_index_collection::Idx;
 
-use super::context::Context;
-use super::coord::Coord;
-use super::Members;
-use crate::admin::Admin;
-use crate::utils::normalize_id;
+use super::{context::Context, coord::Coord, Members};
+use crate::{admin::Admin, utils::normalize_id};
 use common::document::{ContainerDocument, Document};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]

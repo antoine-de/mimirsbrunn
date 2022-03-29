@@ -3,18 +3,18 @@ use cosmogony::ZoneType;
 use geo_types::{MultiPolygon, Rect};
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 
-use super::context::Context;
-use super::coord::Coord;
-use super::i18n_properties::I18nProperties;
-use super::utils::{
-    custom_multi_polygon_deserialize, custom_multi_polygon_serialize, deserialize_rect,
-    get_country_code, serialize_rect,
+use super::{
+    context::Context,
+    coord::Coord,
+    i18n_properties::I18nProperties,
+    utils::{
+        custom_multi_polygon_deserialize, custom_multi_polygon_serialize, deserialize_rect,
+        get_country_code, serialize_rect,
+    },
+    Members,
 };
-use super::Members;
 
 pub const ADMIN_MAX_WEIGHT: f64 = 1_400_000_000.; // China's population
 

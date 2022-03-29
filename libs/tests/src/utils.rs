@@ -1,7 +1,6 @@
 use snafu::{ResultExt, Snafu};
 use std::path::{Path, PathBuf};
-use tokio::fs;
-use tokio::io::AsyncWriteExt;
+use tokio::{fs, io::AsyncWriteExt};
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]

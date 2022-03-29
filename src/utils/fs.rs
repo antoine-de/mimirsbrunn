@@ -1,7 +1,6 @@
 use futures::stream::{Stream, TryStreamExt};
 use std::path::{Path, PathBuf};
-use tokio::fs;
-use tokio::io::Error;
+use tokio::{fs, io::Error};
 use tokio_stream::wrappers::ReadDirStream;
 
 /// Walk over all files of an input path. If it is a directory all files from

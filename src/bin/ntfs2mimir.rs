@@ -31,9 +31,8 @@
 use clap::Parser;
 use snafu::{ResultExt, Snafu};
 
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::ntfs2mimir as settings;
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use mimirsbrunn::{settings::ntfs2mimir as settings, utils::template::update_templates};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -88,6 +87,11 @@ async fn run(
 
     tracing::info!("Connected to elasticsearch.");
 
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
+
     mimirsbrunn::stops::index_ntfs(
         opts.input,
         &settings.container,
@@ -106,9 +110,11 @@ mod tests {
 
     use super::*;
     use ::tests::cosmogony;
-    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir::domain::ports::primary::list_documents::ListDocuments;
-    use mimir::utils::docker;
+    use mimir::{
+        adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+        domain::ports::primary::list_documents::ListDocuments,
+        utils::docker,
+    };
     use places::stop::Stop;
 
     #[tokio::test]

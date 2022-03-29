@@ -4,12 +4,17 @@ use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
 use tracing::{instrument, warn};
 
-use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::admin_geofinder::AdminGeoFinder;
-use mimirsbrunn::osm_reader::street::streets;
-use mimirsbrunn::settings::osm2mimir as settings;
+use mimir::{
+    adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
+    domain::ports::{
+        primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
+        secondary::remote::Remote,
+    },
+};
+use mimirsbrunn::{
+    admin_geofinder::AdminGeoFinder, osm_reader::street::streets, settings::osm2mimir as settings,
+    utils::template::update_templates,
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -81,6 +86,11 @@ async fn run(
         .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnectionSnafu)?;
+
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
 
     let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
         Ok(stream) => {
@@ -169,28 +179,6 @@ async fn import_pois(
 
     Ok(())
 }
-
-// // We need to allow for unused variables, because currently all the checks on
-// // args require the db-storage feature. If this feature is not used, then there
-// // is a warning
-// #[allow(unused_variables)]
-// fn validate_args(args: &Args) -> Result<(), mimirsbrunn::Error> {
-//     #[cfg(feature = "db-storage")]
-//     if args.db_file.is_some() {
-//         // If the user specified db_file, he must also specify db_buffer_size, or else!
-//         if args.db_buffer_size.is_none() {
-//             return Err(failure::format_err!("You need to specify database buffer size if you want to use database storage. Use --db-buffer-size"));
-//         }
-//     }
-//     #[cfg(feature = "db-storage")]
-//     if args.db_buffer_size.is_some() {
-//         // If the user specified db_buffer_size, he must also specify db_file, or else!
-//         if args.db_file.is_none() {
-//             return Err(failure::format_err!("You need to specify database file if you want to use database storage. Use --db-file"));
-//         }
-//     }
-//     Ok(())
-// }
 
 // #[cfg(test)]
 // mod tests {

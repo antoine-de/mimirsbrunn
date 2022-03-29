@@ -33,18 +33,15 @@
 use futures::stream::{Stream, TryStreamExt};
 use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use snafu::{ResultExt, Snafu};
-use std::collections::HashMap;
-use std::ops::Deref;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
 use tracing::{info, warn};
 
-use crate::admin_geofinder::AdminGeoFinder;
-use crate::labels;
-use mimir::adapters::secondary::elasticsearch::{self, ElasticsearchStorage};
-use mimir::domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments};
-use places::admin::Admin;
-use places::stop::Stop;
+use crate::{admin_geofinder::AdminGeoFinder, labels};
+use mimir::{
+    adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
+    domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
+};
+use places::{admin::Admin, stop::Stop};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -192,7 +189,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
             let mut nb_unmatched = 0u32;
             let mut nb_matched = 0u32;
             // FIXME Opportunity for concurrent work
-            for mut stop in stops {
+            for stop in stops {
                 let admins = admins_geofinder.get(&stop.coord);
 
                 if admins.is_empty() {
@@ -201,7 +198,7 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
                     nb_matched += 1;
                 }
 
-                attach_stop(&mut stop, admins);
+                attach_stop(stop, admins);
             }
 
             info!(
@@ -232,12 +229,12 @@ pub async fn index_ntfs(
         details: format!(
             "Could not read transit model from {}: {}",
             input.display(),
-            err.to_string()
+            err
         ),
     })?;
 
     info!("Build stops weight by physical modes");
-    let stop_areas_weights = build_stop_area_weight(&navitia, &physical_mode_weight);
+    let stop_areas_weights = build_stop_area_weight(&navitia, physical_mode_weight);
 
     info!("Make mimir stops from navitia stops");
     let mut stops: Vec<Stop> = navitia
@@ -279,11 +276,9 @@ where
 mod tests {
     use crate::stops::make_weight;
     use cosmogony::ZoneType;
-    use places::admin::Admin;
-    use places::stop::Stop;
+    use places::{admin::Admin, stop::Stop};
     use serial_test::serial;
-    use std::collections::HashMap;
-    use std::sync::Arc;
+    use std::{collections::HashMap, sync::Arc};
 
     fn approx_equal(a: f64, b: f64, dp: u8) -> bool {
         let p = 10f64.powi(-(dp as i32));

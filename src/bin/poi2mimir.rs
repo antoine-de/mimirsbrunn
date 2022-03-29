@@ -1,9 +1,8 @@
 use clap::Parser;
 use snafu::{ResultExt, Snafu};
 
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::poi2mimir as settings;
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use mimirsbrunn::{settings::poi2mimir as settings, utils::template::update_templates};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -48,6 +47,11 @@ async fn run(
         .await
         .context(ElasticsearchConnectionSnafu)?;
 
+    // Update all the template components and indexes
+    if settings.update_templates {
+        update_templates(&client, opts.config_dir).await?;
+    }
+
     mimirsbrunn::pois::index_pois(opts.input, &client, settings.container).await?;
 
     Ok(())
@@ -60,9 +64,11 @@ mod tests {
 
     use super::*;
     use ::tests::{bano, cosmogony, osm};
-    use mimir::adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig};
-    use mimir::domain::ports::primary::list_documents::ListDocuments;
-    use mimir::utils::docker;
+    use mimir::{
+        adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
+        domain::ports::primary::list_documents::ListDocuments,
+        utils::docker,
+    };
     use mimirsbrunn::settings::poi2mimir as settings;
     use places::poi::Poi;
 

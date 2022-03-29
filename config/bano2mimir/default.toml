@@ -1,6 +1,9 @@
 nb_threads = 2
+update_templates = true
 
 [container]
   name = "addr"
   dataset = "fr"
   visibility = "public"
+  number_of_shards = 1
+  number_of_replicas = 0

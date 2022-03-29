@@ -1,7 +1,9 @@
-use std::any::Any;
-use std::convert::Infallible;
-use std::ops::{Deref, DerefMut};
-use std::sync::{Mutex, MutexGuard, TryLockError};
+use std::{
+    any::Any,
+    convert::Infallible,
+    ops::{Deref, DerefMut},
+    sync::{Mutex, MutexGuard, TryLockError},
+};
 
 use async_trait::async_trait;
 use cucumber::WorldInit;

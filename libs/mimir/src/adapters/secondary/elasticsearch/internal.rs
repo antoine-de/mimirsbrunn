@@ -1,42 +1,43 @@
-use elasticsearch::cat::CatIndicesParts;
-use elasticsearch::cluster::{ClusterHealthParts, ClusterPutComponentTemplateParts};
-use elasticsearch::http::response::Exception;
-use elasticsearch::indices::{
-    IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
-    IndicesPutIndexTemplateParts, IndicesRefreshParts,
-};
-use elasticsearch::ingest::IngestPutPipelineParts;
-use elasticsearch::params::TrackTotalHits;
 use elasticsearch::{
+    cat::CatIndicesParts,
+    cluster::{ClusterHealthParts, ClusterPutComponentTemplateParts},
+    http::response::Exception,
+    indices::{
+        IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
+        IndicesPutIndexTemplateParts, IndicesRefreshParts,
+    },
+    ingest::IngestPutPipelineParts,
+    params::TrackTotalHits,
     BulkOperation, BulkParts, ExplainParts, MgetParts, OpenPointInTimeParts, SearchParts,
 };
 use futures::stream::{self, Stream, StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use regex::Regex;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use snafu::{ResultExt, Snafu};
-use std::collections::BTreeMap;
-use std::convert::TryFrom;
-use std::pin::Pin;
-use std::time::Duration;
-use tracing::info;
+use std::{collections::BTreeMap, convert::TryFrom, pin::Pin, time::Duration};
+use tracing::{info, warn};
 
-use super::configuration::{
-    ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
+use super::{
+    configuration::{
+        ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
+    },
+    models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse},
+    ElasticsearchStorage, ElasticsearchStorageForceMergeConfig,
 };
-use super::models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse};
-use super::ElasticsearchStorage;
-use crate::adapters::secondary::elasticsearch::models::{
-    ElasticsearchBulkResult, ElasticsearchGetResponse,
-};
-use crate::domain::model::{
-    configuration,
-    index::{Index, IndexStatus},
-    query::Query,
-    stats::InsertStats as ModelInsertStats,
-    status::{StorageHealth, Version as StorageVersion},
+use crate::{
+    adapters::secondary::elasticsearch::models::{
+        ElasticsearchBulkResult, ElasticsearchGetResponse,
+    },
+    domain::model::{
+        configuration,
+        index::{Index, IndexStatus},
+        query::Query,
+        stats::InsertStats as ModelInsertStats,
+        status::{StorageHealth, Version as StorageVersion},
+    },
+    utils::futures::with_backoff,
 };
 use common::document::Document;
 
@@ -222,11 +223,22 @@ impl From<Option<Exception>> for Error {
 }
 
 impl ElasticsearchStorage {
-    pub(super) async fn create_index(&self, index_name: &str) -> Result<(), Error> {
+    pub(super) async fn create_index(
+        &self,
+        index_name: &str,
+        number_of_shards: u64,
+        number_of_replicas: u64,
+    ) -> Result<(), Error> {
         let response = self
             .client
             .indices()
             .create(IndicesCreateParts::Index(index_name))
+            .body(json!({
+                "settings": {
+                    "number_of_shards": number_of_shards,
+                    "number_of_replicas": number_of_replicas
+                }
+            }))
             .request_timeout(self.config.timeout)
             .wait_for_active_shards(&self.config.wait_for_active_shards.to_string())
             .send()
@@ -582,17 +594,22 @@ impl ElasticsearchStorage {
     {
         let mut stats = InsertStats::default();
 
-        let resp = self
-            .client
-            .bulk(BulkParts::Index(index.as_str()))
-            .request_timeout(self.config.timeout)
-            .body(chunk)
-            .send()
-            .await
-            .and_then(|res| res.error_for_status_code())
-            .context(ElasticsearchClientSnafu {
-                details: "cannot bulk insert",
-            })?;
+        let resp = with_backoff(
+            || {
+                self.client
+                    .bulk(BulkParts::Index(index.as_str()))
+                    .request_timeout(self.config.timeout)
+                    .body(chunk.iter().collect())
+                    .send()
+            },
+            self.config.bulk_backoff.retry,
+            self.config.bulk_backoff.wait,
+        )
+        .await
+        .and_then(|res| res.error_for_status_code())
+        .context(ElasticsearchClientSnafu {
+            details: "cannot bulk insert",
+        })?;
 
         if !resp.status_code().is_success() {
             Err(resp
@@ -817,28 +834,40 @@ impl ElasticsearchStorage {
     pub(super) async fn force_merge(
         &self,
         indices: &[&str],
-        max_num_segments: i64,
+        config: &ElasticsearchStorageForceMergeConfig,
     ) -> Result<(), Error> {
-        let response = self
-            .client
-            .indices()
+        let indices_client = self.client.indices();
+
+        let request = indices_client
             .forcemerge(IndicesForcemergeParts::Index(indices))
-            .max_num_segments(max_num_segments)
-            // .request_timeout(self.config.timeout) This call is not using timeout because
-            // it can take a long time and would require the timeout to become very large,
-            // and meaningless for other operations.
-            .send()
-            .await
+            .request_timeout(config.timeout);
+
+        let request = {
+            if let Some(max_num_segments) = config.max_number_segments {
+                request.max_num_segments(max_num_segments)
+            } else {
+                request
+            }
+        };
+
+        let response = request.send().await;
+
+        // The forcemerge operation can be very long if a large number of segments have to be
+        // merged, in such a case the user may set `allow_timeout` to true in order to let the
+        // operation run in background.
+        if config.allow_timeout && matches!(&response, Err(err) if err.is_timeout()) {
+            warn!(
+                "forcemerge query timeout after {:?} on indices {}, it will continue running in background",
+                config.timeout,
+                indices.join(", "),
+            );
+            return Ok(());
+        }
+
+        let response = response
             .and_then(|res| res.error_for_status_code())
             .context(ElasticsearchClientSnafu {
-                details: format!(
-                    "cannot force merge indices '{}'",
-                    indices
-                        .iter()
-                        .map(|s| &**s)
-                        .collect::<Vec<&str>>()
-                        .join(", ")
-                ),
+                details: format!("cannot force merge indices '{}'", indices.join(", ")),
             })?;
 
         let json = response
@@ -850,14 +879,7 @@ impl ElasticsearchStorage {
             Ok(())
         } else {
             Err(Error::Failed {
-                details: format!(
-                    "cannot force merge '{}'",
-                    indices
-                        .iter()
-                        .map(|s| &**s)
-                        .collect::<Vec<&str>>()
-                        .join(", ")
-                ),
+                details: format!("cannot force merge '{}'", indices.join(", ")),
             })
         }
     }
@@ -1377,7 +1399,7 @@ impl TryFrom<ElasticsearchIndex> for Index {
             configuration::split_index_name(&name).map_err(|err| Error::IndexConversion {
                 details: format!(
                     "could not convert elasticsearch index into model index: {}",
-                    err.to_string()
+                    err
                 ),
             })?;
 

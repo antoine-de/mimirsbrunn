@@ -1,8 +1,7 @@
 use crate::utils::deserialize::deserialize_duration;
 use elasticsearch::Elasticsearch;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::time::Duration;
+use std::{path::PathBuf, time::Duration};
 use url::Url;
 
 pub mod configuration;
@@ -36,12 +35,23 @@ pub struct ElasticsearchStorageConfig {
     pub insertion_chunk_size: usize,
     pub wait_for_active_shards: u64,
     pub force_merge: ElasticsearchStorageForceMergeConfig,
+    pub bulk_backoff: ElasticsearchStorageBackoffConfig,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ElasticsearchStorageBackoffConfig {
+    retry: u8,
+    #[serde(deserialize_with = "deserialize_duration")]
+    wait: Duration,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ElasticsearchStorageForceMergeConfig {
     pub enabled: bool,
-    pub max_number_segments: i64,
+    pub max_number_segments: Option<i64>,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub timeout: Duration,
+    pub allow_timeout: bool,
 }
 
 impl Default for ElasticsearchStorageConfig {
@@ -99,10 +109,13 @@ pub mod tests {
 
     use super::*;
 
-    use crate::domain::model::configuration::ContainerVisibility;
-    use crate::domain::ports::secondary::storage::Storage;
-    use crate::domain::{model::configuration::ContainerConfig, ports::secondary::remote::Remote};
-    use crate::utils::docker;
+    use crate::{
+        domain::{
+            model::configuration::{ContainerConfig, ContainerVisibility},
+            ports::secondary::{remote::Remote, storage::Storage},
+        },
+        utils::docker,
+    };
     use common::document::{ContainerDocument, Document};
 
     #[tokio::test]
@@ -133,6 +146,8 @@ pub mod tests {
             name: "foo".to_string(),
             dataset: "bar".to_string(),
             visibility: ContainerVisibility::Public,
+            number_of_shards: 1,
+            number_of_replicas: 0,
         };
 
         let res = client.create_container(&config).await;
@@ -172,6 +187,8 @@ pub mod tests {
             name: TestObj::static_doc_type().to_string(),
             dataset: "default".to_string(),
             visibility: ContainerVisibility::Public,
+            number_of_shards: 1,
+            number_of_replicas: 0,
         };
 
         client

@@ -3,11 +3,13 @@ use std::path::PathBuf;
 
 use super::utils::{create_dir_if_not_exists, file_exists};
 use common::document::ContainerDocument;
-use mimir::adapters::secondary::elasticsearch::ElasticsearchStorage;
-use mimir::domain::model::configuration::{
-    root_doctype_dataset, ContainerConfig, ContainerVisibility,
+use mimir::{
+    adapters::secondary::elasticsearch::ElasticsearchStorage,
+    domain::{
+        model::configuration::{root_doctype_dataset, ContainerConfig, ContainerVisibility},
+        ports::secondary::storage::{Error as StorageError, Storage},
+    },
 };
-use mimir::domain::ports::secondary::storage::{Error as StorageError, Storage};
 use places::admin::Admin;
 
 use super::utils;
@@ -146,13 +148,15 @@ pub async fn index_admins(
             name: Admin::static_doc_type().to_string(),
             dataset: dataset.to_string(),
             visibility: ContainerVisibility::Public,
+            number_of_shards: 1,
+            number_of_replicas: 0,
         },
         french_id_retrocompatibility,
         client,
     )
     .await
     .map_err(|err| Error::Indexing {
-        details: format!("could not index cosmogony: {}", err.to_string(),),
+        details: format!("could not index cosmogony: {}", err,),
     })?;
 
     Ok(Status::Done)

@@ -1,10 +1,7 @@
 use clap::Parser;
-use mimir::adapters::primary::templates;
-use mimir::adapters::secondary::elasticsearch;
-use mimir::domain::ports::secondary::remote::Remote;
-use mimirsbrunn::settings::ctlmimir as settings;
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
+use mimirsbrunn::{settings::ctlmimir as settings, utils::template::update_templates};
 use snafu::{ResultExt, Snafu};
-use std::path::PathBuf;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -53,27 +50,8 @@ async fn run(
 
     tracing::info!("Connected to elasticsearch.");
 
-    let path: PathBuf = opts
-        .config_dir
-        .join("elasticsearch")
-        .join("templates")
-        .join("components");
-
-    tracing::info!("Beginning components imports from {:?}", &path);
-    templates::import(client.clone(), path, templates::Template::Component)
-        .await
-        .map_err(Box::new)?;
-
-    let path: PathBuf = opts
-        .config_dir
-        .join("elasticsearch")
-        .join("templates")
-        .join("indices");
-
-    tracing::info!("Beginning indices imports from {:?}", &path);
-    templates::import(client, path, templates::Template::Index)
-        .await
-        .map_err(Box::new)?;
+    // Update all the template components and indexes
+    update_templates(&client, opts.config_dir).await?;
 
     Ok(())
 }

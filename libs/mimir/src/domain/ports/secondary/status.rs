@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use snafu::Snafu;
 
-use crate::domain::model::error::Error as ModelError;
-use crate::domain::model::status::StorageStatus;
+use crate::domain::model::{error::Error as ModelError, status::StorageStatus};
 
 #[derive(Debug, Snafu)]
 pub enum Error {

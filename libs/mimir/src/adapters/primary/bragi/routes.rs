@@ -1,19 +1,28 @@
-use crate::adapters::primary::bragi::api::{
-    FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
-    ReverseGeocoderQuery, Type,
+use crate::{
+    adapters::primary::{
+        bragi::{
+            api::{
+                FeaturesQuery, ForwardGeocoderExplainQuery, ForwardGeocoderQuery, JsonParam,
+                ReverseGeocoderQuery, Type,
+            },
+            handlers::{InternalError, InternalErrorReason},
+        },
+        common::settings::QuerySettings,
+    },
+    domain::ports::primary::search_documents::SearchDocuments,
 };
-use crate::adapters::primary::bragi::handlers::{InternalError, InternalErrorReason};
-use crate::adapters::primary::common::settings::QuerySettings;
-use crate::domain::ports::primary::search_documents::SearchDocuments;
 use geojson::{GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_qs::Config;
-use std::convert::Infallible;
-use std::time::Duration;
+use std::{convert::Infallible, time::Duration};
 use tracing::instrument;
 use url::Url;
-use warp::reject::MethodNotAllowed;
-use warp::{http::StatusCode, path, reject::Reject, Filter, Rejection, Reply};
+use warp::{
+    http::StatusCode,
+    path,
+    reject::{MethodNotAllowed, Reject},
+    Filter, Rejection, Reply,
+};
 
 /// This function defines the base path for Bragi's REST API
 fn path_prefix() -> impl Filter<Extract = (), Error = Rejection> + Clone {
