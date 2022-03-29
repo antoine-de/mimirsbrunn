@@ -1,6 +1,6 @@
 [package]
 name = "tests"
-version = "2.5.0"
+version = "2.6.0"
 authors = ["Kisio Digital", "Qwant"]
 edition = "2021"
 description = "Set of test utilities for Mimirsbrunn"
