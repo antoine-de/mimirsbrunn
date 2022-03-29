@@ -139,6 +139,7 @@ before creating any index, you need to import all the templates in Elasticsearch
 ```
 cd mimirsbrunn
 ./target/release/ctlmimir \
+  -s "elasticsearch.url='http://localhost:9200'" \
   -c ./config \
   -m testing \
   run
@@ -185,7 +186,7 @@ cd mimirsbrunn
 ./target/release/cosmogony2mimir \
   -c ./config \
   -m testing \
-  -s elasticsearch.url='http://localhost:9200' \
+  -s "elasticsearch.url='http://localhost:9200'" \
   -s langs=['en', 'da'] \
   -i <path/to/denmark.jsonl.gz> \
   run
