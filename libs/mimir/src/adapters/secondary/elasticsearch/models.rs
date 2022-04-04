@@ -3,6 +3,9 @@
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 
+// Search API
+// See https://www.elastic.co/guide/en/elasticsearch/reference/8.1/search-search.html
+
 /// ES response for a search query.
 #[derive(Deserialize)]
 pub struct ElasticsearchSearchResponse<D> {
@@ -30,6 +33,9 @@ impl<D> ElasticsearchSearchResponse<D> {
     }
 }
 
+// Get API
+// See https://www.elastic.co/guide/en/elasticsearch/reference/8.1/docs-get.html
+
 /// ES response for a get query.
 #[derive(Deserialize)]
 pub struct ElasticsearchGetResponse<D> {
@@ -48,6 +54,9 @@ impl<D> ElasticsearchGetResponse<D> {
         self.docs.into_iter().filter_map(|doc| doc.source)
     }
 }
+
+// Bulk API (only implemented for index and update)
+// See https://www.elastic.co/guide/en/elasticsearch/reference/8.1/docs-bulk.html
 
 /// ES response for bulk insert queries.
 #[derive(Debug, Eq, PartialEq, Deserialize)]
@@ -104,6 +113,22 @@ pub struct ElasticsearchBulkError {
     pub index_uuid: Option<String>,
     pub shard: Option<String>,
     pub caused_by: Option<ElasticsearchBulkErrorCausedBy>,
+}
+
+// Force Merge API
+// See https://www.elastic.co/guide/en/elasticsearch/reference/8.1/indices-forcemerge.html
+
+#[derive(Debug, Eq, PartialEq, Deserialize)]
+pub struct ElasticsearchForcemergeResponse {
+    #[serde(rename = "_shards")]
+    pub shards: ElasticsearchShardsResult,
+}
+
+#[derive(Debug, Eq, PartialEq, Deserialize)]
+pub struct ElasticsearchShardsResult {
+    pub successful: u32,
+    pub failed: u32,
+    pub total: u32,
 }
 
 // Custom deserializers
