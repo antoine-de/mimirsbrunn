@@ -108,12 +108,14 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         impl Into<serde_json::Value> for EsOperation {
             fn into(self) -> serde_json::Value {
                 match self.0 {
-                    UpdateOperation::Set { ident, value } => json!({
-                        "script": {
-                            "source": format!("ctx._source.{} = params.value", ident),
-                            "params": { "value": value }
-                        }
-                    }),
+                    UpdateOperation::Set { ident, value } => {
+                        let updated_part = ident
+                            .split('.')
+                            .rev()
+                            .fold(value.into(), |val, key| json!({ key: val }));
+
+                        json!({ "doc": updated_part })
+                    }
                 }
             }
         }
