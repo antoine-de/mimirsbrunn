@@ -109,6 +109,10 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
             fn into(self) -> serde_json::Value {
                 match self.0 {
                     UpdateOperation::Set { ident, value } => {
+                        // Generate the part of the document that must be updated. For example with
+                        // `ident` = "properties.image" and `value` = "https://foo.jpg", this will
+                        // generate the following JSON:
+                        // { "properties": { "image": "https://foo.jpg" } }
                         let updated_part = ident
                             .split('.')
                             .rev()
