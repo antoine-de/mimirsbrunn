@@ -98,29 +98,57 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         operations: S,
     ) -> Result<InsertStats, StorageError>
     where
-        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's,
+        S: Stream<Item = (String, Vec<UpdateOperation>)> + Send + Sync + 's,
     {
         #[derive(Clone, Serialize)]
         #[serde(into = "serde_json::Value")]
-        struct EsOperation(UpdateOperation);
+        struct EsOperation(Vec<UpdateOperation>);
 
         #[allow(clippy::from_over_into)]
         impl Into<serde_json::Value> for EsOperation {
             fn into(self) -> serde_json::Value {
-                match self.0 {
-                    UpdateOperation::Set { ident, value } => {
-                        // Generate the part of the document that must be updated. For example with
-                        // `ident` = "properties.image" and `value` = "https://foo.jpg", this will
-                        // generate the following JSON:
-                        // { "properties": { "image": "https://foo.jpg" } }
-                        let updated_part = ident
-                            .split('.')
-                            .rev()
-                            .fold(value.into(), |val, key| json!({ key: val }));
+                // match self.0 {
+                //     UpdateOperation::Set { ident, value } => {
+                // Generate the part of the document that must be updated. For example with
+                // `ident` = "properties.image" and `value` = "https://foo.jpg", this will
+                // generate the following JSON:
+                // { "properties": { "image": "https://foo.jpg" } }
+                //         let updated_part = ident
+                //             .split('.')
+                //             .rev()
+                //             .fold(value.into(), |val, key| json!({ key: val }));
+                //
+                //         json!({ "doc": updated_part })
+                //     }
+                // }
 
-                        json!({ "doc": updated_part })
+                self.0.into_iter().fold(json!({}), |mut result, op| {
+                    match op {
+                        // Adds the part of the document that must be updated to `result`. For
+                        // example if at current iteration `result` has this value:
+                        //   { "properties": { "review": "excellent" } }
+                        // And `ident` = "properties.image", `value` = "https://foo.jpg", then this
+                        // will update `result` with this value:
+                        //   { "properties": { "review", "excellent", "image": "https://foo.jpg" } }
+                        UpdateOperation::Set { ident, value } => {
+                            // Get a reference to the position in the JSON where the value must be
+                            // inserted.
+                            let target = ident.split('.').fold(&mut result, |curr, key| {
+                                if curr.get(key).is_none() {
+                                    curr[key] = json!({});
+                                }
+
+                                &mut curr[key]
+                            });
+
+                            // Update target object with the value, in most cases this is just an
+                            // empty object that was just created to construct the full path.
+                            *target = value.into();
+                        }
                     }
-                }
+
+                    result
+                })
             }
         }
 

@@ -63,7 +63,7 @@ pub trait Storage<'s> {
 
     async fn update_documents<S>(&self, index: String, operations: S) -> Result<InsertStats, Error>
     where
-        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's;
+        S: Stream<Item = (String, Vec<UpdateOperation>)> + Send + Sync + 's;
 
     async fn publish_index(
         &self,
@@ -105,7 +105,7 @@ where
 
     async fn update_documents<S>(&self, index: String, operations: S) -> Result<InsertStats, Error>
     where
-        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's,
+        S: Stream<Item = (String, Vec<UpdateOperation>)> + Send + Sync + 's,
     {
         (**self).update_documents(index, operations).await
     }
