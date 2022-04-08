@@ -44,8 +44,6 @@ async fn generate_and_update_poi(id: &str, updates: Vec<UpdateOperation>) -> Vec
         number_of_replicas: 0,
     };
 
-    let poi_updates = updates.into_iter().map(|op| (id.to_string(), op));
-
     client
         .init_container(&container_config)
         .await
@@ -53,7 +51,7 @@ async fn generate_and_update_poi(id: &str, updates: Vec<UpdateOperation>) -> Vec
         .insert_documents(stream::iter([sample_poi()]))
         .await
         .unwrap()
-        .update_documents(stream::iter(poi_updates))
+        .update_documents(stream::iter([(id.to_string(), updates)]))
         .await
         .unwrap()
         .publish()
