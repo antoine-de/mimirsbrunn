@@ -16,7 +16,7 @@ pub fn generate_document_parts(ops: Vec<UpdateOperation>) -> serde_json::Value {
             //   { "properties": { "review": "excellent" } }
             // And `ident` = "properties.image", `value` = "https://foo.jpg", then this
             // will update `result` with this value:
-            //   { "properties": { "review", "excellent", "image": "https://foo.jpg" } }
+            //   { "properties": { "review": "excellent", "image": "https://foo.jpg" } }
             UpdateOperation::Set { ident, value } => {
                 // Get a reference to the position in the JSON where the value must be
                 // inserted.
