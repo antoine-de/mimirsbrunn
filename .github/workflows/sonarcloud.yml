@@ -34,10 +34,10 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=CanalTP_mimirsbrunn
+            -Dsonar.projectKey=Hove_mimirsbrunn
             -Dsonar.projectName=mimirsbrunn
             -Dsonar.sources=.
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.externalIssuesReportPaths=sonar.json
-            -Dsonar.organization=canaltp
+            -Dsonar.organization=hove-io
             -Dsonar.verbose=true

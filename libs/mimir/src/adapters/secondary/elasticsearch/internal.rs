@@ -23,7 +23,9 @@ use super::{
     configuration::{
         ComponentTemplateConfiguration, Error as ConfigurationError, IndexTemplateConfiguration,
     },
-    models::{ElasticsearchBulkResponse, ElasticsearchSearchResponse},
+    models::{
+        ElasticsearchBulkResponse, ElasticsearchForcemergeResponse, ElasticsearchSearchResponse,
+    },
     ElasticsearchStorage, ElasticsearchStorageForceMergeConfig,
 };
 use crate::{
@@ -868,18 +870,21 @@ impl ElasticsearchStorage {
             .and_then(|res| res.error_for_status_code())
             .context(ElasticsearchClientSnafu {
                 details: format!("cannot force merge indices '{}'", indices.join(", ")),
-            })?;
-
-        let json = response
-            .json::<Value>()
+            })?
+            .json::<ElasticsearchForcemergeResponse>()
             .await
             .context(ElasticsearchDeserializationSnafu)?;
 
-        if json["_shards"]["successful"] == 1 {
+        if response.shards.failed == 0 {
             Ok(())
         } else {
             Err(Error::Failed {
-                details: format!("cannot force merge '{}'", indices.join(", ")),
+                details: format!(
+                    "cannot force merge {}/{} shards for {}",
+                    response.shards.failed,
+                    response.shards.total,
+                    indices.join(","),
+                ),
             })
         }
     }
