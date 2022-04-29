@@ -17,7 +17,7 @@ use crate::domain::{
         configuration::{root_doctype_dataset_ts, ContainerConfig, ContainerVisibility},
         index::Index,
         stats::InsertStats,
-        update::UpdateOperation,
+        update::{generate_document_parts, UpdateOperation},
     },
     ports::secondary::storage::{Error as StorageError, Storage},
 };
@@ -98,23 +98,17 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         operations: S,
     ) -> Result<InsertStats, StorageError>
     where
-        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's,
+        S: Stream<Item = (String, Vec<UpdateOperation>)> + Send + Sync + 's,
     {
         #[derive(Clone, Serialize)]
         #[serde(into = "serde_json::Value")]
-        struct EsOperation(UpdateOperation);
+        struct EsOperation(Vec<UpdateOperation>);
 
         #[allow(clippy::from_over_into)]
         impl Into<serde_json::Value> for EsOperation {
             fn into(self) -> serde_json::Value {
-                match self.0 {
-                    UpdateOperation::Set { ident, value } => json!({
-                        "script": {
-                            "source": format!("ctx._source.{} = params.value", ident),
-                            "params": { "value": value }
-                        }
-                    }),
-                }
+                let updated_parts = generate_document_parts(self.0);
+                json!({ "doc": updated_parts })
             }
         }
 
