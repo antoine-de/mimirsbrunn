@@ -14,11 +14,11 @@ jobs:
         include:
           - version: jessie
             packages: pkg-config libssl-dev
-            rust: 1.56.1
+            rust: "1.60"
 
           - version: buster
             packages: pkg-config libssl-dev
-            rust: 1.56.1
+            rust: "1.60"
 
     container: debian:${{matrix.version}}
 

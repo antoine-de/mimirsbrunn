@@ -1,7 +1,7 @@
-ARG RUST_VERSION="1.56"
+ARG RUST_VERSION="1.60"
 ARG DEBIAN_VERSION="buster"
 
-FROM rust:${RUST_VERSION}-${DEBIAN_VERSION} as builder
+FROM rust:${RUST_VERSION}-slim-${DEBIAN_VERSION} as builder
 
 WORKDIR /home
 
@@ -9,19 +9,10 @@ ENV DEBIAN_FRONTEND noninteractive
 
 ARG DEBIAN_VERSION
 
-RUN if [ "${DEBIAN_VERSION}" = "buster" ]; then \
-  apt-get update \
-    && apt-get install -y make libssl-dev git \
+RUN apt-get update \
+    && apt-get install -y pkg-config make libsqlite3-dev libssl-dev git \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
-elif [ "${DEBIAN_VERSION}" = "stretch" ]; then \
-  apt-get update \
-    && apt-get install -y make libssl1.0-dev git \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
-else \
-  echo "Unsupported debian version '$DEBIAN_VERSION'"; \
-fi
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*;
 
 RUN USER=root cargo new mimirsbrunn
 
@@ -39,16 +30,16 @@ COPY ./src ./src
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/home/mimirsbrunn/target  \
-    cargo build --release --bins --locked --features db-storage
+    cargo build --profile production --bins --locked --features db-storage
 
 # Extract binaries from build cache
 RUN mkdir bin
 RUN --mount=type=cache,target=/home/mimirsbrunn/target \
-    cp target/release/osm2mimir                        \
-       target/release/cosmogony2mimir                  \
-       target/release/bano2mimir                       \
-       target/release/openaddresses2mimir              \
-       target/release/ctlmimir                         \
+    cp target/production/osm2mimir                        \
+       target/production/cosmogony2mimir                  \
+       target/production/bano2mimir                       \
+       target/production/openaddresses2mimir              \
+       target/production/ctlmimir                         \
        bin/
 
 
