@@ -304,10 +304,10 @@ where
 
             match places {
                 Ok(places) if places.is_empty() => {
-                    let features : Vec<Feature> = Vec::new();
+                    let features: Vec<Feature> = Vec::new();
                     let resp = GeocodeJsonResponse::new("".to_string(), features);
                     Ok(with_status(json(&resp), StatusCode::NOT_FOUND))
-                },
+                }
                 Ok(places) => {
                     let features: Vec<Feature> = places
                         .into_iter()
@@ -315,7 +315,7 @@ where
                         .collect();
                     let resp = GeocodeJsonResponse::new("".to_string(), features);
                     Ok(with_status(json(&resp), StatusCode::OK))
-                },
+                }
                 Err(err) => Err(warp::reject::custom(InternalError {
                     reason: InternalErrorReason::SerializationError,
                     info: err.to_string(),
