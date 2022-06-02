@@ -303,10 +303,11 @@ where
                 .collect();
 
             match places {
-                Ok(places) if places.is_empty() => Err(warp::reject::custom(InternalError {
-                    reason: InternalErrorReason::ObjectNotFoundError,
-                    info: "Unable to find object".to_string(),
-                })),
+                Ok(places) if places.is_empty() => {
+                    let features: Vec<Feature> = Vec::new();
+                    let resp = GeocodeJsonResponse::new("".to_string(), features);
+                    Ok(with_status(json(&resp), StatusCode::NOT_FOUND))
+                }
                 Ok(places) => {
                     let features: Vec<Feature> = places
                         .into_iter()
