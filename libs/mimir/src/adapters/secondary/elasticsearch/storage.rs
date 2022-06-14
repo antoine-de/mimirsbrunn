@@ -6,6 +6,7 @@ use futures::{
 };
 use serde::Serialize;
 use serde_json::json;
+use tracing::info;
 
 use super::{
     configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration},
@@ -102,6 +103,7 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
             // before `refresh` is executed.
             // In ElastiSearch 8, there is a parameter `wait_for_completion`
             // to handle correctly the end of `force_merge`.
+            info!("execute 'force_merge' on index '{}'", index);
             self.force_merge(&[&index], &self.config.force_merge)
                 .await
                 .map_err(|err| StorageError::ForceMergeError {
@@ -148,6 +150,7 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         index: Index,
         visibility: ContainerVisibility,
     ) -> Result<(), StorageError> {
+        info!("execute 'refresh' on index '{}'", index.name);
         self.refresh_index(index.name.clone())
             .await
             .map_err(|err| StorageError::IndexPublicationError {
