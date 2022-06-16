@@ -283,7 +283,7 @@ All those projects use quite the same APIs, and you can compare their results us
 
 For a more visual comparison, you can also use [a comparator](https://github.com/CanalTP/autocomplete-comparator).
 
-# Ressources
+# Resources
 
 * [A french presentation of Mimirsbrunn](https://github.com/TeXitoi/pinot2017bano/blob/master/pinot2017bano.pdf)
 
