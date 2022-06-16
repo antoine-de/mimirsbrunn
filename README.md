@@ -253,8 +253,8 @@ We use [Semantic Versioning](http://semver.org/) for versioning. For the version
 
 ## Authors
 
-Mimirsbrunn is a project initially started by [Guillaume Pinot](texitoi@texitio.eu) and [Antoine
-Desbordes]() for [Navitia](http://navitia.io). 
+Mimirsbrunn is a project initially started by [Guillaume Pinot](https://github.com/TeXitoi/) and
+[Antoine Desbordes](https://github.com/antoine-de) for [Navitia](http://navitia.io).
 
 See also the list of [contributors](https://github.com/CanalTP/mimirsbrunn/contributors) who
 participated in this project.
