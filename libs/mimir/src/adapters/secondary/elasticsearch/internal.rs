@@ -624,6 +624,7 @@ impl ElasticsearchStorage {
                 .json()
                 .await
                 .context(ElasticsearchDeserializationSnafu)?;
+
             es_response.items.into_iter().try_for_each(|item| {
                 let inner = item.inner();
                 let result = inner.result.map_err(|err| {
@@ -641,7 +642,10 @@ impl ElasticsearchStorage {
                 match result {
                     ElasticsearchBulkResult::Created => stats.created += 1,
                     ElasticsearchBulkResult::Updated => stats.updated += 1,
-                    _ => unreachable!("no port implements document deletion"),
+                    ElasticsearchBulkResult::NoOp => stats.skipped += 1,
+                    ElasticsearchBulkResult::Deleted => {
+                        unreachable!("no port implements document deletion")
+                    }
                 }
 
                 Ok::<_, Error>(())
@@ -1447,6 +1451,7 @@ enum State {
 pub struct InsertStats {
     pub(crate) created: usize,
     pub(crate) updated: usize,
+    pub(crate) skipped: usize,
 }
 
 impl std::ops::Add for InsertStats {
@@ -1456,14 +1461,24 @@ impl std::ops::Add for InsertStats {
         Self {
             created: self.created + rhs.created,
             updated: self.updated + rhs.updated,
+            skipped: self.skipped + rhs.skipped,
         }
     }
 }
 
 impl From<InsertStats> for ModelInsertStats {
     fn from(stats: InsertStats) -> Self {
-        let InsertStats { created, updated } = stats;
-        ModelInsertStats { created, updated }
+        let InsertStats {
+            created,
+            updated,
+            skipped,
+        } = stats;
+
+        ModelInsertStats {
+            created,
+            updated,
+            skipped,
+        }
     }
 }
 
