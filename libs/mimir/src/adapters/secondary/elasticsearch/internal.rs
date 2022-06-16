@@ -1452,6 +1452,7 @@ pub struct InsertStats {
     pub(crate) created: usize,
     pub(crate) updated: usize,
     pub(crate) skipped: usize,
+    pub(crate) deleted: usize,
 }
 
 impl std::ops::Add for InsertStats {
@@ -1462,6 +1463,7 @@ impl std::ops::Add for InsertStats {
             created: self.created + rhs.created,
             updated: self.updated + rhs.updated,
             skipped: self.skipped + rhs.skipped,
+            deleted: self.deleted + rhs.deleted,
         }
     }
 }
@@ -1472,12 +1474,14 @@ impl From<InsertStats> for ModelInsertStats {
             created,
             updated,
             skipped,
+            deleted,
         } = stats;
 
         ModelInsertStats {
             created,
             updated,
             skipped,
+            deleted,
         }
     }
 }
