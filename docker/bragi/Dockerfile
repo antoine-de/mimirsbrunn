@@ -59,12 +59,12 @@ ARG DEBIAN_VERSION
 
 RUN if [ "${DEBIAN_VERSION}" = "buster" ]; then \
   apt-get update \
-    && apt-get install -y libcurl4 sqlite3 \
+    && apt-get install -y curl libcurl4 sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
 elif [ "${DEBIAN_VERSION}" = "stretch" ]; then \
   apt-get update \
-    && apt-get install -y libcurl3 sqlite3 \
+    && apt-get install -y curl libcurl3 sqlite3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
 else \
