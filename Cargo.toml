@@ -94,7 +94,7 @@ json = "0.12"
 inherits = "release"
 lto = "fat"
 codegen-units = 1
-strip = "symbols"
+strip = "debuginfo"
 
 [[bin]]
 name = "bragi"
