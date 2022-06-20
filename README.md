@@ -84,7 +84,7 @@ You can also fetch official images from DockerHub here:
 If you want to get the commit ref used to build the latest image you can run the following command:
 
 ```bash
-docker inspect --format='{{index .Config.Labels "org.label-schema.vcs-ref"}}' qwantresearch/mimirsbrunn:latest
+docker inspect --format='{{index .Config.Labels "org.label-schema.vcs-ref"}}' navitia/mimirsbrunn:latest
 ```
 
 ### Manually
