@@ -26,14 +26,15 @@ jobs:
       - name: Install 'cargo-sonar'
         run: cargo install cargo-sonar --version 0.9.0 --locked
       - name: Convert into Sonar compatible format
-        if: ${{ env.DOCKER_ORG == 'navitia' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: "${{ env.SONAR_TOKEN != '' }}"
         run: cargo-sonar --features clippy --clippy-path clippy.json
       - name: Run sonar-scanner
-        if: ${{ env.DOCKER_ORG == 'navitia' }}
-        uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: "${{ env.SONAR_TOKEN != '' }}"
         with:
           args: >
             -Dsonar.projectKey=Hove_mimirsbrunn
