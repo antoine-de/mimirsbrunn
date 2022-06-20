@@ -1,6 +1,6 @@
 use mimirsbrunn::utils::logger::logger_init;
 use snafu::{ResultExt, Snafu};
-use std::{net::ToSocketAddrs, sync::Arc};
+use std::net::ToSocketAddrs;
 use tokio::runtime;
 use tracing::{info, instrument};
 use warp::{path, Filter};
@@ -79,7 +79,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
             .context(ElasticsearchConnectionSnafu)?;
 
         let settings = settings.clone();
-        let ctx = Arc::new(handlers::Context { client, settings });
+        let ctx = handlers::Context { client, settings };
 
         move || {
             let ctx = ctx.clone();
