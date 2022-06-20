@@ -535,14 +535,21 @@ impl ElasticsearchStorage {
         D: Document + Send + Sync + 'static,
         S: Stream<Item = D> + Send + Sync,
     {
-        self.bulk(
-            index,
-            documents.map(|doc| {
-                let doc_id = doc.id();
-                BulkOperation::index(doc).id(doc_id).into()
-            }),
-        )
-        .await
+        let stats = self
+            .bulk(
+                index,
+                documents.map(|doc| {
+                    let doc_id = doc.id();
+                    BulkOperation::index(doc).id(doc_id).into()
+                }),
+            )
+            .await?;
+
+        if stats.deleted != 0 {
+            warn!("Unexpectedly deleted documents during insertion");
+        }
+
+        Ok(stats)
     }
 
     pub(super) async fn update_documents_in_index<D, S>(
@@ -554,11 +561,18 @@ impl ElasticsearchStorage {
         D: Serialize + Send + Sync + 'static,
         S: Stream<Item = (String, D)> + Send + Sync,
     {
-        self.bulk(
-            index,
-            updates.map(|(doc_id, operation)| BulkOperation::update(doc_id, operation).into()),
-        )
-        .await
+        let stats = self
+            .bulk(
+                index,
+                updates.map(|(doc_id, operation)| BulkOperation::update(doc_id, operation).into()),
+            )
+            .await?;
+
+        if stats.deleted != 0 {
+            warn!("Unexpectedly deleted documents during insertion");
+        }
+
+        Ok(stats)
     }
 
     async fn bulk<D, S>(&self, index: String, documents: S) -> Result<InsertStats, Error>
@@ -643,9 +657,7 @@ impl ElasticsearchStorage {
                     ElasticsearchBulkResult::Created => stats.created += 1,
                     ElasticsearchBulkResult::Updated => stats.updated += 1,
                     ElasticsearchBulkResult::NoOp => stats.skipped += 1,
-                    ElasticsearchBulkResult::Deleted => {
-                        unreachable!("no port implements document deletion")
-                    }
+                    ElasticsearchBulkResult::Deleted => stats.deleted += 1,
                 }
 
                 Ok::<_, Error>(())
