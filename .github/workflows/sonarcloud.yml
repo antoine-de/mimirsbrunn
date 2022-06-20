@@ -11,7 +11,7 @@ env:
 
 jobs:
   clippy:
-    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]') }}
     name: Analyzing code with Clippy
     runs-on: ubuntu-latest
     steps:
@@ -26,18 +26,22 @@ jobs:
       - name: Install 'cargo-sonar'
         run: cargo install cargo-sonar --version 0.9.0 --locked
       - name: Convert into Sonar compatible format
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: "${{ env.SONAR_TOKEN != '' }}"
         run: cargo-sonar --features clippy --clippy-path clippy.json
       - name: Run sonar-scanner
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: "${{ env.SONAR_TOKEN != '' }}"
         with:
           args: >
-            -Dsonar.projectKey=CanalTP_mimirsbrunn
+            -Dsonar.projectKey=Hove_mimirsbrunn
             -Dsonar.projectName=mimirsbrunn
             -Dsonar.sources=.
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.externalIssuesReportPaths=sonar.json
-            -Dsonar.organization=canaltp
+            -Dsonar.organization=hove-io
             -Dsonar.verbose=true

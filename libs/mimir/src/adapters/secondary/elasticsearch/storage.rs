@@ -6,6 +6,7 @@ use futures::{
 };
 use serde::Serialize;
 use serde_json::json;
+use tracing::info;
 
 use super::{
     configuration::{ComponentTemplateConfiguration, IndexTemplateConfiguration},
@@ -17,7 +18,7 @@ use crate::domain::{
         configuration::{root_doctype_dataset_ts, ContainerConfig, ContainerVisibility},
         index::Index,
         stats::InsertStats,
-        update::UpdateOperation,
+        update::{generate_document_parts, UpdateOperation},
     },
     ports::secondary::storage::{Error as StorageError, Storage},
 };
@@ -84,12 +85,33 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         .await
         .map_err(|err| StorageError::DocumentInsertionError { source: err.into() })?;
 
-        self.insert_documents_in_index(index, documents)
+        let insert_stats = self
+            .insert_documents_in_index(index.clone(), documents)
             .await
             .map(InsertStats::from)
             .map_err(|err| StorageError::DocumentInsertionError {
                 source: Box::new(err),
-            })
+            })?;
+
+        if self.config.force_merge.enabled {
+            // A `force_merge` needs an explicit `refresh` since ElastiSearch 7
+            // https://www.elastic.co/guide/en/elasticsearch/reference/7.14/breaking-changes-7.0.html#flush-force-merge-no-longer-refresh
+            // `refresh` will be executed during `publish_index`.
+            // WARN: `force_merge` is interrupted after a timeout
+            // configured in 'elasticsearch.force_merge.timeout'
+            // Ideally, this timeout is long enough to finish `force_merge`
+            // before `refresh` is executed.
+            // In ElastiSearch 8, there is a parameter `wait_for_completion`
+            // to handle correctly the end of `force_merge`.
+            info!("execute 'force_merge' on index '{}'", index);
+            self.force_merge(&[&index], &self.config.force_merge)
+                .await
+                .map_err(|err| StorageError::ForceMergeError {
+                    source: Box::new(err),
+                })?;
+        }
+
+        Ok(insert_stats)
     }
 
     async fn update_documents<S>(
@@ -98,23 +120,17 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         operations: S,
     ) -> Result<InsertStats, StorageError>
     where
-        S: Stream<Item = (String, UpdateOperation)> + Send + Sync + 's,
+        S: Stream<Item = (String, Vec<UpdateOperation>)> + Send + Sync + 's,
     {
         #[derive(Clone, Serialize)]
         #[serde(into = "serde_json::Value")]
-        struct EsOperation(UpdateOperation);
+        struct EsOperation(Vec<UpdateOperation>);
 
         #[allow(clippy::from_over_into)]
         impl Into<serde_json::Value> for EsOperation {
             fn into(self) -> serde_json::Value {
-                match self.0 {
-                    UpdateOperation::Set { ident, value } => json!({
-                        "script": {
-                            "source": format!("ctx._source.{} = params.value", ident),
-                            "params": { "value": value }
-                        }
-                    }),
-                }
+                let updated_parts = generate_document_parts(self.0);
+                json!({ "doc": updated_parts })
             }
         }
 
@@ -134,6 +150,7 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
         index: Index,
         visibility: ContainerVisibility,
     ) -> Result<(), StorageError> {
+        info!("execute 'refresh' on index '{}'", index.name);
         self.refresh_index(index.name.clone())
             .await
             .map_err(|err| StorageError::IndexPublicationError {
@@ -180,14 +197,6 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
 
         for index_name in previous_indices {
             self.delete_container(index_name).await?;
-        }
-
-        if self.config.force_merge.enabled {
-            self.force_merge(&[&index.name], &self.config.force_merge)
-                .await
-                .map_err(|err| StorageError::ForceMergeError {
-                    source: Box::new(err),
-                })?;
         }
 
         Ok(())
