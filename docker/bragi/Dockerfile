@@ -46,7 +46,8 @@ WORKDIR /srv
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update
-RUN apt-get install -y curl libcurl4 sqlite3 # curl required for healthchecks
+# curl required for healthchecks
+RUN apt-get install -y curl libcurl4 sqlite3 
 RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
