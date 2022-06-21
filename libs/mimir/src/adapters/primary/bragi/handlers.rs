@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
@@ -127,7 +127,7 @@ pub fn build_feature(
 
 #[instrument(skip(ctx))]
 pub async fn forward_geocoder<C>(
-    ctx: Arc<Context<C>>,
+    ctx: Context<C>,
     params: ForwardGeocoderQuery,
     geometry: Option<Geometry>,
 ) -> Result<impl warp::Reply, warp::Rejection>
@@ -208,7 +208,7 @@ where
 
 #[instrument(skip(ctx))]
 pub async fn forward_geocoder_explain<C>(
-    ctx: Arc<Context<C>>,
+    ctx: Context<C>,
     params: ForwardGeocoderExplainQuery,
     geometry: Option<Geometry>,
 ) -> Result<impl warp::Reply, warp::Rejection>
@@ -245,7 +245,7 @@ where
 }
 
 pub async fn reverse_geocoder<C>(
-    ctx: Arc<Context<C>>,
+    ctx: Context<C>,
     params: ReverseGeocoderQuery,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
@@ -286,7 +286,7 @@ where
     Ok(with_status(json(&resp), StatusCode::OK))
 }
 
-pub async fn status<C>(ctx: Arc<Context<C>>) -> Result<impl warp::Reply, warp::Rejection>
+pub async fn status<C>(ctx: Context<C>) -> Result<impl warp::Reply, warp::Rejection>
 where
     C: Status,
 {
