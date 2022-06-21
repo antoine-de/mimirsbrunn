@@ -90,6 +90,12 @@ zip = { version = "0.5.13", default_features = false }
 [build-dependencies]
 json = "0.12"
 
+[profile.production]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = "debuginfo"
+
 [[bin]]
 name = "bragi"
 path = "src/bragi/main.rs"

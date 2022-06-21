@@ -95,30 +95,21 @@ impl OpenAddress {
             context: None,
         };
 
-        let id_suffix = format!(
-            ":{}",
-            self.number
-                .replace(' ', "")
-                .replace('\t', "")
-                .replace('\r', "")
-                .replace('\n', "")
-                .replace('/', "-")
-                .replace('.', "-")
-                .replace(':', "-")
-                .replace(';', "-")
-        );
+        let id_suffix = (self.number)
+            .replace([' ', '\t', '\r', '\n'], "")
+            .replace(['/', '.', ':', ';'], "-");
 
         let id = {
             if id_precision > 0 {
                 format!(
-                    "addr:{:.precision$};{:.precision$}{}",
+                    "addr:{:.precision$};{:.precision$}:{}",
                     self.lon,
                     self.lat,
                     id_suffix,
                     precision = id_precision
                 )
             } else {
-                format!("addr:{};{}{}", self.lon, self.lat, id_suffix)
+                format!("addr:{};{}:{}", self.lon, self.lat, id_suffix)
             }
         };
 
