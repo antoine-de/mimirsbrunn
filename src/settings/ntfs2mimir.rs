@@ -28,6 +28,11 @@ pub struct Settings {
     pub physical_mode_weight: Option<Vec<PhysicalModeWeight>>,
     #[serde(default)]
     pub update_templates: bool,
+
+    pub french_id_retrocompatibility: bool,
+    pub langs: Vec<String>,
+
+    pub cosmogony_file : Option<PathBuf>
 }
 
 #[derive(Debug, clap::Parser)]

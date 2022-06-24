@@ -80,7 +80,7 @@ async fn run(
         &settings.elasticsearch.url
     );
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
-        .conn(settings.elasticsearch)
+        .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
@@ -93,9 +93,8 @@ async fn run(
     }
 
     mimirsbrunn::stops::index_ntfs(
-        opts.input,
-        &settings.container,
-        &settings.physical_mode_weight,
+        &opts.input,
+        &settings,
         &client,
     )
     .await

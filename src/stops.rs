@@ -33,10 +33,10 @@
 use futures::stream::{Stream, TryStreamExt};
 use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use snafu::{ResultExt, Snafu};
-use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, ops::Deref, path::{PathBuf, Path}, sync::Arc};
 use tracing::{info, warn};
 
-use crate::{admin_geofinder::AdminGeoFinder, labels};
+use crate::{admin_geofinder::AdminGeoFinder, labels, admin::read_admin_in_cosmogony_file, settings::ntfs2mimir::Settings};
 use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
     domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
@@ -170,7 +170,7 @@ fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
 /// The admins are loaded from Elasticsearch and stored in a quadtree
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
-async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
+async fn attach_stops_to_admins_from_es<'a, It: Iterator<Item = &'a mut Stop>>(
     stops: It,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
@@ -184,34 +184,50 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
                 });
             }
             info!("{} admins retrieved from ES ", admins.len());
-            let admins_geofinder = admins.into_iter().collect::<AdminGeoFinder>();
-
-            let mut nb_unmatched = 0u32;
-            let mut nb_matched = 0u32;
-            // FIXME Opportunity for concurrent work
-            for stop in stops {
-                let admins = admins_geofinder.get(&stop.coord);
-
-                if admins.is_empty() {
-                    nb_unmatched += 1;
-                } else {
-                    nb_matched += 1;
-                }
-
-                attach_stop(stop, admins);
-            }
-
-            info!(
-                "there are {}/{} stops without any admin",
-                nb_unmatched,
-                nb_matched + nb_unmatched
-            );
-            Ok(())
+            attach_stops_to_admins_from_iter(stops, admins.into_iter())
         }
         Err(_) => Err(Error::AdminRetrieval {
             details: String::from("Could not retrieve admins to enrich stops"),
         }),
     }
+}
+
+
+/// Attach the stops to administrative regions
+///
+/// The admins are stored in a quadtree
+/// We attach a stop with all the admins that have a boundary containing
+/// the coordinate of the stop
+fn attach_stops_to_admins_from_iter<'stop, StopIter, AdminIter>(
+    stops: StopIter,
+    admins : AdminIter,
+) -> Result<(), Error> 
+where 
+StopIter: Iterator<Item = &'stop mut Stop>,
+AdminIter : Iterator<Item = Admin>,
+
+{
+    let mut nb_unmatched = 0;
+    let mut nb_matched = 0; 
+    let admins_geofinder = admins.collect::<AdminGeoFinder>();
+    for stop in stops {
+        let admins = admins_geofinder.get(&stop.coord);
+
+        if admins.is_empty() {
+            nb_unmatched += 1;
+        } else {
+            nb_matched += 1;
+        }
+
+        attach_stop(stop, admins);
+    }
+
+    info!(
+        "there are {}/{} stops without any admin",
+        nb_unmatched,
+        nb_matched + nb_unmatched
+    );
+    Ok(())
 }
 
 /// Stores the stops found in the 'input' directory, in Elasticsearch, with the given
@@ -220,9 +236,8 @@ async fn attach_stops_to_admins<'a, It: Iterator<Item = &'a mut Stop>>(
 /// The main part of this function is to actually create a list of stops
 /// from the information found in the NTFS directory.
 pub async fn index_ntfs(
-    input: PathBuf,
-    config: &ContainerConfig,
-    physical_mode_weight: &Option<Vec<PhysicalModeWeight>>,
+    input: &Path,
+    settings : &Settings,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
@@ -234,7 +249,7 @@ pub async fn index_ntfs(
     })?;
 
     info!("Build stops weight by physical modes");
-    let stop_areas_weights = build_stop_area_weight(&navitia, physical_mode_weight);
+    let stop_areas_weights = build_stop_area_weight(&navitia, &settings.physical_mode_weight);
 
     info!("Make mimir stops from navitia stops");
     let mut stops: Vec<Stop> = navitia
@@ -244,15 +259,23 @@ pub async fn index_ntfs(
         .collect();
 
     info!("Attach stops to admins");
-    attach_stops_to_admins(stops.iter_mut(), client).await?;
+    if let Some(cosmogony_file_path) = &settings.cosmogony_file {
+        let admins = read_admin_in_cosmogony_file(&cosmogony_file_path, settings.langs.clone(), settings.french_id_retrocompatibility)
+            .map_err(|err| Error::AdminRetrieval { details: err.to_string() })?;
+        attach_stops_to_admins_from_iter(stops.iter_mut(), admins)?;
+    }
+    else {
+        attach_stops_to_admins_from_es(stops.iter_mut(), client).await?;
+    }
+    
 
     for stop in &mut stops {
-        stop.coverages.push(config.dataset.clone());
+        stop.coverages.push(settings.container.dataset.clone());
         make_weight(stop, &stop_areas_weights);
     }
 
     tracing::info!("Beginning to import stops into elasticsearch.");
-    import_stops(client, config, futures::stream::iter(stops)).await
+    import_stops(client, &settings.container, futures::stream::iter(stops)).await
 }
 
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
