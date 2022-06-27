@@ -12,8 +12,9 @@ use mimir::{
     },
 };
 use mimirsbrunn::{
-    admin_geofinder::AdminGeoFinder, osm_reader::street::streets, settings::osm2mimir as settings,
-    utils::template::update_templates, admin::read_admin_in_cosmogony_file,
+    admin::read_admin_in_cosmogony_file, admin_geofinder::AdminGeoFinder,
+    osm_reader::street::streets, settings::osm2mimir as settings,
+    utils::template::update_templates,
 };
 
 #[derive(Debug, Snafu)]
@@ -95,32 +96,33 @@ async fn run(
         update_templates(&client, opts.config_dir).await?;
     }
 
-    let admins_geofinder: AdminGeoFinder = if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-        read_admin_in_cosmogony_file(
-            &cosmogony_file_path,
-            settings.langs.clone(),
-            settings.french_id_retrocompatibility,
-        )
-        .map_err(|err| Error::AdminRetrieval {
-            details: err.to_string(),
-        })?
-        .collect()
-
-    } else {
-        match client.list_documents().await {
-            Ok(stream) => {
-                stream
-                    .map(|admin| admin.expect("could not parse admin"))
-                    .collect()
-                    .await
+    let admins_geofinder: AdminGeoFinder =
+        if let Some(cosmogony_file_path) = &settings.cosmogony_file {
+            read_admin_in_cosmogony_file(
+                &cosmogony_file_path,
+                settings.langs.clone(),
+                settings.french_id_retrocompatibility,
+            )
+            .map_err(|err| Error::AdminRetrieval {
+                details: err.to_string(),
+            })?
+            .collect()
+        } else {
+            match client.list_documents().await {
+                Ok(stream) => {
+                    stream
+                        .map(|admin| admin.expect("could not parse admin"))
+                        .collect()
+                        .await
+                }
+                Err(err) => {
+                    warn!("administratives regions not found in es db. {:?}", err);
+                    return Err(Box::new(Error::AdminRetrieval {
+                        details: err.to_string(),
+                    }));
+                }
             }
-            Err(err) => {
-                warn!("administratives regions not found in es db. {:?}", err);
-                return Err(Box::new(Error::AdminRetrieval { details: err.to_string() }));
-            }
-        }
-
-    };
+        };
 
     if settings.streets.import {
         let streets = streets(

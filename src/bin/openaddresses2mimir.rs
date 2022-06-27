@@ -39,8 +39,9 @@ use mimir::{
     domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
 };
 use mimirsbrunn::{
-    addr_reader::import_addresses_from_input_path, openaddresses::OpenAddress,
-    settings::openaddresses2mimir as settings, utils::template::update_templates, admin::read_admin_in_cosmogony_file,
+    addr_reader::import_addresses_from_input_path, admin::read_admin_in_cosmogony_file,
+    openaddresses::OpenAddress, settings::openaddresses2mimir as settings,
+    utils::template::update_templates,
 };
 use places::admin::Admin;
 
@@ -107,32 +108,29 @@ async fn run(
 
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        
         let admins: Vec<Admin> = if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-                read_admin_in_cosmogony_file(
-                    &cosmogony_file_path,
-                    settings.langs.clone(),
-                    settings.french_id_retrocompatibility,
-                )
-                .map_err(|err| Error::AdminRetrieval {
-                    details: err.to_string(),
-                })?
-                .collect()
-
-            } else {
-                match client.list_documents().await {
-                    Ok(stream) => {
-                        stream
-                            .map(|admin| admin.expect("could not parse admin"))
-                            .collect()
-                            .await
-                    }
-                    Err(err) => {
-                        warn!("administratives regions not found in es db. {:?}", err);
-                        Vec::new()
-                    }
+            read_admin_in_cosmogony_file(
+                &cosmogony_file_path,
+                settings.langs.clone(),
+                settings.french_id_retrocompatibility,
+            )
+            .map_err(|err| Error::AdminRetrieval {
+                details: err.to_string(),
+            })?
+            .collect()
+        } else {
+            match client.list_documents().await {
+                Ok(stream) => {
+                    stream
+                        .map(|admin| admin.expect("could not parse admin"))
+                        .collect()
+                        .await
+                }
+                Err(err) => {
+                    warn!("administratives regions not found in es db. {:?}", err);
+                    Vec::new()
+                }
             }
-        
         };
         let admins_geofinder = admins.into_iter().collect();
         let id_precision = settings.coordinates.id_precision;

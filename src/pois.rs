@@ -37,7 +37,9 @@ use snafu::{ResultExt, Snafu};
 use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
 use tracing::{instrument, warn};
 
-use crate::{admin_geofinder::AdminGeoFinder, labels, admin::read_admin_in_cosmogony_file, settings};
+use crate::{
+    admin::read_admin_in_cosmogony_file, admin_geofinder::AdminGeoFinder, labels, settings,
+};
 use common::document::ContainerDocument;
 use mimir::{
     adapters::{
@@ -119,33 +121,33 @@ pub async fn index_pois(
             ),
         })?;
 
-
-    let admins_geofinder: AdminGeoFinder = if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-        read_admin_in_cosmogony_file(
-            &cosmogony_file_path,
-            settings.langs.clone(),
-            settings.french_id_retrocompatibility,
-        )
-        .map_err(|err| Error::AdminRetrieval {
-            details: err.to_string(),
-        })?
-        .collect()
-
-    } else {
-        match client.list_documents().await {
-            Ok(stream) => {
-                stream
-                    .map(|admin| admin.expect("could not parse admin"))
-                    .collect()
-                    .await
+    let admins_geofinder: AdminGeoFinder =
+        if let Some(cosmogony_file_path) = &settings.cosmogony_file {
+            read_admin_in_cosmogony_file(
+                &cosmogony_file_path,
+                settings.langs.clone(),
+                settings.french_id_retrocompatibility,
+            )
+            .map_err(|err| Error::AdminRetrieval {
+                details: err.to_string(),
+            })?
+            .collect()
+        } else {
+            match client.list_documents().await {
+                Ok(stream) => {
+                    stream
+                        .map(|admin| admin.expect("could not parse admin"))
+                        .collect()
+                        .await
+                }
+                Err(err) => {
+                    warn!("administratives regions not found in es db. {:?}", err);
+                    return Err(Error::AdminRetrieval {
+                        details: err.to_string(),
+                    });
+                }
             }
-            Err(err) => {
-                warn!("administratives regions not found in es db. {:?}", err);
-                return Err(Error::AdminRetrieval { details: err.to_string() });
-            }
-        }
-
-    };
+        };
 
     let admins_geofinder = Arc::new(admins_geofinder);
 
