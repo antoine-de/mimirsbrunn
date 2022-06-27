@@ -240,23 +240,35 @@ pub async fn index_ntfs(
     settings : &Settings,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
-    let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
-        details: format!(
-            "Could not read transit model from {}: {}",
-            input.display(),
-            err
-        ),
-    })?;
 
-    info!("Build stops weight by physical modes");
-    let stop_areas_weights = build_stop_area_weight(&navitia, &settings.physical_mode_weight);
+    let mut stops = {
+        let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
+            details: format!(
+                "Could not read transit model from {}: {}",
+                input.display(),
+                err
+            ),
+        })?;
+    
+        info!("Build stops weight by physical modes");
+        let stop_areas_weights = build_stop_area_weight(&navitia, &settings.physical_mode_weight);
+    
+        info!("Make mimir stops from navitia stops");
+        let mut stops: Vec<Stop> = navitia
+            .stop_areas
+            .iter()
+            .map(|(idx, sa)| places::stop::to_mimir(idx, sa, &navitia))
+            .collect();
 
-    info!("Make mimir stops from navitia stops");
-    let mut stops: Vec<Stop> = navitia
-        .stop_areas
-        .iter()
-        .map(|(idx, sa)| places::stop::to_mimir(idx, sa, &navitia))
-        .collect();
+        info!("Make weights for stops");
+        for stop in &mut stops {
+            stop.coverages.push(settings.container.dataset.clone());
+            make_weight(stop, &stop_areas_weights);
+        }
+
+        stops
+    };
+    
 
     info!("Attach stops to admins");
     if let Some(cosmogony_file_path) = &settings.cosmogony_file {
@@ -268,12 +280,6 @@ pub async fn index_ntfs(
         attach_stops_to_admins_from_es(stops.iter_mut(), client).await?;
     }
     
-
-    info!("Make weights for stops");
-    for stop in &mut stops {
-        stop.coverages.push(settings.container.dataset.clone());
-        make_weight(stop, &stop_areas_weights);
-    }
 
     tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, &settings.container, futures::stream::iter(stops)).await
