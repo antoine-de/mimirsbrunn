@@ -37,7 +37,7 @@ use snafu::{ResultExt, Snafu};
 use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
 use tracing::{instrument, warn};
 
-use crate::{admin_geofinder::AdminGeoFinder, labels};
+use crate::{admin_geofinder::AdminGeoFinder, labels, admin::read_admin_in_cosmogony_file, settings};
 use common::document::ContainerDocument;
 use mimir::{
     adapters::{
@@ -91,11 +91,14 @@ pub enum Error {
     #[snafu(display("Unrecognized Poi Type {}", details))]
     UnrecognizedPoiType { details: String },
 
-    #[snafu(display("No Address Fonud {}", details))]
+    #[snafu(display("No Address Found {}", details))]
     NoAddressFound { details: String },
 
-    #[snafu(display("No Admin Fonud {}", details))]
+    #[snafu(display("No Admin Found {}", details))]
     NoAdminFound { details: String },
+
+    #[snafu(display("Admin Retrieval Error {}", details))]
+    AdminRetrieval { details: String },
 }
 
 /// Stores the pois found in the 'input' file, in Elasticsearch, with the given configuration.
@@ -105,7 +108,7 @@ pub enum Error {
 pub async fn index_pois(
     input: PathBuf,
     client: &ElasticsearchStorage,
-    config: ContainerConfig,
+    settings: settings::poi2mimir::Settings,
 ) -> Result<(), Error> {
     let NavitiaModel { pois, poi_types } =
         NavitiaModel::try_from_path(&input).map_err(|err| Error::NavitiaModelExtraction {
@@ -116,21 +119,34 @@ pub async fn index_pois(
             ),
         })?;
 
-    let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
-        Ok(stream) => {
-            stream
-                .map(|admin| admin.expect("could not parse admin"))
-                .collect()
-                .await
+
+    let admins_geofinder: AdminGeoFinder = if let Some(cosmogony_file_path) = &settings.cosmogony_file {
+        read_admin_in_cosmogony_file(
+            &cosmogony_file_path,
+            settings.langs.clone(),
+            settings.french_id_retrocompatibility,
+        )
+        .map_err(|err| Error::AdminRetrieval {
+            details: err.to_string(),
+        })?
+        .collect()
+
+    } else {
+        match client.list_documents().await {
+            Ok(stream) => {
+                stream
+                    .map(|admin| admin.expect("could not parse admin"))
+                    .collect()
+                    .await
+            }
+            Err(err) => {
+                warn!("administratives regions not found in es db. {:?}", err);
+                return Err(Error::AdminRetrieval { details: err.to_string() });
+            }
         }
-        Err(err) => {
-            warn!(
-                "administratives regions not found in Elasticsearch. {:?}",
-                err
-            );
-            std::iter::empty().collect()
-        }
+
     };
+
     let admins_geofinder = Arc::new(admins_geofinder);
 
     let poi_types = Arc::new(poi_types);
@@ -145,7 +161,7 @@ pub async fn index_pois(
         .collect()
         .await;
 
-    import_pois(client, config, futures::stream::iter(pois)).await
+    import_pois(client, settings.container, futures::stream::iter(pois)).await
 }
 
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex

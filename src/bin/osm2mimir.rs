@@ -118,9 +118,9 @@ async fn run(
                 warn!("administratives regions not found in es db. {:?}", err);
                 return Err(Box::new(Error::AdminRetrieval { details: err.to_string() }));
             }
-    }
+        }
 
-};
+    };
 
     if settings.streets.import {
         let streets = streets(
