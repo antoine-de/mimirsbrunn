@@ -187,7 +187,8 @@ async fn attach_stops_to_admins_from_es<'a, It: Iterator<Item = &'a mut Stop>>(
                 });
             }
             info!("{} admins retrieved from ES ", admins.len());
-            attach_stops_to_admins_from_iter(stops, admins.into_iter())
+            attach_stops_to_admins_from_iter(stops, admins.into_iter());
+            Ok(())
         }
         Err(_) => Err(Error::AdminRetrieval {
             details: String::from("Could not retrieve admins to enrich stops"),
@@ -203,7 +204,7 @@ async fn attach_stops_to_admins_from_es<'a, It: Iterator<Item = &'a mut Stop>>(
 fn attach_stops_to_admins_from_iter<'stop, StopIter, AdminIter>(
     stops: StopIter,
     admins: AdminIter,
-) -> Result<(), Error>
+) 
 where
     StopIter: Iterator<Item = &'stop mut Stop>,
     AdminIter: Iterator<Item = Admin>,
@@ -228,7 +229,6 @@ where
         nb_unmatched,
         nb_matched + nb_unmatched
     );
-    Ok(())
 }
 
 /// Stores the stops found in the 'input' directory, in Elasticsearch, with the given
@@ -272,14 +272,14 @@ pub async fn index_ntfs(
     info!("Attach stops to admins");
     if let Some(cosmogony_file_path) = &settings.cosmogony_file {
         let admins = read_admin_in_cosmogony_file(
-            &cosmogony_file_path,
+            cosmogony_file_path,
             settings.langs.clone(),
             settings.french_id_retrocompatibility,
         )
         .map_err(|err| Error::AdminRetrieval {
             details: err.to_string(),
         })?;
-        attach_stops_to_admins_from_iter(stops.iter_mut(), admins)?;
+        attach_stops_to_admins_from_iter(stops.iter_mut(), admins);
     } else {
         attach_stops_to_admins_from_es(stops.iter_mut(), client).await?;
     }
