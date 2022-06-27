@@ -201,10 +201,7 @@ async fn attach_stops_to_admins_from_es<'a, It: Iterator<Item = &'a mut Stop>>(
 /// The admins are stored in a quadtree
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
-fn attach_stops_to_admins_from_iter<'stop, StopIter, AdminIter>(
-    stops: StopIter,
-    admins: AdminIter,
-) 
+fn attach_stops_to_admins_from_iter<'stop, StopIter, AdminIter>(stops: StopIter, admins: AdminIter)
 where
     StopIter: Iterator<Item = &'stop mut Stop>,
     AdminIter: Iterator<Item = Admin>,
