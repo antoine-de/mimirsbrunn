@@ -124,7 +124,7 @@ pub async fn index_pois(
     let admins_geofinder: AdminGeoFinder =
         if let Some(cosmogony_file_path) = &settings.cosmogony_file {
             read_admin_in_cosmogony_file(
-                &cosmogony_file_path,
+                cosmogony_file_path,
                 settings.langs.clone(),
                 settings.french_id_retrocompatibility,
             )
