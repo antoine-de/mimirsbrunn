@@ -200,7 +200,6 @@ fn read_zones(path: &Path) -> Result<impl Iterator<Item = Zone> + Send + Sync, E
     Ok(iter)
 }
 
-
 pub async fn index_cosmogony(
     path: &Path,
     langs: Vec<String>,
@@ -212,14 +211,11 @@ pub async fn index_cosmogony(
     import_admins(client, config, futures::stream::iter(admins)).await
 }
 
-
-
-
 pub fn read_admin_in_cosmogony_file(
     path: &Path,
     langs: Vec<String>,
     french_id_retrocompatibility: bool,
-) -> Result<impl Iterator<Item=Admin>, Error> {
+) -> Result<impl Iterator<Item = Admin>, Error> {
     info!("building map cosmogony id => osm id");
     let mut cosmogony_id_to_osm_id = BTreeMap::new();
     let max_weight = places::admin::ADMIN_MAX_WEIGHT;
@@ -247,7 +243,7 @@ pub fn read_admin_in_cosmogony_file(
         })
         .collect::<HashMap<_, _>>();
 
-    let admins  = read_zones(path)?.map(move |z| {
+    let admins = read_zones(path)?.map(move |z| {
         z.into_admin(
             &cosmogony_id_to_osm_id,
             &langs,

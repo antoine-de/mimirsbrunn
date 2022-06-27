@@ -33,10 +33,13 @@
 use futures::stream::{Stream, TryStreamExt};
 use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use snafu::{ResultExt, Snafu};
-use std::{collections::HashMap, ops::Deref, path::{Path}, sync::Arc};
+use std::{collections::HashMap, ops::Deref, path::Path, sync::Arc};
 use tracing::{info, warn};
 
-use crate::{admin_geofinder::AdminGeoFinder, labels, admin::read_admin_in_cosmogony_file, settings::ntfs2mimir::Settings};
+use crate::{
+    admin::read_admin_in_cosmogony_file, admin_geofinder::AdminGeoFinder, labels,
+    settings::ntfs2mimir::Settings,
+};
 use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
     domain::ports::primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
@@ -192,7 +195,6 @@ async fn attach_stops_to_admins_from_es<'a, It: Iterator<Item = &'a mut Stop>>(
     }
 }
 
-
 /// Attach the stops to administrative regions
 ///
 /// The admins are stored in a quadtree
@@ -200,15 +202,14 @@ async fn attach_stops_to_admins_from_es<'a, It: Iterator<Item = &'a mut Stop>>(
 /// the coordinate of the stop
 fn attach_stops_to_admins_from_iter<'stop, StopIter, AdminIter>(
     stops: StopIter,
-    admins : AdminIter,
-) -> Result<(), Error> 
-where 
-StopIter: Iterator<Item = &'stop mut Stop>,
-AdminIter : Iterator<Item = Admin>,
-
+    admins: AdminIter,
+) -> Result<(), Error>
+where
+    StopIter: Iterator<Item = &'stop mut Stop>,
+    AdminIter: Iterator<Item = Admin>,
 {
     let mut nb_unmatched = 0;
-    let mut nb_matched = 0; 
+    let mut nb_matched = 0;
     let admins_geofinder = admins.collect::<AdminGeoFinder>();
     for stop in stops {
         let admins = admins_geofinder.get(&stop.coord);
@@ -237,10 +238,9 @@ AdminIter : Iterator<Item = Admin>,
 /// from the information found in the NTFS directory.
 pub async fn index_ntfs(
     input: &Path,
-    settings : &Settings,
+    settings: &Settings,
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
-
     let mut stops = {
         let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
             details: format!(
@@ -249,10 +249,10 @@ pub async fn index_ntfs(
                 err
             ),
         })?;
-    
+
         info!("Build stops weight by physical modes");
         let stop_areas_weights = build_stop_area_weight(&navitia, &settings.physical_mode_weight);
-    
+
         info!("Make mimir stops from navitia stops");
         let mut stops: Vec<Stop> = navitia
             .stop_areas
@@ -268,18 +268,21 @@ pub async fn index_ntfs(
 
         stops
     };
-    
 
     info!("Attach stops to admins");
     if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-        let admins = read_admin_in_cosmogony_file(&cosmogony_file_path, settings.langs.clone(), settings.french_id_retrocompatibility)
-            .map_err(|err| Error::AdminRetrieval { details: err.to_string() })?;
+        let admins = read_admin_in_cosmogony_file(
+            &cosmogony_file_path,
+            settings.langs.clone(),
+            settings.french_id_retrocompatibility,
+        )
+        .map_err(|err| Error::AdminRetrieval {
+            details: err.to_string(),
+        })?;
         attach_stops_to_admins_from_iter(stops.iter_mut(), admins)?;
-    }
-    else {
+    } else {
         attach_stops_to_admins_from_es(stops.iter_mut(), client).await?;
     }
-    
 
     tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, &settings.container, futures::stream::iter(stops)).await

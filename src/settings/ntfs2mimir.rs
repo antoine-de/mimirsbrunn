@@ -35,7 +35,7 @@ pub struct Settings {
     #[serde(default = "default_langs")]
     pub langs: Vec<String>,
 
-    pub cosmogony_file : Option<PathBuf>
+    pub cosmogony_file: Option<PathBuf>,
 }
 
 pub fn default_langs() -> Vec<String> {

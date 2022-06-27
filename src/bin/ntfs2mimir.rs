@@ -92,14 +92,10 @@ async fn run(
         update_templates(&client, opts.config_dir).await?;
     }
 
-    mimirsbrunn::stops::index_ntfs(
-        &opts.input,
-        &settings,
-        &client,
-    )
-    .await
-    .context(ImportSnafu)
-    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    mimirsbrunn::stops::index_ntfs(&opts.input, &settings, &client)
+        .await
+        .context(ImportSnafu)
+        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]
