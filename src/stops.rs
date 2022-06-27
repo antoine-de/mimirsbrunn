@@ -33,7 +33,7 @@
 use futures::stream::{Stream, TryStreamExt};
 use mimir::domain::model::configuration::{ContainerConfig, PhysicalModeWeight};
 use snafu::{ResultExt, Snafu};
-use std::{collections::HashMap, ops::Deref, path::{PathBuf, Path}, sync::Arc};
+use std::{collections::HashMap, ops::Deref, path::{Path}, sync::Arc};
 use tracing::{info, warn};
 
 use crate::{admin_geofinder::AdminGeoFinder, labels, admin::read_admin_in_cosmogony_file, settings::ntfs2mimir::Settings};
