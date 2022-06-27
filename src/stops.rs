@@ -269,6 +269,7 @@ pub async fn index_ntfs(
     }
     
 
+    info!("Make weights for stops");
     for stop in &mut stops {
         stop.coverages.push(settings.container.dataset.clone());
         make_weight(stop, &stop_areas_weights);

@@ -247,7 +247,6 @@ pub fn read_admin_in_cosmogony_file(
         })
         .collect::<HashMap<_, _>>();
 
-    info!("importing admins into Elasticsearch");
     let admins  = read_zones(path)?.map(move |z| {
         z.into_admin(
             &cosmogony_id_to_osm_id,
