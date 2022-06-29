@@ -32,7 +32,7 @@ use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimirsbrunn::{
-    addr_reader::import_addresses_from_input_path, utils::template::update_templates,
+    addr_reader::import_addresses_from_input_path, utils::template::update_templates, admin::read_admin_in_cosmogony_file,
 };
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
@@ -65,6 +65,9 @@ pub enum Error {
     IndexCreation {
         source: mimir::domain::model::error::Error,
     },
+
+    #[snafu(display("Admin Retrieval Error {}", details))]
+    AdminRetrieval { details: String },
 }
 
 fn main() -> Result<(), Error> {
@@ -105,18 +108,33 @@ async fn run(
     // Lets say we're indexing a single bano department.... we don't need to retrieve
     // the admins for other regions!
     let into_addr = {
-        let admins: Vec<Admin> = match client.list_documents().await {
-            Ok(admins) => {
-                admins
-                    .map(|admin| admin.expect("could not parse admin"))
-                    .collect()
-                    .await
-            }
-            Err(err) => {
-                warn!("administratives regions not found in es db. {:?}", err);
-                Vec::new()
+        let admins : Vec<Admin> =  if let Some(cosmogony_file_path) = &settings.cosmogony_file {
+            read_admin_in_cosmogony_file(
+                cosmogony_file_path,
+                settings.langs.clone(),
+                settings.french_id_retrocompatibility,
+            )
+            .map_err(|err| Error::AdminRetrieval {
+                details: err.to_string(),
+            })?
+            .collect()
+        } else {
+            match client.list_documents().await {
+                Ok(stream) => {
+                    stream
+                        .map(|admin| admin.expect("could not parse admin"))
+                        .collect()
+                        .await
+                }
+                Err(err) => {
+                    warn!("administratives regions not found in es db. {:?}", err);
+                    return Err(Box::new(Error::AdminRetrieval {
+                        details: err.to_string(),
+                    }));
+                }
             }
         };
+       
 
         let admins_by_insee = admins
             .iter()

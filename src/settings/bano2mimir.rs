@@ -36,6 +36,17 @@ pub struct Settings {
     pub nb_threads: Option<usize>,
     #[serde(default)]
     pub update_templates: bool,
+
+    #[serde(default)]
+    pub french_id_retrocompatibility: bool,
+
+    #[serde(default = "default_langs")]
+    pub langs: Vec<String>,
+    pub cosmogony_file: Option<PathBuf>,
+}
+
+pub fn default_langs() -> Vec<String> {
+    vec!["fr".to_string()]
 }
 
 #[derive(Debug, clap::Parser)]
