@@ -29,21 +29,18 @@
 // www.navitia.io
 
 use clap::Parser;
-use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use snafu::{ResultExt, Snafu};
-use tracing::{info, warn};
+use tracing::info;
 
-use mimir::{
-    adapters::secondary::elasticsearch,
-    domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
-};
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::{
-    addr_reader::import_addresses_from_input_path, admin::read_admin_in_cosmogony_file,
-    openaddresses::OpenAddress, settings::openaddresses2mimir as settings,
+    addr_reader::import_addresses_from_input_path,
+    admin_geofinder::AdminGeoFinder,
+    openaddresses::OpenAddress,
+    settings::{admin_settings::AdminSettings, openaddresses2mimir as settings},
     utils::template::update_templates,
 };
-use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -108,31 +105,8 @@ async fn run(
 
     // Fetch and index admins for `into_addr`
     let into_addr = {
-        let admins: Vec<Admin> = if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-            read_admin_in_cosmogony_file(
-                cosmogony_file_path,
-                settings.langs.clone(),
-                settings.french_id_retrocompatibility,
-            )
-            .map_err(|err| Error::AdminRetrieval {
-                details: err.to_string(),
-            })?
-            .collect()
-        } else {
-            match client.list_documents().await {
-                Ok(stream) => {
-                    stream
-                        .map(|admin| admin.expect("could not parse admin"))
-                        .collect()
-                        .await
-                }
-                Err(err) => {
-                    warn!("administratives regions not found in es db. {:?}", err);
-                    Vec::new()
-                }
-            }
-        };
-        let admins_geofinder = admins.into_iter().collect();
+        let admin_settings = AdminSettings::build(&settings.admins);
+        let admins_geofinder = AdminGeoFinder::build(&admin_settings, &client).await?;
         let id_precision = settings.coordinates.id_precision;
         move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
     };

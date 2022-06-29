@@ -1,14 +1,13 @@
 nb_threads = 2
 update_templates = true
 
-# If a cosmogony_file is configured, openaddresses2mimir will read the admins from this file.
-# If such a file is not configured, openaddresses2mimir will read the admins from elasticsearch
-
+# If the admins sections is present, the admins will be read in the cosmogony file.
+# Otherwise, admins will be fetched  from elasticsearch
+# [admins]
 # cosmogony_file = "/home/pascal/mimirsbrunn/cosmogony-europe.jsonl.gz"
-
 # configuration for reading the cosmogony file
-french_id_retrocompatibility = true
-langs = [ "fr" ]
+# french_id_retrocompatibility = true
+# langs = [ "fr" ]
 
 [container]
   name = "addr"

@@ -29,22 +29,16 @@
 // www.navitia.io
 
 use clap::Parser;
-use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimirsbrunn::{
-    addr_reader::import_addresses_from_input_path, admin::read_admin_in_cosmogony_file,
-    utils::template::update_templates,
+    addr_reader::import_addresses_from_input_path, admin::fetch_admins,
+    settings::admin_settings::AdminSettings, utils::template::update_templates,
 };
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
-use tracing::warn;
 
-use mimir::{
-    adapters::secondary::elasticsearch,
-    domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
-};
+use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::{bano::Bano, settings::bano2mimir as settings};
-use places::admin::Admin;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -109,32 +103,8 @@ async fn run(
     // Lets say we're indexing a single bano department.... we don't need to retrieve
     // the admins for other regions!
     let into_addr = {
-        let admins: Vec<Admin> = if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-            read_admin_in_cosmogony_file(
-                cosmogony_file_path,
-                settings.langs.clone(),
-                settings.french_id_retrocompatibility,
-            )
-            .map_err(|err| Error::AdminRetrieval {
-                details: err.to_string(),
-            })?
-            .collect()
-        } else {
-            match client.list_documents().await {
-                Ok(stream) => {
-                    stream
-                        .map(|admin| admin.expect("could not parse admin"))
-                        .collect()
-                        .await
-                }
-                Err(err) => {
-                    warn!("administratives regions not found in es db. {:?}", err);
-                    return Err(Box::new(Error::AdminRetrieval {
-                        details: err.to_string(),
-                    }));
-                }
-            }
-        };
+        let admin_settings = AdminSettings::build(&settings.admins);
+        let admins = fetch_admins(&admin_settings, &client).await?;
 
         let admins_by_insee = admins
             .iter()
@@ -173,7 +143,7 @@ mod tests {
         domain::ports::primary::list_documents::ListDocuments,
         utils::docker,
     };
-    use mimirsbrunn::settings::bano2mimir as settings;
+    use mimirsbrunn::settings::{admin_settings::AdminFromCosmogonyFile, bano2mimir as settings};
     use places::addr::Addr;
     use serial_test::serial;
 
@@ -210,7 +180,11 @@ mod tests {
         .iter()
         .collect();
 
-        settings.cosmogony_file = Some(cosmogony_file);
+        settings.admins = Some(AdminFromCosmogonyFile {
+            french_id_retrocompatibility: false,
+            langs: vec!["fr".to_string()],
+            cosmogony_file,
+        });
         let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
         assert!(_res.is_ok());
 

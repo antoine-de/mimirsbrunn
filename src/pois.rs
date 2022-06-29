@@ -14,7 +14,7 @@
 // version 3 of the License, or (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
+// WITHOUT ANY WA&RRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 // Affero General Public License for more details.
 //
@@ -35,10 +35,13 @@ use mimir::domain::model::configuration::root_doctype;
 use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as NavitiaPoiType};
 use snafu::{ResultExt, Snafu};
 use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
-use tracing::{instrument, warn};
+use tracing::instrument;
 
 use crate::{
-    admin::read_admin_in_cosmogony_file, admin_geofinder::AdminGeoFinder, labels, settings,
+    admin,
+    admin_geofinder::AdminGeoFinder,
+    labels,
+    settings::{self, admin_settings::AdminSettings},
 };
 use common::document::ContainerDocument;
 use mimir::{
@@ -48,10 +51,7 @@ use mimir::{
     },
     domain::{
         model::{configuration::ContainerConfig, query::Query},
-        ports::primary::{
-            generate_index::GenerateIndex, list_documents::ListDocuments,
-            search_documents::SearchDocuments,
-        },
+        ports::primary::{generate_index::GenerateIndex, search_documents::SearchDocuments},
     },
 };
 use places::{
@@ -100,7 +100,7 @@ pub enum Error {
     NoAdminFound { details: String },
 
     #[snafu(display("Admin Retrieval Error {}", details))]
-    AdminRetrieval { details: String },
+    AdminRetrieval { details: admin::Error },
 }
 
 /// Stores the pois found in the 'input' file, in Elasticsearch, with the given configuration.
@@ -121,33 +121,11 @@ pub async fn index_pois(
             ),
         })?;
 
-    let admins_geofinder: AdminGeoFinder =
-        if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-            read_admin_in_cosmogony_file(
-                cosmogony_file_path,
-                settings.langs.clone(),
-                settings.french_id_retrocompatibility,
-            )
-            .map_err(|err| Error::AdminRetrieval {
-                details: err.to_string(),
-            })?
-            .collect()
-        } else {
-            match client.list_documents().await {
-                Ok(stream) => {
-                    stream
-                        .map(|admin| admin.expect("could not parse admin"))
-                        .collect()
-                        .await
-                }
-                Err(err) => {
-                    warn!("administratives regions not found in es db. {:?}", err);
-                    return Err(Error::AdminRetrieval {
-                        details: err.to_string(),
-                    });
-                }
-            }
-        };
+    let admin_settings = AdminSettings::build(&settings.admins);
+
+    let admins_geofinder = AdminGeoFinder::build(&admin_settings, client)
+        .await
+        .map_err(|err| Error::AdminRetrieval { details: err })?;
 
     let admins_geofinder = Arc::new(admins_geofinder);
 

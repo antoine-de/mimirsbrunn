@@ -37,8 +37,10 @@ use std::{collections::HashMap, ops::Deref, path::Path, sync::Arc};
 use tracing::{info, warn};
 
 use crate::{
-    admin::read_admin_in_cosmogony_file, admin_geofinder::AdminGeoFinder, labels,
-    settings::ntfs2mimir::Settings,
+    admin::read_admin_in_cosmogony_file,
+    admin_geofinder::AdminGeoFinder,
+    labels,
+    settings::{admin_settings::AdminSettings, ntfs2mimir::Settings},
 };
 use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
@@ -168,6 +170,28 @@ fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
     stop.administrative_regions = admins;
 }
 
+async fn attach_stops_to_admin<'s, Stops>(
+    stops: Stops,
+    admin_settings: &AdminSettings,
+    client: &ElasticsearchStorage,
+) -> Result<(), Error>
+where
+    Stops: Iterator<Item = &'s mut Stop>,
+{
+    match admin_settings {
+        AdminSettings::Elasticsearch => attach_stops_to_admins_from_es(stops, client).await,
+        AdminSettings::Local(local_config) => {
+            let admins = read_admin_in_cosmogony_file(&local_config).map_err(|err| {
+                Error::AdminRetrieval {
+                    details: err.to_string(),
+                }
+            })?;
+            attach_stops_to_admins_from_iter(stops, admins);
+            Ok(())
+        }
+    }
+}
+
 /// Attach the stops to administrative regions
 ///
 /// The admins are loaded from Elasticsearch and stored in a quadtree
@@ -201,10 +225,10 @@ async fn attach_stops_to_admins_from_es<'a, It: Iterator<Item = &'a mut Stop>>(
 /// The admins are stored in a quadtree
 /// We attach a stop with all the admins that have a boundary containing
 /// the coordinate of the stop
-fn attach_stops_to_admins_from_iter<'stop, StopIter, AdminIter>(stops: StopIter, admins: AdminIter)
+fn attach_stops_to_admins_from_iter<'stop, Stops, Admins>(stops: Stops, admins: Admins)
 where
-    StopIter: Iterator<Item = &'stop mut Stop>,
-    AdminIter: Iterator<Item = Admin>,
+    Stops: Iterator<Item = &'stop mut Stop>,
+    Admins: Iterator<Item = Admin>,
 {
     let mut nb_unmatched = 0;
     let mut nb_matched = 0;
@@ -267,19 +291,8 @@ pub async fn index_ntfs(
     };
 
     info!("Attach stops to admins");
-    if let Some(cosmogony_file_path) = &settings.cosmogony_file {
-        let admins = read_admin_in_cosmogony_file(
-            cosmogony_file_path,
-            settings.langs.clone(),
-            settings.french_id_retrocompatibility,
-        )
-        .map_err(|err| Error::AdminRetrieval {
-            details: err.to_string(),
-        })?;
-        attach_stops_to_admins_from_iter(stops.iter_mut(), admins);
-    } else {
-        attach_stops_to_admins_from_es(stops.iter_mut(), client).await?;
-    }
+    let admin_settings = AdminSettings::build(&settings.admins);
+    attach_stops_to_admin(stops.iter_mut(), &admin_settings, client).await?;
 
     tracing::info!("Beginning to import stops into elasticsearch.");
     import_stops(client, &settings.container, futures::stream::iter(stops)).await
