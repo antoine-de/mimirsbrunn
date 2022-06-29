@@ -164,6 +164,8 @@ async fn run(
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
     use futures::TryStreamExt;
     use mimir::{
@@ -196,8 +198,21 @@ mod tests {
             cmd: settings::Command::Run,
         };
 
-        let settings = settings::Settings::new(&opts).unwrap();
+        let mut settings = settings::Settings::new(&opts).unwrap();
+        let cosmogony_file: PathBuf = [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "cosmogony",
+            "ile-de-france",
+            "ile-de-france.jsonl.gz",
+        ]
+        .iter()
+        .collect();
+
+        settings.cosmogony_file = Some(cosmogony_file);
         let _res = mimirsbrunn::utils::launch::launch_async(move || run(opts, settings)).await;
+        assert!(_res.is_ok());
 
         // Now we query the index we just created. Since it's a small cosmogony file with few entries,
         // we'll just list all the documents in the index, and check them.
