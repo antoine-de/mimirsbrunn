@@ -32,7 +32,8 @@ use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::ports::primary::generate_index::GenerateIndex;
 use mimirsbrunn::{
-    addr_reader::import_addresses_from_input_path, utils::template::update_templates, admin::read_admin_in_cosmogony_file,
+    addr_reader::import_addresses_from_input_path, admin::read_admin_in_cosmogony_file,
+    utils::template::update_templates,
 };
 use snafu::{ResultExt, Snafu};
 use std::sync::Arc;
@@ -108,7 +109,7 @@ async fn run(
     // Lets say we're indexing a single bano department.... we don't need to retrieve
     // the admins for other regions!
     let into_addr = {
-        let admins : Vec<Admin> =  if let Some(cosmogony_file_path) = &settings.cosmogony_file {
+        let admins: Vec<Admin> = if let Some(cosmogony_file_path) = &settings.cosmogony_file {
             read_admin_in_cosmogony_file(
                 cosmogony_file_path,
                 settings.langs.clone(),
@@ -134,7 +135,6 @@ async fn run(
                 }
             }
         };
-       
 
         let admins_by_insee = admins
             .iter()
