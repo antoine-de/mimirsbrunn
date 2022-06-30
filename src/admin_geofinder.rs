@@ -118,7 +118,7 @@ impl AdminGeoFinder {
         client: &ElasticsearchStorage,
     ) -> Result<AdminGeoFinder, admin::Error> {
         let admins = fetch_admins(admin_settings, client).await?;
-        let geofinder = AdminGeoFinder::from_iter(admins.into_iter());
+        let geofinder: AdminGeoFinder = admins.into_iter().collect();
         Ok(geofinder)
     }
 

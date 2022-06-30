@@ -181,7 +181,7 @@ where
     match admin_settings {
         AdminSettings::Elasticsearch => attach_stops_to_admins_from_es(stops, client).await,
         AdminSettings::Local(local_config) => {
-            let admins = read_admin_in_cosmogony_file(&local_config).map_err(|err| {
+            let admins = read_admin_in_cosmogony_file(local_config).map_err(|err| {
                 Error::AdminRetrieval {
                     details: err.to_string(),
                 }
