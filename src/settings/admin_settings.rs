@@ -29,11 +29,16 @@ impl AdminSettings {
 pub struct AdminFromCosmogonyFile {
     pub cosmogony_file: PathBuf,
 
-    #[serde(default)]
+    #[serde(default = "default_french_id_retrocompatibility")]
     pub french_id_retrocompatibility: bool,
 
     #[serde(default = "default_langs")]
     pub langs: Vec<String>,
+}
+
+
+pub fn default_french_id_retrocompatibility() -> bool{
+    true
 }
 
 pub fn default_langs() -> Vec<String> {
