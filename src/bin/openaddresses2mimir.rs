@@ -178,7 +178,9 @@ mod tests {
             "cosmogony",
             "ile-de-france",
             "ile-de-france.jsonl.gz",
-        ].iter().collect();
+        ]
+        .iter()
+        .collect();
 
         settings.admins = Some(AdminFromCosmogonyFile {
             french_id_retrocompatibility: false,
