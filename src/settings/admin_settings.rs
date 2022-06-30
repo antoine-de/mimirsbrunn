@@ -36,8 +36,7 @@ pub struct AdminFromCosmogonyFile {
     pub langs: Vec<String>,
 }
 
-
-pub fn default_french_id_retrocompatibility() -> bool{
+pub fn default_french_id_retrocompatibility() -> bool {
     true
 }
 
