@@ -2,17 +2,16 @@ use clap::Parser;
 use futures::stream::StreamExt;
 use mimir::domain::model::configuration::ContainerConfig;
 use snafu::{ResultExt, Snafu};
-use tracing::{instrument, warn};
+use tracing::instrument;
 
 use mimir::{
     adapters::secondary::elasticsearch::{self, ElasticsearchStorage},
-    domain::ports::{
-        primary::{generate_index::GenerateIndex, list_documents::ListDocuments},
-        secondary::remote::Remote,
-    },
+    domain::ports::{primary::generate_index::GenerateIndex, secondary::remote::Remote},
 };
 use mimirsbrunn::{
-    admin_geofinder::AdminGeoFinder, osm_reader::street::streets, settings::osm2mimir as settings,
+    admin_geofinder::AdminGeoFinder,
+    osm_reader::street::streets,
+    settings::{admin_settings::AdminSettings, osm2mimir as settings},
     utils::template::update_templates,
 };
 
@@ -56,6 +55,9 @@ pub enum Error {
 
     #[snafu(display("Execution Error {}", source))]
     Execution { source: Box<dyn std::error::Error> },
+
+    #[snafu(display("Admin Retrieval Error {}", details))]
+    AdminRetrieval { details: String },
 }
 
 fn main() -> Result<(), Error> {
@@ -92,21 +94,9 @@ async fn run(
         update_templates(&client, opts.config_dir).await?;
     }
 
-    let admins_geofinder: AdminGeoFinder = match client.list_documents().await {
-        Ok(stream) => {
-            stream
-                .map(|admin| admin.expect("could not parse admin"))
-                .collect()
-                .await
-        }
-        Err(err) => {
-            warn!(
-                "administratives regions not found in Elasticsearch. {:?}",
-                err
-            );
-            std::iter::empty().collect()
-        }
-    };
+    let admin_settings = AdminSettings::build(&settings.admins);
+
+    let admins_geofinder = AdminGeoFinder::build(&admin_settings, &client).await?;
 
     if settings.streets.import {
         let streets = streets(

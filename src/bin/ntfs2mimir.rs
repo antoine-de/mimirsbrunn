@@ -80,7 +80,7 @@ async fn run(
         &settings.elasticsearch.url
     );
     let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
-        .conn(settings.elasticsearch)
+        .conn(settings.elasticsearch.clone())
         .await
         .context(ElasticsearchConnectionSnafu)
         .map_err(Box::new)?;
@@ -92,15 +92,10 @@ async fn run(
         update_templates(&client, opts.config_dir).await?;
     }
 
-    mimirsbrunn::stops::index_ntfs(
-        opts.input,
-        &settings.container,
-        &settings.physical_mode_weight,
-        &client,
-    )
-    .await
-    .context(ImportSnafu)
-    .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
+    mimirsbrunn::stops::index_ntfs(&opts.input, &settings, &client)
+        .await
+        .context(ImportSnafu)
+        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]
