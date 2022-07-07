@@ -278,14 +278,13 @@ pub fn compute_weight(poi: Poi) -> Poi {
 }
 
 // FIXME Return a Result
-pub async fn add_address<T>(backend: &T, poi: Poi) -> Poi
+pub async fn add_address<T>(backend: &T, poi: Poi, max_distance_reverse: usize) -> Poi
 where
     T: SearchDocuments,
     T::Document: Into<serde_json::Value>,
 {
-    // FIXME 1km automagick
     let reverse = mimir::adapters::primary::common::dsl::build_reverse_query(
-        "1km",
+        format!("{}m", max_distance_reverse).as_ref(),
         poi.coord.lat(),
         poi.coord.lon(),
     );

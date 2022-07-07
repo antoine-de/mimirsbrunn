@@ -28,6 +28,7 @@ pub struct Street {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Poi {
     pub import: bool,
+    pub max_distance_reverse: usize,
     pub config: Option<crate::osm_reader::poi::PoiConfig>,
 }
 

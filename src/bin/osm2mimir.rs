@@ -118,6 +118,7 @@ async fn run(
             &settings.pois.config.clone().unwrap_or_default(),
             &client,
             &settings.container_poi,
+            settings.pois.max_distance_reverse,
         )
         .await?;
     }
@@ -150,6 +151,7 @@ async fn import_pois(
     poi_config: &mimirsbrunn::osm_reader::poi::PoiConfig,
     client: &ElasticsearchStorage,
     config: &ContainerConfig,
+    max_distance_reverse: usize,
 ) -> Result<(), Error> {
     // This function rely on AdminGeoFinder::get_objs_and_deps
     // which use all available cpu/cores to decode osm file and cannot be limited by tokio runtime
@@ -158,7 +160,7 @@ async fn import_pois(
 
     let pois: Vec<places::poi::Poi> = futures::stream::iter(pois)
         .map(mimirsbrunn::osm_reader::poi::compute_weight)
-        .then(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi))
+        .then(|poi| mimirsbrunn::osm_reader::poi::add_address(client, poi, max_distance_reverse))
         .collect()
         .await;
 
