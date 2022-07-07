@@ -39,6 +39,7 @@ pub struct Settings {
     // will read admins from the file if Some(file)
     // will fetch admins from Elasticsearch if None
     pub admins: Option<AdminFromCosmogonyFile>,
+    pub max_distance_reverse: usize,
 }
 
 pub fn default_langs() -> Vec<String> {
