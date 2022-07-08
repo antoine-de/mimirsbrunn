@@ -2,6 +2,7 @@ use super::admin_settings::AdminFromCosmogonyFile;
 /// This module contains the definition for osm2mimir configuration and command line arguments.
 use mimir::adapters::secondary::elasticsearch::ElasticsearchStorageConfig;
 use mimir::domain::model::configuration::ContainerConfig;
+use mimir::utils::deserialize::usize1000;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 use std::{env, path::PathBuf};
@@ -28,7 +29,8 @@ pub struct Street {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Poi {
     pub import: bool,
-    pub max_distance_reverse: usize,
+    #[serde(default = "usize1000")]
+    pub max_distance_reverse: usize, // in meters
     pub config: Option<crate::osm_reader::poi::PoiConfig>,
 }
 
