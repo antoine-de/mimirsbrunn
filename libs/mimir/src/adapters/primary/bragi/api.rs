@@ -1,4 +1,4 @@
-use crate::{ensure, utils::deserialize::deserialize_opt_duration};
+use crate::utils::deserialize::deserialize_opt_duration;
 use cosmogony::ZoneType;
 use geojson::{GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use crate::adapters::primary::common::{coord::Coord, filters::Filters};
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, PlaceDocType};
 
-use super::routes::{is_valid_zone_type, Validate};
+use super::routes::{is_valid_zone_type, Validate, ValidationError};
 
 pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
 pub const DEFAULT_LIMIT_RESULT_REVERSE_API: i64 = 1;
@@ -99,18 +99,25 @@ impl From<ForwardGeocoderExplainQuery> for ForwardGeocoderQuery {
 
 impl Validate for ForwardGeocoderExplainQuery {
     fn filter(&self) -> Result<(), warp::Rejection> {
-        ensure! {
-            !self.q.is_empty();
+        let res = match &self {
+            Self { q, .. } if q.is_empty() => Err("query cannot be empty"),
 
-            self.lat.is_some() == self.lon.is_some(),
-                "lat and lon parameters must either be both present or both absent";
+            Self { lat, lon, .. } if lat.is_some() != lon.is_some() => {
+                Err("lat and lon parameters must either be both present or both absent")
+            }
 
-            self.lat.map(|lat| (-90f32..=90f32).contains(&lat)).unwrap_or(true),
-                "lat must be in [-90, 90]";
+            Self { lat: Some(lat), .. } if !(-90f32..=90f32).contains(lat) => {
+                Err("lat must be in [-90, 90]")
+            }
 
-            self.lon.map(|lon| (-180f32..=180f32).contains(&lon)).unwrap_or(true),
-                "lon must be in [-180, 180]";
-        }
+            Self { lon: Some(lon), .. } if !(-180f32..=180f32).contains(lon) => {
+                Err("lat must be in [-180, 180]")
+            }
+
+            _ => Ok(()),
+        };
+
+        res.map_err(|msg| warp::reject::custom(ValidationError(msg)))
     }
 }
 
@@ -189,21 +196,29 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
 
 impl Validate for ForwardGeocoderQuery {
     fn filter(&self) -> Result<(), warp::Rejection> {
-        ensure! {
-            !self.q.is_empty();
+        let res = match &self {
+            Self { q, .. } if q.is_empty() => Err("query cannot be empty"),
 
-            self.lat.is_some() == self.lon.is_some(),
-                "lat and lon parameters must either be both present or both absent";
+            Self { lat, lon, .. } if lat.is_some() != lon.is_some() => {
+                Err("lat and lon parameters must either be both present or both absent")
+            }
 
-            self.lat.map(|lat| (-90f32..=90f32).contains(&lat)).unwrap_or(true),
-                "lat must be in [-90, 90]";
+            Self { lat: Some(lat), .. } if !(-90f32..=90f32).contains(lat) => {
+                Err("lat must be in [-90, 90]")
+            }
 
-            self.lon.map(|lon| (-180f32..=180f32).contains(&lon)).unwrap_or(true),
-                "lon must be in [-180, 180]";
+            Self { lon: Some(lon), .. } if !(-180f32..=180f32).contains(lon) => {
+                Err("lat must be in [-180, 180]")
+            }
 
-            is_valid_zone_type(self),
-                "'zone_type' must be specified when you query with 'type' parameter 'zone'";
-        }
+            _ if is_valid_zone_type(self) => {
+                Err("'zone_type' must be specified when you query with 'type' parameter 'zone'")
+            }
+
+            _ => Ok(()),
+        };
+
+        res.map_err(|msg| warp::reject::custom(ValidationError(msg)))
     }
 }
 

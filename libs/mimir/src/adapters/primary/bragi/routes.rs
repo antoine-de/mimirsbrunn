@@ -79,24 +79,6 @@ where
         })
 }
 
-#[macro_export]
-macro_rules! ensure {
-    () => {
-        Ok(())
-    };
-    ( $e: expr $( , $msg: literal )? ; $( $tail: tt )* ) => {{
-        use crate::adapters::primary::bragi::routes::ValidationError;
-
-        if !($e) {
-            let _msg = concat!("error with constraint `", stringify!($e), "`");
-            $( let _msg = $msg; )?
-            Err(warp::reject::custom(ValidationError(_msg)))
-        } else {
-            ensure!($($tail)*)
-        }
-    }};
-}
-
 /// This filter ensures that if the user requests 'zone', then he must specify the list
 /// of zone_types.
 pub fn is_valid_zone_type(params: &ForwardGeocoderQuery) -> bool {
