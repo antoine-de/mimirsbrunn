@@ -31,6 +31,7 @@ update_templates = true
 
 [pois]
   import = false
+  max_distance_reverse = 1000 # in meters
   [pois.config]
     [[pois.config.types]]
       id = "poi_type:amenity:college"

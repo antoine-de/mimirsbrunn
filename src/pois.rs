@@ -135,7 +135,13 @@ pub async fn index_pois(
         .then(|(_id, poi)| {
             let poi_types = poi_types.clone();
             let admins_geofinder = admins_geofinder.clone();
-            into_poi(poi, poi_types, client, admins_geofinder)
+            into_poi(
+                poi,
+                poi_types,
+                client,
+                admins_geofinder,
+                settings.max_distance_reverse,
+            )
         })
         .filter_map(|poi_res| futures::future::ready(poi_res.ok()))
         .collect()
@@ -168,6 +174,7 @@ async fn into_poi(
     poi_types: Arc<HashMap<String, NavitiaPoiType>>,
     client: &ElasticsearchStorage,
     admins_geofinder: Arc<AdminGeoFinder>,
+    max_distance_reverse: usize,
 ) -> Result<Poi, Error> {
     let NavitiaPoi {
         id,
@@ -186,7 +193,7 @@ async fn into_poi(
         })
         .map(PoiType::from)?;
 
-    let distance = format!("{}m", 50); // FIXME Automagick: put in configuration
+    let distance = format!("{}m", max_distance_reverse);
     let dsl = dsl::build_reverse_query(&distance, coord.lat(), coord.lon());
 
     let es_indices_to_search = vec![
