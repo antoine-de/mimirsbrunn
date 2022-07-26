@@ -11,7 +11,9 @@ use crate::adapters::primary::common::{coord::Coord, filters::Filters};
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, PlaceDocType};
 
-use super::routes::{is_valid_zone_type, validate_query_params, ValidationError};
+use super::routes::{
+    is_valid_zone_type, validate_query_params, InvalidRequest, InvalidRequestReason,
+};
 
 pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
 pub const DEFAULT_LIMIT_RESULT_REVERSE_API: i64 = 1;
@@ -103,24 +105,31 @@ impl ForwardGeocoderExplainQuery {
     pub fn validate() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
         validate_query_params().and_then(|x: Self| {
             let res = match &x {
-                Self { q, .. } if q.is_empty() => Err("query cannot be empty"),
-
-                Self { lat, lon, .. } if lat.is_some() != lon.is_some() => {
-                    Err("lat and lon parameters must either be both present or both absent")
-                }
-
+                Self { q, .. } if q.is_empty() => Err(InvalidRequest {
+                    reason: InvalidRequestReason::EmptyQueryString,
+                    info: "query cannot be empty".to_string(),
+                }),
+                Self { lat, lon, .. } if lat.is_some() != lon.is_some() => Err(InvalidRequest {
+                    reason: InvalidRequestReason::InconsistentLatLonRequest,
+                    info: "lat and lon parameters must either be both present or both absent"
+                        .to_string(),
+                }),
                 Self { lat: Some(lat), .. } if !(-90f32..=90f32).contains(lat) => {
-                    Err("lat must be in [-90, 90]")
+                    Err(InvalidRequest {
+                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                        info: "lat must be in [-90, 90]".to_string(),
+                    })
                 }
-
                 Self { lon: Some(lon), .. } if !(-180f32..=180f32).contains(lon) => {
-                    Err("lat must be in [-180, 180]")
+                    Err(InvalidRequest {
+                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                        info: "lon must be in [-180, 180]".to_string(),
+                    })
                 }
-
                 _ => Ok(x),
             };
 
-            future::ready(res.map_err(|msg| warp::reject::custom(ValidationError(msg))))
+            future::ready(res.map_err(warp::reject::custom))
         })
     }
 }
@@ -202,28 +211,37 @@ impl ForwardGeocoderQuery {
     pub fn validate() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
         validate_query_params().and_then(|x: Self| {
             let res = match &x {
-                Self { q, .. } if q.is_empty() => Err("query cannot be empty"),
-
-                Self { lat, lon, .. } if lat.is_some() != lon.is_some() => {
-                    Err("lat and lon parameters must either be both present or both absent")
-                }
-
+                Self { q, .. } if q.is_empty() => Err(InvalidRequest {
+                    reason: InvalidRequestReason::EmptyQueryString,
+                    info: "query cannot be empty".to_string(),
+                }),
+                Self { lat, lon, .. } if lat.is_some() != lon.is_some() => Err(InvalidRequest {
+                    reason: InvalidRequestReason::InconsistentLatLonRequest,
+                    info: "lat and lon parameters must either be both present or both absent"
+                        .to_string(),
+                }),
                 Self { lat: Some(lat), .. } if !(-90f32..=90f32).contains(lat) => {
-                    Err("lat must be in [-90, 90]")
+                    Err(InvalidRequest {
+                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                        info: "lat must be in [-90, 90]".to_string(),
+                    })
                 }
-
                 Self { lon: Some(lon), .. } if !(-180f32..=180f32).contains(lon) => {
-                    Err("lat must be in [-180, 180]")
+                    Err(InvalidRequest {
+                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                        info: "lon must be in [-180, 180]".to_string(),
+                    })
                 }
-
-                _ if is_valid_zone_type(&x) => {
-                    Err("'zone_type' must be specified when you query with 'type' parameter 'zone'")
-                }
-
+                _ if !is_valid_zone_type(&x) => Err(InvalidRequest {
+                    reason: InvalidRequestReason::InconsistentZoneRequest,
+                    info:
+                        "'zone_type' must be specified when you query with 'type' parameter 'zone'"
+                            .to_string(),
+                }),
                 _ => Ok(x),
             };
 
-            future::ready(res.map_err(|msg| warp::reject::custom(ValidationError(msg))))
+            future::ready(res.map_err(warp::reject::custom))
         })
     }
 }
@@ -244,19 +262,19 @@ pub struct ReverseGeocoderQuery {
 impl ReverseGeocoderQuery {
     pub fn validate() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
         validate_query_params().and_then(|x: Self| {
-            let res = match x {
-                Self { lat, .. } if !(-180f64..180f64).contains(&lat) => {
-                    Err("lat must be in [-180, 180]")
-                }
-
-                Self { lon, .. } if !(-90f64..90f64).contains(&lon) => {
-                    Err("lon must be in [-90, 90]")
-                }
-
+            let res = match &x {
+                Self { lat, .. } if !(-90f64..=90f64).contains(lat) => Err(InvalidRequest {
+                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                    info: "lat must be in [-90, 90]".to_string(),
+                }),
+                Self { lon, .. } if !(-180f64..=180f64).contains(lon) => Err(InvalidRequest {
+                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
+                    info: "lon must be in [-180, 180]".to_string(),
+                }),
                 _ => Ok(x),
             };
 
-            future::ready(res.map_err(|msg| warp::reject::custom(ValidationError(msg))))
+            future::ready(res.map_err(warp::reject::custom))
         })
     }
 }
