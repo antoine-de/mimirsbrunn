@@ -76,16 +76,9 @@ where
 /// This filter ensures that if the user requests 'zone', then he must specify the list
 /// of zone_types.
 pub fn is_valid_zone_type(params: &ForwardGeocoderQuery) -> bool {
-    params
-        .types
-        .as_ref()
-        .map(|types| types.iter().all(|s| *s != Type::Zone))
-        .unwrap_or(true)
-        || params
-            .zone_types
-            .as_ref()
-            .map(|zone_types| !zone_types.is_empty())
-            .unwrap_or(false)
+    let zone_request = params.types.as_deref().unwrap_or(&[]).contains(&Type::Zone);
+    let empty_zone_type = params.zone_types.as_deref().unwrap_or(&[]).is_empty();
+    !(zone_request && empty_zone_type)
 }
 
 // This filter extracts the GeoJson shape from the body of the request

@@ -74,19 +74,23 @@ pub enum Command {
     Config,
 }
 
-pub fn build_settings(opts: &Opts) -> Result<Settings, Error> {
-    common::config::config_from(
-        opts.config_dir.as_ref(),
-        &["bragi", "elasticsearch", "query"],
-        opts.run_mode.as_deref(),
-        "BRAGI",
-        opts.settings.clone(),
-    )
-    .context(ConfigCompilationSnafu)?
-    .try_into()
-    .context(ConfigMergeSnafu {
-        msg: "cannot merge bragi settings",
-    })
+impl TryInto<Settings> for &Opts {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Settings, Self::Error> {
+        common::config::config_from(
+            self.config_dir.as_ref(),
+            &["bragi", "elasticsearch", "query"],
+            self.run_mode.as_deref(),
+            "BRAGI",
+            self.settings.clone(),
+        )
+        .context(ConfigCompilationSnafu)?
+        .try_into()
+        .context(ConfigMergeSnafu {
+            msg: "cannot merge bragi settings",
+        })
+    }
 }
 
 #[cfg(test)]
@@ -96,36 +100,31 @@ mod tests {
     #[test]
     fn should_return_ok_with_default_config_dir() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        let opts = Opts {
+        let opts = &Opts {
             config_dir,
-            run_mode: Some(String::from("testing")),
+            run_mode: Some("testing".to_string()),
             settings: vec![],
             cmd: Command::Run,
         };
-        let settings = build_settings(&opts);
-        assert!(
-            settings.is_ok(),
-            "Expected Ok, Got an Err: {}",
-            settings.unwrap_err()
-        );
-        assert_eq!(settings.unwrap().mode, String::from("testing"));
+
+        let settings: Result<Settings, _> = opts.try_into();
+        assert!(settings.is_ok());
+        assert_eq!(settings.unwrap().mode, "testing");
     }
 
     #[test]
     fn should_override_elasticsearch_port_with_command_line() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        let opts = Opts {
+
+        let opts = &Opts {
             config_dir,
             run_mode: Some(String::from("testing")),
             settings: vec![String::from("elasticsearch.port=9999")],
             cmd: Command::Run,
         };
-        let settings = build_settings(&opts);
-        assert!(
-            settings.is_ok(),
-            "Expected Ok, Got an Err: {}",
-            settings.unwrap_err()
-        );
+
+        let settings: Result<Settings, _> = opts.try_into();
+        assert!(settings.is_ok());
         assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }
 
@@ -133,18 +132,16 @@ mod tests {
     fn should_override_elasticsearch_port_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
         std::env::set_var("BRAGI_ELASTICSEARCH__URL", "http://localhost:9999");
-        let opts = Opts {
+
+        let opts = &Opts {
             config_dir,
             run_mode: Some(String::from("testing")),
             settings: vec![],
             cmd: Command::Run,
         };
-        let settings = build_settings(&opts);
-        assert!(
-            settings.is_ok(),
-            "Expected Ok, Got an Err: {}",
-            settings.unwrap_err()
-        );
+
+        let settings: Result<Settings, _> = opts.try_into();
+        assert!(settings.is_ok());
         assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }
 }
