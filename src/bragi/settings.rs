@@ -1,12 +1,6 @@
-use mimir::{
-    adapters::secondary::elasticsearch::ElasticsearchStorageConfig,
-    utils::deserialize::deserialize_duration,
-};
-use serde::{Deserialize, Serialize};
+use mimir::adapters::primary::bragi::handlers::Settings;
 use snafu::{ResultExt, Snafu};
-use std::{env, path::PathBuf, time::Duration};
-
-use mimir::adapters::primary::common::settings::QuerySettings;
+use std::{env, path::PathBuf};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -37,32 +31,6 @@ pub enum Error {
 
     #[snafu(display("Config Compilation Error: {}", source))]
     ConfigCompilation { source: common::config::Error },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Service {
-    /// Host on which we expose bragi. Example: 'http://localhost', '0.0.0.0'
-    pub host: String,
-    /// Port on which we expose bragi.
-    pub port: u16,
-    /// Used on POST request to set an upper limit on the size of the body (in bytes)
-    pub content_length_limit: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Settings {
-    pub mode: String,
-    pub elasticsearch: ElasticsearchStorageConfig,
-    pub query: QuerySettings,
-    pub service: Service,
-    pub nb_threads: Option<usize>,
-    pub http_cache_duration: usize,
-    #[serde(deserialize_with = "deserialize_duration")]
-    pub autocomplete_timeout: Duration,
-    #[serde(deserialize_with = "deserialize_duration")]
-    pub reverse_timeout: Duration,
-    #[serde(deserialize_with = "deserialize_duration")]
-    pub features_timeout: Duration,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -106,14 +74,16 @@ pub enum Command {
     Config,
 }
 
-impl Settings {
-    pub fn new(opts: &Opts) -> Result<Self, Error> {
+impl TryInto<Settings> for &Opts {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Settings, Self::Error> {
         common::config::config_from(
-            opts.config_dir.as_ref(),
+            self.config_dir.as_ref(),
             &["bragi", "elasticsearch", "query"],
-            opts.run_mode.as_deref(),
+            self.run_mode.as_deref(),
             "BRAGI",
-            opts.settings.clone(),
+            self.settings.clone(),
         )
         .context(ConfigCompilationSnafu)?
         .try_into()
@@ -130,36 +100,31 @@ mod tests {
     #[test]
     fn should_return_ok_with_default_config_dir() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        let opts = Opts {
+        let opts = &Opts {
             config_dir,
-            run_mode: Some(String::from("testing")),
+            run_mode: Some("testing".to_string()),
             settings: vec![],
             cmd: Command::Run,
         };
-        let settings = Settings::new(&opts);
-        assert!(
-            settings.is_ok(),
-            "Expected Ok, Got an Err: {}",
-            settings.unwrap_err()
-        );
-        assert_eq!(settings.unwrap().mode, String::from("testing"));
+
+        let settings: Result<Settings, _> = opts.try_into();
+        assert!(settings.is_ok());
+        assert_eq!(settings.unwrap().mode, "testing");
     }
 
     #[test]
     fn should_override_elasticsearch_port_with_command_line() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
-        let opts = Opts {
+
+        let opts = &Opts {
             config_dir,
             run_mode: Some(String::from("testing")),
             settings: vec![String::from("elasticsearch.port=9999")],
             cmd: Command::Run,
         };
-        let settings = Settings::new(&opts);
-        assert!(
-            settings.is_ok(),
-            "Expected Ok, Got an Err: {}",
-            settings.unwrap_err()
-        );
+
+        let settings: Result<Settings, _> = opts.try_into();
+        assert!(settings.is_ok());
         assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }
 
@@ -167,18 +132,16 @@ mod tests {
     fn should_override_elasticsearch_port_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
         std::env::set_var("BRAGI_ELASTICSEARCH__URL", "http://localhost:9999");
-        let opts = Opts {
+
+        let opts = &Opts {
             config_dir,
             run_mode: Some(String::from("testing")),
             settings: vec![],
             cmd: Command::Run,
         };
-        let settings = Settings::new(&opts);
-        assert!(
-            settings.is_ok(),
-            "Expected Ok, Got an Err: {}",
-            settings.unwrap_err()
-        );
+
+        let settings: Result<Settings, _> = opts.try_into();
+        assert!(settings.is_ok());
         assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
     }
 }
