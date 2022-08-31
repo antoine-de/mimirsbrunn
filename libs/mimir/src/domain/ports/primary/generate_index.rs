@@ -123,7 +123,7 @@ where
     #[tracing::instrument(skip(self, updates))]
     pub async fn update_documents(
         self,
-        updates: impl Stream<Item = (String, Vec<UpdateOperation>)> + Send + Sync + 's,
+        updates: impl Stream<Item = (String, Vec<UpdateOperation>)> + Sync + 's,
     ) -> Result<ContainerGenerator<'a, D, T>, ModelError> {
         let stats = self
             .storage
