@@ -79,7 +79,7 @@ jobs:
           fi
 
       - name: Repository Dispatch 'bragi-aws-assets'
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && matrix['image'] == 'bragi'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ steps.app-token.outputs.token }}
