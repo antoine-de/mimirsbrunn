@@ -59,6 +59,7 @@ jobs:
         if: github.event_name == 'push'
 
       - name: Generate token
+        if: github.event_name == 'push'
         id: app-token
         uses: getsentry/action-github-app-token@v1
         with:
