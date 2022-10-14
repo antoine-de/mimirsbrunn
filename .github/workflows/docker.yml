@@ -85,4 +85,4 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           repository: hove-io/bragi-aws-assets
           event-type: build-trigger
-          client-payload: '{"branch": "${BRANCH}", "tag": "${TAG}"}'
+          client-payload: '{"branch": "${{ env.BRANCH }}", "tag": "${{ env.TAG }}"}'
