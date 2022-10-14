@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - '*'
+      - 'master'
     tags:
       - 'v*'
 
@@ -72,7 +72,7 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "branch" ]]
           then
             echo "BRANCH=${GITHUB_REF_NAME}" >> ${GITHUB_ENV}
-            echo "TAG=${GITHUB_REF_NAME}" >> ${GITHUB_ENV}
+            echo "TAG=latest" >> ${GITHUB_ENV}
           else : 
             echo "BRANCH=master" >> ${GITHUB_ENV}
             echo "TAG=${GITHUB_REF_NAME}" >> ${GITHUB_ENV}
