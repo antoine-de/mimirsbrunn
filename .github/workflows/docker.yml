@@ -67,6 +67,7 @@ jobs:
           private_key: ${{ secrets.GA_OS_WORKFLOW_TRIGGER_APP_PEM }}
       
       - name: Init variables
+        if: github.event_name == 'push'
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "branch" ]]
           then
