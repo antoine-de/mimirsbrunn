@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - '*'
+      - 'master'
     tags:
       - 'v*'
 
@@ -69,20 +69,18 @@ jobs:
       - name: Init variables
         if: github.event_name == 'push'
         run: |
-          if [[ "${GITHUB_REF_TYPE}" == "branch" ]]
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]
           then
-            echo "BRANCH=${GITHUB_REF_NAME}" >> ${GITHUB_ENV}
-            echo "TAG=${GITHUB_REF_NAME}" >> ${GITHUB_ENV}
+            echo 'CLIENT_PAYLOAD={ "tag": "${GITHUB_REF_NAME}" }' >> ${GITHUB_ENV}
           else : 
-            echo "BRANCH=master" >> ${GITHUB_ENV}
-            echo "TAG=${GITHUB_REF_NAME}" >> ${GITHUB_ENV}
+            echo 'CLIENT_PAYLOAD={ "branch": "${GITHUB_REF_NAME}" }' >> ${GITHUB_ENV}
           fi
 
       - name: Repository Dispatch 'bragi-aws-assets'
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && matrix['image'] == 'bragi'
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ steps.app-token.outputs.token }}
           repository: hove-io/bragi-aws-assets
           event-type: build-trigger
-          client-payload: '{"branch": "${BRANCH}", "tag": "${TAG}"}'
+          client-payload: '${{ env.CLIENT_PAYLOAD }}'
