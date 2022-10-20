@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 1 * *'
 
 jobs:
 
