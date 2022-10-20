@@ -51,7 +51,7 @@ lazy_static::lazy_static! {
     )
     .unwrap();
 
-    static ref HTTP_IN_FLIGHT: prometheus::Gauge = prometheus::register_gauge!(
+    static ref HTTP_IN_FLIGHT: prometheus::IntGauge = prometheus::register_int_gauge!(
         "bragi_http_requests_in_flight",
         "current number of http request being served"
     )
@@ -79,7 +79,7 @@ pub fn update_metrics(info: warp::log::Info) {
         .with_label_values(&[&handler, &method, &status])
         .inc();
 
-    HTTP_IN_FLIGHT.dec();
+    HTTP_IN_FLIGHT.inc();
 }
 
 #[cfg(not(feature = "prometheus"))]

@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-
 use serde::de::DeserializeOwned;
 use snafu::Snafu;
 
@@ -24,6 +23,8 @@ pub enum Error {
 
 #[async_trait]
 pub trait Search {
-    type Doc: DeserializeOwned + Send + Sync + 'static;
-    async fn search_documents(&self, parameters: Parameters) -> Result<Vec<Self::Doc>, Error>;
+    async fn search_documents<D: DeserializeOwned + Send + Sync + 'static>(
+        &self,
+        parameters: Parameters,
+    ) -> Result<Vec<D>, Error>;
 }
