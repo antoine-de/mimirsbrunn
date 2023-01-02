@@ -32,8 +32,8 @@ jobs:
       - name: Install requirements
         run: |
           apt-get update
-          apt-get install --force-yes curl wget build-essential
-          apt-get install --force-yes ${{ matrix.packages }}
+          apt-get install --yes --force-yes curl wget build-essential
+          apt-get install --yes --force-yes ${{ matrix.packages }}
       # TODO :
       # Remove this step after ES migration 2->7.
       # We need it to make version 2 and 7 coexist.
@@ -67,7 +67,7 @@ jobs:
       - name: slack notification (the job has failed)
         if: failure()
         run: |
-          apt install --force-yes httpie
+          apt install --yes --force-yes httpie
           echo '{"text":":Warning: Github Actions: build packages for branch release failed  ! (https://github.com/hove-io/mimirsbrunn/actions/workflows/release.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
 
   publish:
@@ -82,7 +82,7 @@ jobs:
       - name: install  dependency
         run: |
           sudo apt update
-          sudo apt install --force-yes httpie
+          sudo apt install --yes --force-yes httpie
 
       - name: run publish job & slack notification (the job has successed)
         run: |
