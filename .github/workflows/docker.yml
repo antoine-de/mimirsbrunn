@@ -71,9 +71,9 @@ jobs:
         run: |
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]
           then
-            echo 'CLIENT_PAYLOAD={ "tag": "${{ env.GITHUB_REF_NAME }}" }' >> ${GITHUB_ENV}
+            echo "CLIENT_PAYLOAD={ \"tag\": \"${GITHUB_REF_NAME}\" }" >> ${GITHUB_ENV}
           else : 
-            echo 'CLIENT_PAYLOAD={ "branch": "${{ env.GITHUB_REF_NAME }}" }' >> ${GITHUB_ENV}
+            echo "CLIENT_PAYLOAD={ \"branch\": \"${GITHUB_REF_NAME}\" }" >> ${GITHUB_ENV}
           fi
 
       - name: Repository Dispatch 'bragi-aws-assets'
