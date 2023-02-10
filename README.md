@@ -116,9 +116,8 @@ locally.
 2. Generate cosmogony file.
 
 If you haven't installed cosmogony yet, you need to do so now, by following the instructions
-[here](https://github.com/osm-without-borders/cosmogony). You can then transform the original
-OSM PBF file for Denmark (<p class="callout warning"> The following command must be typed in
-the directory of the cosmogony project</p>)
+[here](https://github.com/osm-without-borders/cosmogony). You can then transform the original OSM
+PBF file for Denmark (The following command must be typed in the directory of the cosmogony project)
 
 ```
 cargo run --release -- generate -i /path/to/denmark-latest.osm.pbf -o denmark.jsonl.gz
