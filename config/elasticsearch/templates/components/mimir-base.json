@@ -147,7 +147,7 @@
           "label": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "word",
+            "analyzer": "word_elision",
             "copy_to": "full_label",
             "fields": {
               "prefix": {
@@ -170,7 +170,7 @@
           "full_label": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "word",
+            "analyzer": "word_elision",
             "fields": {
               "prefix": {
                 "type": "text",
@@ -192,7 +192,7 @@
           "name": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "word",
+            "analyzer": "word_elision",
             "fields": {
               "prefix": {
                 "type": "text",
