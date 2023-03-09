@@ -27,6 +27,7 @@ pub fn logger_init() -> Result<tracing_appender::non_blocking::WorkerGuard, Erro
     let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
 
     let event_format = tracing_subscriber::fmt::format()
+        .with_ansi(std::option_env!("NO_ANSI").is_none())
         .with_target(false) // Don't include event targets.
         .compact();
 
