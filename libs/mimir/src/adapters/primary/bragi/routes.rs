@@ -100,7 +100,7 @@ pub fn validate_geojson_body(
 
 pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallible> {
     let reply = if let Some(err) = rejection.find::<warp::reject::InvalidQuery>() {
-        tracing::info!("Invalid query {:?}", err);
+        tracing::warn!("Invalid query {:?}", err);
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "invalid query".to_string(),
@@ -109,7 +109,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::BAD_REQUEST,
         )
     } else if let Some(err) = rejection.find::<InvalidRequest>() {
-        tracing::info!("Invalid request {:?}", err);
+        tracing::warn!("Invalid request {:?}", err);
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "validation error".to_string(),
@@ -118,7 +118,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::BAD_REQUEST,
         )
     } else if let Some(err) = rejection.find::<InternalError>() {
-        tracing::info!("Internal error {:?}", err);
+        tracing::warn!("Internal error {:?}", err);
         let short = match err.reason {
             InternalErrorReason::ObjectNotFoundError => "Unable to find object".to_string(),
             _ => "query error".to_string(),
@@ -131,7 +131,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::BAD_REQUEST,
         )
     } else if let Some(err) = rejection.find::<MethodNotAllowed>() {
-        tracing::info!("MethodNotAllowed {:?}", err);
+        tracing::warn!("MethodNotAllowed {:?}", err);
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "no route".to_string(),
@@ -140,7 +140,7 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
             StatusCode::NOT_FOUND,
         )
     } else {
-        tracing::info!("Internal server error");
+        tracing::warn!("Internal server error");
         warp::reply::with_status(
             warp::reply::json(&ApiError {
                 short: "INTERNAL_SERVER_ERROR".to_string(),
