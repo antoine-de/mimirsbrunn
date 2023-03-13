@@ -84,7 +84,6 @@ pub struct Settings {
     pub features_timeout: Duration,
 }
 
-#[derive(Clone)]
 pub struct Context<C> {
     pub client: C,
     pub settings: Settings,
