@@ -1,13 +1,18 @@
-use crate::adapters::primary::bragi::api::{ForwardGeocoderQuery, Type};
-use crate::adapters::primary::bragi::handlers::{InternalError, InternalErrorReason};
+use crate::adapters::primary::bragi::{
+    api::{ForwardGeocoderQuery, Type},
+    handlers::{InternalError, InternalErrorReason},
+};
+use futures::future;
 use geojson::{GeoJson, Geometry};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_qs::Config;
 use std::convert::Infallible;
 use tracing::instrument;
-use warp::http::StatusCode;
-use warp::reject::{MethodNotAllowed, Reject};
-use warp::{Filter, Rejection, Reply};
+use warp::{
+    http::StatusCode,
+    reject::{MethodNotAllowed, Reject},
+    Filter, Rejection, Reply,
+};
 
 use super::api::ForwardGeocoderBody;
 
@@ -43,23 +48,35 @@ impl Reject for InvalidRequest {}
 struct InvalidPostBody;
 impl Reject for InvalidPostBody {}
 
-/// Helper validation function that will extract query parameters into a struct.
-pub fn validate_query_params<T>() -> impl Filter<Extract = (T,), Error = Rejection> + Copy
-where
-    T: DeserializeOwned + Send + Sync,
-{
-    warp::filters::query::raw().and_then(|param: String| async move {
-        // max_depth=1: for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
-        let config = Config::new(2, false);
-        tracing::info!("Query params: {}", param);
+pub trait Validate {
+    fn filter(&self) -> Result<(), Rejection> {
+        Ok(())
+    }
+}
 
-        config.deserialize_str(&param).map_err(|err| {
-            warp::reject::custom(InvalidRequest {
-                reason: InvalidRequestReason::CannotDeserialize,
-                info: err.to_string(),
+/// Extract and validate input parameter from the query
+pub fn validate_query<T>() -> impl Filter<Extract = (T,), Error = Rejection> + Copy
+where
+    T: DeserializeOwned + Validate + Send + Sync,
+{
+    warp::filters::query::raw()
+        .and_then(|param: String| async move {
+            // max_depth=1:
+            // for more informations: https://docs.rs/serde_qs/latest/serde_qs/index.html
+            let config = Config::new(2, false);
+            tracing::info!("Query params: {}", param);
+
+            config.deserialize_str(&param).map_err(|err| {
+                warp::reject::custom(InvalidRequest {
+                    reason: InvalidRequestReason::CannotDeserialize,
+                    info: err.to_string(),
+                })
             })
         })
-    })
+        .and_then(|x: T| {
+            let res = x.filter().map(move |_| x);
+            future::ready(res)
+        })
 }
 
 /// This filter ensures that if the user requests 'zone', then he must specify the list
