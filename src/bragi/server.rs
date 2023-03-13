@@ -8,10 +8,12 @@ use warp::{path, Filter};
 use crate::settings::build_settings;
 
 use super::settings::{Error as SettingsError, Opts};
-use mimir::adapters::primary::bragi::api::{ForwardGeocoderExplainQuery, ReverseGeocoderQuery};
+use mimir::adapters::primary::bragi::api::{
+    ForwardGeocoderExplainQuery, ForwardGeocoderQuery, ReverseGeocoderQuery,
+};
 use mimir::adapters::primary::bragi::handlers::{self, Settings};
 use mimir::adapters::primary::bragi::prometheus_handler::update_metrics;
-use mimir::adapters::primary::bragi::routes::{self, validate_forward_geocoder};
+use mimir::adapters::primary::bragi::routes;
 use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
 use mimir::domain::ports::secondary::remote::{Error as PortRemoteError, Remote};
 
@@ -83,11 +85,21 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
     };
 
     let endpoints = {
-        path!("api" / "v1" / "autocomplete")
+        warp::get()
+            .and(path!("api" / "v1" / "autocomplete"))
             .map(ctx_builder())
-            .and(validate_forward_geocoder())
+            .and(ForwardGeocoderQuery::validate())
+            .and(warp::any().map(|| None)) // the shape is None
             .and_then(handlers::forward_geocoder)
     }
+    .or({
+        warp::post()
+            .and(path!("api" / "v1" / "autocomplete"))
+            .map(ctx_builder())
+            .and(ForwardGeocoderQuery::validate())
+            .and(routes::validate_geojson_body())
+            .and_then(handlers::forward_geocoder)
+    })
     .or({
         warp::get()
             .and(path!("api" / "v1" / "reverse"))
