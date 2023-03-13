@@ -113,7 +113,7 @@ fn bench(c: &mut Criterion) {
 
                         async move {
                             let _values = client
-                                .search_documents::<serde_json::Value>(
+                                .search_documents(
                                     vec![configuration::root()],
                                     Query::QueryDSL(dsl),
                                     DEFAULT_LIMIT_RESULT_ES,
