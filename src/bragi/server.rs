@@ -5,6 +5,8 @@ use tokio::runtime;
 use tracing::{info, instrument};
 use warp::{path, Filter};
 
+use crate::settings::build_settings;
+
 use super::settings::{Error as SettingsError, Opts};
 use mimir::adapters::primary::bragi::api::{ForwardGeocoderExplainQuery, ReverseGeocoderQuery};
 use mimir::adapters::primary::bragi::handlers::{self, Settings};
@@ -38,7 +40,7 @@ pub enum Error {
 }
 
 pub fn run(opts: &Opts) -> Result<(), Error> {
-    let settings: Settings = opts.try_into().context(SettingsProcessingSnafu)?;
+    let settings = build_settings(opts).context(SettingsProcessingSnafu)?;
     let _log_guard = logger_init().map_err(|err| Error::InitLog { source: err })?;
 
     let runtime = runtime::Builder::new_multi_thread()
@@ -51,7 +53,7 @@ pub fn run(opts: &Opts) -> Result<(), Error> {
 }
 
 pub fn config(opts: &Opts) -> Result<(), Error> {
-    let settings: Settings = opts.try_into().context(SettingsProcessingSnafu)?;
+    let settings = build_settings(opts).context(SettingsProcessingSnafu)?;
     println!("{}", serde_json::to_string_pretty(&settings).unwrap());
     Ok(())
 }
