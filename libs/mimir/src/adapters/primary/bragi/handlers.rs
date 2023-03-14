@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use geo::algorithm::haversine_distance::HaversineDistance;
 use geojson::Geometry;
@@ -84,7 +84,6 @@ pub struct Settings {
     pub features_timeout: Duration,
 }
 
-#[derive(Clone)]
 pub struct Context<C> {
     pub client: C,
     pub settings: Settings,
@@ -127,7 +126,7 @@ pub fn build_feature(
 
 #[instrument(skip(ctx))]
 pub async fn forward_geocoder<C>(
-    ctx: Context<C>,
+    ctx: Arc<Context<C>>,
     params: ForwardGeocoderQuery,
     geometry: Option<Geometry>,
 ) -> Result<impl warp::Reply, warp::Rejection>
@@ -208,7 +207,7 @@ where
 
 #[instrument(skip(ctx))]
 pub async fn forward_geocoder_explain<C>(
-    ctx: Context<C>,
+    ctx: Arc<Context<C>>,
     params: ForwardGeocoderExplainQuery,
     geometry: Option<Geometry>,
 ) -> Result<impl warp::Reply, warp::Rejection>
@@ -245,7 +244,7 @@ where
 }
 
 pub async fn reverse_geocoder<C>(
-    ctx: Context<C>,
+    ctx: Arc<Context<C>>,
     params: ReverseGeocoderQuery,
 ) -> Result<impl warp::Reply, warp::Rejection>
 where
@@ -286,7 +285,7 @@ where
     Ok(with_status(json(&resp), StatusCode::OK))
 }
 
-pub async fn status<C>(ctx: Context<C>) -> Result<impl warp::Reply, warp::Rejection>
+pub async fn status<C>(ctx: Arc<Context<C>>) -> Result<impl warp::Reply, warp::Rejection>
 where
     C: Status,
 {
@@ -389,123 +388,5 @@ pub fn build_es_indices_to_search(
             indices.push(root_doctype(Poi::static_doc_type()))
         }
         indices
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::adapters::primary::bragi::routes::validate_forward_geocoder;
-
-    async fn indices_builder(query: &str) -> Vec<String> {
-        let (query, _) = warp::test::request()
-            .path(query)
-            .filter(&validate_forward_geocoder())
-            .await
-            .unwrap();
-
-        build_es_indices_to_search(&query.types, &query.pt_dataset, &query.poi_dataset)
-    }
-
-    // no dataset and no types
-    #[tokio::test]
-    #[should_panic]
-    async fn no_dataset_no_type() {
-        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob").await;
-        assert_eq!(es_indices, [""]);
-    }
-
-    // no dataset + type public_transport:stop_area only
-    #[tokio::test]
-    #[should_panic]
-    async fn no_dataset_with_type_sa() {
-        let es_indices =
-            indices_builder("/api/v1/autocomplete?q=Bob&type[]=public_transport:stop_area").await;
-
-        assert_eq!(es_indices, [""]);
-    }
-
-    // no dataset + types poi, city, street, house
-    #[tokio::test]
-    #[should_panic]
-    async fn no_dataset_all_types_but_sa() {
-        let es_indices = indices_builder(
-            "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house",
-        )
-        .await;
-
-        assert_eq!(es_indices, [""]);
-    }
-
-    // no dataset + types poi, city, street, house and public_transport:stop_area
-    #[tokio::test]
-    #[should_panic]
-    async fn no_dataset_all_types() {
-        let es_indices = indices_builder(
-            "/api/v1/autocomplete?q=Bob&type[]=poi&type[]=city&type[]=street&type[]=house&\
-            type[]=public_transport:stop_area",
-        )
-        .await;
-
-        assert_eq!(es_indices, [""]);
-    }
-
-    // dataset fr + no type
-    #[tokio::test]
-    #[should_panic]
-    async fn fr_dataset_no_type() {
-        let es_indices = indices_builder("/api/v1/autocomplete?q=Bob&pt_dataset[]=fr").await;
-        assert_eq!(es_indices, [""]);
-    }
-
-    // dataset fr + type public_transport:stop_area only
-    #[tokio::test]
-    #[should_panic]
-    async fn fr_pt_dataset_with_type_sa() {
-        let es_indices = indices_builder(
-            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=public_transport:stop_area",
-        )
-        .await;
-
-        assert_eq!(es_indices, [""]);
-    }
-
-    // no dataset + types poi, city, street, house
-    #[tokio::test]
-    #[should_panic]
-    async fn fr_dataset_all_types_but_sa() {
-        let es_indices = indices_builder(
-            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=poi&type[]=city&type[]=street\
-            &type[]=house",
-        )
-        .await;
-
-        assert_eq!(es_indices, [""]);
-    }
-
-    // dataset fr + types poi, city, street, house and public_transport:stop_area
-    #[tokio::test]
-    #[should_panic]
-    async fn fr_dataset_all_types() {
-        let es_indices = indices_builder(
-            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&type[]=poi&type[]=city&type[]=street\
-             &type[]=house&type[]=public_transport:stop_area",
-        )
-        .await;
-
-        assert_eq!(es_indices, [""]);
-    }
-
-    // dataset fr + poi_dataset mti + types poi, city, street, house
-    #[tokio::test]
-    #[should_panic]
-    async fn fr_dataset_mti_poi_dataset_all_types_but_sa() {
-        let es_indices = indices_builder(
-            "/api/v1/autocomplete?q=Bob&pt_dataset[]=fr&poi_dataset[]=mti&type[]=poi&type[]=city\
-             &type[]=street&type[]=house",
-        )
-        .await;
-
-        assert_eq!(es_indices, [""]);
     }
 }

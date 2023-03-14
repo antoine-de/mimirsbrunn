@@ -1,35 +1,17 @@
 use crate::utils::deserialize::deserialize_opt_duration;
 use cosmogony::ZoneType;
-use futures::future;
 use geojson::{GeoJson, Geometry};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use std::time::Duration;
-use warp::{Filter, Rejection};
 
 use crate::adapters::primary::common::{coord::Coord, filters::Filters};
 use common::document::ContainerDocument;
 use places::{addr::Addr, admin::Admin, poi::Poi, stop::Stop, street::Street, PlaceDocType};
 
-use super::routes::{
-    is_valid_zone_type, validate_query_params, InvalidRequest, InvalidRequestReason,
-};
-
 pub const DEFAULT_LIMIT_RESULT_ES: i64 = 10;
 pub const DEFAULT_LIMIT_RESULT_REVERSE_API: i64 = 1;
 pub const DEFAULT_LANG: &str = "fr";
-
-fn default_result_limit() -> i64 {
-    DEFAULT_LIMIT_RESULT_ES
-}
-
-fn default_result_limit_reverse() -> i64 {
-    DEFAULT_LIMIT_RESULT_REVERSE_API
-}
-
-fn default_lang() -> String {
-    DEFAULT_LANG.to_string()
-}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -101,39 +83,6 @@ impl From<ForwardGeocoderExplainQuery> for ForwardGeocoderQuery {
     }
 }
 
-impl ForwardGeocoderExplainQuery {
-    pub fn validate() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
-        validate_query_params().and_then(|x: Self| {
-            let res = match &x {
-                Self { q, .. } if q.is_empty() => Err(InvalidRequest {
-                    reason: InvalidRequestReason::EmptyQueryString,
-                    info: "query cannot be empty".to_string(),
-                }),
-                Self { lat, lon, .. } if lat.is_some() != lon.is_some() => Err(InvalidRequest {
-                    reason: InvalidRequestReason::InconsistentLatLonRequest,
-                    info: "lat and lon parameters must either be both present or both absent"
-                        .to_string(),
-                }),
-                Self { lat: Some(lat), .. } if !(-90f32..=90f32).contains(lat) => {
-                    Err(InvalidRequest {
-                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                        info: "lat must be in [-90, 90]".to_string(),
-                    })
-                }
-                Self { lon: Some(lon), .. } if !(-180f32..=180f32).contains(lon) => {
-                    Err(InvalidRequest {
-                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                        info: "lon must be in [-180, 180]".to_string(),
-                    })
-                }
-                _ => Ok(x),
-            };
-
-            future::ready(res.map_err(warp::reject::custom))
-        })
-    }
-}
-
 /// This structure contains all the query parameters that
 /// can be submitted for the autocomplete endpoint.
 ///
@@ -163,13 +112,24 @@ pub struct ForwardGeocoderQuery {
     pub proximity: Option<Proximity>,
 }
 
+fn default_result_limit() -> i64 {
+    DEFAULT_LIMIT_RESULT_ES
+}
+
+fn default_result_limit_reverse() -> i64 {
+    DEFAULT_LIMIT_RESULT_REVERSE_API
+}
+
+fn default_lang() -> String {
+    DEFAULT_LANG.to_string()
+}
+
 impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
     fn from(source: (ForwardGeocoderQuery, Option<Geometry>)) -> Self {
         let (query, geometry) = source;
         let zone_types = query
             .zone_types
             .map(|zts| zts.iter().map(|t| t.as_str().to_string()).collect());
-
         Filters {
             // When option_zip_option becomes available: coord: input.lat.zip_with(input.lon, Coord::new),
             coord: match (query.lat, query.lon) {
@@ -207,43 +167,15 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
     }
 }
 
-impl ForwardGeocoderQuery {
-    pub fn validate() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
-        validate_query_params().and_then(|x: Self| {
-            let res = match &x {
-                Self { q, .. } if q.is_empty() => Err(InvalidRequest {
-                    reason: InvalidRequestReason::EmptyQueryString,
-                    info: "query cannot be empty".to_string(),
-                }),
-                Self { lat, lon, .. } if lat.is_some() != lon.is_some() => Err(InvalidRequest {
-                    reason: InvalidRequestReason::InconsistentLatLonRequest,
-                    info: "lat and lon parameters must either be both present or both absent"
-                        .to_string(),
-                }),
-                Self { lat: Some(lat), .. } if !(-90f32..=90f32).contains(lat) => {
-                    Err(InvalidRequest {
-                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                        info: "lat must be in [-90, 90]".to_string(),
-                    })
-                }
-                Self { lon: Some(lon), .. } if !(-180f32..=180f32).contains(lon) => {
-                    Err(InvalidRequest {
-                        reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                        info: "lon must be in [-180, 180]".to_string(),
-                    })
-                }
-                _ if !is_valid_zone_type(&x) => Err(InvalidRequest {
-                    reason: InvalidRequestReason::InconsistentZoneRequest,
-                    info:
-                        "'zone_type' must be specified when you query with 'type' parameter 'zone'"
-                            .to_string(),
-                }),
-                _ => Ok(x),
-            };
-
-            future::ready(res.map_err(warp::reject::custom))
-        })
-    }
+/// This structure contains all the query parameters that
+/// can be submitted for the features endpoint.
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FeaturesQuery {
+    pub pt_dataset: Option<Vec<String>>,
+    pub poi_dataset: Option<Vec<String>>,
+    #[serde(deserialize_with = "deserialize_opt_duration", default)]
+    pub timeout: Option<Duration>,
 }
 
 /// This structure contains all the query parameters that
@@ -259,28 +191,8 @@ pub struct ReverseGeocoderQuery {
     pub timeout: Option<Duration>,
 }
 
-impl ReverseGeocoderQuery {
-    pub fn validate() -> impl Filter<Extract = (Self,), Error = Rejection> + Copy {
-        validate_query_params().and_then(|x: Self| {
-            let res = match &x {
-                Self { lat, .. } if !(-90f64..=90f64).contains(lat) => Err(InvalidRequest {
-                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                    info: "lat must be in [-90, 90]".to_string(),
-                }),
-                Self { lon, .. } if !(-180f64..=180f64).contains(lon) => Err(InvalidRequest {
-                    reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                    info: "lon must be in [-180, 180]".to_string(),
-                }),
-                _ => Ok(x),
-            };
-
-            future::ready(res.map_err(warp::reject::custom))
-        })
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ForwardGeocoderBody {
+pub struct JsonParam {
     pub shape: GeoJson,
 }
 

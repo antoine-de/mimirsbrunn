@@ -1,10 +1,14 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
+
 use serde::de::DeserializeOwned;
 use snafu::Snafu;
 
 use crate::domain::model::query::Query;
+
+// TODO: this trait seems like bloat: it is the exact same interface as primary port
+//       search_documents
 
 #[derive(Debug, Clone)]
 pub struct Parameters {

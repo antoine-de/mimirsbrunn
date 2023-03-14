@@ -1,17 +1,24 @@
 use mimirsbrunn::utils::logger::logger_init;
 use snafu::{ResultExt, Snafu};
-use std::net::ToSocketAddrs;
+use std::{net::ToSocketAddrs, sync::Arc};
 use tokio::runtime;
 use tracing::{info, instrument};
 use warp::{path, Filter};
 
+use crate::settings::build_settings;
+
 use super::settings::{Error as SettingsError, Opts};
-use mimir::adapters::primary::bragi::api::{ForwardGeocoderExplainQuery, ReverseGeocoderQuery};
-use mimir::adapters::primary::bragi::handlers::{self, Settings};
-use mimir::adapters::primary::bragi::prometheus_handler::update_metrics;
-use mimir::adapters::primary::bragi::routes::{self, validate_forward_geocoder};
-use mimir::adapters::secondary::elasticsearch::remote::connection_pool_url;
-use mimir::domain::ports::secondary::remote::{Error as PortRemoteError, Remote};
+use mimir::{
+    adapters::{
+        primary::bragi::{
+            handlers::{self, Settings},
+            prometheus_handler::update_metrics,
+            routes,
+        },
+        secondary::elasticsearch::remote::connection_pool_url,
+    },
+    domain::ports::secondary::remote::{Error as PortRemoteError, Remote},
+};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -38,7 +45,7 @@ pub enum Error {
 }
 
 pub fn run(opts: &Opts) -> Result<(), Error> {
-    let settings: Settings = opts.try_into().context(SettingsProcessingSnafu)?;
+    let settings = build_settings(opts).context(SettingsProcessingSnafu)?;
     let _log_guard = logger_init().map_err(|err| Error::InitLog { source: err })?;
 
     let runtime = runtime::Builder::new_multi_thread()
@@ -51,7 +58,7 @@ pub fn run(opts: &Opts) -> Result<(), Error> {
 }
 
 pub fn config(opts: &Opts) -> Result<(), Error> {
-    let settings: Settings = opts.try_into().context(SettingsProcessingSnafu)?;
+    let settings = build_settings(opts).context(SettingsProcessingSnafu)?;
     println!("{}", serde_json::to_string_pretty(&settings).unwrap());
     Ok(())
 }
@@ -72,7 +79,7 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
             .context(ElasticsearchConnectionSnafu)?;
 
         let settings = settings.clone();
-        let ctx = handlers::Context { client, settings };
+        let ctx = Arc::new(handlers::Context { client, settings });
 
         move || {
             let ctx = ctx.clone();
@@ -81,23 +88,33 @@ pub async fn run_server(settings: Settings) -> Result<(), Error> {
     };
 
     let endpoints = {
-        path!("api" / "v1" / "autocomplete")
+        warp::get()
+            .and(path!("api" / "v1" / "autocomplete"))
             .map(ctx_builder())
-            .and(validate_forward_geocoder())
+            .and(routes::forward_geocoder_query())
+            .and(warp::any().map(|| None)) // the shape is None
             .and_then(handlers::forward_geocoder)
     }
+    .or({
+        warp::post()
+            .and(path!("api" / "v1" / "autocomplete"))
+            .map(ctx_builder())
+            .and(routes::forward_geocoder_query())
+            .and(routes::forward_geocoder_body())
+            .and_then(handlers::forward_geocoder)
+    })
     .or({
         warp::get()
             .and(path!("api" / "v1" / "reverse"))
             .map(ctx_builder())
-            .and(ReverseGeocoderQuery::validate())
+            .and(routes::reverse_geocoder_query())
             .and_then(handlers::reverse_geocoder)
     })
     .or({
         warp::get()
             .and(path!("api" / "v1" / "autocomplete-explain"))
             .map(ctx_builder())
-            .and(ForwardGeocoderExplainQuery::validate())
+            .and(routes::forward_geocoder_explain_query())
             .and(warp::any().map(|| None)) // the shape is None
             .and_then(handlers::forward_geocoder_explain)
     })
