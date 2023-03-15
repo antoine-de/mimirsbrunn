@@ -116,12 +116,14 @@ locally.
 2. Generate cosmogony file.
 
 If you haven't installed cosmogony yet, you need to do so now, by following the instructions
-[here](https://github.com/osm-without-borders/cosmogony). You can then transform the original
-OSM PBF file for Denmark (<p class="callout warning"> The following command must be typed in
-the directory of the cosmogony project)
+[here](https://github.com/osm-without-borders/cosmogony). You can then transform the original OSM
+PBF file for Denmark (The following command must be typed in the directory of the cosmogony project)
 
 ```
-cargo run --release -- generate -i /path/to/denmark-latest.osm.pbf -o denmark.jsonl.gz
+cargo run --release -- \
+  generate \
+  --input /path/to/denmark-latest.osm.pbf \
+  --output denmark.jsonl.gz
 ```
 
 3. Start an Elasticsearch docker container.
@@ -155,11 +157,10 @@ is configured for that prefix, it will create the index with the values found in
 before creating any index, you need to import all the templates in Elasticsearch.
 
 ```
-cd mimirsbrunn
-./target/release/ctlmimir \
-  -s "elasticsearch.url='http://localhost:9200'" \
-  -c ./config \
-  -m testing \
+cargo run --bin ctlmimir -- \
+  --setting "elasticsearch.url='http://localhost:9200'" \
+  --config-dir ./config \
+  --run-mode testing \
   run
 ```
 
@@ -200,13 +201,12 @@ the Elasticsearch container we just started: (See [here](/docs/indexings.md#cosm
 more details about using cosmogony2mimir)
 
 ```
-cd mimirsbrunn
-./target/release/cosmogony2mimir \
-  -c ./config \
-  -m testing \
-  -s "elasticsearch.url='http://localhost:9200'" \
-  -s langs=['en', 'da'] \
-  -i <path/to/denmark.jsonl.gz> \
+cargo run --bin cosmogony2mimir -- \
+  --config-dir ./config \
+  --run-mode testing \
+  --setting "elasticsearch.url='http://localhost:9200'" \
+  --setting langs=['en', 'da'] \
+  --input <path/to/denmark.jsonl.gz> \
   run
 ```
 
@@ -225,7 +225,23 @@ yellow open   munin_admin_fr_20211104_152535_346903898 FrWbs7PiRi26w-cbsIXjbg   
 
 6. Start Bragi
 
+Now you can start `bragi`.
+
+```
+cargo run --bin bragi -- \
+  --config-dir ./config \
+  --setting "elasticsearch.url='http://localhost:9200'" \
+  --run-mode testing \
+  run
+```
+
 7. Query Bragi
+
+You can now query `bragi` for a city that contains 'hay' (like 'L'Haÿ-les-Roses' for example).
+
+```
+http "localhost:5000/api/v1/autocomplete?q=hay&type[]=city"
+```
 
 ## Testing
 
