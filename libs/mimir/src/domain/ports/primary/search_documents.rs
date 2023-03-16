@@ -14,27 +14,32 @@ use crate::domain::{
 
 #[async_trait]
 pub trait SearchDocuments {
-    async fn search_documents<D: DeserializeOwned + Send + Sync + 'static>(
+    type Document;
+
+    async fn search_documents(
         &self,
         es_indices_to_search_in: Vec<String>,
         query: Query,
         result_limit: i64,
         timeout: Option<Duration>,
-    ) -> Result<Vec<D>, ModelError>;
+    ) -> Result<Vec<Self::Document>, ModelError>;
 }
 
 #[async_trait]
 impl<T> SearchDocuments for T
 where
     T: Search + Send + Sync,
+    T::Doc: DeserializeOwned,
 {
-    async fn search_documents<D: DeserializeOwned + Send + Sync + 'static>(
+    type Document = T::Doc;
+
+    async fn search_documents(
         &self,
         es_indices_to_search_in: Vec<String>,
         query: Query,
         result_limit: i64,
         timeout: Option<Duration>,
-    ) -> Result<Vec<D>, ModelError> {
+    ) -> Result<Vec<Self::Document>, ModelError> {
         self.search_documents(Parameters {
             es_indices_to_search_in,
             query,

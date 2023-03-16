@@ -7,9 +7,6 @@ use snafu::Snafu;
 
 use crate::domain::model::query::Query;
 
-// TODO: this trait seems like bloat: it is the exact same interface as primary port
-//       search_documents
-
 #[derive(Debug, Clone)]
 pub struct Parameters {
     // pub doc_types: Vec<String>,
@@ -27,8 +24,6 @@ pub enum Error {
 
 #[async_trait]
 pub trait Search {
-    async fn search_documents<D: DeserializeOwned + Send + Sync + 'static>(
-        &self,
-        parameters: Parameters,
-    ) -> Result<Vec<D>, Error>;
+    type Doc: DeserializeOwned + Send + Sync + 'static;
+    async fn search_documents(&self, parameters: Parameters) -> Result<Vec<Self::Doc>, Error>;
 }
