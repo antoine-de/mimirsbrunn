@@ -37,6 +37,7 @@ RUN --mount=type=cache,target=/home/mimirsbrunn/target \
        target/production/cosmogony2mimir               \
        target/production/bano2mimir                    \
        target/production/openaddresses2mimir           \
+       target/production/ntfs2mimir                    \
        target/production/ctlmimir                      \
        bin/
 
