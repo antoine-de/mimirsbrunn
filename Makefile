@@ -26,7 +26,6 @@ test: ## Launch all tests
 	cargo test --lib
 	cargo test --bins
 	cargo test --doc
-	cargo test --test end_to_end
 	cargo test --package mimir
 	cargo test --package common
 	cargo test --package places

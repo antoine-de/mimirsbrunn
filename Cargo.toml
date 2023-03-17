@@ -100,47 +100,6 @@ strip = "debuginfo"
 name = "bragi"
 path = "src/bragi/main.rs"
 
-[[bin]]
-name = "bano2mimir"
-path = "src/bin/bano2mimir.rs"
-
-[[bin]]
-name = "cosmogony2mimir"
-path = "src/bin/cosmogony2mimir.rs"
-
-[[bin]]
-name = "ctlmimir"
-path = "src/bin/ctlmimir.rs"
-
-[[bin]]
-name = "ntfs2mimir"
-path = "src/bin/ntfs2mimir.rs"
-
-[[bin]]
-name = "openaddresses2mimir"
-path = "src/bin/openaddresses2mimir.rs"
-
-[[bin]]
-name = "osm2mimir"
-path = "src/bin/osm2mimir.rs"
-
-[[bin]]
-name = "poi2mimir"
-path = "src/bin/poi2mimir.rs"
-
-[[bin]]
-name = "query"
-path = "src/bin/query.rs"
-
-[[test]]
-name = "end_to_end"
-harness = false # Allows Cucumber to print output instead of libtest
-
-[[test]]
-name = "idf"
-harness = false # Allows Cucumber to print output instead of libtest
-test = false
-
 [profile.bench]
 lto = true
 
