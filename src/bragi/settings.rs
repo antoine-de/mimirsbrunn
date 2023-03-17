@@ -1,6 +1,12 @@
-use mimir::adapters::primary::bragi::handlers::Settings;
+use mimir::{
+    adapters::secondary::elasticsearch::ElasticsearchStorageConfig,
+    utils::deserialize::deserialize_duration,
+};
+use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, time::Duration};
+
+use mimir::adapters::primary::common::settings::QuerySettings;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
@@ -31,6 +37,32 @@ pub enum Error {
 
     #[snafu(display("Config Compilation Error: {}", source))]
     ConfigCompilation { source: common::config::Error },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Service {
+    /// Host on which we expose bragi. Example: 'http://localhost', '0.0.0.0'
+    pub host: String,
+    /// Port on which we expose bragi.
+    pub port: u16,
+    /// Used on POST request to set an upper limit on the size of the body (in bytes)
+    pub content_length_limit: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Settings {
+    pub mode: String,
+    pub elasticsearch: ElasticsearchStorageConfig,
+    pub query: QuerySettings,
+    pub service: Service,
+    pub nb_threads: Option<usize>,
+    pub http_cache_duration: usize,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub autocomplete_timeout: Duration,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub reverse_timeout: Duration,
+    #[serde(deserialize_with = "deserialize_duration")]
+    pub features_timeout: Duration,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -74,19 +106,21 @@ pub enum Command {
     Config,
 }
 
-pub fn build_settings(opts: &Opts) -> Result<Settings, Error> {
-    common::config::config_from(
-        opts.config_dir.as_ref(),
-        &["bragi", "elasticsearch", "query"],
-        opts.run_mode.as_deref(),
-        "BRAGI",
-        opts.settings.clone(),
-    )
-    .context(ConfigCompilationSnafu)?
-    .try_into()
-    .context(ConfigMergeSnafu {
-        msg: "cannot merge bragi settings",
-    })
+impl Settings {
+    pub fn new(opts: &Opts) -> Result<Self, Error> {
+        common::config::config_from(
+            opts.config_dir.as_ref(),
+            &["bragi", "elasticsearch", "query"],
+            opts.run_mode.as_deref(),
+            "BRAGI",
+            opts.settings.clone(),
+        )
+        .context(ConfigCompilationSnafu)?
+        .try_into()
+        .context(ConfigMergeSnafu {
+            msg: "cannot merge bragi settings",
+        })
+    }
 }
 
 #[cfg(test)]
@@ -102,7 +136,7 @@ mod tests {
             settings: vec![],
             cmd: Command::Run,
         };
-        let settings = build_settings(&opts);
+        let settings = Settings::new(&opts);
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
@@ -120,7 +154,7 @@ mod tests {
             settings: vec![String::from("elasticsearch.port=9999")],
             cmd: Command::Run,
         };
-        let settings = build_settings(&opts);
+        let settings = Settings::new(&opts);
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",
@@ -139,7 +173,7 @@ mod tests {
             settings: vec![],
             cmd: Command::Run,
         };
-        let settings = build_settings(&opts);
+        let settings = Settings::new(&opts);
         assert!(
             settings.is_ok(),
             "Expected Ok, Got an Err: {}",

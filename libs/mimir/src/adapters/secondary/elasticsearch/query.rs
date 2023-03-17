@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use serde::de::DeserializeOwned;
 
 use super::ElasticsearchStorage;
 use crate::domain::ports::secondary::{
@@ -9,10 +8,12 @@ use crate::domain::ports::secondary::{
 
 #[async_trait]
 impl Search for ElasticsearchStorage {
-    async fn search_documents<D: DeserializeOwned + Send + Sync + 'static>(
+    type Doc = serde_json::Value;
+
+    async fn search_documents(
         &self,
         parameters: SearchParameters,
-    ) -> Result<Vec<D>, SearchError> {
+    ) -> Result<Vec<Self::Doc>, SearchError> {
         self.search_documents(
             parameters.es_indices_to_search_in,
             parameters.query,
