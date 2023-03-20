@@ -22,3 +22,5 @@ fn main() -> Result<(), Error> {
         settings::Command::Config => server::config(&opts).context(ServerSnafu),
     }
 }
+#[cfg(test)]
+mod tests;
