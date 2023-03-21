@@ -41,7 +41,7 @@ serde_with = "1.14"
 snafu = { version = "0.7", features = [ "futures" ] }
 tokio = { version = "1.26.0", features = [ "sync", "rt-multi-thread", "macros", "process" ] }
 tokio-stream = { version = "0.1.12", features = [ "fs" ] }
-toml = "0.5"
+toml = "0.7"
 tracing = "0.1.37"
 tracing-futures = { version =  "0.2.5", features = [ "futures-03" ] }
 url = { version = "2.3", features = [ "serde" ] }
