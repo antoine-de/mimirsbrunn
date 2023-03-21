@@ -15,7 +15,6 @@ approx = "0.5"
 async-trait = "0.1.67"
 config = { version = "0.11", default_features = false, features = ["json", "toml"] }
 common = { path = "../common" }
-cucumber = { package = "cucumber_rust", version = "0.9" }
 elasticsearch = "7.14.0-alpha.1"
 futures = "0.3"
 mimir = { path = "../mimir" }
