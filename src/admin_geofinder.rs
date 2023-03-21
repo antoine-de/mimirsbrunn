@@ -155,7 +155,7 @@ impl AdminGeoFinder {
     // that overlap input coordinates together with its parents.
     pub fn get_admins_if(
         &self,
-        coord: &geo_types::Coordinate<f64>,
+        coord: &geo_types::Coord<f64>,
         condition: impl Fn(&Admin) -> bool,
     ) -> Vec<Vec<Arc<Admin>>> {
         // Get a list of overlapping admins whose zone_type is less than granularity
@@ -213,7 +213,7 @@ impl AdminGeoFinder {
     //     We call them 'candidates'.
     // (2) We then iterate through these candidates and see if we already have the
     //     hierarchy which may have been previlously computed by eg. cosmogony.
-    pub fn get(&self, coord: &geo_types::Coordinate<f64>) -> Vec<Arc<Admin>> {
+    pub fn get(&self, coord: &geo_types::Coord<f64>) -> Vec<Arc<Admin>> {
         let selection_function = PointInEnvelopeSelectionFunction {
             point: [coord.x, coord.y],
         };
@@ -312,7 +312,7 @@ mod tests {
     use places::coord::Coord;
 
     fn p(x: f64, y: f64) -> geo_types::Point<f64> {
-        geo_types::Point(geo_types::Coordinate { x, y })
+        geo_types::Point(geo_types::Coord { x, y })
     }
 
     fn make_admin(offset: f64, zt: Option<ZoneType>) -> Admin {

@@ -31,22 +31,22 @@ chrono = "0.4"
 chrono-tz = "0.7.0"
 clap = { version = "3", features = ["derive"] }
 config = { version = "0.11", default_features = false, features = ["json", "toml"] }
-cosmogony = "0.11"
+cosmogony = "0.12"
 csv = "1.2"
 csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
 flate2 = "1"
 futures = "0.3"
-geo = "0.18"
+geo = "0.23.1"
 geo-types = { version = "0.7", features = [ "rstar" ] }
 http = "0.2"
 human-sort = "0.2"
 itertools = "0.10"
 lazy_static = "1.4"
 log = { version = "0.4", features = ["release_max_level_debug"] }
-navitia-poi-model = "0.5"
+navitia-poi-model = "0.6"
 num_cpus = "1.15"
-osm_boundaries_utils = "0.10"
-osmpbfreader = "0.15"
+osm_boundaries_utils = "0.11"
+osmpbfreader = "0.16"
 par-map = "0.1.4"
 regex = "1"
 rstar = "0.8"

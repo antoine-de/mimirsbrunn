@@ -9,11 +9,11 @@ use std::fmt;
 // we want a custom serialization for coords, and so far the cleanest way
 // to do this that has been found is to wrap the coord in another struct
 #[derive(Debug, Clone, Copy)]
-pub struct Coord(pub geo_types::Coordinate<f64>);
+pub struct Coord(pub geo_types::Coord<f64>);
 
 impl Coord {
     pub fn new(lon: f64, lat: f64) -> Coord {
-        Coord(geo_types::Coordinate { x: lon, y: lat })
+        Coord(geo_types::Coord { x: lon, y: lat })
     }
     pub fn lon(&self) -> f64 {
         self.x
@@ -35,12 +35,12 @@ impl Coord {
 
 impl Default for Coord {
     fn default() -> Coord {
-        Coord(geo_types::Coordinate { x: 0., y: 0. })
+        Coord(geo_types::Coord { x: 0., y: 0. })
     }
 }
 
 impl ::std::ops::Deref for Coord {
-    type Target = geo_types::Coordinate<f64>;
+    type Target = geo_types::Coord<f64>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

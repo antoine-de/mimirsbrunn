@@ -84,15 +84,6 @@ checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
 
 [[package]]
 name = "approx"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0e60b75072ecd4168020818c0107f2857bb6c4e64252d8d3983f6263b40a5c3"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "approx"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "072df7202e63b127ab55acfe16ce97013d5b97bf160489336d3f1840fd78e99e"
@@ -539,13 +530,13 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cosmogony"
-version = "0.11.0"
+version = "0.12.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7bf71cb8dc1804b788d720a27caf403d639afd6af47a6ca17a8a5a5c29024ce"
+checksum = "dc6392b5311b9abcc2bd71bad3dd218c46b04b401879ad0badd203063d79f52d"
 dependencies = [
  "anyhow",
  "flate2",
- "geo-types 0.7.9",
+ "geo-types",
  "geojson",
  "log",
  "osmpbfreader",
@@ -1260,24 +1251,11 @@ dependencies = [
 
 [[package]]
 name = "geo"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d893ed768bba4866e3e16b756c96ed7ef23ca270eac190000fc4e40c5d733467"
-dependencies = [
- "geo-types 0.6.2",
- "geographiclib-rs",
- "num-traits",
- "robust",
- "rstar 0.8.3",
-]
-
-[[package]]
-name = "geo"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02bf7fb342abefefb0abbb8d033f37233e6f857a1a970805d15f96560834d699"
 dependencies = [
- "geo-types 0.7.9",
+ "geo-types",
  "geographiclib-rs",
  "log",
  "num-traits",
@@ -1292,7 +1270,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39f57e9624b1a17ce621375464e9878c705d0aaadaf25cb44e4e0005a16de2f"
 dependencies = [
  "float_next_after",
- "geo-types 0.7.9",
+ "geo-types",
  "geographiclib-rs",
  "log",
  "num-traits",
@@ -1302,22 +1280,11 @@ dependencies = [
 
 [[package]]
 name = "geo-types"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7583925a1fdb2b450c461fe0878ba6e99a8f1332b2bc72fb1383fd25b2f13bf2"
-dependencies = [
- "approx 0.3.2",
- "num-traits",
- "rstar 0.8.3",
-]
-
-[[package]]
-name = "geo-types"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5f0b3068e1537a4b861ec3734f4aa9c317d537cf0845bf6fb6221973499d26c"
 dependencies = [
- "approx 0.5.0",
+ "approx",
  "num-traits",
  "rstar 0.8.3",
  "rstar 0.9.3",
@@ -1339,7 +1306,7 @@ version = "0.22.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c209e446d28d9142fb23127808bef2a1485924e7b42cd8c9407ea7cbfe09ccc"
 dependencies = [
- "geo-types 0.7.9",
+ "geo-types",
  "serde",
  "serde_json",
  "thiserror",
@@ -1978,8 +1945,8 @@ dependencies = [
  "criterion",
  "elasticsearch",
  "futures 0.3.17",
- "geo 0.16.0",
- "geo-types 0.7.9",
+ "geo 0.23.1",
+ "geo-types",
  "geojson",
  "http",
  "lazy_static",
@@ -2010,7 +1977,7 @@ version = "2.12.0"
 dependencies = [
  "address-formatter",
  "anyhow",
- "approx 0.5.0",
+ "approx",
  "async-trait",
  "bincode",
  "chrono",
@@ -2026,8 +1993,8 @@ dependencies = [
  "elasticsearch",
  "flate2",
  "futures 0.3.17",
- "geo 0.18.0",
- "geo-types 0.7.9",
+ "geo 0.23.1",
+ "geo-types",
  "http",
  "human-sort",
  "itertools",
@@ -2156,16 +2123,16 @@ dependencies = [
 
 [[package]]
 name = "navitia-poi-model"
-version = "0.5.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1061ab59e9551a86eb9ea4a5ec9ad5552d240c88c4cd9deda7bc24fb67c26b62"
+checksum = "16565b3691f1f42428c033664d4081a99bde5ba3b2a2cf7deb54e6928912ecd9"
 dependencies = [
  "anyhow",
  "csv",
- "geo 0.18.0",
+ "geo 0.23.1",
  "itertools",
  "serde",
- "zip 0.5.13",
+ "zip 0.6.4",
 ]
 
 [[package]]
@@ -2280,21 +2247,21 @@ dependencies = [
 
 [[package]]
 name = "osm_boundaries_utils"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd6c56628b8a1a8fc78615358e83c5f87d04e46229e9587232ad793117ed79ff"
+checksum = "14081789b9d45108f642a329f2f47675b73ac66af2383ed154790c99d5ca636c"
 dependencies = [
  "geo 0.18.0",
- "geo-types 0.7.9",
+ "geo-types",
  "log",
  "osmpbfreader",
 ]
 
 [[package]]
 name = "osmpbfreader"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "350c902b84c57c1d0fa657bfbf380cb1cdcc7352732aa8763ec4bbed4a474a8b"
+checksum = "6107e8414aa4d74a38a97785baccafb57981e2c6ce3db467bf0d90a2192cd07d"
 dependencies = [
  "byteorder",
  "flat_map",
@@ -2558,7 +2525,7 @@ dependencies = [
  "common",
  "config",
  "cosmogony",
- "geo-types 0.7.9",
+ "geo-types",
  "geojson",
  "human-sort",
  "navitia-poi-model",
@@ -3349,12 +3316,14 @@ checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
 
 [[package]]
 name = "smartstring"
-version = "0.2.9"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31aa6a31c0c2b21327ce875f7e8952322acfcfd0c27569a6e18a647281352c9b"
+checksum = "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29"
 dependencies = [
+ "autocfg",
  "serde",
  "static_assertions",
+ "version_check",
 ]
 
 [[package]]
@@ -3557,7 +3526,7 @@ dependencies = [
 name = "tests"
 version = "2.12.0"
 dependencies = [
- "approx 0.5.0",
+ "approx",
  "async-trait",
  "common",
  "config",
@@ -4075,9 +4044,9 @@ checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "version_check"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "void"
@@ -4346,7 +4315,7 @@ version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3c2252781f8927974e8ba6a67c965a759a2b88ea2b1825f6862426bbb1c8f41"
 dependencies = [
- "geo-types 0.7.9",
+ "geo-types",
  "log",
  "num-traits",
  "thiserror",
