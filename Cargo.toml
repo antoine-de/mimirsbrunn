@@ -49,7 +49,7 @@ osm_boundaries_utils = "0.11"
 osmpbfreader = "0.16"
 par-map = "0.1.4"
 regex = "1"
-rstar = "0.8"
+rstar = "0.10"
 rusqlite = { version = "0.28", optional = true }
 serde_json = "1"
 serde = {version = "1", features = ["rc"]}
