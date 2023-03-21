@@ -50,7 +50,7 @@ osmpbfreader = "0.16"
 par-map = "0.1.4"
 regex = "1"
 rstar = "0.8"
-rusqlite = { version = "0.26", optional = true }
+rusqlite = { version = "0.28", optional = true }
 serde_json = "1"
 serde = {version = "1", features = ["rc"]}
 snafu = { version = "0.7", features = [ "futures" ] }
