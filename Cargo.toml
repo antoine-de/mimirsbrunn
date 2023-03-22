@@ -76,8 +76,8 @@ name = "mimirsbrunn"
 path = "src/lib.rs"
 
 [dev-dependencies]
-async-trait = "0.1.50"
 url = { version = "2.2.2", features = [ "serde" ] }
+async-trait = "0.1.67"
 approx = "0.5"
 criterion = "0.3"
 cucumber = "0.10"
