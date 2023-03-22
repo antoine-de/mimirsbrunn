@@ -57,7 +57,7 @@ snafu = { version = "0.7", features = [ "futures" ] }
 tokio = { version = "1.14.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
 tokio-stream = { version = "0.1.8", features = [ "fs" ] }
 toml = "0.5"
-tracing = "0.1.26"
+tracing = "0.1.37"
 tracing-appender = "0.2"
 tracing-futures = { version =  "0.2.5", features = [ "futures-03" ] }
 tracing-log = "0.1"
