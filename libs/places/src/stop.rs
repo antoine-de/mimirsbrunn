@@ -261,7 +261,7 @@ pub fn to_mimir(
         comments,
         timezone: stop_area
             .timezone
-            .map(chrono_tz::Tz::name)
+            .map(chrono_tz6::Tz::name)
             .map(str::to_owned)
             .unwrap_or_default(),
         codes: stop_area
