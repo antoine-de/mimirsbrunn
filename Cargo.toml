@@ -54,7 +54,7 @@ rusqlite = { version = "0.26", optional = true }
 serde_json = "1"
 serde = {version = "1", features = ["rc"]}
 snafu = { version = "0.7", features = [ "futures" ] }
-tokio = { version = "1.14.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
+tokio = { version = "1.26.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
 tokio-stream = { version = "0.1.12", features = [ "fs" ] }
 toml = "0.5"
 tracing = "0.1.37"
