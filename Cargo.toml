@@ -65,7 +65,7 @@ tracing-subscriber = { version = "0.3", features = [ "env-filter" ] }
 transit_model = "0.43"
 typed_index_collection = "2.2"
 walkdir = "2.3"
-warp = { version = "0.3.1" }
+warp = { version = "0.3.3" }
 
 common = { path = "libs/common" }
 mimir  = { path = "libs/mimir" }
