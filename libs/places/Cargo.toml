@@ -22,4 +22,4 @@ navitia-poi-model = "0.5"
 serde = { version = "1", features = ["rc"]}
 tracing = "0.1.37"
 transit_model = "0.43"
-typed_index_collection = "2.0"
+typed_index_collection = "2.2"
