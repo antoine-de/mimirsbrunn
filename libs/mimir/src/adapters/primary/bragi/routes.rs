@@ -390,10 +390,12 @@ pub async fn report_invalid(rejection: Rejection) -> Result<impl Reply, Infallib
     Ok(reply)
 }
 
+// NOTE: using `(impl Reply,)` instead of `impl Reply` thanks to the following solution
+// https://github.com/rust-lang/rust/issues/107729#issuecomment-1437661348
 pub fn cache_filter<F, T>(
     filter: F,
     http_cache_duration: usize,
-) -> impl Filter<Extract = impl Reply, Error = std::convert::Infallible> + Clone + Send + Sync
+) -> impl Filter<Extract = (impl Reply,), Error = std::convert::Infallible> + Clone + Send + Sync
 where
     F: Filter<Extract = (T,), Error = std::convert::Infallible> + Clone + Send + Sync,
     F::Extract: warp::Reply,
