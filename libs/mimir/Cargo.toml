@@ -17,8 +17,8 @@ default = ["metrics"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bollard = "0.11.0"
 async-trait = "0.1.67"
+bollard = "0.11.1"
 chrono = { version = "0.4", features = [ "serde" ] }
 common = { path = "../common" }
 config = { version = "0.11", default_features = false, features = ["json", "toml"] }
