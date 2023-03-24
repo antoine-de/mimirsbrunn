@@ -99,12 +99,10 @@ pub async fn index_addresses(
     config.container.dataset = dataset.to_string();
 
     let addresses =
-        mimirsbrunn::addr_reader::import_addresses_from_input_path(input_file, false, into_addr)
-            .await
-            .context(AddressFetchSnafu)?;
+        mimirsbrunn::addr_reader::import_addresses_from_input_path(&input_file, false, into_addr);
 
     client
-        .generate_index(&config.container, addresses)
+        .generate_index(&config.container, futures::stream::iter(addresses))
         .await
         .map_err(|err| Error::Indexing {
             details: format!("could not index bano: {}", err,),

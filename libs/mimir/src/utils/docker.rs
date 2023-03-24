@@ -351,7 +351,7 @@ impl DockerWrapper {
 
             sleep(Duration::from_millis(self.docker_config.container_wait)).await;
         }
-        let _ = docker
+        docker
             .start_container(
                 &self.docker_config.container.name,
                 None::<StartContainerOptions<String>>,
@@ -438,7 +438,7 @@ impl DockerWrapper {
             ..Default::default()
         });
 
-        let _res = docker
+        docker
             .remove_container(&self.docker_config.container.name, options)
             .await
             .expect("remove container");
