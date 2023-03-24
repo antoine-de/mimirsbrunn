@@ -120,8 +120,7 @@ async fn run(
         move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder)
     };
 
-    let addresses =
-        import_addresses_from_input_path(opts.input, false, into_addr).map_err(Box::new)?;
+    let addresses = import_addresses_from_input_path(&opts.input, false, into_addr);
 
     client
         .generate_index(&settings.container, futures::stream::iter(addresses))

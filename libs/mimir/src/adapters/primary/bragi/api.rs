@@ -312,7 +312,7 @@ macro_rules! metrics {
 }
 pub use metrics;
 
-#[derive(PartialEq, Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum Type {
     #[serde(rename = "house")]
     House,

@@ -1388,7 +1388,7 @@ impl ElasticsearchStorage {
 }
 
 /// This is the information provided by Elasticsearch CAT Indice API
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct ElasticsearchIndex {
     pub(crate) health: String,
     pub status: String,

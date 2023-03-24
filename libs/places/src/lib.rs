@@ -102,11 +102,9 @@ impl Place {
 
     pub fn address(&self) -> Option<Address> {
         match *self {
-            Place::Admin(_) => None,
             Place::Street(ref o) => Some(Address::Street(o.clone())),
             Place::Addr(ref o) => Some(Address::Addr(o.clone())),
-            Place::Poi(_) => None,
-            Place::Stop(_) => None,
+            Place::Admin(_) | Place::Poi(_) | Place::Stop(_) => None,
         }
     }
 
@@ -164,7 +162,7 @@ impl Place {
 }
 
 // This is a bit of a kludge to a get a string version for the doc_type.
-#[derive(PartialEq, Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PlaceDocType {
     Admin,

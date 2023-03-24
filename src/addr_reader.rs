@@ -29,15 +29,15 @@ pub enum Error {
 /// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
 /// address.
 pub fn import_addresses_from_input_path<F, T>(
-    path: PathBuf,
+    path: &PathBuf,
     has_headers: bool,
     into_addr: F,
-) -> Result<impl Iterator<Item = Addr>, Error>
+) -> impl Iterator<Item = Addr>
 where
     F: Fn(T) -> Result<Addr, crate::error::Error> + 'static,
     T: DeserializeOwned + 'static,
 {
-    let recs = records_from_directory(&path, has_headers)
+    records_from_directory(&path, has_headers)
         .filter_map(move |record| match record {
             Ok(value) => Some(into_addr(value)),
             Err(err) => {
@@ -63,8 +63,7 @@ where
             }
 
             !empty_name
-        });
-    Ok(recs)
+        })
 }
 
 /// Same as records_from_file, but can take an entire directory as input
@@ -96,30 +95,22 @@ where
         let records = csv::ReaderBuilder::new()
             .has_headers(has_headers)
             .from_reader(file_read);
-        return Ok(Box::new(
+        Ok(Box::new(
             records
                 .into_deserialize()
                 .map(|record| record.map_err(|_| Error::InvalidExtention)),
-        ));
+        ))
     } else if path.extension().and_then(OsStr::to_str) == Some("gz") {
         let file_read = GzDecoder::new(file_read);
         let records = csv::ReaderBuilder::new()
             .has_headers(has_headers)
             .from_reader(file_read);
-        return Ok(Box::new(
+        Ok(Box::new(
             records
                 .into_deserialize()
                 .map(|record| record.map_err(|_| Error::InvalidExtention)),
-        ));
+        ))
     } else {
-        return Err(Error::InvalidExtention);
+        Err(Error::InvalidExtention)
     }
-
-    // let records = csv::AsyncReaderBuilder::new()
-    //     .has_headers(has_headers)
-    //     .create_deserializer(data_read)
-    //     .into_deserialize::<T>()
-    //     .context(CsvSnafu);
-
-    // Ok(records)
 }

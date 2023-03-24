@@ -54,7 +54,7 @@ lazy_static::lazy_static! {
     .unwrap();
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub enum InternalErrorReason {
     ElasticSearchError,
     SerializationError,

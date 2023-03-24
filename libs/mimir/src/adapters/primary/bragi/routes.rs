@@ -147,7 +147,7 @@ pub struct ApiError {
     pub long: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq)]
 pub enum InvalidRequestReason {
     CannotDeserialize,
     EmptyQueryString,
