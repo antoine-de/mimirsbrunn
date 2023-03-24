@@ -111,12 +111,11 @@ async fn run(
         move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
     };
 
-    let addresses = import_addresses_from_input_path(opts.input, true, into_addr)
-        .await
-        .map_err(Box::new)?;
+    let addresses =
+        import_addresses_from_input_path(opts.input, true, into_addr).map_err(Box::new)?;
 
     client
-        .generate_index(&settings.container, addresses)
+        .generate_index(&settings.container, futures::stream::iter(addresses))
         .await
         .context(IndexCreationSnafu)?;
 
