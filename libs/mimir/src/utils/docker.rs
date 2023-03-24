@@ -206,6 +206,10 @@ impl DockerConfig {
                 )
             })
     }
+    // Docker is only used for tests, let's not worry about these in tests
+    // Note that `docker` is a module of the `lib`, used in `bin` tests
+    // so it cannot be hidden behind `#[cfg(test)]`
+    #[allow(clippy::result_large_err)]
     pub fn connect(&self) -> Result<Docker, Error> {
         Docker::connect_with_unix(
             "unix:///var/run/docker.sock",

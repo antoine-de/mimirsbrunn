@@ -189,7 +189,7 @@ fn build_weight_depending_on_radius(
         Some(_) => {
             let (min_radius, max_radius) = settings_weight.radius_range;
             let curve = &importance_query_settings.proximity.decay;
-            let radius = (curve.offset + curve.scale).min(max_radius).max(min_radius);
+            let radius = (curve.offset + curve.scale).clamp(min_radius, max_radius);
             (radius.ln_1p() - min_radius.ln_1p()) / (max_radius.ln_1p() - min_radius.ln_1p())
         }
     };

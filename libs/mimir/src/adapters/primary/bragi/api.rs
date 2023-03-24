@@ -352,15 +352,16 @@ impl Type {
     }
 }
 
+#[serde_with::serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Proximity {
-    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(rename = "proximity_scale")]
     pub scale: f64,
-    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(rename = "proximity_offset")]
     pub offset: f64,
-    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde_as(as = "serde_with::DisplayFromStr")]
     #[serde(rename = "proximity_decay")]
     pub decay: f64,
 }

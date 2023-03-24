@@ -28,44 +28,44 @@ address-formatter = "0.2"
 anyhow = "1.0"
 bincode = { version = "1.3", optional = true }
 chrono = "0.4"
-chrono-tz = "0.6"
+chrono-tz = "0.7.0"
 clap = { version = "3", features = ["derive"] }
 config = { version = "0.11", default_features = false, features = ["json", "toml"] }
-cosmogony = "0.11"
-csv = "1.1"
+cosmogony = "0.12"
+csv = "1.2"
 csv-async = {version = "1.2", features = ["tokio", "with_serde"]}
 flate2 = "1"
 futures = "0.3"
-geo = "0.18"
+geo = "0.23.1"
 geo-types = { version = "0.7", features = [ "rstar" ] }
 http = "0.2"
 human-sort = "0.2"
 itertools = "0.10"
 lazy_static = "1.4"
 log = { version = "0.4", features = ["release_max_level_debug"] }
-navitia-poi-model = "0.5"
-num_cpus = "1.13"
-osm_boundaries_utils = "0.10"
-osmpbfreader = "0.15"
+navitia-poi-model = "0.6"
+num_cpus = "1.15"
+osm_boundaries_utils = "0.11"
+osmpbfreader = "0.16"
 par-map = "0.1.4"
 regex = "1"
-rstar = "0.8"
-rusqlite = { version = "0.26", optional = true }
+rstar = "0.10"
+rusqlite = { version = "0.28", optional = true }
 serde_json = "1"
 serde = {version = "1", features = ["rc"]}
 snafu = { version = "0.7", features = [ "futures" ] }
-tokio = { version = "1.14.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
-tokio-stream = { version = "0.1.8", features = [ "fs" ] }
-toml = "0.5"
-tracing = "0.1.26"
+tokio = { version = "1.26.0", features = [ "sync", "rt", "rt-multi-thread", "macros", "process" ] }
+tokio-stream = { version = "0.1.12", features = [ "fs" ] }
+toml = "0.7"
+tracing = "0.1.37"
 tracing-appender = "0.2"
 tracing-futures = { version =  "0.2.5", features = [ "futures-03" ] }
 tracing-log = "0.1"
 tracing-subscriber = { version = "0.3", features = [ "env-filter" ] }
-transit_model = "0.43"
-typed_index_collection = "2.0"
+transit_model = "0.54"
+typed_index_collection = "2.2"
 walkdir = "2.3"
-warp = { version = "0.3.1" }
+warp = { version = "0.3.3" }
 
 common = { path = "libs/common" }
 mimir  = { path = "libs/mimir" }
@@ -76,14 +76,13 @@ name = "mimirsbrunn"
 path = "src/lib.rs"
 
 [dev-dependencies]
-async-trait = "0.1.50"
-url = { version = "2.2.2", features = [ "serde" ] }
+async-trait = "0.1.67"
+url = { version = "2.3.1", features = [ "serde" ] }
 approx = "0.5"
-criterion = "0.3"
-cucumber = "0.10"
+criterion = "0.4"
 elasticsearch = "7.14.0-alpha.1"
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
-serial_test = "0.5.1"
+serial_test = "1.0.0"
 tests = { path = "libs/tests" }
 zip = { version = "0.5.13", default_features = false }
 

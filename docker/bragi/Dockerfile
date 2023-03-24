@@ -1,7 +1,7 @@
 # Builder image
 # =============
 
-FROM rust:1.60-buster as builder
+FROM rust:1.66-buster as builder
 
 WORKDIR /home
 
