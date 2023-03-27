@@ -169,7 +169,7 @@ pub async fn index_pois(
                 place
             })
             .collect();
-        match places.get_mut(&format!("{}{}", "poi:", parent_id)){
+        match places.get_mut(&format!("{}{}", "poi:", parent_id)) {
             Some(p) => p.children = children,
             _ => {
                 warn!("Parent not found for {}", parent_id);
