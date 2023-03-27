@@ -61,6 +61,8 @@ jobs:
       - name: Github Release
         uses: softprops/action-gh-release@v1
         if: success()
+        with:
+          files: ./scripts/deb-scratch/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
