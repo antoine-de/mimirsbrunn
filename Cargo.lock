@@ -1964,15 +1964,16 @@ dependencies = [
 
 [[package]]
 name = "navitia-poi-model"
-version = "0.6.2"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16565b3691f1f42428c033664d4081a99bde5ba3b2a2cf7deb54e6928912ecd9"
+checksum = "e5db46ce60ec8cc48230d51fecb629794e22e98b52c780c90a2c3a2f5a37e79b"
 dependencies = [
  "anyhow",
  "csv",
  "geo 0.23.1",
  "itertools",
  "serde",
+ "tracing",
  "zip 0.6.4",
 ]
 

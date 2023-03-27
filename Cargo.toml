@@ -43,7 +43,7 @@ human-sort = "0.2"
 itertools = "0.10"
 lazy_static = "1.4"
 log = { version = "0.4", features = ["release_max_level_debug"] }
-navitia-poi-model = "0.6"
+navitia-poi-model = "1.0.0"
 num_cpus = "1.15"
 osm_boundaries_utils = "0.11"
 osmpbfreader = "0.16"
