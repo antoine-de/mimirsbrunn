@@ -39,6 +39,9 @@
           "properties": {
             "type": "flattened"
           },
+          "children": {
+            "enabled": false
+          },
           "type": {
             "type": "constant_keyword",
             "value": "poi"
