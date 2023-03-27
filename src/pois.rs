@@ -36,6 +36,7 @@ use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as Nav
 use snafu::{ResultExt, Snafu};
 use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
 use tracing::instrument;
+use tracing::{info, warn};
 
 use crate::{
     admin,
@@ -131,7 +132,7 @@ pub async fn index_pois(
 
     let poi_types = Arc::new(poi_types);
 
-    let pois: Vec<_> = futures::stream::iter(pois.into_iter())
+    let mut places = futures::stream::iter(pois.clone().into_iter())
         .then(|(_id, poi)| {
             let poi_types = poi_types.clone();
             let admins_geofinder = admins_geofinder.clone();
@@ -144,10 +145,35 @@ pub async fn index_pois(
             )
         })
         .filter_map(|poi_res| futures::future::ready(poi_res.ok()))
-        .collect()
+        .map(|p| (p.id.clone(), p.clone()))
+        .collect::<HashMap<String, Poi>>()
         .await;
 
-    import_pois(client, settings.container, futures::stream::iter(pois)).await
+    // Add children
+    info!("building pois hierarchy");
+    for (parent_id, parent) in pois {
+        if parent.children.is_empty() {
+            continue;
+        }
+        let children: Vec<Poi> = parent
+            .children
+            .iter()
+            .filter_map(|ch| {
+                let place = match places.get(&format!("{}{}", "poi:", *ch)) {
+                    Some(p) => Some(p.clone()),
+                    _ => {
+                        warn!("Child not found for {}", ch);
+                        None
+                    }
+                };
+                place
+            })
+            .collect();
+        let place = places.get_mut(&format!("{}{}", "poi:", parent_id)).unwrap();
+        place.children = children;
+    }
+    let p: Vec<Poi> = places.into_values().collect();
+    import_pois(client, settings.container, futures::stream::iter(p)).await
 }
 
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
@@ -184,6 +210,7 @@ async fn into_poi(
         properties,
         visible: _,
         weight: _,
+        children: _,
     } = poi;
 
     let poi_type = poi_types
@@ -258,6 +285,7 @@ async fn into_poi(
         labels: I18nProperties::default(),
         distance: None,
         context: None,
+        children: vec![],
     };
 
     Ok(poi)
