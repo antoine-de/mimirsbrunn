@@ -169,8 +169,12 @@ pub async fn index_pois(
                 place
             })
             .collect();
-        let place = places.get_mut(&format!("{}{}", "poi:", parent_id)).unwrap();
-        place.children = children;
+        match places.get_mut(&format!("{}{}", "poi:", parent_id)){
+            Some(p) => p.children = children,
+            _ => {
+                warn!("Parent not found for {}", parent_id);
+            }
+        };
     }
     let p: Vec<Poi> = places.into_values().collect();
     import_pois(client, settings.container, futures::stream::iter(p)).await
