@@ -90,6 +90,9 @@ pub struct GeocodeJsonProperty {
     pub administrative_regions: Vec<AssociatedAdmin>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub poi_types: Vec<places::poi::PoiType>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub children: Vec<places::poi::Poi>,
     // For retrocompatibility, we can't have just a map of key values,
     // that would be too simple. We need a vector of objects
     // { key: "<key>", value: "<value>" }
@@ -184,6 +187,12 @@ impl FromWithLang<&places::admin::Admin> for AssociatedAdmin {
     }
 }
 
+impl FromWithLang<&places::poi::Poi> for places::poi::Poi {
+    fn from_with_lang(poi: &places::poi::Poi, _: Option<&str>) -> Self {
+        poi.clone()
+    }
+}
+
 pub trait FromWithLang<T> {
     fn from_with_lang(_: T, lang: Option<&str>) -> Self;
 }
@@ -269,6 +278,7 @@ impl FromWithLang<places::admin::Admin> for GeocodeJsonProperty {
             } else {
                 Some(zone_type)
             },
+            children: vec![],
         }
     }
 }
@@ -330,6 +340,7 @@ impl FromWithLang<places::street::Street> for GeocodeJsonProperty {
             street: name,
             timezone: None,
             zone_type: None,
+            children: vec![],
         }
     }
 }
@@ -379,6 +390,7 @@ impl FromWithLang<places::addr::Addr> for GeocodeJsonProperty {
             street: street_name,
             timezone: None,
             zone_type: None,
+            children: vec![],
         }
     }
 }
@@ -420,6 +432,12 @@ impl FromWithLang<places::poi::Poi> for GeocodeJsonProperty {
                 v
             });
 
+        let children = poi
+            .children
+            .iter()
+            .map(|a| places::poi::Poi::from_with_lang(a, lang))
+            .collect();
+
         GeocodeJsonProperty {
             address: match poi.address {
                 Some(places::Address::Addr(addr)) => {
@@ -453,6 +471,7 @@ impl FromWithLang<places::poi::Poi> for GeocodeJsonProperty {
             street: None,
             timezone: None,
             zone_type: None,
+            children,
         }
     }
 }
@@ -519,6 +538,7 @@ impl FromWithLang<places::stop::Stop> for GeocodeJsonProperty {
             street: None,
             timezone: Some(stop.timezone),
             zone_type: None,
+            children: vec![],
         }
     }
 }
