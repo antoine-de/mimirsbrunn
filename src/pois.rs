@@ -132,7 +132,7 @@ pub async fn index_pois(
 
     let poi_types = Arc::new(poi_types);
 
-    let mut places = futures::stream::iter(pois.clone().into_iter())
+    let mut places = futures::stream::iter(&pois)
         .then(|(_id, poi)| {
             let poi_types = poi_types.clone();
             let admins_geofinder = admins_geofinder.clone();
@@ -200,7 +200,7 @@ where
 // This function takes a Poi from the navitia model, ie from the CSV deserialization, and returns
 // a Poi from the mimir model, with all the contextual information added.
 async fn into_poi(
-    poi: NavitiaPoi,
+    poi: &NavitiaPoi,
     poi_types: Arc<HashMap<String, NavitiaPoiType>>,
     client: &ElasticsearchStorage,
     admins_geofinder: Arc<AdminGeoFinder>,
@@ -218,9 +218,9 @@ async fn into_poi(
     } = poi;
 
     let poi_type = poi_types
-        .get(&poi_type_id)
+        .get(poi_type_id)
         .ok_or(Error::UnrecognizedPoiType {
-            details: poi_type_id,
+            details: poi_type_id.to_string(),
         })
         .map(PoiType::from)?;
 
@@ -275,14 +275,14 @@ async fn into_poi(
     let poi = Poi {
         id: places::utils::normalize_id("poi", &id),
         label,
-        name,
+        name: name.to_string(),
         coord,
         approx_coord: Some(coord.into()),
         administrative_regions: admins,
         weight,
         zip_codes: vec![],
         poi_type,
-        properties,
+        properties: properties.clone(),
         address: addr,
         country_codes,
         names: I18nProperties::default(),
