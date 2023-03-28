@@ -50,7 +50,7 @@ Version: $version
 Section: base
 Priority: optional
 Architecture: amd64
-Maintainer: Matthieu Paindavoine <matthieu.paindavoine@kisiodigital.com>
+Maintainer: Hove <core@hove.com>
 Description: Mimir
 EOF
 
