@@ -148,6 +148,33 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn should_correctly_index_bano_file() {
+        let bano_file_path = [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "sample-bano",
+            "sample-bano.csv",
+        ]
+        .iter()
+        .collect();
+        assert_correctly_index_bano(bano_file_path).await;
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_correctly_index_bano_folder() {
+        let bano_folder_path = [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "sample-bano",
+        ]
+        .iter()
+        .collect();
+        assert_correctly_index_bano(bano_folder_path).await;
+    }
+
+    async fn assert_correctly_index_bano(bano_path: PathBuf) {
         docker::initialize()
             .await
             .expect("elasticsearch docker initialization");
@@ -155,14 +182,7 @@ mod tests {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
             run_mode: Some("testing".to_string()),
             settings: vec![],
-            input: [
-                env!("CARGO_MANIFEST_DIR"),
-                "tests",
-                "fixtures",
-                "sample-bano.csv",
-            ]
-            .iter()
-            .collect(),
+            input: bano_path,
             cmd: settings::Command::Run,
         };
 
