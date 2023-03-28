@@ -36,6 +36,7 @@ use navitia_poi_model::{Model as NavitiaModel, Poi as NavitiaPoi, PoiType as Nav
 use snafu::{ResultExt, Snafu};
 use std::{collections::HashMap, ops::Deref, path::PathBuf, sync::Arc};
 use tracing::instrument;
+use tracing::{info, warn};
 
 use crate::{
     admin,
@@ -131,7 +132,7 @@ pub async fn index_pois(
 
     let poi_types = Arc::new(poi_types);
 
-    let pois: Vec<_> = futures::stream::iter(pois.into_iter())
+    let mut places = futures::stream::iter(&pois)
         .then(|(_id, poi)| {
             let poi_types = poi_types.clone();
             let admins_geofinder = admins_geofinder.clone();
@@ -144,10 +145,39 @@ pub async fn index_pois(
             )
         })
         .filter_map(|poi_res| futures::future::ready(poi_res.ok()))
-        .collect()
+        .map(|p| (p.id.clone(), p.clone()))
+        .collect::<HashMap<String, Poi>>()
         .await;
 
-    import_pois(client, settings.container, futures::stream::iter(pois)).await
+    // Add children
+    info!("building pois hierarchy");
+    for (parent_id, parent) in pois {
+        if parent.children.is_empty() {
+            continue;
+        }
+        let children: Vec<Poi> = parent
+            .children
+            .iter()
+            .filter_map(|ch| {
+                let place = match places.get(&format!("{}{}", "poi:", *ch)) {
+                    Some(p) => Some(p.clone()),
+                    _ => {
+                        warn!("Child not found for {}", ch);
+                        None
+                    }
+                };
+                place
+            })
+            .collect();
+        match places.get_mut(&format!("{}{}", "poi:", parent_id)) {
+            Some(p) => p.children = children,
+            _ => {
+                warn!("Parent not found for {}", parent_id);
+            }
+        };
+    }
+    let p: Vec<Poi> = places.into_values().collect();
+    import_pois(client, settings.container, futures::stream::iter(p)).await
 }
 
 // FIXME Should not be ElasticsearchStorage, but rather a trait GenerateIndex
@@ -170,7 +200,7 @@ where
 // This function takes a Poi from the navitia model, ie from the CSV deserialization, and returns
 // a Poi from the mimir model, with all the contextual information added.
 async fn into_poi(
-    poi: NavitiaPoi,
+    poi: &NavitiaPoi,
     poi_types: Arc<HashMap<String, NavitiaPoiType>>,
     client: &ElasticsearchStorage,
     admins_geofinder: Arc<AdminGeoFinder>,
@@ -184,12 +214,13 @@ async fn into_poi(
         properties,
         visible: _,
         weight: _,
+        children: _,
     } = poi;
 
     let poi_type = poi_types
-        .get(&poi_type_id)
+        .get(poi_type_id)
         .ok_or(Error::UnrecognizedPoiType {
-            details: poi_type_id,
+            details: poi_type_id.to_string(),
         })
         .map(PoiType::from)?;
 
@@ -244,20 +275,21 @@ async fn into_poi(
     let poi = Poi {
         id: places::utils::normalize_id("poi", &id),
         label,
-        name,
+        name: name.to_string(),
         coord,
         approx_coord: Some(coord.into()),
         administrative_regions: admins,
         weight,
         zip_codes: vec![],
         poi_type,
-        properties,
+        properties: properties.clone(),
         address: addr,
         country_codes,
         names: I18nProperties::default(),
         labels: I18nProperties::default(),
         distance: None,
         context: None,
+        children: vec![],
     };
 
     Ok(poi)

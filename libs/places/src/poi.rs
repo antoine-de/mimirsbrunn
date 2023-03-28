@@ -39,6 +39,7 @@ pub struct Poi {
     pub distance: Option<u32>,
 
     pub context: Option<Context>,
+    pub children: Vec<Poi>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
