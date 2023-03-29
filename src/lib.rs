@@ -33,6 +33,7 @@ pub mod admin;
 pub mod admin_geofinder;
 pub mod bano;
 pub mod bano2mimir;
+pub mod cosmogony2mimir;
 pub mod error;
 pub mod labels;
 pub mod openaddresses;
