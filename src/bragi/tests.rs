@@ -108,3 +108,105 @@ async fn status() {
     );
     assert_eq!(body.pointer("/elasticsearch/health").unwrap(), &json!("ok"));
 }
+
+async fn cosmogony2mimir() {
+    let opts = mimirsbrunn::settings::cosmogony2mimir::Opts {
+        config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+        run_mode: Some("testing".to_string()),
+        settings: vec![],
+        input: [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "cosmogony",
+            "bretagne.small.jsonl.gz",
+        ]
+        .iter()
+        .collect(),
+        cmd: mimirsbrunn::settings::cosmogony2mimir::Command::Run,
+    };
+
+    let settings = mimirsbrunn::settings::cosmogony2mimir::Settings::new(&opts).unwrap();
+    let _res = mimirsbrunn::utils::launch::launch_async(move || {
+        mimirsbrunn::cosmogony2mimir::run(opts, settings)
+    })
+    .await;
+}
+
+#[serial]
+#[test(tokio::test)]
+async fn query_autocomplete() {
+    start_bragi().await;
+    cosmogony2mimir().await;
+
+    let response = reqwest::get(
+        "http://localhost:5000/api/v1/autocomplete?q=Bretagne&type[]=zone&zone_type[]=state",
+    )
+    .await
+    .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.get("features").unwrap().as_array().unwrap();
+    assert_eq!(features.len(), 1);
+
+    let geocoding = features[0]
+        .get("properties")
+        .unwrap()
+        .get("geocoding")
+        .unwrap();
+    assert_eq!(geocoding.get("name").unwrap(), "Bretagne");
+    assert_eq!(geocoding.get("type").unwrap(), "zone");
+    assert_eq!(geocoding.get("zone_type").unwrap(), "state");
+}
+
+async fn cosmogony2mimir() {
+    let opts = mimirsbrunn::settings::cosmogony2mimir::Opts {
+        config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
+        run_mode: Some("testing".to_string()),
+        settings: vec![],
+        input: [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "cosmogony",
+            "bretagne.small.jsonl.gz",
+        ]
+        .iter()
+        .collect(),
+        cmd: mimirsbrunn::settings::cosmogony2mimir::Command::Run,
+    };
+
+    let settings = mimirsbrunn::settings::cosmogony2mimir::Settings::new(&opts).unwrap();
+    let _res = mimirsbrunn::utils::launch::launch_async(move || {
+        mimirsbrunn::cosmogony2mimir::run(opts, settings)
+    })
+    .await;
+}
+
+#[serial]
+#[test(tokio::test)]
+async fn query_autocomplete() {
+    start_bragi().await;
+    cosmogony2mimir().await;
+
+    let response = reqwest::get(
+        "http://localhost:5000/api/v1/autocomplete?q=Bretagne&type[]=zone&zone_type[]=state",
+    )
+    .await
+    .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.get("features").unwrap().as_array().unwrap();
+    assert_eq!(features.len(), 1);
+
+    let geocoding = features[0]
+        .get("properties")
+        .unwrap()
+        .get("geocoding")
+        .unwrap();
+    assert_eq!(geocoding.get("name").unwrap(), "Bretagne");
+    assert_eq!(geocoding.get("type").unwrap(), "zone");
+    assert_eq!(geocoding.get("zone_type").unwrap(), "state");
+}
