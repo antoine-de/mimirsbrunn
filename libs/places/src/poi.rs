@@ -39,6 +39,7 @@ pub struct Poi {
     pub distance: Option<u32>,
 
     pub context: Option<Context>,
+    #[serde(default)]
     pub children: Vec<Poi>,
 }
 
