@@ -11,13 +11,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - container: navitia/debian8_dev
+          - debian_version: 8
             rust: "1.66"
 
-          - container: navitia/debian11_dev
+          - debian_version: 11
             rust: "1.66"
 
-    container: ${{ matrix.container }}
+    container: navitia/debian${{ matrix.debian_version }}_dev
 
     steps:
       - name: Checkout
@@ -40,7 +40,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Build package
-        run: ./scripts/build_deb.sh ${{ matrix.version }} 7
+        run: ./scripts/build_deb.sh ${{ matrix.debian_version }} 7
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
