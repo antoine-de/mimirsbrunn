@@ -126,6 +126,7 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn should_return_ok_with_default_config_dir() {
@@ -151,7 +152,7 @@ mod tests {
         let opts = Opts {
             config_dir,
             run_mode: Some(String::from("testing")),
-            settings: vec![String::from("elasticsearch.port=9999")],
+            settings: vec![String::from("elasticsearch.url='http://localhost:9998'")],
             cmd: Command::Run,
         };
         let settings = Settings::new(&opts);
@@ -160,10 +161,13 @@ mod tests {
             "Expected Ok, Got an Err: {}",
             settings.unwrap_err()
         );
-        assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
+        assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9998);
     }
 
     #[test]
+    // This test must not be run in concurrency with other tests
+    // because it changes environment variables (accessible to all the tests)
+    #[serial]
     fn should_override_elasticsearch_port_environment_variable() {
         let config_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("config");
         std::env::set_var("BRAGI_ELASTICSEARCH__URL", "http://localhost:9999");
@@ -180,5 +184,6 @@ mod tests {
             settings.unwrap_err()
         );
         assert_eq!(settings.unwrap().elasticsearch.url.port().unwrap(), 9999);
+        std::env::remove_var("BRAGI_ELASTICSEARCH__URL");
     }
 }
