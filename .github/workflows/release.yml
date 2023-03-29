@@ -15,24 +15,17 @@ jobs:
     strategy:
       matrix:
         include:
-          - version: jessie
-            packages: pkg-config libssl-dev
+          - container: navitia/debian8_dev
             rust: "1.66"
 
-          - version: buster
-            packages: pkg-config libssl-dev
+          - container: navitia/debian11_dev
             rust: "1.66"
 
-    container: debian:${{matrix.version}}
+    container: ${{ matrix.container }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Install requirements
-        run: |
-          apt-get update
-          apt-get install --yes --force-yes curl wget build-essential
-          apt-get install --yes --force-yes ${{ matrix.packages }}
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
