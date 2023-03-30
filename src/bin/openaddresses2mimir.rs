@@ -29,54 +29,22 @@
 // www.navitia.io
 
 use clap::Parser;
-use mimir::domain::ports::primary::generate_index::GenerateIndex;
-use snafu::{ResultExt, Snafu};
-use tracing::info;
 
-use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
 use mimirsbrunn::{
-    addr_reader::import_addresses_from_input_path,
-    admin_geofinder::AdminGeoFinder,
-    openaddresses::OpenAddress,
-    settings::{admin_settings::AdminSettings, openaddresses2mimir as settings},
-    utils::template::update_templates,
+    openaddresses2mimir::{run, Error},
+    settings::openaddresses2mimir as settings,
 };
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
-    Settings { source: settings::Error },
-
-    #[snafu(display("Elasticsearch Connection Pool {}", source))]
-    ElasticsearchConnection {
-        source: mimir::domain::ports::secondary::remote::Error,
-    },
-
-    #[snafu(display("Execution Error {}", source))]
-    Execution { source: Box<dyn std::error::Error> },
-
-    #[snafu(display("Configuration Error {}", source))]
-    Configuration { source: common::config::Error },
-
-    #[snafu(display("Index Creation Error {}", source))]
-    IndexCreation {
-        source: mimir::domain::model::error::Error,
-    },
-
-    #[snafu(display("Admin Retrieval Error {}", details))]
-    AdminRetrieval { details: String },
-}
 
 fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
+    let settings = settings::Settings::new(&opts).map_err(|e| Error::Settings { source: e })?;
 
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             settings.nb_threads,
             run(opts, settings),
         )
-        .context(ExecutionSnafu),
+        .map_err(|e| Error::Execution { source: e }),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -84,65 +52,28 @@ fn main() -> Result<(), Error> {
     }
 }
 
-async fn run(
-    opts: settings::Opts,
-    settings: settings::Settings,
-) -> Result<(), Box<dyn std::error::Error>> {
-    info!("importing open addresses into Mimir");
-
-    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
-        .conn(settings.elasticsearch)
-        .await
-        .context(ElasticsearchConnectionSnafu)
-        .map_err(Box::new)?;
-
-    tracing::info!("Connected to elasticsearch.");
-
-    // Update all the template components and indexes
-    if settings.update_templates {
-        update_templates(&client, opts.config_dir).await?;
-    }
-
-    // Fetch and index admins for `into_addr`
-    let into_addr = {
-        let admin_settings = AdminSettings::build(&settings.admins);
-        let admins_geofinder = AdminGeoFinder::build(&admin_settings, &client).await?;
-        let id_precision = settings.coordinates.id_precision;
-        move |a: OpenAddress| a.into_addr(&admins_geofinder, id_precision)
-    };
-
-    let addresses = import_addresses_from_input_path(&opts.input, true, into_addr);
-
-    client
-        .generate_index(&settings.container, futures::stream::iter(addresses))
-        .await
-        .context(IndexCreationSnafu)?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use futures::TryStreamExt;
-    use mimir::domain::model::configuration::root_doctype;
-    use mimirsbrunn::settings::admin_settings::AdminFromCosmogonyFile;
-    use serial_test::serial;
-
     use common::document::ContainerDocument;
+    use futures::TryStreamExt;
     use mimir::{
         adapters::{
             primary::bragi::api::DEFAULT_LIMIT_RESULT_ES,
             secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
         },
         domain::{
-            model::query::Query,
-            ports::primary::{list_documents::ListDocuments, search_documents::SearchDocuments},
+            model::{configuration::root_doctype, query::Query},
+            ports::{
+                primary::{list_documents::ListDocuments, search_documents::SearchDocuments},
+                secondary::remote::Remote,
+            },
         },
         utils::docker,
     };
+    use mimirsbrunn::settings::admin_settings::AdminFromCosmogonyFile;
     use places::{addr::Addr, Place};
+    use serial_test::serial;
+    use std::path::PathBuf;
 
     use super::*;
 
