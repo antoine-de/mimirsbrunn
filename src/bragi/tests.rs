@@ -30,6 +30,7 @@
 
 use super::*;
 use mimir::utils::docker;
+use serde_json::json;
 use serial_test::serial;
 use std::time::Duration;
 use test_log::test;
@@ -98,30 +99,12 @@ async fn status() {
     assert_eq!(response.status(), reqwest::StatusCode::OK);
     let body = response.json::<serde_json::Value>().await.unwrap();
     assert_eq!(
-        body.get("bragi")
-            .unwrap()
-            .get("version")
-            .unwrap()
-            .as_str()
-            .unwrap(),
-        env!("CARGO_PKG_VERSION"),
+        body.pointer("/bragi/version").unwrap(),
+        &json!(env!("CARGO_PKG_VERSION")),
     );
     assert_eq!(
-        body.get("mimir")
-            .unwrap()
-            .get("version")
-            .unwrap()
-            .as_str()
-            .unwrap(),
-        env!("CARGO_PKG_VERSION"),
+        body.pointer("/mimir/version").unwrap(),
+        &json!(env!("CARGO_PKG_VERSION")),
     );
-    assert_eq!(
-        body.get("elasticsearch")
-            .unwrap()
-            .get("health")
-            .unwrap()
-            .as_str()
-            .unwrap(),
-        "ok"
-    );
+    assert_eq!(body.pointer("/elasticsearch/health").unwrap(), &json!("ok"));
 }
