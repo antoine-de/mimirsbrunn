@@ -125,7 +125,7 @@ async fn import_pois(
         .collect()
         .await;
 
-    let _ = client
+    let _client = client
         .generate_index(config, futures::stream::iter(pois))
         .await
         .context(PoiIndexCreationSnafu)?;
