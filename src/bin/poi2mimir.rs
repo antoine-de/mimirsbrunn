@@ -1,36 +1,47 @@
+// Copyright © 2023, Hove and/or its affiliates. All rights reserved.
+//
+// This file is part of Navitia,
+//     the software to build cool stuff with public transport.
+//
+// Hope you'll enjoy and contribute to this project,
+//     powered by Hove (www.kisio.com).
+// Help us simplify mobility and open public transport:
+//     a non ending quest to the responsive locomotion way of traveling!
+//
+// LICENCE: This program is free software; you can redistribute it
+// and/or modify it under the terms of the GNU Affero General Public
+// License as published by the Free Software Foundation, either
+// version 3 of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public
+// License along with this program. If not, see
+// <http://www.gnu.org/licenses/>.
+//
+// Stay tuned using
+// twitter @navitia
+// IRC #navitia on freenode
+// https://groups.google.com/d/forum/navitia
+// www.navitia.io
+
 use clap::Parser;
-use snafu::{ResultExt, Snafu};
-
-use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
-use mimirsbrunn::{settings::poi2mimir as settings, utils::template::update_templates};
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
-    Settings { source: settings::Error },
-
-    #[snafu(display("Elasticsearch Connection Pool {}", source))]
-    ElasticsearchConnection {
-        source: mimir::domain::ports::secondary::remote::Error,
-    },
-
-    #[snafu(display("Configuration Error {}", source))]
-    Configuration { source: common::config::Error },
-
-    #[snafu(display("Execution Error {}", source))]
-    Execution { source: Box<dyn std::error::Error> },
-}
+use mimirsbrunn::poi2mimir::{run, Error};
+use mimirsbrunn::settings::poi2mimir as settings;
 
 fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
+    let settings = settings::Settings::new(&opts).map_err(|e| Error::Settings { source: e })?;
 
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             settings.nb_threads,
             run(opts, settings),
         )
-        .context(ExecutionSnafu),
+        .map_err(|e| Error::Execution { source: e }),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -38,39 +49,19 @@ fn main() -> Result<(), Error> {
     }
 }
 
-async fn run(
-    opts: settings::Opts,
-    settings: settings::Settings,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
-        .conn(settings.elasticsearch.clone())
-        .await
-        .context(ElasticsearchConnectionSnafu)?;
-
-    // Update all the template components and indexes
-    if settings.update_templates {
-        update_templates(&client, opts.config_dir).await?;
-    }
-
-    mimirsbrunn::pois::index_pois(opts.input, &client, settings).await?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use futures::TryStreamExt;
-    use serial_test::serial;
-
     use super::*;
     use ::tests::{bano, cosmogony, osm};
+    use futures::TryStreamExt;
     use mimir::{
         adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
-        domain::ports::primary::list_documents::ListDocuments,
+        domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
         utils::docker,
     };
     use mimirsbrunn::settings::poi2mimir as settings;
     use places::poi::Poi;
+    use serial_test::serial;
 
     #[tokio::test]
     #[serial]

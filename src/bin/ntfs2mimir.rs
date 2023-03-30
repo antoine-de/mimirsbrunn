@@ -29,73 +29,26 @@
 // www.navitia.io
 
 use clap::Parser;
-use snafu::{ResultExt, Snafu};
-
-use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
-use mimirsbrunn::{settings::ntfs2mimir as settings, utils::template::update_templates};
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
-    Settings { source: settings::Error },
-
-    #[snafu(display("Elasticsearch Connection Pool {}", source))]
-    ElasticsearchConnection {
-        source: mimir::domain::ports::secondary::remote::Error,
-    },
-
-    #[snafu(display("Execution Error {}", source))]
-    Execution { source: Box<dyn std::error::Error> },
-
-    #[snafu(display("Configuration Error {}", source))]
-    Configuration { source: common::config::Error },
-
-    #[snafu(display("Import Error {}", source))]
-    Import { source: mimirsbrunn::stops::Error },
-}
+use mimirsbrunn::{
+    ntfs2mimir::{run, Error},
+    settings::ntfs2mimir as settings,
+};
 
 fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
+    let settings = settings::Settings::new(&opts).map_err(|e| Error::Settings { source: e })?;
 
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             settings.nb_threads,
             run(opts, settings),
         )
-        .context(ExecutionSnafu),
+        .map_err(|e| Error::Execution { source: e }),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
         }
     }
-}
-
-async fn run(
-    opts: settings::Opts,
-    settings: settings::Settings,
-) -> Result<(), Box<dyn std::error::Error>> {
-    tracing::info!(
-        "Trying to connect to elasticsearch at {}",
-        &settings.elasticsearch.url
-    );
-    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
-        .conn(settings.elasticsearch.clone())
-        .await
-        .context(ElasticsearchConnectionSnafu)
-        .map_err(Box::new)?;
-
-    tracing::info!("Connected to elasticsearch.");
-
-    // Update all the template components and indexes
-    if settings.update_templates {
-        update_templates(&client, opts.config_dir).await?;
-    }
-
-    mimirsbrunn::stops::index_ntfs(&opts.input, &settings, &client)
-        .await
-        .context(ImportSnafu)
-        .map_err(|err| Box::new(err) as Box<dyn snafu::Error>) // TODO Investigate why the need to cast?
 }
 
 #[cfg(test)]
@@ -107,7 +60,7 @@ mod tests {
     use ::tests::cosmogony;
     use mimir::{
         adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
-        domain::ports::primary::list_documents::ListDocuments,
+        domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
         utils::docker,
     };
     use places::stop::Stop;

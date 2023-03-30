@@ -29,52 +29,22 @@
 // www.navitia.io
 
 use clap::Parser;
-use mimir::domain::ports::primary::generate_index::GenerateIndex;
+
 use mimirsbrunn::{
-    addr_reader::import_addresses_from_input_path, admin::fetch_admins,
-    settings::admin_settings::AdminSettings, utils::template::update_templates,
+    bano2mimir::{run, Error},
+    settings::bano2mimir as settings,
 };
-use snafu::{ResultExt, Snafu};
-use std::sync::Arc;
-
-use mimir::{adapters::secondary::elasticsearch, domain::ports::secondary::remote::Remote};
-use mimirsbrunn::{bano::Bano, settings::bano2mimir as settings};
-
-#[derive(Debug, Snafu)]
-pub enum Error {
-    #[snafu(display("Settings (Configuration or CLI) Error: {}", source))]
-    Settings { source: settings::Error },
-
-    #[snafu(display("Elasticsearch Connection Pool {}", source))]
-    ElasticsearchConnection {
-        source: mimir::domain::ports::secondary::remote::Error,
-    },
-
-    #[snafu(display("Execution Error {}", source))]
-    Execution { source: Box<dyn std::error::Error> },
-
-    #[snafu(display("Configuration Error {}", source))]
-    Configuration { source: common::config::Error },
-
-    #[snafu(display("Index Creation Error {}", source))]
-    IndexCreation {
-        source: mimir::domain::model::error::Error,
-    },
-
-    #[snafu(display("Admin Retrieval Error {}", details))]
-    AdminRetrieval { details: String },
-}
 
 fn main() -> Result<(), Error> {
     let opts = settings::Opts::parse();
-    let settings = settings::Settings::new(&opts).context(SettingsSnafu)?;
+    let settings = settings::Settings::new(&opts).map_err(|e| Error::Settings { source: e })?;
 
     match opts.cmd {
         settings::Command::Run => mimirsbrunn::utils::launch::launch_with_runtime(
             settings.nb_threads,
             run(opts, settings),
         )
-        .context(ExecutionSnafu),
+        .map_err(|e| Error::Execution { source: e }),
         settings::Command::Config => {
             println!("{}", serde_json::to_string_pretty(&settings).unwrap());
             Ok(())
@@ -82,68 +52,19 @@ fn main() -> Result<(), Error> {
     }
 }
 
-async fn run(
-    opts: settings::Opts,
-    settings: settings::Settings,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let client = elasticsearch::remote::connection_pool_url(&settings.elasticsearch.url)
-        .conn(settings.elasticsearch)
-        .await
-        .context(ElasticsearchConnectionSnafu)
-        .map_err(Box::new)?;
-
-    tracing::info!("Connected to elasticsearch.");
-
-    // Update all the template components and indexes
-    if settings.update_templates {
-        update_templates(&client, opts.config_dir).await?;
-    }
-
-    // TODO There might be an opportunity for optimization here:
-    // Lets say we're indexing a single bano department.... we don't need to retrieve
-    // the admins for other regions!
-    let into_addr = {
-        let admin_settings = AdminSettings::build(&settings.admins);
-        let admins = fetch_admins(&admin_settings, &client).await?;
-
-        let admins_by_insee = admins
-            .iter()
-            .cloned()
-            .filter(|a| !a.insee.is_empty())
-            .map(|mut a| {
-                a.boundary = None; // to save some space we remove the admin boundary
-                (a.insee.clone(), Arc::new(a))
-            })
-            .collect();
-
-        let admins_geofinder = admins.into_iter().collect();
-        move |b: Bano| b.into_addr(&admins_by_insee, &admins_geofinder)
-    };
-
-    let addresses = import_addresses_from_input_path(&opts.input, false, into_addr);
-
-    client
-        .generate_index(&settings.container, futures::stream::iter(addresses))
-        .await
-        .context(IndexCreationSnafu)?;
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
     use futures::TryStreamExt;
     use mimir::{
         adapters::secondary::elasticsearch::{remote, ElasticsearchStorageConfig},
-        domain::ports::primary::list_documents::ListDocuments,
+        domain::ports::{primary::list_documents::ListDocuments, secondary::remote::Remote},
         utils::docker,
     };
     use mimirsbrunn::settings::{admin_settings::AdminFromCosmogonyFile, bano2mimir as settings};
     use places::addr::Addr;
     use serial_test::serial;
+    use std::path::PathBuf;
 
     #[tokio::test]
     #[serial]
