@@ -42,6 +42,7 @@ pub mod openaddresses;
 pub mod openaddresses2mimir;
 pub mod osm2mimir;
 pub mod osm_reader;
+pub mod poi2mimir;
 pub mod pois;
 pub mod settings;
 pub mod stops;
