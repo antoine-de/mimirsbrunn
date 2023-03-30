@@ -1,4 +1,4 @@
-name: Master_Packages
+name: Master_Packages_ES2
 
 on:
   push:
