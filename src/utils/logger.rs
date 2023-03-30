@@ -34,8 +34,6 @@ pub fn logger_init() -> Result<tracing_appender::non_blocking::WorkerGuard, Erro
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_writer(non_blocking)
         .event_format(event_format);
-    #[cfg(debug_assertions)]
-    let fmt_layer = fmt_layer.with_test_writer();
     let subscriber = tracing_subscriber::registry()
         .with(fmt_layer)
         .with(env_filter);

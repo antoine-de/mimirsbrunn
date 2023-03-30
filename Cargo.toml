@@ -83,6 +83,7 @@ criterion = "0.4"
 elasticsearch = "7.14.0-alpha.1"
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 serial_test = "1.0.0"
+test-log = { version = "0.2", default-features = false, features = ["trace"] }
 tests = { path = "libs/tests" }
 zip = { version = "0.5.13", default_features = false }
 

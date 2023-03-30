@@ -1857,6 +1857,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "snafu",
+ "test-log",
  "tests",
  "tokio",
  "tokio-stream",
@@ -3276,6 +3277,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "test-log"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38f0c854faeb68a048f0f2dc410c5ddae3bf83854ef0e4977d58306a5edef50e"
+dependencies = [
+ "proc-macro2 1.0.53",
+ "quote 1.0.26",
+ "syn 1.0.109",
 ]
 
 [[package]]
