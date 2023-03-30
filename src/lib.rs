@@ -40,6 +40,7 @@ pub mod labels;
 pub mod ntfs2mimir;
 pub mod openaddresses;
 pub mod openaddresses2mimir;
+pub mod osm2mimir;
 pub mod osm_reader;
 pub mod pois;
 pub mod settings;
