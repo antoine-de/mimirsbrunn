@@ -12,9 +12,11 @@ jobs:
       matrix:
         include:
           - debian_version: 8
+            debian_name: jessie
             rust: "1.66"
 
           - debian_version: 11
+            debian_name: bullseye
             rust: "1.66"
 
     container: navitia/debian${{ matrix.debian_version }}_dev
@@ -29,7 +31,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
       - name: Build package
-        run: ./scripts/build_deb.sh ${{ matrix.debian_version }}
+        run: ./scripts/build_deb.sh ${{ matrix.debian_name }}
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
