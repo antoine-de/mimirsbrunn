@@ -46,7 +46,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
       - name: Build package
-        run: ./scripts/build_deb.sh debian${{ matrix.debian_name }} 7
+        run: ./scripts/build_deb.sh ${{ matrix.debian_name }} 7
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
