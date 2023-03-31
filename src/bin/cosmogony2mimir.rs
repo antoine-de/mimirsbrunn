@@ -79,7 +79,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -107,7 +107,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -137,7 +137,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -191,7 +191,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
