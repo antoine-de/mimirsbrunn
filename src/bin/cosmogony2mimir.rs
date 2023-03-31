@@ -64,6 +64,7 @@ mod tests {
     };
     use places::admin::Admin;
     use serial_test::serial;
+    use test_log::test;
 
     #[tokio::test]
     #[serial]
@@ -362,7 +363,7 @@ mod tests {
         )
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_index_cosmogony_activate_french_id_retrocompatibility() {
         docker::initialize()
@@ -377,9 +378,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony",
-                "limousin",
-                "limousin.jsonl.gz",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -406,16 +405,17 @@ mod tests {
             .await
             .unwrap();
         for adm_name in [
-            "Saint-Sulpice-les-Champs",
-            "Queyssac-les-Vignes",
-            "Saint-Quentin-la-Chabanne",
+            "Loreto-di-Tallano",
+            "Sainte-Lucie-de-Tallano",
+            "Serra-di-Scopamène",
+            "Porto-Vecchio",
         ] {
             let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
             assert_eq!(admin.id, format!("admin:fr:{}", admin.insee));
         }
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_index_cosmogony_deactivate_french_id_retrocompatibility() {
         docker::initialize()
@@ -430,9 +430,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony",
-                "limousin",
-                "limousin.jsonl.gz",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -459,9 +457,10 @@ mod tests {
             .await
             .unwrap();
         for adm_name in [
-            "Saint-Sulpice-les-Champs",
-            "Queyssac-les-Vignes",
-            "Saint-Quentin-la-Chabanne",
+            "Loreto-di-Tallano",
+            "Sainte-Lucie-de-Tallano",
+            "Serra-di-Scopamène",
+            "Porto-Vecchio",
         ] {
             let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
             assert!(admin.id.starts_with("admin:osm:relation"));
