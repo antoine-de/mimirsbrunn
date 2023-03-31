@@ -62,8 +62,9 @@ mod tests {
     use mimirsbrunn::settings::poi2mimir as settings;
     use places::poi::Poi;
     use serial_test::serial;
+    use test_log::test;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_correctly_index_poi_file() {
         docker::initialize()
@@ -78,7 +79,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        cosmogony::index_admins(&client, "limousin", "limousin", true, true)
+        cosmogony::index_admins(&client, "corse", "corse", true, true)
             .await
             .unwrap();
 
@@ -95,15 +96,9 @@ mod tests {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
             run_mode: Some("testing".to_string()),
             settings: vec![],
-            input: [
-                env!("CARGO_MANIFEST_DIR"),
-                "tests",
-                "fixtures",
-                "poi",
-                "limousin.poi",
-            ]
-            .iter()
-            .collect(),
+            input: [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", "corse.poi"]
+                .iter()
+                .collect(),
             cmd: settings::Command::Run,
         };
 

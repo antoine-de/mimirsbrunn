@@ -65,8 +65,9 @@ mod tests {
     use places::addr::Addr;
     use serial_test::serial;
     use std::path::PathBuf;
+    use test_log::test;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_correctly_index_bano_file() {
         let bano_file_path = [
@@ -81,7 +82,7 @@ mod tests {
         assert_correctly_index_bano(bano_file_path).await;
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_correctly_index_bano_folder() {
         let bano_folder_path = [
@@ -112,9 +113,7 @@ mod tests {
             env!("CARGO_MANIFEST_DIR"),
             "tests",
             "fixtures",
-            "cosmogony",
-            "ile-de-france",
-            "ile-de-france.jsonl.gz",
+            "corse.jsonl.gz",
         ]
         .iter()
         .collect();
@@ -161,7 +160,7 @@ mod tests {
         assert_eq!(addr2.zip_codes, vec!["06000", "06100", "06200", "06300"]);
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_fail_on_invalid_path() {
         docker::initialize()

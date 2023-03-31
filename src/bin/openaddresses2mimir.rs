@@ -104,9 +104,7 @@ mod tests {
             env!("CARGO_MANIFEST_DIR"),
             "tests",
             "fixtures",
-            "cosmogony",
-            "ile-de-france",
-            "ile-de-france.jsonl.gz",
+            "corse.jsonl.gz",
         ]
         .iter()
         .collect();
