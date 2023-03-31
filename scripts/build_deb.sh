@@ -42,6 +42,16 @@ else
 fi
 cargo install --locked $option --path=${MIMIRSBRUNN_DIR} --root=$rootdir
 
+# Rename all binaries with a suffix
+# Useful for tagging binaries that works on ES7 (for example, `bragi7` instead of `bragi`)
+for bin in $( ls ${rootdir}/bin/* )
+do
+  if [ -n "${2:-}" ]
+  then
+    mv "${bin}" "${bin}${2:-}"
+  fi
+done
+
 mkdir -p "$pkgdir/DEBIAN"
 
 cat << EOF > "$pkgdir/DEBIAN/control"
