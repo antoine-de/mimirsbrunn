@@ -24,16 +24,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      # TODO :
-      # Remove this step after ES migration 2->7.
-      # We need it to make version 2 and 7 coexist.
-      # Be careful, binaries will not have the same name !
-      - name: Temporary rename binaries with 7
-        run: |
-          for exec in bragi bano2mimir cosmogony2mimir ctlmimir openaddresses2mimir osm2mimir poi2mimir ntfs2mimir query; do
-            sed -i -e "s/^name\s*=\s*\"$exec\"/name = \"${exec}7\"/" Cargo.toml;
-          done
-
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
