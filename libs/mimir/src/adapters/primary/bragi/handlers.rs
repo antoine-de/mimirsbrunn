@@ -107,7 +107,7 @@ where
         build_es_indices_to_search(&params.types, &params.pt_dataset, &params.poi_dataset);
     let lang = params.lang.clone();
     let filters = filters::Filters::from((params, geometry));
-    let excludes = ["boundary".to_string()];
+    let excludes = ["boundary".to_string(), "children".to_string()];
 
     for query_type in [QueryType::PREFIX, QueryType::FUZZY] {
         let dsl_query = dsl::build_query(
