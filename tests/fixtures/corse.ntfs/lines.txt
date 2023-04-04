@@ -1,0 +1,14 @@
+line_id,line_code,line_name,forward_line_name,backward_line_name,line_color,line_text_color,line_sort_order,network_id,commercial_mode_id,geometry_id,line_opening_time,line_closing_time
+1,1,Ligne 1,,,F30C0C,FFFFFF,,1,Bus,,06:30:00,20:14:00
+3,2,Ligne 2,,,1731F5,FFFFFF,,1,Bus,,06:25:00,23:45:00
+4,2BIS,Ligne 2 Bis,,,F34196,000000,,1,Bus,,07:10:00,20:15:00
+5,3,Ligne 3,,,12B630,FFFFFF,,1,Bus,,06:30:00,20:21:00
+6,4,Ligne 4,,,EB7D10,FFFFFF,,1,Bus,,06:40:00,23:55:00
+7,5,Ligne 5,,,6D57EB,000000,,1,Bus,,06:35:00,24:53:00
+13,7,Ligne 7,,,EB8C10,000000,,1,Bus,,06:30:00,23:55:00
+9,8,Navette Aeroport,,,E41CE4,000000,,1,Bus,,05:00:00,23:30:00
+10,9,Ligne 9,,,E387EE,000000,,1,Bus,,06:30:00,19:39:00
+15,A,Navette Parc Relais,,,000000,FFFFFF,,1,Bus,,06:45:00,19:35:00
+12,B,Ligne B,,,0B0900,FFFFFF,,1,Bus,,06:50:00,19:29:00
+14,N,Navette conducteurs,,,348789,FFFFFF,,1,Bus,,05:00:00,08:20:00
+22,TAD,TAD 1Bis 6 10,,,FA0626,FFFFFF,,1,Bus,,08:00:00,18:59:00

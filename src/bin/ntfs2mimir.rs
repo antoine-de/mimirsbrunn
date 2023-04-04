@@ -94,8 +94,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "ntfs",
-                "limousin",
+                "corse.ntfs",
             ]
             .iter()
             .collect(),
@@ -117,7 +116,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(stops.len(), 6);
+        assert_eq!(stops.len(), 153);
     }
 
     #[test(tokio::test)]
@@ -135,8 +134,7 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "ntfs",
-                "limousin",
+                "corse.ntfs",
             ]
             .iter()
             .collect(),
