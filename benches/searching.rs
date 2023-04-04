@@ -43,7 +43,7 @@ fn bench(c: &mut Criterion) {
             .await
             .expect("could not establish connection with Elasticsearch");
 
-        download::osm("ile-de-france").await.unwrap();
+        download::osm("corse").await.unwrap();
         download::bano("ile-de-france", &["75", "77", "78", "92", "93", "94", "95"])
             .await
             .unwrap();

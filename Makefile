@@ -22,7 +22,18 @@ lint: ## Check quality of the code
 	cargo clippy $(CLIPPY_PACKAGES) --bins --all-features -- $(CLIPPY_EXTRA)
 	cargo clippy $(CLIPPY_PACKAGES) --all-targets --no-default-features -- $(CLIPPY_EXTRA)
 
-test: ## Launch all tests
+tests/fixtures/corse.jsonl.gz: tests/fixtures/corse.osm.pbf
+	docker run \
+		--rm \
+		--volume "${PWD}/tests/fixtures/:/fixtures" \
+		--workdir "/fixtures" \
+		ghcr.io/osm-without-borders/cosmogony:v0.12.8 \
+		generate \
+		--country-code fr \
+		--input /fixtures/corse.osm.pbf \
+		--output /fixtures/corse.jsonl.gz
+fixtures: tests/fixtures/corse.osm.pbf tests/fixtures/corse.jsonl.gz
+test: fixtures ## Launch all tests
 	cargo test --lib
 	cargo test --bins
 	cargo test --doc

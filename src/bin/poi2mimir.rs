@@ -83,7 +83,7 @@ mod tests {
             .await
             .unwrap();
 
-        osm::index_streets(&client, "limousin", "limousin", true)
+        osm::index_streets(&client, "corse", "corse", true)
             .await
             .unwrap();
 

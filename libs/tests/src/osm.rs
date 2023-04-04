@@ -155,10 +155,10 @@ pub async fn index_streets(
     }
 
     let base_path = env!("CARGO_MANIFEST_DIR");
-    let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "osm", region]
+    let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures"]
         .iter()
         .collect();
-    let input_file = input_dir.join(format!("{}-latest.osm.pbf", region));
+    let input_file = input_dir.join(format!("{}.osm.pbf", region));
 
     let mut osm_reader =
         mimirsbrunn::osm_reader::make_osm_reader(&input_file).context(OsmPbfReaderSnafu)?;

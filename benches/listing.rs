@@ -29,7 +29,7 @@ fn bench(c: &mut Criterion) {
             .await
             .expect("could not establish connection with Elasticsearch");
 
-        download::osm("ile-de-france").await.unwrap();
+        download::osm("corse").await.unwrap();
         // false: don't force regenerate admins for 'ile-de-france'
         cosmogony::generate("ile-de-france", false).await.unwrap();
         // true: force reindex admins on bench dataset for 'ile-de-france'
