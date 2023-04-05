@@ -133,9 +133,57 @@ async fn cosmogony2mimir() {
     .await;
 }
 
+async fn osm2mimir() {
+    let opts = mimirsbrunn::settings::osm2mimir::Opts {
+        config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+        run_mode: Some("testing".to_string()),
+        settings: vec![],
+        input: [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "osm",
+            "corse.osm.pbf",
+        ]
+        .iter()
+        .collect(),
+        cmd: mimirsbrunn::settings::osm2mimir::Command::Run,
+    };
+    let mut settings = mimirsbrunn::settings::osm2mimir::Settings::new(&opts).unwrap();
+    settings.streets.import = true;
+    let _res = mimirsbrunn::utils::launch::launch_async(move || {
+        mimirsbrunn::osm2mimir::run(opts, settings)
+    })
+    .await;
+}
+
+async fn bano2mimir() {
+    let opts = mimirsbrunn::settings::bano2mimir::Opts {
+        config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+        run_mode: Some("testing".to_string()),
+        settings: vec![],
+        input: [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "bano",
+            "corse.csv",
+        ]
+        .iter()
+        .collect(),
+        cmd: mimirsbrunn::settings::bano2mimir::Command::Run,
+    };
+
+    let settings = mimirsbrunn::settings::bano2mimir::Settings::new(&opts).unwrap();
+    let _res = mimirsbrunn::utils::launch::launch_async(move || {
+        mimirsbrunn::bano2mimir::run(opts, settings)
+    })
+    .await;
+}
+
 #[serial]
 #[test(tokio::test)]
-async fn query_autocomplete() {
+async fn autocomplete() {
     start_bragi().await;
     cosmogony2mimir().await;
 
@@ -146,15 +194,67 @@ async fn query_autocomplete() {
     assert_eq!(response.status(), reqwest::StatusCode::OK);
     let body = response.json::<serde_json::Value>().await.unwrap();
 
-    let features = body.get("features").unwrap().as_array().unwrap();
-    assert_eq!(features.len(), 1);
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
 
-    let geocoding = features[0]
-        .get("properties")
-        .unwrap()
-        .get("geocoding")
-        .unwrap();
-    assert_eq!(geocoding.get("name").unwrap(), "Propriano");
-    assert_eq!(geocoding.get("type").unwrap(), "zone");
-    assert_eq!(geocoding.get("zone_type").unwrap(), "city");
+    let geocoding = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(geocoding.get("name").unwrap(), &json!("Propriano"));
+    assert_eq!(geocoding.get("type").unwrap(), &json!("zone"));
+    assert_eq!(geocoding.get("zone_type").unwrap(), &json!("city"));
+}
+
+#[serial]
+#[test(tokio::test)]
+async fn reverse() {
+    start_bragi().await;
+    cosmogony2mimir().await;
+    osm2mimir().await;
+    bano2mimir().await;
+
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/reverse?lat=41.920063&lon=8.736635&limit=1")
+            .await
+            .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
+
+    let geocoding = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(geocoding.get("housenumber").unwrap(), &json!("1"));
+    assert_eq!(geocoding.get("city").unwrap(), &json!("Ajaccio"));
+    assert_eq!(
+        geocoding.get("label").unwrap(),
+        &json!("1 Cours Napoléon (Ajaccio)")
+    );
+    assert_eq!(geocoding.get("postcode").unwrap(), &json!("20000"));
+    assert_eq!(geocoding.get("type").unwrap(), &json!("house"));
+}
+
+#[serial]
+#[test(tokio::test)]
+async fn features() {
+    start_bragi().await;
+    cosmogony2mimir().await;
+
+    let response = reqwest::get(
+        "http://localhost:5000/api/v1/features/admin:fr:2A249?poi_dataset[]=needed-parameter-but-not-important-for-admin",
+    )
+    .await
+    .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    tracing::debug!("{body}");
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
+
+    let geocoding = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(geocoding.get("id").unwrap(), &json!("admin:fr:2A249"));
+    assert_eq!(geocoding.get("name").unwrap(), &json!("Propriano"));
+    assert_eq!(geocoding.get("postcode").unwrap(), &json!("20110"));
+    assert_eq!(geocoding.get("level").unwrap(), &json!(8));
+    assert_eq!(geocoding.get("type").unwrap(), &json!("zone"));
+    assert_eq!(geocoding.get("zone_type").unwrap(), &json!("city"));
 }
