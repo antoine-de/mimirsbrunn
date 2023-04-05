@@ -1,0 +1,5 @@
+LON,LAT,NUMBER,STREET,UNIT,CITY,DISTRICT,REGION,POSTCODE,ID
+8.7296,41.915968,1,Rue Gabriel Péri,,Ajaccio,,,20000,
+8.739537,41.918906,5,Avenue Antoine Serafini,,Ajaccio,,,20000;20167;20090,
+13.4000,52.5000,42,,,Fake-City,,,11111,line_without_street_should_be_ignored
+,,,,,,,,,badly_formated_line
