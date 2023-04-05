@@ -74,8 +74,8 @@ mod tests {
             env!("CARGO_MANIFEST_DIR"),
             "tests",
             "fixtures",
-            "sample-bano",
-            "sample-bano.csv",
+            "bano",
+            "corse.csv",
         ]
         .iter()
         .collect();
@@ -85,14 +85,9 @@ mod tests {
     #[test(tokio::test)]
     #[serial]
     async fn should_correctly_index_bano_folder() {
-        let bano_folder_path = [
-            env!("CARGO_MANIFEST_DIR"),
-            "tests",
-            "fixtures",
-            "sample-bano",
-        ]
-        .iter()
-        .collect();
+        let bano_folder_path = [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", "bano"]
+            .iter()
+            .collect();
         assert_correctly_index_bano(bano_folder_path).await;
     }
 
@@ -144,21 +139,21 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(addresses.len(), 35);
+        assert_eq!(addresses.len(), 2);
 
         let addr1 = addresses
             .iter()
-            .find(|&addr| addr.name == "10 Place de la Mairie")
+            .find(|&addr| addr.name == "1 Cours Napoléon")
             .unwrap();
 
-        assert_eq!(addr1.id, "addr:1.378886;43.668175:10");
+        assert_eq!(addr1.id, "addr:8.736635;41.920063:1");
 
         let addr2 = addresses
             .iter()
-            .find(|&addr| addr.name == "999 Rue Foncet")
+            .find(|&addr| addr.name == "12 Cours Lucien Bonaparte")
             .unwrap();
 
-        assert_eq!(addr2.zip_codes, vec!["06000", "06100", "06200", "06300"]);
+        assert_eq!(addr2.zip_codes, vec!["20000", "20167", "20090"]);
     }
 
     #[test(tokio::test)]
