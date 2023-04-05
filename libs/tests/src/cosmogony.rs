@@ -128,7 +128,7 @@ pub async fn index_admins(
     }
 
     let base_path = env!("CARGO_MANIFEST_DIR");
-    let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures"]
+    let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "cosmogony"]
         .iter()
         .collect();
     let input_file = input_dir.join(format!("{}.jsonl.gz", region));

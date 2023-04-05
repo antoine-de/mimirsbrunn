@@ -94,7 +94,8 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "corse.ntfs",
+                "ntfs",
+                "corse",
             ]
             .iter()
             .collect(),
@@ -134,7 +135,8 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "corse.ntfs",
+                "ntfs",
+                "corse",
             ]
             .iter()
             .collect(),

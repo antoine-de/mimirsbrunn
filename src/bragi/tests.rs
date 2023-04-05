@@ -118,6 +118,7 @@ async fn cosmogony2mimir() {
             env!("CARGO_MANIFEST_DIR"),
             "tests",
             "fixtures",
+            "cosmogony",
             "corse.jsonl.gz",
         ]
         .iter()

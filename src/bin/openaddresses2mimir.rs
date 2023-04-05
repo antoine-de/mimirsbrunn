@@ -104,6 +104,7 @@ mod tests {
             env!("CARGO_MANIFEST_DIR"),
             "tests",
             "fixtures",
+            "cosmogony",
             "corse.jsonl.gz",
         ]
         .iter()

@@ -96,9 +96,15 @@ mod tests {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
             run_mode: Some("testing".to_string()),
             settings: vec![],
-            input: [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", "corse.poi"]
-                .iter()
-                .collect(),
+            input: [
+                env!("CARGO_MANIFEST_DIR"),
+                "tests",
+                "fixtures",
+                "poi",
+                "corse.poi",
+            ]
+            .iter()
+            .collect(),
             cmd: settings::Command::Run,
         };
 
