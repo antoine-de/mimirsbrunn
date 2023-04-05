@@ -23,7 +23,7 @@ lint: ## Check quality of the code
 	cargo clippy $(CLIPPY_PACKAGES) --all-targets --no-default-features -- $(CLIPPY_EXTRA)
 
 tests/fixtures/cosmogony/corse.jsonl.gz: tests/fixtures/osm/corse.osm.pbf
-	## '--parents' avoid to exit with an error code in case the folder already exists
+	## '--parents' exit with no error code in case the folder already exists
 	mkdir --parents tests/fixtures/cosmogony
 	docker run \
 		--rm \
@@ -34,7 +34,7 @@ tests/fixtures/cosmogony/corse.jsonl.gz: tests/fixtures/osm/corse.osm.pbf
 		--country-code fr \
 		--input /fixtures/osm/corse.osm.pbf \
 		--output /fixtures/cosmogony/corse.jsonl.gz
-fixtures: tests/fixtures/osm/corse.osm.pbf tests/fixtures/cosmogony/corse.jsonl.gz
+fixtures: tests/fixtures/cosmogony/corse.jsonl.gz
 test: fixtures ## Launch all tests
 	cargo test --lib
 	cargo test --bins
