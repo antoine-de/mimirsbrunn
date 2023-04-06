@@ -1518,6 +1518,3 @@ Evaluating the templates can be done with:
   indexing tools.
 * end to end tests are used to make sure that the indexing process is correct, and that searching 
   predefined queries results are correct.
-* benchmark are used to estimate the time it takes to either index or search.
-
-

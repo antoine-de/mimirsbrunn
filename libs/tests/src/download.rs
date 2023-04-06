@@ -39,19 +39,11 @@ pub enum Status {
 pub async fn osm(region: &str) -> Result<Status, Error> {
     // Try to see if there is already a file with the expected name in tests/data/osm, in which
     // case we skip the actual download, to save time.
-    let dir_path: PathBuf = [
-        env!("CARGO_MANIFEST_DIR"),
-        "..",
-        "..",
-        "tests",
-        "fixtures",
-        "osm",
-        region,
-    ]
-    .iter()
-    .collect();
+    let dir_path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "..", "..", "tests", "fixtures"]
+        .iter()
+        .collect();
 
-    let file_path = dir_path.join(format!("{}-latest.osm.pbf", region));
+    let file_path = dir_path.join(format!("{}.osm.pbf", region));
 
     if utils::file_exists(&file_path).await {
         return Ok(Status::Skipped);

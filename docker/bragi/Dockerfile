@@ -24,7 +24,6 @@ COPY ./config ./config
 COPY ./docker ./docker
 COPY ./build.rs ./build.rs
 COPY ./tests ./tests
-COPY ./benches ./benches
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/home/mimirsbrunn/target  \

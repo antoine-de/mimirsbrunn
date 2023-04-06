@@ -64,6 +64,7 @@ mod tests {
     };
     use places::admin::Admin;
     use serial_test::serial;
+    use test_log::test;
 
     #[tokio::test]
     #[serial]
@@ -79,7 +80,8 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "cosmogony",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -107,7 +109,8 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "cosmogony",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -137,7 +140,8 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "cosmogony",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -191,7 +195,8 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "cosmogony.json",
+                "cosmogony",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -202,7 +207,7 @@ mod tests {
         assert_eq!(settings.elasticsearch.wait_for_active_shards, 1);
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_correctly_index_a_small_cosmogony_file() {
         docker::initialize()
@@ -218,7 +223,7 @@ mod tests {
                 "tests",
                 "fixtures",
                 "cosmogony",
-                "bretagne.small.jsonl.gz",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -245,12 +250,12 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(admins.len(), 8);
+        assert_eq!(admins.len(), 363);
         assert!(admins.iter().all(|admin| admin.boundary.is_some()));
         assert!(admins.iter().all(|admin| admin.coord.is_valid()));
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_correctly_index_cosmogony_with_langs() {
         docker::initialize()
@@ -260,13 +265,13 @@ mod tests {
         let opts = settings::Opts {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
             run_mode: Some("testing".to_string()),
-            settings: vec![String::from("langs=['fr', 'en']")],
+            settings: vec![String::from("langs=['fr', 'co']")],
             input: [
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
                 "cosmogony",
-                "bretagne.small.jsonl.gz",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -293,13 +298,16 @@ mod tests {
             .await
             .unwrap();
 
-        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
-        assert_eq!(brittany.names.get("fr"), Some("Bretagne"));
-        assert_eq!(brittany.names.get("en"), Some("Brittany"));
-        assert_eq!(brittany.labels.get("en"), Some("Brittany"));
+        let ajaccio = admins.iter().find(|a| a.name == "Ajaccio").unwrap();
+        assert_eq!(ajaccio.names.get("fr"), Some("Ajaccio"));
+        assert_eq!(ajaccio.names.get("co"), Some("Aiacciu"));
+        assert_eq!(
+            ajaccio.labels.get("co"),
+            Some("Aiacciu (20000-20167), Pumonte")
+        );
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_index_cosmogony_with_correct_values() {
         docker::initialize()
@@ -309,13 +317,16 @@ mod tests {
         let opts = settings::Opts {
             config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(), // Not a valid config base dir
             run_mode: Some("testing".to_string()),
-            settings: vec![String::from("langs=['fr', 'en']")],
+            settings: vec![
+                String::from("langs=['fr', 'en']"),
+                String::from("french_id_retrocompatibility=false"),
+            ],
             input: [
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
                 "cosmogony",
-                "bretagne.small.jsonl.gz",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -342,27 +353,20 @@ mod tests {
             .await
             .unwrap();
 
-        let brittany = admins.iter().find(|a| a.name == "Bretagne").unwrap();
-        assert_eq!(brittany.id, "admin:osm:relation:102740");
-        assert_eq!(brittany.zone_type, Some(cosmogony::ZoneType::State));
-        assert_relative_eq!(brittany.weight, 0.002_396, epsilon = 1e-6);
+        let ajaccio = admins.iter().find(|a| a.name == "Ajaccio").unwrap();
+        assert_eq!(ajaccio.id, "admin:osm:relation:73283");
+        assert_eq!(ajaccio.zone_type, Some(cosmogony::ZoneType::City));
+        assert_relative_eq!(ajaccio.weight, 0.000_05, epsilon = 1e-6);
         assert_eq!(
-            brittany.codes,
-            vec![
-                ("ISO3166-2", "FR-BRE"),
-                ("ref:INSEE", "53"),
-                ("ref:nuts", "FRH;FRH0"),
-                ("ref:nuts:1", "FRH"),
-                ("ref:nuts:2", "FRH0"),
-                ("wikidata", "Q12130")
-            ]
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect()
+            ajaccio.codes,
+            vec![("ref:INSEE", "2A004"), ("wikidata", "Q40104")]
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect()
         )
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_index_cosmogony_activate_french_id_retrocompatibility() {
         docker::initialize()
@@ -378,8 +382,7 @@ mod tests {
                 "tests",
                 "fixtures",
                 "cosmogony",
-                "limousin",
-                "limousin.jsonl.gz",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -406,16 +409,17 @@ mod tests {
             .await
             .unwrap();
         for adm_name in [
-            "Saint-Sulpice-les-Champs",
-            "Queyssac-les-Vignes",
-            "Saint-Quentin-la-Chabanne",
+            "Loreto-di-Tallano",
+            "Sainte-Lucie-de-Tallano",
+            "Serra-di-Scopamène",
+            "Porto-Vecchio",
         ] {
             let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
             assert_eq!(admin.id, format!("admin:fr:{}", admin.insee));
         }
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_index_cosmogony_deactivate_french_id_retrocompatibility() {
         docker::initialize()
@@ -431,8 +435,7 @@ mod tests {
                 "tests",
                 "fixtures",
                 "cosmogony",
-                "limousin",
-                "limousin.jsonl.gz",
+                "corse.jsonl.gz",
             ]
             .iter()
             .collect(),
@@ -459,9 +462,10 @@ mod tests {
             .await
             .unwrap();
         for adm_name in [
-            "Saint-Sulpice-les-Champs",
-            "Queyssac-les-Vignes",
-            "Saint-Quentin-la-Chabanne",
+            "Loreto-di-Tallano",
+            "Sainte-Lucie-de-Tallano",
+            "Serra-di-Scopamène",
+            "Porto-Vecchio",
         ] {
             let admin = admins.iter().find(|a| a.name == adm_name).unwrap();
             assert!(admin.id.starts_with("admin:osm:relation"));

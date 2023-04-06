@@ -21,7 +21,6 @@ COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
 COPY ./build.rs ./build.rs
 COPY ./config ./config
-COPY ./benches ./benches
 COPY ./tests ./tests
 COPY ./libs ./libs
 COPY ./src ./src

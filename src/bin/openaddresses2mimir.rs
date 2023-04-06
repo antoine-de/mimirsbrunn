@@ -92,7 +92,8 @@ mod tests {
                 env!("CARGO_MANIFEST_DIR"),
                 "tests",
                 "fixtures",
-                "sample-oa.csv",
+                "openaddresses",
+                "corse.csv",
             ]
             .iter()
             .collect(),
@@ -105,8 +106,7 @@ mod tests {
             "tests",
             "fixtures",
             "cosmogony",
-            "ile-de-france",
-            "ile-de-france.jsonl.gz",
+            "corse.jsonl.gz",
         ]
         .iter()
         .collect();
@@ -159,24 +159,21 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(addresses.len(), 11);
+        assert_eq!(addresses.len(), 2);
 
-        let results = search("Otto-Braun-Straße 72").await;
+        let results = search("1 Rue Gabriel Péri").await;
         assert_eq!(results.len(), 1);
         let result = &results[0];
-        assert_eq!(result.id, "addr:13.41931;52.52354:72");
+        assert_eq!(result.id, "addr:8.72960;41.91597:1");
 
         // We look for postcode 11111 which should have been filtered since the street name is empty
         let results = search("11111").await;
         assert_eq!(results.len(), 0);
 
         // Check that addresses containing multiple postcodes are read correctly
-        let results = search("Rue Foncet").await;
+        let results = search("5 Avenue Antoine Serafini").await;
         assert_eq!(results.len(), 1);
-        assert_eq!(
-            results[0].zip_codes,
-            vec!["06000", "06100", "06200", "06300"]
-        )
+        assert_eq!(results[0].zip_codes, vec!["20000", "20167", "20090"])
     }
 
     #[tokio::test]

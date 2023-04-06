@@ -250,7 +250,6 @@ Since this is a rust project, we are well instrumented to run all sorts of tests
 * lint
 * unit tests
 * end to end / integration.
-* benchmark
 
 You can run them all at once, and this in the way it is carried out in the CI pipeline, with 
 

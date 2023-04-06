@@ -55,6 +55,7 @@ fn main() -> Result<(), Error> {
 mod tests {
     use futures::TryStreamExt;
     use serial_test::serial;
+    use test_log::test;
 
     use super::*;
     use ::tests::cosmogony;
@@ -65,7 +66,7 @@ mod tests {
     };
     use places::stop::Stop;
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_correctly_index_a_small_ntfs_file() {
         docker::initialize()
@@ -80,7 +81,7 @@ mod tests {
             .await
             .expect("Elasticsearch Connection Established");
 
-        cosmogony::index_admins(&client, "limousin", "limousin", true, true)
+        cosmogony::index_admins(&client, "corse", "corse", true, true)
             .await
             .unwrap();
 
@@ -94,7 +95,7 @@ mod tests {
                 "tests",
                 "fixtures",
                 "ntfs",
-                "limousin",
+                "corse",
             ]
             .iter()
             .collect(),
@@ -116,10 +117,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(stops.len(), 6);
+        assert_eq!(stops.len(), 153);
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     #[serial]
     async fn should_return_error_when_no_prior_admin() {
         docker::initialize()
@@ -135,7 +136,7 @@ mod tests {
                 "tests",
                 "fixtures",
                 "ntfs",
-                "limousin",
+                "corse",
             ]
             .iter()
             .collect(),

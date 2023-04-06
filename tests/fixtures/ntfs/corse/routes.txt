@@ -1,0 +1,27 @@
+route_id,route_name,direction_type,line_id,geometry_id,destination_id
+1,Hauts du Vazzio - Place de Gaulle,forward,1,,10019
+1_R,Place de Gaulle - Hauts du Vazzio,backward,1,,10002
+3,Confina - Place de Gaulle,forward,3,,10019
+3_R,Place de Gaulle - Confina,backward,3,,10048
+4,Gare CFC - Les Crêtes,forward,4,,10047
+4_R,Les Crêtes - Gare CFC,backward,4,,10033
+5,Pietralba - Place de Gaulle,forward,5,,10019
+5_R,Place de Gaulle - Pietralba,backward,5,,10063
+6,Budiccione - Centre Hospitalier,forward,6,,10086
+6_R,Centre Hospitalier - Budiccione,backward,6,,10076
+7,Place de Gaulle - Parata,forward,7,,10110
+7_R,Parata - Place de Gaulle,backward,7,,10019
+13,Loreto - Empereur Maillot,forward,13,,10139
+13_R,Empereur Maillot - Loreto,backward,13,,10127
+9,Aeroport - Gare CFC,forward,9,,10033
+9_R,Gare CFC - Aeroport,backward,9,,10118
+10,Cathédrale - Hôpital Miséricorde,forward,10,,10120
+10_R,Hôpital Miséricorde - Cathédrale,backward,10,,10020
+15,Saint Joseph - Gare CFC,forward,15,,10033
+15_R,Gare CFC - Saint Joseph,backward,15,,10009
+12,Atrium 1 - Confina,forward,12,,10048
+12_R,Confina - Baléone,backward,12,,10124
+14,Aeroport - Gare CFC,forward,14,,10033
+14_R,Gare CFC - Aeroport,backward,14,,10118
+22,Gare CFC - Gare CFC,forward,22,,10033
+22_R,Gare CFC - Saint Pierre de Cardo,backward,22,,10025

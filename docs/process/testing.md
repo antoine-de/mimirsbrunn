@@ -7,7 +7,6 @@ Since this is a rust project, we are well instrumented to run all sorts of tests
 * lint
 * unit tests
 * end to end / integration.
-* benchmark
 
 You can run them all at once, and this in the way it is carried out in the CI pipeline, with 
 
@@ -44,7 +43,7 @@ TODO
 
 More information about the project can be found in [the docs subdirectory](docs/README.md).
 
-The project has all kinds of testing: unit tests, end to end tests, and benchmarks. Some of these
+The project has all kinds of testing: unit tests, and end to end tests. Some of these
 tests require test doubles (we use mocking), while others require an elasticsearch.
 
 ## Docker and Elasticsearch.
