@@ -147,6 +147,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(addr1.id, "addr:8.736635;41.920063:1");
+        assert_eq!(addr1.label, "1 Cours Napoléon (Ajaccio)");
 
         let addr2 = addresses
             .iter()
