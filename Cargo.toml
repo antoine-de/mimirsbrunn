@@ -79,7 +79,6 @@ path = "src/lib.rs"
 async-trait = "0.1.67"
 url = { version = "2.3.1", features = [ "serde" ] }
 approx = "0.5"
-criterion = "0.4"
 elasticsearch = "7.14.0-alpha.1"
 reqwest = { version = "0.11", features = [ "blocking", "json" ] }
 serial_test = "1.0.0"
@@ -99,18 +98,3 @@ strip = "debuginfo"
 [[bin]]
 name = "bragi"
 path = "src/bragi/main.rs"
-
-[profile.bench]
-lto = true
-
-[[bench]]
-name = "listing"
-harness = false
-
-[[bench]]
-name = "indexing"
-harness = false
-
-[[bench]]
-name = "searching"
-harness = false

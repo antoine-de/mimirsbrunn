@@ -6,4 +6,4 @@ build_packages/*
 import2mimir-*.log
 scripts/*.log
 scripts/data
-tests/fixtures/cosmogony/corse.json.gz
+tests/fixtures/cosmogony/corse.jsonl.gz
