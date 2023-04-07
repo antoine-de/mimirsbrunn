@@ -10,12 +10,12 @@
               "mapping": {
                 "type": "text",
                 "index_options": "docs",
-                "analyzer": "word",
+                "analyzer": "word_elision",
                 "fields": {
                   "prefix": {
                     "type": "text",
                     "index_options": "docs",
-                    "analyzer": "prefix",
+                    "analyzer": "prefix_elision",
                     "search_analyzer": "word"
                   }
                 }
@@ -29,13 +29,13 @@
               "mapping": {
                 "type": "text",
                 "index_options": "docs",
-                "analyzer": "word",
+                "analyzer": "word_elision",
                 "copy_to": "full_label",
                 "fields": {
                   "prefix": {
                     "type": "text",
                     "index_options": "docs",
-                    "analyzer": "prefix",
+                    "analyzer": "prefix_elision",
                     "search_analyzer": "word",
                     "norms": false
                   },
