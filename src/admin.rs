@@ -113,6 +113,15 @@ fn get_weight(tags: &osmpbfreader::Tags, center_tags: &osmpbfreader::Tags) -> f6
         .unwrap_or(0.)
 }
 
+// cosmogony's labels contains a lot of things for example, 'Rennes
+// (35000- 35700), Ille-et-Villaine, Bretagne, France' But in the case of
+// autocomplete searching, only 'Rennes' and possibly zip codes matters. In
+// `cosmogony2mimir`, we rewrite the `label` which is one of the search fields.
+// Note that it does impact the `label` output too.
+fn build_admin_label(name: &str, zip_codes: &[String]) -> String {
+    format!("{name}{}", admin::format_zip_codes(zip_codes))
+}
+
 impl IntoAdmin for Zone {
     fn into_admin(
         self,
@@ -124,7 +133,7 @@ impl IntoAdmin for Zone {
     ) -> Admin {
         let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
         let zip_codes = admin::read_zip_codes(&self.tags);
-        let label = self.label;
+        let label = build_admin_label(&self.name, &zip_codes);
         let weight = get_weight(&self.tags, &self.center_tags);
         let center = self.center.map_or(places::coord::Coord::default(), |c| {
             places::coord::Coord::new(c.x(), c.y())
@@ -142,6 +151,12 @@ impl IntoAdmin for Zone {
             .and_then(|id| zones_osm_id.get(&id))
             .map(|(id, insee)| format_id(id, insee.as_ref()));
         let codes = osm_utils::get_osm_codes_from_tags(&self.tags);
+        let labels = self
+            .international_names
+            .into_iter()
+            .filter(|(k, _)| langs.contains(k))
+            .map(|(k, name)| (k, build_admin_label(&name, &zip_codes)))
+            .collect();
         let mut admin = Admin {
             id: zones_osm_id
                 .get(&self.id)
@@ -167,11 +182,7 @@ impl IntoAdmin for Zone {
                 .collect(),
             codes,
             names: osm_utils::get_names_from_tags(&self.tags, langs),
-            labels: self
-                .international_labels
-                .into_iter()
-                .filter(|(k, _)| langs.contains(k))
-                .collect(),
+            labels,
             distance: None,
             context: None,
             administrative_regions: Vec::new(),
