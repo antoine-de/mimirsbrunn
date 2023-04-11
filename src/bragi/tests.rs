@@ -181,6 +181,30 @@ async fn bano2mimir() {
     .await;
 }
 
+async fn ntfs2mimir() {
+    let opts = mimirsbrunn::settings::ntfs2mimir::Opts {
+        config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+        run_mode: Some("testing".to_string()),
+        settings: vec![],
+        input: [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "ntfs",
+            "corse",
+        ]
+        .iter()
+        .collect(),
+        cmd: mimirsbrunn::settings::ntfs2mimir::Command::Run,
+    };
+
+    let settings = mimirsbrunn::settings::ntfs2mimir::Settings::new(&opts).unwrap();
+    let _res = mimirsbrunn::utils::launch::launch_async(move || {
+        mimirsbrunn::ntfs2mimir::run(opts, settings)
+    })
+    .await;
+}
+
 #[serial]
 #[test(tokio::test)]
 async fn autocomplete() {
@@ -201,6 +225,37 @@ async fn autocomplete() {
     assert_eq!(geocoding.get("name").unwrap(), &json!("Propriano"));
     assert_eq!(geocoding.get("type").unwrap(), &json!("zone"));
     assert_eq!(geocoding.get("zone_type").unwrap(), &json!("city"));
+}
+
+#[serial]
+#[test(tokio::test)]
+async fn autocomplete_prefix_and_elision() {
+    start_bragi().await;
+    cosmogony2mimir().await;
+    ntfs2mimir().await;
+
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/autocomplete?q=Aspret&pt_dataset[]=fr&type[]=public_transport:stop_area")
+            .await
+            .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 2);
+
+    let stop_area1 = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(stop_area1.get("name").unwrap(), &json!("Aspretto"));
+    assert_eq!(
+        stop_area1.get("type").unwrap(),
+        &json!("public_transport:stop_area")
+    );
+    let stop_area2 = features.pointer("/1/properties/geocoding").unwrap();
+    assert_eq!(stop_area2.get("name").unwrap(), &json!("Hauts d'Aspretto"));
+    assert_eq!(
+        stop_area2.get("type").unwrap(),
+        &json!("public_transport:stop_area")
+    );
 }
 
 #[serial]
