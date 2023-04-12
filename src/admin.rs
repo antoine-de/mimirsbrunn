@@ -151,11 +151,13 @@ impl IntoAdmin for Zone {
             .and_then(|id| zones_osm_id.get(&id))
             .map(|(id, insee)| format_id(id, insee.as_ref()));
         let codes = osm_utils::get_osm_codes_from_tags(&self.tags);
+        // Note: we cannot use `self.international_names` since it's `#[serde(skip)]` so will always be empty
         let labels = self
-            .international_names
-            .into_iter()
-            .filter(|(k, _)| langs.contains(k))
-            .map(|(k, name)| (k, build_admin_label(&name, &zip_codes)))
+            .tags
+            .iter()
+            .filter_map(|(k, value)| k.strip_prefix("name:").map(|lang| (lang, value)))
+            .filter(|(k, _)| langs.iter().any(|lang| lang == *k))
+            .map(|(k, name)| (k.to_string(), build_admin_label(name, &zip_codes)))
             .collect();
         let mut admin = Admin {
             id: zones_osm_id
