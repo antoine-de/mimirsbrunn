@@ -301,10 +301,7 @@ mod tests {
         let ajaccio = admins.iter().find(|a| a.name == "Ajaccio").unwrap();
         assert_eq!(ajaccio.names.get("fr"), Some("Ajaccio"));
         assert_eq!(ajaccio.names.get("co"), Some("Aiacciu"));
-        assert_eq!(
-            ajaccio.labels.get("co"),
-            Some("Aiacciu (20000-20167), Pumonte")
-        );
+        assert_eq!(ajaccio.labels.get("co"), Some("Aiacciu (20000-20167)"));
     }
 
     #[test(tokio::test)]

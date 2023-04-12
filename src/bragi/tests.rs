@@ -260,6 +260,39 @@ async fn autocomplete_prefix_and_elision() {
 
 #[serial]
 #[test(tokio::test)]
+// We use to have a problem with the following example
+// Typing 'Cor` (which is the beginning of 'Corse') would return any cities of Corse,
+// because French Department (Haute-Corse) was appended to the search field `label`.
+async fn autocomplete_only_cities() {
+    start_bragi().await;
+    cosmogony2mimir().await;
+
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/autocomplete?q=Cor&type[]=city&limit=3")
+            .await
+            .unwrap();
+
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 3);
+
+    // First is the whole island, bigger population so bigger weight
+    let corse = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(corse.get("label").unwrap(), &json!("Corse"));
+
+    // Second is the whole French Department, also because of the population
+    let haute_corse = features.pointer("/1/properties/geocoding").unwrap();
+    assert_eq!(haute_corse.get("label").unwrap(), &json!("Haute-Corse"));
+
+    // Third is the city of Corte, because it's a perfect match for the prefix
+    let corte = features.pointer("/2/properties/geocoding").unwrap();
+    assert_eq!(corte.get("label").unwrap(), &json!("Corte (20250)"));
+}
+
+#[serial]
+#[test(tokio::test)]
 async fn reverse() {
     start_bragi().await;
     cosmogony2mimir().await;
