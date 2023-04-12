@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - 'master'
+      - 'main'
     tags:
       - 'v*'
 
@@ -38,7 +38,7 @@ jobs:
           VERSION=${GITHUB_REF#refs/*/}
           if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
             IMAGE_TAG=$GITHUB_HEAD_REF
-          elif [ "$VERSION" == "master" ]; then
+          elif [ "$VERSION" == "main" ]; then
             IMAGE_TAG=latest
           else
             IMAGE_TAG=$VERSION
