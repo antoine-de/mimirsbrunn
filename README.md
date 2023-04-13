@@ -1,5 +1,5 @@
-[![travis](https://travis-ci.org/hove-io/mimirsbrunn.svg?branch=master)](https://travis-ci.org/hove-io/mimirsbrunn)
-[![GitHub license](https://img.shields.io/github/license/hove-io/mimirsbrunn.svg)](https://github.com/hove-io/mimirsbrunn/blob/master/LICENSE)
+[![travis](https://travis-ci.org/hove-io/mimirsbrunn.svg?branch=main)](https://travis-ci.org/hove-io/mimirsbrunn)
+[![GitHub license](https://img.shields.io/github/license/hove-io/mimirsbrunn.svg)](https://github.com/hove-io/mimirsbrunn/blob/main/LICENSE)
 [![GitHub tag](https://img.shields.io/github/tag/hove-io/mimirsbrunn.svg)](https://github.com/hove-io/mimirsbrunn/tag)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=hove-io_mimirsbrunn&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=hove-io_mimirsbrunn)
 

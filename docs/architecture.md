@@ -128,11 +128,11 @@ pub trait GenerateIndex {
 
 ## Global picture
 
-Mimirsbrunn is composed of several [parts](https://github.com/hove-io/mimirsbrunn/blob/master/documentation/components.md): some of them manage the data import in Elasticsearch while a web service ([bragi](https://github.com/hove-io/mimirsbrunn/blob/master/src/bin/bragi.rs)) wraps Elasticsearch interactions in order to return formated responses (using [geocodejson](https://github.com/geocoders/geocodejson-spec) as the responses format)
+Mimirsbrunn is composed of several [parts](https://github.com/hove-io/mimirsbrunn/blob/main/documentation/components.md): some of them manage the data import in Elasticsearch while a web service ([bragi](https://github.com/hove-io/mimirsbrunn/blob/main/src/bin/bragi.rs)) wraps Elasticsearch interactions in order to return formated responses (using [geocodejson](https://github.com/geocoders/geocodejson-spec) as the responses format)
 
 ![architecture](images/archi.svg)
 
-For more detail about the different parts, check the [components documentation](https://github.com/hove-io/mimirsbrunn/blob/master/documentation/components.md).
+For more detail about the different parts, check the [components documentation](https://github.com/hove-io/mimirsbrunn/blob/main/documentation/components.md).
 
 Note: on the diagram:
 * OSM stands for [OpenStreetMap](osm.org)

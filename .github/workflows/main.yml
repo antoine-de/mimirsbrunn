@@ -1,9 +1,9 @@
-name: Master_Packages
+name: main packages (ES2)
 
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   package:
@@ -30,9 +30,8 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
-
       - name: Build package
-        run: ./scripts/build_deb.sh ${{ matrix.debian_name }} 7
+        run: ./scripts/build_deb.sh ${{ matrix.debian_name }}
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -44,4 +43,4 @@ jobs:
         run: |
           apt-get update
           apt install --yes --force-yes httpie
-          echo '{"text":":Warning: Github Actions: build packages for branch master failed ! (https://github.com/hove-io/mimirsbrunn/actions/workflows/master.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+          echo '{"text":":Warning: Github Actions: build packages for branch main failed ! (https://github.com/hove-io/mimirsbrunn/actions/workflows/main.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}

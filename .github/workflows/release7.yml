@@ -1,4 +1,4 @@
-name: Release_Packages
+name: release packages (ES7)
 
 on:
   push:
