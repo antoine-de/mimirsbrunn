@@ -76,19 +76,15 @@ fn build_string_query(
     coord: &Option<Coord>,
 ) -> serde_json::Value {
     let mut string_should = vec![
+        build_multi_match_query(q, &["name", &format!("names.{lang}")], settings.boosts.name),
         build_multi_match_query(
             q,
-            &["name", &format!("names.{}", lang)],
-            settings.boosts.name,
-        ),
-        build_multi_match_query(
-            q,
-            &["label", &format!("labels.{}", lang)],
+            &["label", &format!("labels.{lang}")],
             settings.boosts.label,
         ),
         build_multi_match_query(
             q,
-            &["label.prefix", &format!("labels.{}.prefix", lang)],
+            &["label.prefix", &format!("labels.{lang}.prefix")],
             settings.boosts.label_prefix,
         ),
         build_match_query(q, "zip_codes", settings.boosts.zip_codes),
@@ -99,13 +95,13 @@ fn build_string_query(
         if coord.is_some() {
             string_should.push(build_multi_match_query(
                 q,
-                &["label.ngram", &format!("labels.{}.ngram", lang)],
+                &["label.ngram", &format!("labels.{lang}.ngram")],
                 settings.boosts.label_ngram_with_coord,
             ));
         } else {
             string_should.push(build_multi_match_query(
                 q,
-                &["label.ngram", &format!("labels.{}.ngram", lang)],
+                &["label.ngram", &format!("labels.{lang}.ngram")],
                 settings.boosts.label_ngram,
             ));
         }
@@ -146,7 +142,7 @@ fn build_boosts(
 
         let weight_boost = match query_type {
             QueryType::PREFIX => settings.importance_query.proximity.weight,
-            _ => settings.importance_query.proximity.weight_fuzzy,
+            QueryType::FUZZY => settings.importance_query.proximity.weight_fuzzy,
         };
 
         boosts.push(build_proximity_boost(coord, &decay, weight_boost));
@@ -218,7 +214,7 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
                         "bool": {
                             "must_not": {
                                 "term": {
-                                    "_index": format!("{}_{}", INDEX_ROOT, Addr::static_doc_type())
+                                    "_index": format!("{INDEX_ROOT}_{}", Addr::static_doc_type())
                                 }
                             },
                         }
@@ -239,7 +235,7 @@ fn build_house_number_condition(q: &str) -> serde_json::Value {
             "bool": {
                 "must_not": {
                     "term": {
-                        "_index": format!("{}_{}", INDEX_ROOT, Addr::static_doc_type())
+                        "_index": format!("{INDEX_ROOT}_{}", Addr::static_doc_type())
                     }
                 }
             }
@@ -350,8 +346,8 @@ fn build_proximity_boost(
                                 "lat": coord.lat,
                                 "lon": coord.lon
                             },
-                            "scale": format!("{}km", scale),
-                            "offset": format!("{}km", offset),
+                            "scale": format!("{scale}km"),
+                            "offset": format!("{offset}km"),
                             "decay": decay
                         }
                     }

@@ -23,7 +23,7 @@ fn validate_json_files(dir: &Path) -> io::Result<()> {
             json::parse(&content).map_err(|e| {
                 Error::new(
                     ErrorKind::InvalidData,
-                    format!("{}: invalid json: {}", path.display(), e),
+                    format!("{}: invalid json: {e}", path.display()),
                 )
             })?;
         }
@@ -33,7 +33,7 @@ fn validate_json_files(dir: &Path) -> io::Result<()> {
 
 fn main() {
     if let Err(e) = validate_json_files(Path::new("config")) {
-        eprintln!("=> Failure in JSON validation!\n=> {}", e);
+        eprintln!("=> Failure in JSON validation!\n=> {e}");
         panic!("");
     }
 }

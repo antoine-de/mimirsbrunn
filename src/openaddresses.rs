@@ -62,20 +62,20 @@ impl OpenAddress {
             x: self.lon,
             y: self.lat,
         });
-        let country_codes = find_country_codes(admins.iter().map(|a| a.deref()));
+        let country_codes = find_country_codes(admins.iter().map(Deref::deref));
 
         let weight = admins.iter().find(|a| a.is_city()).map_or(0., |a| a.weight);
         // Note: for openaddress, we don't trust the admin hierarchy much (compared to bano)
         // so we use for the label the admins that we find in the DB
         let street_label = labels::format_street_label(
             &self.street,
-            admins.iter().map(|a| a.deref()),
+            admins.iter().map(Deref::deref),
             &country_codes,
         );
         let (addr_name, addr_label) = labels::format_addr_name_and_label(
             &self.number,
             &self.street,
-            admins.iter().map(|a| a.deref()),
+            admins.iter().map(Deref::deref),
             &country_codes,
         );
 
@@ -109,7 +109,7 @@ impl OpenAddress {
                     precision = id_precision
                 )
             } else {
-                format!("addr:{};{}:{}", self.lon, self.lat, id_suffix)
+                format!("addr:{};{}:{id_suffix}", self.lon, self.lat)
             }
         };
 

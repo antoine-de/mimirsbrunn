@@ -43,7 +43,7 @@ pub async fn osm(region: &str) -> Result<Status, Error> {
         .iter()
         .collect();
 
-    let file_path = dir_path.join(format!("{}.osm.pbf", region));
+    let file_path = dir_path.join(format!("{region}.osm.pbf"));
 
     if utils::file_exists(&file_path).await {
         return Ok(Status::Skipped);
@@ -53,7 +53,7 @@ pub async fn osm(region: &str) -> Result<Status, Error> {
     utils::create_dir_if_not_exists_rec(&dir_path)
         .await
         .context(CreateDirSnafu)?;
-    let url = format!("{}/europe/france/{}-latest.osm.pbf", GEOFABRIK_URL, region);
+    let url = format!("{GEOFABRIK_URL}/europe/france/{region}-latest.osm.pbf");
     utils::download_to_file(&file_path, &url)
         .await
         .context(DownloadSnafu)?;
@@ -79,7 +79,7 @@ pub async fn bano<D: AsRef<str>>(region: &str, departments: &[D]) -> Result<Stat
         .context(CreateDirSnafu)?;
 
     // this is the path for the concatenated departments
-    let file_path = &dir_path.join(format!("{}.csv", region));
+    let file_path = &dir_path.join(format!("{region}.csv"));
 
     if utils::file_exists(file_path).await {
         return Ok(Status::Skipped);
@@ -87,7 +87,7 @@ pub async fn bano<D: AsRef<str>>(region: &str, departments: &[D]) -> Result<Stat
 
     stream::iter(departments.iter().map(Ok))
         .try_for_each(|department| async move {
-            let url = format!("{}/data/bano-{:02}.csv", BANO_URL, department.as_ref());
+            let url = format!("{BANO_URL}/data/bano-{:02}.csv", department.as_ref());
             utils::download_to_file(file_path, &url)
                 .await
                 .context(DownloadSnafu)
@@ -114,17 +114,14 @@ pub async fn ntfs(region: &str) -> Result<Status, Error> {
         .await
         .context(CreateDirSnafu)?;
 
-    let zip_file_path = dir_path.join(format!("{}.zip", region));
-    let json_file_path = dir_path.join(format!("{}.json", region));
+    let zip_file_path = dir_path.join(format!("{region}.zip"));
+    let json_file_path = dir_path.join(format!("{region}.json"));
 
     if utils::file_exists(&zip_file_path).await {
         return Ok(Status::Skipped);
     }
 
-    let url = format!(
-        "{}/explore/dataset/{}/download/?format=json",
-        OPENDATASOFT_URL, region
-    );
+    let url = format!("{OPENDATASOFT_URL}/explore/dataset/{region}/download/?format=json");
 
     utils::download_to_file(&json_file_path, &url)
         .await
@@ -182,23 +179,22 @@ pub async fn ntfs(region: &str) -> Result<Status, Error> {
             {
                 let comment = file.comment();
                 if !comment.is_empty() {
-                    println!("File {} comment: {}", i, comment);
+                    println!("File {i} comment: {comment}");
                 }
             }
 
-            if (&*file.name()).ends_with('/') {
-                println!("File {} extracted to \"{}\"", i, outpath.display());
+            if file.name().ends_with('/') {
+                println!("File {i} extracted to \"{}\"", outpath.display());
                 std::fs::create_dir_all(&outpath).unwrap();
             } else {
                 println!(
-                    "File {} extracted to \"{}\" ({} bytes)",
-                    i,
+                    "File {i} extracted to \"{}\" ({} bytes)",
                     outpath.display(),
                     file.size()
                 );
                 if let Some(p) = outpath.parent() {
                     if !p.exists() {
-                        std::fs::create_dir_all(&p).unwrap();
+                        std::fs::create_dir_all(p).unwrap();
                     }
                 }
                 let mut outfile = std::fs::File::create(&outpath).unwrap();

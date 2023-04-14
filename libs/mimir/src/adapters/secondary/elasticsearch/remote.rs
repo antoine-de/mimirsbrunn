@@ -177,7 +177,10 @@ impl Remote for SingleNodeConnectionPool {
                     source: Box::new(err),
                 })?;
             let version = Version::parse(version_number).unwrap();
-            if !version_req.matches(&version) {
+            if version_req.matches(&version) {
+                let client = Elasticsearch::new(transport);
+                Ok(ElasticsearchStorage { client, config })
+            } else {
                 Err(RemoteError::Connection {
                     source: Box::new(Error::ElasticsearchException {
                         msg: format!(
@@ -186,9 +189,6 @@ impl Remote for SingleNodeConnectionPool {
                         ),
                     }),
                 })
-            } else {
-                let client = Elasticsearch::new(transport);
-                Ok(ElasticsearchStorage { client, config })
             }
         } else {
             Err(RemoteError::Connection {

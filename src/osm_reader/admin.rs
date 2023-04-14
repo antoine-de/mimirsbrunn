@@ -60,14 +60,12 @@ impl AdminMatcher {
 }
 
 pub fn format_zip_codes(zip_codes: &[String]) -> String {
-    match zip_codes.len() {
-        0 => "".to_string(),
-        1 => format!(" ({})", zip_codes.first().unwrap()),
-        _ => format!(
-            " ({}-{})",
-            zip_codes.first().unwrap(),
-            zip_codes.last().unwrap()
-        ),
+    match (zip_codes.first(), zip_codes.last()) {
+        (None, None) => String::new(),
+        (Some(first), Some(second)) if first != second => format!(" ({first}-{second})"),
+        (Some(zip_code), _) | (_, Some(zip_code)) => {
+            format!(" ({zip_code})")
+        }
     }
 }
 

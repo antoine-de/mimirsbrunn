@@ -139,12 +139,8 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
             shape: geometry.map(|geometry| {
                 (
                     geometry,
-                    query
-                        .shape_scope
-                        .map(|shape_scope| {
-                            shape_scope.iter().map(|t| t.as_str().to_string()).collect()
-                        })
-                        .unwrap_or_else(|| {
+                    query.shape_scope.map_or_else(
+                        || {
                             vec![
                                 PlaceDocType::Poi,
                                 PlaceDocType::Street,
@@ -155,7 +151,9 @@ impl From<(ForwardGeocoderQuery, Option<Geometry>)> for Filters {
                             .iter()
                             .map(|t| t.as_str().to_string())
                             .collect()
-                        }),
+                        },
+                        |shape_scope| shape_scope.iter().map(|t| t.as_str().to_string()).collect(),
+                    ),
                 )
             }),
             zone_types,
@@ -236,8 +234,8 @@ pub struct StatusResponseBody {
     pub elasticsearch: ElasticsearchStatus,
 }
 
-/// This macro is used to define the forward_geocoder route.
-/// It takes a client (ElasticsearchStorage) and query settings
+/// This macro is used to define the `forward_geocoder` route.
+/// It takes a client (`ElasticsearchStorage`) and query settings
 /// It can be either a GET request, with query parameters,
 /// or a POST request, with both query parameters and a GeoJson shape
 /// in the body.

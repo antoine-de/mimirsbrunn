@@ -232,12 +232,12 @@ pub async fn ensure_lat_lon_consistent(
             if !(-90f32..=90f32).contains(&lat) {
                 Err(warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                    info: format!("requested latitude {} is outside of range [-90;90]", lat),
+                    info: format!("requested latitude {lat} is outside of range [-90;90]"),
                 }))
             } else if !(-180f32..=180f32).contains(&lon) {
                 Err(warp::reject::custom(InvalidRequest {
                     reason: InvalidRequestReason::OutOfRangeLatLonRequest,
-                    info: format!("requested longitude {} is outside of range [-180;180]", lon),
+                    info: format!("requested longitude {lon} is outside of range [-180;180]"),
                 }))
             } else {
                 Ok(params)
@@ -253,20 +253,15 @@ pub async fn ensure_lat_lon_consistent(
 }
 
 /// This filter ensures that if the user requests 'zone', then he must specify the list
-/// of zone_types.
+/// of `zone_types`.
 pub async fn ensure_zone_type_consistent(
     params: ForwardGeocoderQuery,
 ) -> Result<ForwardGeocoderQuery, Rejection> {
     if params
         .types
         .as_ref()
-        .map(|types| types.iter().any(|s| *s == Type::Zone))
-        .unwrap_or(false)
-        && params
-            .zone_types
-            .as_ref()
-            .map(|zone_types| zone_types.is_empty())
-            .unwrap_or(true)
+        .map_or(false, |types| types.iter().any(|s| *s == Type::Zone))
+        && params.zone_types.as_ref().map_or(true, Vec::is_empty)
     {
         Err(warp::reject::custom(InvalidRequest {
             reason: InvalidRequestReason::InconsistentZoneRequest,
@@ -405,7 +400,7 @@ where
         warp::reply::with_header(
             reply,
             "cache-control",
-            format!("max-age={}", http_cache_duration),
+            format!("max-age={http_cache_duration}"),
         )
     })
 }

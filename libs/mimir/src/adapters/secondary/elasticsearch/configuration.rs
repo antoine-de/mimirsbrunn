@@ -67,7 +67,7 @@ pub struct ComponentTemplateConfiguration {
 }
 
 impl ComponentTemplateConfiguration {
-    pub fn new_from_config(config: Config) -> Result<Self, Error> {
+    pub fn new_from_config(config: &Config) -> Result<Self, Error> {
         // FIXME Here the error can be misleading. There are two operations, one is getting
         // the key 'elasticsearch', the other is transmogrifying the config into a
         // ComponentTemplateConfiguration.
@@ -80,7 +80,7 @@ impl ComponentTemplateConfiguration {
     pub fn into_json_body(self) -> Result<serde_json::Value, Error> {
         let name = self.name.clone();
         serde_json::to_value(self).context(JsonSerializationSnafu {
-            details: format!("could not serialize component template {}", name),
+            details: format!("could not serialize component template {name}"),
         })
     }
 }
@@ -98,7 +98,7 @@ pub struct IndexTemplateConfiguration {
 }
 
 impl IndexTemplateConfiguration {
-    pub fn new_from_config(config: Config) -> Result<Self, Error> {
+    pub fn new_from_config(config: &Config) -> Result<Self, Error> {
         config
             .get("elasticsearch")
             .context(InvalidConfigurationSnafu {
@@ -108,7 +108,7 @@ impl IndexTemplateConfiguration {
     pub fn into_json_body(self) -> Result<serde_json::Value, Error> {
         let name = self.name.clone();
         serde_json::to_value(self).context(JsonSerializationSnafu {
-            details: format!("could not serialize index template {}", name),
+            details: format!("could not serialize index template {name}"),
         })
     }
 }

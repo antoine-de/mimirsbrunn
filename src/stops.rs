@@ -84,10 +84,14 @@ pub fn initialize_weights<'a, It, S: ::std::hash::BuildHasher>(
 ) where
     It: Iterator<Item = &'a mut Stop>,
 {
-    let max = *nb_stop_points.values().max().unwrap_or(&1) as f64;
+    let max = nb_stop_points
+        .values()
+        .max()
+        .copied()
+        .map_or(1.0, f64::from);
     for stop in stops {
         stop.weight = if let Some(weight) = nb_stop_points.get(&stop.id) {
-            *weight as f64 / max
+            f64::from(*weight) / max
         } else {
             0.0
         };
@@ -101,7 +105,7 @@ pub fn build_stop_area_weight(
     let md_weight_hash_map: HashMap<String, f64> = match physical_mode_weight {
         Some(modes) => modes
             .iter()
-            .map(|mode| (mode.id.to_string().to_lowercase(), mode.weight as f64))
+            .map(|mode| (mode.id.to_string().to_lowercase(), f64::from(mode.weight)))
             .collect::<HashMap<String, f64>>(),
         _ => HashMap::new(),
     };
@@ -114,11 +118,11 @@ pub fn build_stop_area_weight(
             .into_iter()
             .map(|idx| {
                 let ph_mode = &navitia.physical_modes[idx].id;
-                let pm_w = md_weight_hash_map.get(&ph_mode.to_lowercase());
+                let pm_w = md_weight_hash_map.get(&ph_mode.to_lowercase()).copied();
                 match pm_w {
-                    Some(value) => *value,
+                    Some(value) => value,
                     _ => {
-                        warn!("Physical mode, id: {}, not found in mimir config.", ph_mode);
+                        warn!("Physical mode, id: {ph_mode}, not found in mimir config.");
                         0.0
                     }
                 }
@@ -155,12 +159,12 @@ pub fn make_weight(stop: &mut Stop, stop_areas_weights: &HashMap<String, f64>) {
     if let Some(value) = weights {
         stop.weight = (value + admin_weight) / (2_f64);
     } else {
-        stop.weight = admin_weight
+        stop.weight = admin_weight;
     }
 }
 
 fn attach_stop(stop: &mut Stop, admins: Vec<Arc<Admin>>) {
-    let admins_iter = admins.iter().map(|a| a.deref());
+    let admins_iter = admins.iter().map(Deref::deref);
     let country_codes = places::admin::find_country_codes(admins_iter.clone());
 
     stop.label = labels::format_stop_label(&stop.name, admins_iter, &country_codes);
@@ -263,7 +267,7 @@ pub async fn index_ntfs(
     client: &ElasticsearchStorage,
 ) -> Result<(), Error> {
     let mut stops = {
-        let navitia = transit_model::ntfs::read(&input).map_err(|err| Error::TransitModel {
+        let navitia = transit_model::ntfs::read(input).map_err(|err| Error::TransitModel {
             details: format!(
                 "Could not read transit model from {}: {}",
                 input.display(),

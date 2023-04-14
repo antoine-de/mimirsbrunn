@@ -159,20 +159,20 @@ pub async fn index_pois(
             .children
             .iter()
             .filter_map(|ch| {
-                let place = match places.get(&format!("{}{}", "poi:", *ch)) {
+                let place = match places.get(&format!("poi:{ch}")) {
                     Some(p) => Some(p.clone()),
                     _ => {
-                        warn!("Child not found for {}", ch);
+                        warn!("Child not found for {ch}");
                         None
                     }
                 };
                 place
             })
             .collect();
-        match places.get_mut(&format!("{}{}", "poi:", parent_id)) {
+        match places.get_mut(&format!("poi:{parent_id}")) {
             Some(p) => p.children = children,
             _ => {
-                warn!("Parent not found for {}", parent_id);
+                warn!("Parent not found for {parent_id}");
             }
         };
     }
@@ -224,7 +224,7 @@ async fn into_poi(
         })
         .map(PoiType::from)?;
 
-    let distance = format!("{}m", max_distance_reverse);
+    let distance = format!("{max_distance_reverse}m");
     let dsl = dsl::build_reverse_query(&distance, coord.lat(), coord.lon());
 
     let es_indices_to_search = vec![
@@ -268,12 +268,12 @@ async fn into_poi(
         .next()
         .unwrap_or(0.0);
 
-    let country_codes = places::admin::find_country_codes(admins.iter().map(|a| a.deref()));
+    let country_codes = places::admin::find_country_codes(admins.iter().map(Deref::deref));
 
-    let label = labels::format_poi_label(&name, admins.iter().map(|a| a.deref()), &country_codes);
+    let label = labels::format_poi_label(name, admins.iter().map(Deref::deref), &country_codes);
 
     let poi = Poi {
-        id: places::utils::normalize_id("poi", &id),
+        id: places::utils::normalize_id("poi", id),
         label,
         name: name.to_string(),
         coord,

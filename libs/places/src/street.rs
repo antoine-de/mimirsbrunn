@@ -77,8 +77,7 @@ impl Street {
             .administrative_regions
             .iter()
             .find(|&admin| admin.is_city())
-            .map(|admin| admin.weight)
-            .unwrap_or_else(|| self.weight);
+            .map_or(self.weight, |admin| admin.weight);
         Street { weight, ..self }
     }
 }

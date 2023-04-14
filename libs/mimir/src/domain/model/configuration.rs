@@ -44,20 +44,17 @@ pub struct PhysicalModeWeight {
 
 pub fn root_doctype_dataset_ts(doc_type: &str, dataset: &str) -> String {
     format!(
-        "{}_{}_{}_{}",
-        INDEX_ROOT,
-        doc_type,
-        dataset,
+        "{INDEX_ROOT}_{doc_type}_{dataset}_{}",
         chrono::Utc::now().format("%Y%m%d_%H%M%S_%f")
     )
 }
 
 pub fn root_doctype_dataset(doc_type: &str, dataset: &str) -> String {
-    format!("{}_{}_{}", INDEX_ROOT, doc_type, dataset,)
+    format!("{INDEX_ROOT}_{doc_type}_{dataset}")
 }
 
 pub fn root_doctype(doc_type: &str) -> String {
-    format!("{}_{}", INDEX_ROOT, doc_type,)
+    format!("{INDEX_ROOT}_{doc_type}")
 }
 
 pub fn root() -> String {
@@ -84,7 +81,7 @@ pub fn split_index_name(name: &str) -> Result<(String, String), Error> {
         Ok((doc_type, dataset))
     } else {
         Err(Error::InvalidName {
-            details: format!("Could not analyze index name: {}", name),
+            details: format!("Could not analyze index name: {name}"),
         })
     }
 }

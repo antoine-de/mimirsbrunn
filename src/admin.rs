@@ -131,7 +131,7 @@ impl IntoAdmin for Zone {
         french_id_retrocompatibility: bool,
         all_admins: Option<&HashMap<String, Arc<Admin>>>,
     ) -> Admin {
-        let insee = admin::read_insee(&self.tags).map(|s| s.to_owned());
+        let insee = admin::read_insee(&self.tags).map(ToOwned::to_owned);
         let zip_codes = admin::read_zip_codes(&self.tags);
         let label = build_admin_label(&self.name, &zip_codes);
         let weight = get_weight(&self.tags, &self.center_tags);
@@ -142,8 +142,8 @@ impl IntoAdmin for Zone {
             // for retrocompatibity reasons, Navitia needs the
             // french admins to have an id with the insee for cities
             match insee {
-                Some(insee) if french_id_retrocompatibility => format!("admin:fr:{}", insee),
-                _ => format!("admin:osm:{}", id),
+                Some(insee) if french_id_retrocompatibility => format!("admin:fr:{insee}"),
+                _ => format!("admin:osm:{id}"),
             }
         };
         let parent_osm_id = self
@@ -164,7 +164,7 @@ impl IntoAdmin for Zone {
                 .get(&self.id)
                 .map(|(id, insee)| format_id(id, insee.as_ref()))
                 .expect("unable to find zone id in zones_osm_id"),
-            insee: insee.unwrap_or_else(|| "".to_owned()),
+            insee: insee.unwrap_or_default(),
             level: self.admin_level.unwrap_or(0),
             label,
             name: self.name,
@@ -260,7 +260,7 @@ pub fn read_admin_in_cosmogony_file(
     let max_weight = places::admin::ADMIN_MAX_WEIGHT;
     for z in read_zones(path)? {
         let insee = match z.zone_type {
-            Some(City) => admin::read_insee(&z.tags).map(|s| s.to_owned()),
+            Some(City) => admin::read_insee(&z.tags).map(ToOwned::to_owned),
             _ => None,
         };
         cosmogony_id_to_osm_id.insert(z.id, (z.osm_id.clone(), insee));

@@ -135,7 +135,7 @@ pub fn inner_streets(
                 .tags
                 .get("type")
                 .map_or(false, |v| v == "associatedStreet"),
-            _ => false,
+            osmpbfreader::OsmObj::Node(_) => false,
         }
     };
 
@@ -185,9 +185,9 @@ pub fn inner_streets(
             all_admins.into_iter().enumerate().map(move |(i, admins)| {
                 let doc_id = {
                     if single_output {
-                        format!("street:osm:{}:{}", kind, id)
+                        format!("street:osm:{kind}:{id}")
                     } else {
-                        format!("street:osm:{}:{}-{}", kind, id, i)
+                        format!("street:osm:{kind}:{id}-{i}")
                     }
                 };
 
@@ -354,10 +354,7 @@ fn get_street_admin<T: Getter>(
             // performance reasons, if the admin hierarchy is built of zones
             // bigger than cities, at most one result will belong to the output.
             admins_geofinder.get_admins_if(&coord, |admin| {
-                admin
-                    .zone_type
-                    .map(|zt| zt <= ZoneType::City)
-                    .unwrap_or(false)
+                admin.zone_type.map_or(false, |zt| zt <= ZoneType::City)
             })
         })
 }

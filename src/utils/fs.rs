@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use tracing::debug;
+use walkdir::DirEntry;
 
 /// Walk over all files of an input path. If it is a directory all files from
 /// this directory or subdirectory are yielded, if it is a file, it will be the
@@ -16,5 +17,5 @@ pub fn walk_files_recursive(path: &Path) -> impl Iterator<Item = PathBuf> + 'sta
             }
         })
         .filter(|entry| entry.file_type().is_file())
-        .map(|dir_entry| dir_entry.into_path())
+        .map(DirEntry::into_path)
 }

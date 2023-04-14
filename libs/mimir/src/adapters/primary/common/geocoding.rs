@@ -34,7 +34,7 @@ impl GeocodeJsonResponse {
 impl FromWithLang<Vec<places::Place>> for GeocodeJsonResponse {
     fn from_with_lang(places: Vec<places::Place>, lang: Option<&str>) -> Self {
         GeocodeJsonResponse::new(
-            "".to_string(),
+            String::new(),
             places
                 .into_iter()
                 .map(|p| Feature::from_with_lang(p, lang))
@@ -222,10 +222,10 @@ impl FromWithLang<places::admin::Admin> for GeocodeJsonProperty {
             (admin.name.as_ref(), admin.label.as_ref())
         };
 
-        let zone_type = admin
-            .zone_type
-            .map(|x| x.as_str().to_case(Case::Snake))
-            .unwrap_or_else(|| "administrative_region".to_owned());
+        let zone_type = admin.zone_type.map_or_else(
+            || "administrative_region".to_owned(),
+            |x| x.as_str().to_case(Case::Snake),
+        );
         let name = Some(name.to_owned());
         let insee = Some(admin.insee);
         let level = Some(admin.level); //might be used for type_ and become useless

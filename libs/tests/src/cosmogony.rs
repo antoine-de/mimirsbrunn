@@ -55,7 +55,7 @@ pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Resul
     let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "osm", region]
         .iter()
         .collect();
-    let input_file = input_dir.join(format!("{}-latest.osm.pbf", region));
+    let input_file = input_dir.join(format!("{region}-latest.osm.pbf"));
 
     let output_dir: PathBuf = [
         base_path,
@@ -68,7 +68,7 @@ pub async fn generate(region: &str, regenerate_if_already_exists: bool) -> Resul
     ]
     .iter()
     .collect();
-    let output_file = output_dir.join(format!("{}.jsonl.gz", region));
+    let output_file = output_dir.join(format!("{region}.jsonl.gz"));
 
     create_dir_if_not_exists(&output_dir)
         .await
@@ -131,7 +131,7 @@ pub async fn index_admins(
     let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "cosmogony"]
         .iter()
         .collect();
-    let input_file = input_dir.join(format!("{}.jsonl.gz", region));
+    let input_file = input_dir.join(format!("{region}.jsonl.gz"));
 
     mimirsbrunn::admin::index_cosmogony(
         &input_file,
@@ -148,7 +148,7 @@ pub async fn index_admins(
     )
     .await
     .map_err(|err| Error::Indexing {
-        details: format!("could not index cosmogony: {}", err,),
+        details: format!("could not index cosmogony: {err}"),
     })?;
 
     Ok(Status::Done)

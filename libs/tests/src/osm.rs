@@ -84,7 +84,7 @@ pub async fn index_pois(
     let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "osm", region]
         .iter()
         .collect();
-    let input_file = input_dir.join(format!("{}-latest.osm.pbf", region));
+    let input_file = input_dir.join(format!("{region}-latest.osm.pbf"));
 
     let mut osm_reader =
         mimirsbrunn::osm_reader::make_osm_reader(&input_file).context(OsmPbfReaderSnafu)?;
@@ -158,7 +158,7 @@ pub async fn index_streets(
     let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "osm"]
         .iter()
         .collect();
-    let input_file = input_dir.join(format!("{}.osm.pbf", region));
+    let input_file = input_dir.join(format!("{region}.osm.pbf"));
 
     let mut osm_reader =
         mimirsbrunn::osm_reader::make_osm_reader(&input_file).context(OsmPbfReaderSnafu)?;
@@ -194,7 +194,7 @@ pub async fn index_streets(
     )
     .context(StreetOsmExtractionSnafu)?
     .into_iter()
-    .map(|street| street.set_weight_from_admins())
+    .map(Street::set_weight_from_admins)
     .collect();
 
     let _ = client

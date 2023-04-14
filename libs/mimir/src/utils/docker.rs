@@ -297,7 +297,7 @@ impl DockerWrapper {
             };
 
             let mut port_bindings = HashMap::new();
-            for (host_port, container_port) in self.ports.iter() {
+            for (host_port, container_port) in &self.ports {
                 port_bindings.insert(
                     format!("{}/tcp", &container_port),
                     Some(vec![PortBinding {
@@ -315,8 +315,10 @@ impl DockerWrapper {
 
             let mut exposed_ports = HashMap::new();
             self.ports.iter().for_each(|(_, container)| {
+                // This weird zero-sized type is the way `bollard` works
+                #[allow(clippy::zero_sized_map_values)]
                 let v: HashMap<(), ()> = HashMap::new();
-                exposed_ports.insert(format!("{}/tcp", container), v);
+                exposed_ports.insert(format!("{container}/tcp"), v);
             });
 
             let env = Some(self.docker_config.container.vars.clone()).and_then(|vars| {

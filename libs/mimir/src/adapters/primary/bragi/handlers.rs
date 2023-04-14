@@ -79,7 +79,7 @@ pub fn build_feature(
         .into_iter()
         .map(|mut p| {
             if let Some(coord) = query_coord {
-                let geo_point = geo::Point::new(coord.lon as f64, coord.lat as f64);
+                let geo_point = geo::Point::new(f64::from(coord.lon), f64::from(coord.lat));
                 let pp: geo::Point<f64> = geo::Point::new(p.coord().lon(), p.coord().lat());
                 let distance = geo_point.haversine_distance(&pp) as u32;
                 p.set_distance(distance);
@@ -305,7 +305,7 @@ where
             match places {
                 Ok(places) if places.is_empty() => {
                     let features: Vec<Feature> = Vec::new();
-                    let resp = GeocodeJsonResponse::new("".to_string(), features);
+                    let resp = GeocodeJsonResponse::new(String::new(), features);
                     Ok(with_status(json(&resp), StatusCode::NOT_FOUND))
                 }
                 Ok(places) => {
@@ -313,7 +313,7 @@ where
                         .into_iter()
                         .map(|p| Feature::from_with_lang(p, None)) // FIXME lang: None
                         .collect();
-                    let resp = GeocodeJsonResponse::new("".to_string(), features);
+                    let resp = GeocodeJsonResponse::new(String::new(), features);
                     Ok(with_status(json(&resp), StatusCode::OK))
                 }
                 Err(err) => Err(warp::reject::custom(InternalError {
@@ -429,7 +429,7 @@ pub fn build_es_indices_to_search(
                 indices.push(root_doctype_dataset(doc_type_str, poi_dataset));
             }
         } else {
-            indices.push(root_doctype(Poi::static_doc_type()))
+            indices.push(root_doctype(Poi::static_doc_type()));
         }
         indices
     }
