@@ -88,7 +88,7 @@ pub fn get_names_from_tags(
 
     let properties = tags
         .iter()
-        .filter(|(k, _)| k.starts_with(&NAME_TAG_PREFIX))
+        .filter(|(k, _)| k.starts_with(NAME_TAG_PREFIX))
         .map(|property| places::Property {
             key: property.0[NAME_TAG_PREFIX.len()..].to_string(),
             value: property.1.to_string(),

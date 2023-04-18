@@ -88,7 +88,7 @@ impl Bano {
         let zones_for_label_formatting = admins
             .iter()
             .filter(|a| a.is_city())
-            .map(|a| a.deref())
+            .map(Deref::deref)
             .chain(std::iter::once(&city));
 
         let street_label = labels::format_street_label(

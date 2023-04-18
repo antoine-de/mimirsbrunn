@@ -1,10 +1,7 @@
 use flate2::bufread::GzDecoder;
 use serde::de::DeserializeOwned;
 use snafu::Snafu;
-use std::{
-    ffi::OsStr,
-    path::{Path, PathBuf},
-};
+use std::{ffi::OsStr, path::Path};
 use tracing::warn;
 
 use crate::utils;
@@ -29,7 +26,7 @@ pub enum Error {
 /// The function `into_addr` is used to transform the item read in the file (Bano) into an actual
 /// address.
 pub fn import_addresses_from_input_path<F, T>(
-    path: &PathBuf,
+    path: &Path,
     has_headers: bool,
     into_addr: F,
 ) -> impl Iterator<Item = Addr>
@@ -37,7 +34,7 @@ where
     F: Fn(T) -> Result<Addr, crate::error::Error> + 'static,
     T: DeserializeOwned + 'static,
 {
-    records_from_directory(&path, has_headers)
+    records_from_directory(path, has_headers)
         .filter_map(move |record| match record {
             Ok(value) => Some(into_addr(value)),
             Err(err) => {
@@ -59,14 +56,14 @@ where
                 warn!(
                     "Address {} has no street name and has been ignored.",
                     addr.id
-                )
+                );
             }
 
             !empty_name
         })
 }
 
-/// Same as records_from_file, but can take an entire directory as input
+/// Same as `records_from_path`, but can take an entire directory as input
 fn records_from_directory<T>(
     path: &Path,
     has_headers: bool,

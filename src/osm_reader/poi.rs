@@ -221,11 +221,11 @@ fn parse_poi(
         Some(val) if !val.is_empty() => vec![val.to_string()],
         _ => places::admin::get_zip_codes_from_admins(&admins),
     };
-    let country_codes = places::admin::find_country_codes(admins.iter().map(|a| a.deref()));
+    let country_codes = places::admin::find_country_codes(admins.iter().map(Deref::deref));
     Some(Poi {
         id,
         name: name.to_string(),
-        label: labels::format_poi_label(name, admins.iter().map(|a| a.deref()), &country_codes),
+        label: labels::format_poi_label(name, admins.iter().map(Deref::deref), &country_codes),
         coord,
         approx_coord: Some(coord.into()),
         zip_codes,
@@ -244,7 +244,7 @@ fn parse_poi(
 }
 
 fn format_poi_id(osm_type: &str, id: i64) -> String {
-    format!("poi:osm:{}:{}", osm_type, id)
+    format!("poi:osm:{osm_type}:{id}")
 }
 
 // FIXME Should produce a stream
@@ -285,7 +285,7 @@ where
     T::Document: Into<serde_json::Value>,
 {
     let reverse = mimir::adapters::primary::common::dsl::build_reverse_query(
-        format!("{}m", max_distance_reverse).as_ref(),
+        &format!("{max_distance_reverse}m"),
         poi.coord.lat(),
         poi.coord.lon(),
     );

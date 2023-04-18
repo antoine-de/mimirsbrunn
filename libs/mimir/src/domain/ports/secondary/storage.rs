@@ -75,9 +75,9 @@ pub trait Storage<'s> {
 }
 
 #[async_trait(?Send)]
-impl<'s, T: ?Sized> Storage<'s> for Box<T>
+impl<'s, T> Storage<'s> for Box<T>
 where
-    T: Storage<'s> + Send + Sync,
+    T: ?Sized + Storage<'s> + Send + Sync,
 {
     async fn create_container(&self, config: &ContainerConfig) -> Result<Index, Error> {
         (**self).create_container(config).await

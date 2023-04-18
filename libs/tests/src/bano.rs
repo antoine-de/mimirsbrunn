@@ -62,7 +62,7 @@ pub async fn index_addresses(
     let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "bano", region]
         .iter()
         .collect();
-    let input_file = input_dir.join(format!("{}.csv", region));
+    let input_file = input_dir.join(format!("{region}.csv"));
 
     // TODO: there might be some factorisation to do with bano2mimir?
     let into_addr = {
@@ -105,7 +105,7 @@ pub async fn index_addresses(
         .generate_index(&config.container, futures::stream::iter(addresses))
         .await
         .map_err(|err| Error::Indexing {
-            details: format!("could not index bano: {}", err,),
+            details: format!("could not index bano: {err}"),
         })?;
 
     Ok(Status::Done)

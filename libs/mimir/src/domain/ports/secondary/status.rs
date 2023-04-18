@@ -17,9 +17,9 @@ pub trait Status {
 }
 
 #[async_trait]
-impl<T: ?Sized> Status for Box<T>
+impl<T> Status for Box<T>
 where
-    T: Status + Send + Sync,
+    T: ?Sized + Status + Send + Sync,
 {
     async fn status(&self) -> Result<StorageStatus, Error> {
         (**self).status().await

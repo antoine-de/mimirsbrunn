@@ -30,6 +30,7 @@
 
 use futures::stream::StreamExt;
 use mimir::domain::model::configuration::ContainerConfig;
+use places::street::Street;
 use snafu::{ResultExt, Snafu};
 use tracing::instrument;
 
@@ -93,9 +94,7 @@ async fn import_streets(
     client: &ElasticsearchStorage,
     config: &ContainerConfig,
 ) -> Result<(), Error> {
-    let streets = streets
-        .into_iter()
-        .map(|street| street.set_weight_from_admins());
+    let streets = streets.into_iter().map(Street::set_weight_from_admins);
 
     let _index = client
         .generate_index(config, futures::stream::iter(streets))

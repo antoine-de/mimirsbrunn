@@ -64,23 +64,23 @@ pub async fn download_to_file(path: &Path, url: &str) -> Result<(), Error> {
     let mut resp = reqwest::get(url)
         .await
         .context(DownloadSnafu {
-            details: format!("could not download url {}", url),
+            details: format!("could not download url {url}"),
         })?
         .error_for_status()
         .context(DownloadSnafu {
-            details: format!("download response error for {}", url),
+            details: format!("download response error for {url}"),
         })?;
 
     while let Some(chunk) = resp.chunk().await.context(DownloadSnafu {
-        details: format!("read chunk error during download of {}", url),
+        details: format!("read chunk error during download of {url}"),
     })? {
         file.write_all(&chunk).await.context(InvalidIOSnafu {
-            details: format!("write chunk error during download of {}", url),
+            details: format!("write chunk error during download of {url}"),
         })?;
     }
 
     file.flush().await.context(InvalidIOSnafu {
-        details: format!("flush error during download of {}", url),
+        details: format!("flush error during download of {url}"),
     })?;
 
     Ok(())

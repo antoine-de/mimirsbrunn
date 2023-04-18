@@ -265,9 +265,9 @@ impl AdminGeoFinder {
     }
 
     /// Return an iterator over admins.
-    /// Since we can't modify admins once they are stored in the RTree,
+    /// Since we can't modify admins once they are stored in the `RTree`,
     /// and since this method requires Admins to have their boundary, we create
-    /// new admins by cloning the ones in the RTree, and adding their boundary.
+    /// new admins by cloning the ones in the `RTree`, and adding their boundary.
     /// Needless to say, this is probably an expensive method...
     pub fn admins(&self) -> impl Iterator<Item = Admin> + '_ {
         self.rtree.iter().map(|split| {

@@ -110,7 +110,7 @@ where
         //     eprintln!("{}", cause);
         // }
         if let Some(source) = err.source() {
-            eprintln!("{}", source);
+            eprintln!("{source}");
         }
         Err(err)
     } else {

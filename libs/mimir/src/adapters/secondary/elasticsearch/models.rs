@@ -74,8 +74,7 @@ pub enum ElasticsearchBulkItem {
 impl ElasticsearchBulkItem {
     pub fn inner(self) -> ElasticsearchBulkStatus {
         match self {
-            ElasticsearchBulkItem::Index(inner) => inner,
-            ElasticsearchBulkItem::Update(inner) => inner,
+            ElasticsearchBulkItem::Index(inner) | ElasticsearchBulkItem::Update(inner) => inner,
         }
     }
 }

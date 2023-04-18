@@ -14,7 +14,7 @@ fn format_label<'a>(
     let city_name = city.map(|a| a.name.to_string());
 
     match city_name {
-        Some(n) => format!("{} ({})", nice_name, n),
+        Some(n) => format!("{nice_name} ({n})"),
         None => nice_name,
     }
 }
@@ -36,7 +36,7 @@ fn format_i18n_label<'a>(
         || nice_name.to_string(),
         |adm| {
             let local_admin_name = &adm.names.get(lang).unwrap_or(&adm.name);
-            format!("{} ({})", nice_name, local_admin_name)
+            format!("{nice_name} ({local_admin_name})")
         },
     )
 }
@@ -119,8 +119,8 @@ pub fn format_international_poi_label<'a>(
 }
 
 fn default_name(house_number: &str, street: &str) -> String {
-    //default formating is "{street} {hn}" as it's the most common format (but not correct for france)
-    format!("{street} {hn}", street = street, hn = house_number)
+    // default formating is "{street} {house_number}" as it's the most common format (but not correct for france)
+    format!("{street} {house_number}")
 }
 
 fn get_short_addr_label<'a>(
@@ -128,7 +128,7 @@ fn get_short_addr_label<'a>(
     admins: impl Iterator<Item = &'a Admin> + Clone,
     country_codes: &[String],
 ) -> Option<String> {
-    let country_code = country_codes.iter().next().map(|c| c.to_string()); // we arbitrarily take the first country code
+    let country_code = country_codes.iter().next().map(String::to_string); // we arbitrarily take the first country code
     address_formatter::FORMATTER
         .short_addr_format_with_config(
             place.into_place(admins),

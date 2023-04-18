@@ -78,12 +78,12 @@ pub fn get_country_code(codes: &BTreeMap<String, String>) -> Option<String> {
 
 // This function reformat the id by removing spaces, and prepending a prefix
 pub fn normalize_id(prefix: &str, id: &str) -> String {
-    match prefix {
-        "stop_area" => format!(
-            "{}:{}",
-            prefix,
+    if prefix == "stop_area" {
+        format!(
+            "{prefix}:{}",
             &id.replacen("StopArea:", "", 1).replace(' ', "")
-        ),
-        _ => format!("{}:{}", prefix, &id.replace(' ', "")),
+        )
+    } else {
+        format!("{prefix}:{}", &id.replace(' ', ""))
     }
 }

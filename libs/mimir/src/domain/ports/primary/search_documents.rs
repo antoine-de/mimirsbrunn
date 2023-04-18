@@ -41,10 +41,10 @@ where
         timeout: Option<Duration>,
     ) -> Result<Vec<Self::Document>, ModelError> {
         self.search_documents(Parameters {
-            es_indices_to_search_in,
             query,
             result_limit,
             timeout,
+            es_indices_to_search_in,
         })
         .await
         .map_err(|err| ModelError::DocumentRetrievalError { source: err.into() })

@@ -1,7 +1,7 @@
 use elasticsearch::{
     cat::CatIndicesParts,
     cluster::{ClusterHealthParts, ClusterPutComponentTemplateParts},
-    http::response::Exception,
+    http::response::{Exception, Response},
     indices::{
         IndicesCreateParts, IndicesDeleteParts, IndicesForcemergeParts, IndicesGetAliasParts,
         IndicesPutIndexTemplateParts, IndicesRefreshParts,
@@ -204,7 +204,7 @@ impl From<Exception> for Error {
                         Error::ElasticsearchUnknownSetting { setting }
                     } else {
                         Error::ElasticsearchUnhandledException {
-                            details: format!("Unidentified reason: {}", reason),
+                            details: format!("Unidentified reason: {reason}"),
                         }
                     }
                 }
@@ -218,9 +218,7 @@ impl From<Exception> for Error {
 
 impl From<Option<Exception>> for Error {
     fn from(opt_exc: Option<Exception>) -> Self {
-        opt_exc
-            .map(Into::into)
-            .unwrap_or(Error::ElasticsearchFailureWithoutException)
+        opt_exc.map_or(Error::ElasticsearchFailureWithoutException, Into::into)
     }
 }
 
@@ -246,7 +244,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot create index '{}'", index_name),
+                details: format!("cannot create index '{index_name}'"),
             })?;
 
         if response.status_code().is_success() {
@@ -278,7 +276,7 @@ impl ElasticsearchStorage {
                 Ok(())
             } else {
                 Err(Error::NotCreated {
-                    details: format!("index creation {}", index_name),
+                    details: format!("index creation {index_name}"),
                 })
             }
         } else {
@@ -310,7 +308,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot create component template '{}'", template_name),
+                details: format!("cannot create component template '{template_name}'"),
             })?;
 
         if response.status_code().is_success() {
@@ -342,7 +340,7 @@ impl ElasticsearchStorage {
                 Ok(())
             } else {
                 Err(Error::NotCreated {
-                    details: format!("component template creation {}", template_name),
+                    details: format!("component template creation {template_name}"),
                 })
             }
         } else {
@@ -374,7 +372,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot create component template '{}'", template_name),
+                details: format!("cannot create component template '{template_name}'"),
             })?;
 
         if response.status_code().is_success() {
@@ -406,7 +404,7 @@ impl ElasticsearchStorage {
                 Ok(())
             } else {
                 Err(Error::NotCreated {
-                    details: format!("component template creation {}", template_name),
+                    details: format!("component template creation {template_name}"),
                 })
             }
         } else {
@@ -430,7 +428,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot find index '{}'", index),
+                details: format!("cannot find index '{index}'"),
             })?;
 
         if response.status_code().is_success() {
@@ -491,7 +489,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot find index '{}'", index),
+                details: format!("cannot find index '{index}'"),
             })?;
 
         if response.status_code().is_success() {
@@ -590,7 +588,7 @@ impl ElasticsearchStorage {
                     tokio::spawn(client.bulk_block(index, chunk))
                         .await
                         .expect("tokio task panicked")
-                        .unwrap_or_else(|err| panic!("Error inserting chunk: {}", err))
+                        .unwrap_or_else(|err| panic!("Error inserting chunk: {err}"))
                 }
             })
             .buffer_unordered(self.config.insertion_concurrent_requests)
@@ -622,49 +620,45 @@ impl ElasticsearchStorage {
             self.config.bulk_backoff.wait,
         )
         .await
-        .and_then(|res| res.error_for_status_code())
+        .and_then(Response::error_for_status_code)
         .context(ElasticsearchClientSnafu {
             details: "cannot bulk insert",
         })?;
 
         if !resp.status_code().is_success() {
-            Err(resp
+            return Err(resp
                 .exception()
                 .await
                 .expect("failed to fetch Elasticsearch exception")
-                .into())
-        } else {
-            let es_response: ElasticsearchBulkResponse = resp
-                .json()
-                .await
-                .context(ElasticsearchDeserializationSnafu)?;
+                .into());
+        }
+        let es_response: ElasticsearchBulkResponse = resp
+            .json()
+            .await
+            .context(ElasticsearchDeserializationSnafu)?;
 
-            es_response.items.into_iter().try_for_each(|item| {
-                let inner = item.inner();
-                let result = inner.result.map_err(|err| {
-                    let reason = err
-                        .caused_by
-                        .map_or("".to_string(), |caused_by| caused_by.reason);
-                    Error::NotCreated {
-                        details: format!(
-                            "Object id {}, Error: {}, {}",
-                            inner.id, err.reason, reason
-                        ),
-                    }
-                })?;
-
-                match result {
-                    ElasticsearchBulkResult::Created => stats.created += 1,
-                    ElasticsearchBulkResult::Updated => stats.updated += 1,
-                    ElasticsearchBulkResult::NoOp => stats.skipped += 1,
-                    ElasticsearchBulkResult::Deleted => stats.deleted += 1,
+        es_response.items.into_iter().try_for_each(|item| {
+            let inner = item.inner();
+            let result = inner.result.map_err(|err| {
+                let reason = err
+                    .caused_by
+                    .map_or(String::new(), |caused_by| caused_by.reason);
+                Error::NotCreated {
+                    details: format!("Object id {}, Error: {}, {reason}", inner.id, err.reason),
                 }
-
-                Ok::<_, Error>(())
             })?;
 
-            Ok(stats)
-        }
+            match result {
+                ElasticsearchBulkResult::Created => stats.created += 1,
+                ElasticsearchBulkResult::Updated => stats.updated += 1,
+                ElasticsearchBulkResult::NoOp => stats.skipped += 1,
+                ElasticsearchBulkResult::Deleted => stats.deleted += 1,
+            }
+
+            Ok::<_, Error>(())
+        })?;
+
+        Ok(stats)
     }
 
     pub(super) async fn update_alias(
@@ -705,9 +699,9 @@ impl ElasticsearchStorage {
             .body(json!({ "actions": actions }))
             .send()
             .await
-            .and_then(|res| res.error_for_status_code())
+            .and_then(Response::error_for_status_code)
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot update alias '{}'", alias),
+                details: format!("cannot update alias '{alias}'"),
             })?;
 
         let json = response
@@ -719,7 +713,7 @@ impl ElasticsearchStorage {
             Ok(())
         } else {
             Err(Error::NotAcknowledged {
-                details: format!("cannot update alias '{}'", alias),
+                details: format!("cannot update alias '{alias}'"),
             })
         }
     }
@@ -731,7 +725,7 @@ impl ElasticsearchStorage {
         // The last piece of the input index should be a dataset
         // If you didn't add the trailing '_*' below, when you would search for
         // the aliases of eg 'fr', you would also find the aliases for 'fr-ne'.
-        let index = format!("{}_*", index);
+        let index = format!("{index}_*");
         let response = self
             .client
             .indices()
@@ -740,59 +734,58 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot find aliases to {}", index),
+                details: format!("cannot find aliases to {index}"),
             })?;
 
-        if response.status_code().is_success() {
-            // Response similar to:
-            // {
-            //   "index1": {
-            //      "aliases": {
-            //         "alias1": {},
-            //         "alias2": {}
-            //      }
-            //   },
-            //   "index2": {
-            //      "aliases": {
-            //         "alias3": {}
-            //      }
-            //   }
-            // }
-            let json = response
-                .json::<Value>()
-                .await
-                .context(ElasticsearchDeserializationSnafu)?;
-
-            let aliases = json
-                .as_object()
-                .map(|indices| {
-                    indices
-                        .iter()
-                        .filter_map(|(index, value)| {
-                            value["aliases"]
-                                .as_object()
-                                .map(|aliases| (index.clone(), aliases.keys().cloned().collect()))
-                        })
-                        .collect()
-                })
-                .unwrap_or_else(|| {
-                    info!("No alias for index {}", index);
-                    BTreeMap::new()
-                });
-            Ok(aliases)
-        } else {
-            Err(response
+        if !response.status_code().is_success() {
+            return Err(response
                 .exception()
                 .await
                 .expect("failed to fetch Elasticsearch exception")
-                .into())
+                .into());
         }
+        // Response similar to:
+        // {
+        //   "index1": {
+        //      "aliases": {
+        //         "alias1": {},
+        //         "alias2": {}
+        //      }
+        //   },
+        //   "index2": {
+        //      "aliases": {
+        //         "alias3": {}
+        //      }
+        //   }
+        // }
+        let json = response
+            .json::<Value>()
+            .await
+            .context(ElasticsearchDeserializationSnafu)?;
+
+        let aliases = json.as_object().map_or_else(
+            || {
+                info!("No alias for index {}", index);
+                BTreeMap::new()
+            },
+            |indices| {
+                indices
+                    .iter()
+                    .filter_map(|(index, value)| {
+                        value["aliases"]
+                            .as_object()
+                            .map(|aliases| (index.clone(), aliases.keys().cloned().collect()))
+                    })
+                    .collect()
+            },
+        );
+        Ok(aliases)
     }
 
     pub(super) async fn add_pipeline(&self, pipeline: &str, name: &str) -> Result<(), Error> {
         let pipeline: serde_json::Value =
             serde_json::from_str(pipeline).context(JsonDeserializationSnafu {
-                details: format!("Could not deserialize pipeline {}", name),
+                details: format!("Could not deserialize pipeline {name}"),
             })?;
 
         let response = self
@@ -804,7 +797,7 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot add pipeline '{}'", name,),
+                details: format!("cannot add pipeline '{name}'"),
             })?;
 
         if response.status_code().is_success() {
@@ -837,7 +830,7 @@ impl ElasticsearchStorage {
                 Ok(())
             } else {
                 Err(Error::NotAcknowledged {
-                    details: format!("pipeline {} creation", name),
+                    details: format!("pipeline {name} creation"),
                 })
             }
         } else {
@@ -883,7 +876,7 @@ impl ElasticsearchStorage {
         }
 
         let response = response
-            .and_then(|res| res.error_for_status_code())
+            .and_then(Response::error_for_status_code)
             .context(ElasticsearchClientSnafu {
                 details: format!("cannot force merge indices '{}'", indices.join(", ")),
             })?
@@ -924,19 +917,18 @@ impl ElasticsearchStorage {
             .send()
             .await
             .context(ElasticsearchClientSnafu {
-                details: format!("cannot refresh index {}", index),
+                details: format!("cannot refresh index {index}"),
             })?;
 
         // Note We won't analyze the details of the response.
         if !response.status_code().is_success() {
-            Err(response
+            return Err(response
                 .exception()
                 .await
                 .expect("failed to fetch Elasticsearch exception")
-                .into())
-        } else {
-            Ok(())
+                .into());
         }
+        Ok(())
     }
 
     pub(super) async fn list_documents<D>(
@@ -965,11 +957,11 @@ impl ElasticsearchStorage {
                 .send()
                 .await
                 .context(ElasticsearchClientSnafu {
-                    details: format!("failed to query PIT for {}", index),
+                    details: format!("failed to query PIT for {index}"),
                 })?
                 .error_for_status_code()
                 .context(ElasticsearchClientSnafu {
-                    details: format!("failed to open PIT for {}", index),
+                    details: format!("failed to open PIT for {index}"),
                 })?;
 
             response
@@ -1015,7 +1007,7 @@ impl ElasticsearchStorage {
                         .send()
                         .await
                         .context(ElasticsearchClientSnafu {
-                            details: format!("failed to search for {}", index),
+                            details: format!("failed to search for {index}"),
                         })?;
 
                     let body: ElasticsearchSearchResponse<D> = response
@@ -1087,19 +1079,17 @@ impl ElasticsearchStorage {
         D: DeserializeOwned + Send + Sync + 'static,
     {
         let indices = indices.iter().map(String::as_str).collect::<Vec<_>>();
-        let timeout = timeout
-            .map(|t| {
-                if t > self.config.timeout {
-                    info!(
-                        "Requested timeout {:?} is too big. I'll use {:?} instead.",
-                        t, self.config.timeout
-                    );
-                    self.config.timeout
-                } else {
-                    t
-                }
-            }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
-            .unwrap_or(self.config.timeout);
+        let timeout = timeout.map_or(self.config.timeout, |t| {
+            if t > self.config.timeout {
+                info!(
+                    "Requested timeout {:?} is too big. I'll use {:?} instead.",
+                    t, self.config.timeout
+                );
+                self.config.timeout
+            } else {
+                t
+            }
+        });
         let shard_timeout = format!("{}ms", timeout.as_millis());
         let request_timeout = timeout.saturating_add(timeout);
 
@@ -1169,19 +1159,17 @@ impl ElasticsearchStorage {
     where
         D: DeserializeOwned + Send + Sync + 'static,
     {
-        let timeout = timeout
-            .map(|t| {
-                if t > self.config.timeout {
-                    info!(
-                        "Requested timeout {:?} is too big. I'll use {:?} instead.",
-                        t, self.config.timeout
-                    );
-                    self.config.timeout
-                } else {
-                    t
-                }
-            }) // let's cap the timeout to self.config.timeout to prevent overloading elasticsearch with long requests
-            .unwrap_or(self.config.timeout);
+        let timeout = timeout.map_or(self.config.timeout, |t| {
+            if t > self.config.timeout {
+                info!(
+                    "Requested timeout {:?} is too big. I'll use {:?} instead.",
+                    t, self.config.timeout
+                );
+                self.config.timeout
+            } else {
+                t
+            }
+        });
 
         let get = self.client.mget(MgetParts::None).request_timeout(timeout);
 
@@ -1238,7 +1226,7 @@ impl ElasticsearchStorage {
                     .send()
                     .await
                     .context(ElasticsearchClientSnafu {
-                        details: format!("could not explain document {} in index {}", id, index),
+                        details: format!("could not explain document {id} in index {index}"),
                     })?
             }
             Query::QueryDSL(json) => {
@@ -1247,7 +1235,7 @@ impl ElasticsearchStorage {
                     .send()
                     .await
                     .context(ElasticsearchClientSnafu {
-                        details: format!("could not explain document {} in index {}", id, index),
+                        details: format!("could not explain document {id} in index {index}"),
                     })?
             }
         };
@@ -1269,7 +1257,7 @@ impl ElasticsearchStorage {
                     details: String::from("expected 'hits'"),
                     json: json.clone(),
                 })?
-                .to_owned();
+                .clone();
             let explanation =
                 serde_json::from_value::<D>(explanation).context(JsonDeserializationSnafu {
                     details: String::from("could not deserialize explanation"),
@@ -1440,9 +1428,8 @@ impl TryFrom<ElasticsearchIndex> for Index {
 impl From<String> for IndexStatus {
     fn from(status: String) -> Self {
         match status.as_str() {
-            "green" => IndexStatus::Available,
-            "yellow" => IndexStatus::Available,
-            _ => IndexStatus::Available,
+            "green" | "yellow" => IndexStatus::Available,
+            _ => IndexStatus::NotAvailable,
         }
     }
 }

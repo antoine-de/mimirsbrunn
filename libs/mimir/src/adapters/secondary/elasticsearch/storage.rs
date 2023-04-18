@@ -207,7 +207,7 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
             "create component template" => {
                 // We build a struct from the config object,
                 let config =
-                    ComponentTemplateConfiguration::new_from_config(config).map_err(|err| {
+                    ComponentTemplateConfiguration::new_from_config(&config).map_err(|err| {
                         StorageError::TemplateCreationError {
                             template: String::from("NA"),
                             source: Box::new(err),
@@ -223,7 +223,7 @@ impl<'s> Storage<'s> for ElasticsearchStorage {
             }
             "create index template" => {
                 let config =
-                    IndexTemplateConfiguration::new_from_config(config).map_err(|err| {
+                    IndexTemplateConfiguration::new_from_config(&config).map_err(|err| {
                         StorageError::TemplateCreationError {
                             template: String::from("NA"),
                             source: Box::new(err),

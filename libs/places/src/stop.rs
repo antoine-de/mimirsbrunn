@@ -238,11 +238,11 @@ pub fn to_mimir(
             license: navitia.contributors[contrib_idx]
                 .license
                 .clone()
-                .unwrap_or_else(|| "".into()),
+                .unwrap_or_default(),
             url: navitia.contributors[contrib_idx]
                 .website
                 .clone()
-                .unwrap_or_else(|| "".into()),
+                .unwrap_or_default(),
         })
         .collect();
     let coord = Coord::new(stop_area.coord.lon, stop_area.coord.lat);

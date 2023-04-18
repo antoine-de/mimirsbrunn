@@ -11,7 +11,7 @@ use mimir::{
                 settings::QuerySettings,
             },
         },
-        secondary::elasticsearch::remote::connection_test_pool,
+        secondary::elasticsearch::{remote::connection_test_pool, ElasticsearchStorageConfig},
     },
     domain::{
         model::{configuration::root_doctype, query::Query},
@@ -45,7 +45,7 @@ async fn main() {
     let opt = Opt::parse();
 
     let client = connection_test_pool()
-        .conn(Default::default())
+        .conn(ElasticsearchStorageConfig::default())
         .await
         .expect("Elasticsearch Connection Established");
 
@@ -71,7 +71,7 @@ async fn main() {
         Option::None,
     );
 
-    println!("{}", dsl);
+    println!("{dsl}");
 
     let es_indices_to_search = vec![
         root_doctype(Admin::static_doc_type()),
@@ -90,6 +90,6 @@ async fn main() {
         .iter()
         .enumerate()
         .for_each(|(i, v): (_, &serde_json::Value)| {
-            println!("{}: {} | {} | {}", i, v["id"], v["name"], v["label"]);
+            println!("{i}: {} | {} | {}", v["id"], v["name"], v["label"]);
         });
 }
