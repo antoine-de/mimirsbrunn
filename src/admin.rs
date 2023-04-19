@@ -170,15 +170,16 @@ impl IntoAdmin for Zone {
             name: self.name,
             zip_codes,
             weight: places::admin::normalize_weight(weight, max_weight),
-            bbox: self.bbox,
-            boundary: self.boundary,
-            coord: center,
             approx_coord: Some(center.into()),
+            coord: center,
+            boundary: self.boundary,
+            administrative_regions: Vec::new(),
+            bbox: self.bbox,
             zone_type: self.zone_type,
-            parent_id: parent_osm_id,
             // Note: Since we do not really attach an admin to its hierarchy, for the moment an admin only have it's own coutry code,
             // not the country code of it's country from the hierarchy
             // (so it has a country code mainly if it is a country)
+            parent_id: parent_osm_id,
             country_codes: places::utils::get_country_code(&codes)
                 .into_iter()
                 .collect(),
@@ -187,7 +188,6 @@ impl IntoAdmin for Zone {
             labels,
             distance: None,
             context: None,
-            administrative_regions: Vec::new(),
         };
         if let Some(admins) = all_admins {
             // Get a list of encompassing parent ids, which will be used as the get

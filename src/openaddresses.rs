@@ -84,14 +84,14 @@ impl OpenAddress {
         let street = places::street::Street {
             id: street_id,
             name: self.street,
-            label: street_label,
             administrative_regions: admins,
+            label: street_label,
             weight,
-            zip_codes: zip_codes.clone(),
-            coord,
             approx_coord: None,
-            distance: None,
+            coord,
+            zip_codes: zip_codes.clone(),
             country_codes: country_codes.clone(),
+            distance: None,
             context: None,
         };
 
@@ -116,15 +116,15 @@ impl OpenAddress {
         Ok(Addr {
             id,
             name: addr_name,
-            label: addr_label,
             house_number: self.number,
             street,
+            label: addr_label,
             coord,
             approx_coord: Some(coord.into()),
             weight,
             zip_codes,
-            distance: None,
             country_codes,
+            distance: None,
             context: None,
         })
     }

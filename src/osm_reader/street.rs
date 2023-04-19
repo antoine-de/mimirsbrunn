@@ -161,17 +161,19 @@ pub fn inner_streets(
                         admins: Vec<Arc<places::admin::Admin>>| {
         let admins_iter = admins.iter().map(Deref::deref);
         let country_codes = places::admin::find_country_codes(admins_iter.clone());
+        let label = labels::format_street_label(&name, admins_iter, &country_codes);
+        let zip_codes = places::admin::get_zip_codes_from_admins(&admins);
         places::street::Street {
             id,
-            label: labels::format_street_label(&name, admins_iter, &country_codes),
             name,
-            weight: 0.,
-            zip_codes: places::admin::get_zip_codes_from_admins(&admins),
             administrative_regions: admins,
-            coord,
+            label,
+            weight: 0.,
             approx_coord: Some(coord.into()),
-            distance: None,
+            coord,
+            zip_codes,
             country_codes,
+            distance: None,
             context: None,
         }
     };

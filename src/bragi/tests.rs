@@ -32,7 +32,7 @@ use super::*;
 use mimir::utils::docker;
 use serde_json::json;
 use serial_test::serial;
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 use test_log::test;
 use tokio::select;
 
@@ -205,6 +205,30 @@ async fn ntfs2mimir() {
     .await;
 }
 
+async fn poi2mimir() {
+    let opts = mimirsbrunn::settings::poi2mimir::Opts {
+        config_dir: [env!("CARGO_MANIFEST_DIR"), "config"].iter().collect(),
+        run_mode: Some("testing".to_string()),
+        settings: vec![],
+        input: [
+            env!("CARGO_MANIFEST_DIR"),
+            "tests",
+            "fixtures",
+            "poi",
+            "corse.poi",
+        ]
+        .iter()
+        .collect(),
+        cmd: mimirsbrunn::settings::poi2mimir::Command::Run,
+    };
+
+    let settings = mimirsbrunn::settings::poi2mimir::Settings::new(&opts).unwrap();
+    let _res = mimirsbrunn::utils::launch::launch_async(move || {
+        mimirsbrunn::poi2mimir::run(opts, settings)
+    })
+    .await;
+}
+
 #[serial]
 #[test(tokio::test)]
 async fn autocomplete() {
@@ -289,6 +313,164 @@ async fn autocomplete_only_cities() {
     // Third is the city of Corte, because it's a perfect match for the prefix
     let corte = features.pointer("/2/properties/geocoding").unwrap();
     assert_eq!(corte.get("label").unwrap(), &json!("Corte (20250)"));
+}
+
+async fn autocomplete_poi_visible() {
+    let response = reqwest::get("http://localhost:5000/api/v1/autocomplete?q=Cucuruzzu&type[]=poi")
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    // 2 POIs exists for 'Cucuruzzu' but one of them is hidden from autocomplete:
+    // - 'Castellu di Cucuruzzu (Levie)'
+    // - 'Castellu di Cucuruzzu - Entrée principale (Levie) [AUTOCOMPLETE_VISIBLE=false]'
+    assert_eq!(features.as_array().unwrap().len(), 1);
+
+    let cucuruzzu = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(cucuruzzu.get("id").unwrap(), &json!("poi:osm:461982831"));
+    assert_eq!(
+        cucuruzzu.get("label").unwrap(),
+        &json!("Castellu di Cucuruzzu (Levie)")
+    );
+
+    // Check that both POI for Cucuruzzu are accessible through `/features`
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/features/poi:osm:461982831?poi_dataset[]=fr")
+            .await
+            .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
+    let cucuruzzu = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(cucuruzzu.get("id").unwrap(), &json!("poi:osm:461982831"));
+    assert_eq!(
+        cucuruzzu.get("label").unwrap(),
+        &json!("Castellu di Cucuruzzu (Levie)")
+    );
+
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/features/poi:osm:461982832?poi_dataset[]=fr")
+            .await
+            .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
+    let cucuruzzu = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(cucuruzzu.get("id").unwrap(), &json!("poi:osm:461982832"));
+    assert_eq!(
+        cucuruzzu.get("label").unwrap(),
+        &json!("Castellu di Cucuruzzu - Entrée principale (Levie)")
+    );
+}
+
+async fn autocomplete_stop_area_visible() {
+    let response = reqwest::get(
+        "http://localhost:5000/api/v1/autocomplete?q=Gare Routière&type[]=public_transport:stop_area",
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+    tracing::debug!("{body}");
+
+    let features = body.pointer("/features").unwrap();
+    // 3 Stop Area exists for 'Gare Routière' but one of them is hidden from autocomplete:
+    // - 'Gare Routiere (Ajaccio)'
+    // - 'Gare Routière (Ajaccio)'
+    // - 'Gare Routière Jacques Nacer (Ajaccio) [AUTOCOMPLETE_VISIBLE=false]'
+    assert_eq!(features.as_array().unwrap().len(), 2);
+
+    assert_eq!(
+        HashSet::from([
+            features
+                .pointer("/0/properties/geocoding/id")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+            features
+                .pointer("/1/properties/geocoding/id")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        ]),
+        HashSet::from(["stop_area:10161", "stop_area:10162"])
+    );
+    assert_eq!(
+        features.pointer("/0/properties/geocoding/label").unwrap(),
+        &json!("Gare Routière (Ajaccio)")
+    );
+    assert_eq!(
+        features.pointer("/1/properties/geocoding/label").unwrap(),
+        &json!("Gare Routière (Ajaccio)")
+    );
+
+    // Check that all 3 Stop Areas for 'Gare Routière' are accessible through `/features`
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/features/stop_area:10161?pt_dataset[]=fr")
+            .await
+            .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
+    let gare = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(
+        gare.get("label").unwrap(),
+        &json!("Gare Routière (Ajaccio)")
+    );
+
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/features/stop_area:10162?pt_dataset[]=fr")
+            .await
+            .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
+    let gare = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(
+        gare.get("label").unwrap(),
+        &json!("Gare Routière (Ajaccio)")
+    );
+
+    let response =
+        reqwest::get("http://localhost:5000/api/v1/features/stop_area:10163?pt_dataset[]=fr")
+            .await
+            .unwrap();
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let body = response.json::<serde_json::Value>().await.unwrap();
+
+    let features = body.pointer("/features").unwrap();
+    assert_eq!(features.as_array().unwrap().len(), 1);
+    let gare = features.pointer("/0/properties/geocoding").unwrap();
+    assert_eq!(
+        gare.get("label").unwrap(),
+        &json!("Gare Routière Jacques Nacer (Ajaccio)")
+    );
+}
+
+#[serial]
+#[test(tokio::test)]
+async fn autocomplete_visible() {
+    start_bragi().await;
+    cosmogony2mimir().await;
+    bano2mimir().await;
+    osm2mimir().await;
+    poi2mimir().await;
+    ntfs2mimir().await;
+
+    autocomplete_poi_visible().await;
+    autocomplete_stop_area_visible().await;
 }
 
 #[serial]
