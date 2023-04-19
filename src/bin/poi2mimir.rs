@@ -87,7 +87,7 @@ mod tests {
             .await
             .unwrap();
 
-        bano::index_addresses(&client, "limousin", "limousin", true)
+        bano::index_addresses(&client, "corse", "corse", true)
             .await
             .unwrap();
 

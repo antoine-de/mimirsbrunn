@@ -59,7 +59,7 @@ pub async fn index_addresses(
 
     let base_path = env!("CARGO_MANIFEST_DIR");
     let config_dir: PathBuf = [base_path, "..", "..", "config"].iter().collect();
-    let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "bano", region]
+    let input_dir: PathBuf = [base_path, "..", "..", "tests", "fixtures", "bano"]
         .iter()
         .collect();
     let input_file = input_dir.join(format!("{region}.csv"));
