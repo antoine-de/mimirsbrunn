@@ -290,6 +290,7 @@ async fn into_poi(
         distance: None,
         context: None,
         children: vec![],
+        autocomplete_visible: poi.visible,
     };
 
     Ok(poi)

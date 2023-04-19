@@ -4,6 +4,9 @@
     "template": {
       "mappings": {
         "properties": {
+          "autocomplete_visible": {
+            "type": "boolean"
+          },
           "comments": {
             "enabled": false
           },

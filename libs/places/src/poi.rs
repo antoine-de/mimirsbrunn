@@ -41,6 +41,7 @@ pub struct Poi {
     pub context: Option<Context>,
     #[serde(default)]
     pub children: Vec<Poi>,
+    pub autocomplete_visible: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

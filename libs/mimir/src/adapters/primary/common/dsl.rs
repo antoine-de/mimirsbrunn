@@ -160,6 +160,15 @@ fn build_filters(
         shape.map(|(geometry, scope)| build_shape_query(geometry, scope)),
         poi_types.map(build_poi_types_filter),
         zone_types.map(build_zone_types_filter),
+        Some(json!({
+            "bool": {
+                "must_not": {
+                    "term": {
+                        "autocomplete_visible": false
+                    }
+                }
+            }
+        })),
     ]
     .into_iter()
     .flatten()

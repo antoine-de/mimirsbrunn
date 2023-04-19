@@ -131,6 +131,6 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(pois.len(), 1);
+        assert_eq!(pois.len(), 2);
     }
 }

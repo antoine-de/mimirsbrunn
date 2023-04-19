@@ -1,7 +1,7 @@
 use geojson::Geometry;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
-use tracing::warn;
+use tracing::{instrument, warn};
 use transit_model::objects::Rgb;
 use typed_index_collection::Idx;
 
@@ -142,6 +142,7 @@ pub struct Stop {
     pub country_codes: Vec<String>,
 
     pub context: Option<Context>,
+    pub autocomplete_visible: bool,
 }
 
 impl Members for Stop {
@@ -194,6 +195,7 @@ fn get_lines(
     lines
 }
 
+#[instrument(level="info", skip_all, fields(stop_area_id = stop_area.id))]
 pub fn to_mimir(
     idx: Idx<transit_model::objects::StopArea>,
     stop_area: &transit_model::objects::StopArea,
@@ -271,6 +273,7 @@ pub fn to_mimir(
             .collect(),
         properties: stop_area.object_properties.clone(),
         feed_publishers,
+        autocomplete_visible: stop_area.visible,
         ..Default::default()
     }
 }

@@ -240,6 +240,7 @@ fn parse_poi(
         country_codes,
         context: None,
         children: vec![],
+        autocomplete_visible: true,
     })
 }
 

@@ -117,7 +117,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(stops.len(), 153);
+        assert_eq!(stops.len(), 154);
     }
 
     #[test(tokio::test)]
