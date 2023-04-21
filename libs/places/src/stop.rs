@@ -142,6 +142,7 @@ pub struct Stop {
     pub country_codes: Vec<String>,
 
     pub context: Option<Context>,
+    #[serde(default = "crate::utils::default_true")]
     pub autocomplete_visible: bool,
 }
 

@@ -41,6 +41,7 @@ pub struct Poi {
     pub context: Option<Context>,
     #[serde(default)]
     pub children: Vec<Poi>,
+    #[serde(default = "crate::utils::default_true")]
     pub autocomplete_visible: bool,
 }
 
