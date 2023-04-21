@@ -87,3 +87,7 @@ pub fn normalize_id(prefix: &str, id: &str) -> String {
         format!("{prefix}:{}", &id.replace(' ', ""))
     }
 }
+
+pub fn default_true() -> bool {
+    true
+}
