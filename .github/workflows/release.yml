@@ -52,7 +52,7 @@ jobs:
         if: failure()
         run: |
           apt install --yes --force-yes httpie
-          echo '{"text":":Warning: Github Actions: build packages for branch release failed  ! (https://github.com/hove-io/mimirsbrunn/actions/workflows/release.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+          echo '{"text":":Warning: Github Actions: build packages for branch release failed (ES2) ! (https://github.com/hove-io/mimirsbrunn/actions/workflows/release.yml)."}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
 
   publish:
     runs-on: ubuntu-latest
@@ -71,4 +71,4 @@ jobs:
       - name: slack notification (the job succeeded)
         run: |
           version=$(make version)
-          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New packages mimir ' $VERSION 'is available"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
+          echo '{"text":":information_source: Github Actions: build packages for branch release succeded - New packages mimir ' $VERSION 'is available (ES2)"}' | http --json POST ${{secrets.SLACK_NAVITIA_AUTOCOMPLETE_TEAM_URL}}
