@@ -1,6 +1,6 @@
 [package]
 name = "mimirsbrunn"
-version = "2.12.0"
+version = "2.15.1"
 authors = ["Hove", "Qwant"]
 build = "build.rs"
 autotests = false
