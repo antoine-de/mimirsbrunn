@@ -1,6 +1,6 @@
 [package]
 name = "places"
-version = "2.15.1"
+version = "2.16.0"
 authors = ["Hove", "Qwant"]
 edition = "2021"
 description = "Set of tools for importing geospatial data into Elasticsearch for geocoding"
