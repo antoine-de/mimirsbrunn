@@ -45,7 +45,7 @@ jobs:
 
       - name: Github Release
         uses: softprops/action-gh-release@v1
-        if: success()
+        if: github.event_name == 'push' && success()
         with:
           files: ./scripts/deb-scratch/*
         env:
